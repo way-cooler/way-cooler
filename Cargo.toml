@@ -1,4 +1,7 @@
 [package]
 name = "way-cooler"
 version = "0.1.0"
-authors = ["Snirk Immington <snirk.immington@gmail.com>"]
+authors = ["Joshua Hailman <hailman.j@husky.neu.edu>", "Preston Carpenter <carpenter.pr@husky.neu.edu>"]
+
+[dependencies.rust-wlc]
+path = "../rust-wlc"
