@@ -17,6 +17,10 @@ fn start_interactive_action(view: rustwlc::WLCHandle, origin: rustwlc::Point) ->
 }
 
 fn main() {
+    let interface = {};
     println!("Hello, world!");
-    
+    if (!rustwlc::init(interface, 0, "")) {
+        panic!("Unable to initialize wlc!");
+    }
+    rustwlc::run();
 }
