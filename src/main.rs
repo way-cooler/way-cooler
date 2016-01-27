@@ -36,30 +36,31 @@ fn main() {
                     pre: view_request_render_pre,
                     post: view_request_render_post
                 }
-            },
-            keyboard: KeyboardInterface {
-                key: keyboard_key
-            },
-            pointer: PointerInterface {
-                button: pointer_button,
-                scroll: pointer_scroll,
-                motion: pointer_motion
-            },
-            touch: TouchInterface {
-                touch: touch_touch
-            },
-            compositor: CompositorInterface {
-                ready: compositor_ready
-            },
-            input: InputInterface {
-                created: input_created,
-                destroyed: input_destroyed
             }
+        },
+        keyboard: KeyboardInterface {
+            key: keyboard_key
+        },
+        pointer: PointerInterface {
+            button: pointer_button,
+            scroll: pointer_scroll,
+            motion: pointer_motion
+        },
+        touch: TouchInterface {
+            touch: touch_touch
+        },
+        compositor: CompositorInterface {
+            ready: compositor_ready
+        },
+        input: InputInterface {
+            created: input_created,
+            destroyed: input_destroyed
         }
     };
-    println!("Created interface {:?}", interface);
+    // Interfaces don't derive debug
+    //println!("Created interface {:?}", interface);
 
-    if !rustwlc::init(&interface) {
+    if !rustwlc::init(interface) {
         panic!("Unable to initialize wlc!");
     }
     rustwlc::run_wlc();
@@ -67,107 +68,108 @@ fn main() {
 
 // Hook up basic callbacks
 
-fn output_created(handle: WlcHandle) -> bool {
+extern fn output_created(handle: WlcHandle) -> bool {
     println!("output_created");
     return true;
 }
 
-fn output_destroyed(handle: WlcHandle) {
+extern fn output_destroyed(handle: WlcHandle) {
     println!("output_destroyed");
 }
 
-fn output_focus(handle: WlcHandle, focused: bool) {
+extern fn output_focus(handle: WlcHandle, focused: bool) {
     println!("output_focus: {}", focused);
 }
 
-fn output_resolution(handle: WlcHandle, old_size: Size, new_size: Size) {
-    println!("output_resolution: {} to {}", old_size, new_size)
+extern fn output_resolution(handle: WlcHandle, old_size: Size, new_size: Size) {
+    println!("output_resolution: {:?} to {:?}", old_size, new_size)
 }
 
-fn output_render_pre(handle: WlcHandle) {
+extern fn output_render_pre(handle: WlcHandle) {
     println!("output_render_pre");
 }
 
-fn output_render_post(handle: WlcHandle) {
+extern fn output_render_post(handle: WlcHandle) {
     println!("output_render_post");
 }
 
-fn view_created(handle: WlcHandle) -> bool {
+extern fn view_created(handle: WlcHandle) -> bool {
     println!("view_created");
     true
 }
 
-fn view_destroyed(handle: WlcHandle) {
+extern fn view_destroyed(handle: WlcHandle) {
     println!("view_destroyed");
 }
 
-fn view_focus(current: WlcHandle, focused: bool) {
+extern fn view_focus(current: WlcHandle, focused: bool) {
     println!("view_focus: {}", focused);
 }
 
-fn view_move_to_output(current: WlcHandle, q1: WlcHandle, q2: WlcHandle) {
+extern fn view_move_to_output(current: WlcHandle, q1: WlcHandle, q2: WlcHandle) {
     println!("view_move_to_output");
 }
 
-fn view_request_geometry(handle: WlcHandle, geometry: Geometry) {
+extern fn view_request_geometry(handle: WlcHandle, geometry: Geometry) {
     println!("view_request_geometry: call wlc_view_set_geometry({:?})", geometry);
 }
 
-fn view_request_state(handle: WlcHandle, state: ViewState) {
+extern fn view_request_state(handle: WlcHandle, state: ViewState, handled: bool) {
     println!("view_request_state: call wlc_view_set_state({:?})", state);
 }
 
-fn view_request_move(handle: WlcHandle, dest: Point) {
+extern fn view_request_move(handle: WlcHandle, dest: Point) {
     println!("view_request_move: to {}, start interactive mode.", dest);
 }
 
-fn view_request_resize(handle: WlcHandle, edge: ResizeEdge, location: Point) {
+extern fn view_request_resize(handle: WlcHandle, edge: ResizeEdge, location: Point) {
     println!("view_request_resize: size {:?}, to {}, start interactive mode.",
              edge, location);
 }
 
-fn view_request_render_pre(handle: WlcHandle) {
+extern fn view_request_render_pre(handle: WlcHandle) {
     println!("view_request_render_pre");
 }
 
-fn view_request_render_post(handle: WlcHandle) {
+extern fn view_request_render_post(handle: WlcHandle) {
     println!("view_request_render_post");
 }
 
-fn keyboard_key(handle: WlcHandle, button: libc::c_uint, mods: KeyboardModifiers, time: u32,
-                state: ButtonState, point: Point) -> bool {
+extern fn keyboard_key(handle: WlcHandle, time: u32, mods: KeyboardModifiers,
+                       key: u32, state: KeyState) -> bool {
     false
 }
 
-fn pointer_button(handle: WlcHandle, button: libc::c_uint, mods: KeyboardModifiers,
+extern fn pointer_button(handle: WlcHandle, button: libc::c_uint, mods: KeyboardModifiers,
                   time: u32, state: ButtonState, point: Point) -> bool {
     println!("pointer_button: time {}, point {}", time, point);
     false
 }
 
-fn pointer_scroll(handle: WlcHandle, button: u32, mods: KeyboardModifiers,
+extern fn pointer_scroll(handle: WlcHandle, button: u32, mods: KeyboardModifiers,
                   axis: ScrollAxis, heights: [u64; 2]) -> bool {
     println!("pointer_scroll");
     false
 }
 
-fn pointer_motion(handle: WlcHandle, dist: u32, point: Point) -> bool {
-    false
+extern fn pointer_motion(handle: WlcHandle, dist: u32, point: Point) {
+    println!("Pointer moved {} pixels? to {}", dist, point);
 }
 
-fn touch_touch(handle: WlcHandle, time: libc::c_uint, mods: KeyboardModifiers,
+extern fn touch_touch(handle: WlcHandle, time: libc::c_uint, mods: KeyboardModifiers,
                touch: TouchType, key: i32, point: Point) -> bool {
     false
 }
 
-fn compositor_ready() {
+extern fn compositor_ready() {
     println!("Preparing compositor!");
 }
 
-fn input_created(device: LibinputDevice) {
+extern fn input_created(device: LibinputDevice) -> bool {
     println!("input_created");
+    false
 }
 
-fn input_destroyed(device: LibinputDevice) {
+extern fn input_destroyed(device: LibinputDevice) {
     println!("input_destroyed");
 }
