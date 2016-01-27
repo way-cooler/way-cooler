@@ -6,7 +6,7 @@ extern crate rustwlc;
 use rustwlc::types;
 use rustwlc::types::*;
 //use rustwlc::types::LibinputDevice;
-use rustwlc::handle::WlcHandle;
+use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::types::interface::*;
 
 fn main() {
@@ -17,7 +17,7 @@ fn main() {
             focus: output_focus,
             resolution: output_resolution,
 
-            render: RenderInterface {
+            render: OutputRenderInterface {
                 pre: output_render_pre,
                 post: output_render_post
             }
@@ -32,7 +32,7 @@ fn main() {
                 state: view_request_state,
                 move_: view_request_move,
                 resize: view_request_resize,
-                render: RenderInterface {
+                render: ViewRenderInterface {
                     pre: view_request_render_pre,
                     post: view_request_render_post
                 }
@@ -68,95 +68,95 @@ fn main() {
 
 // Hook up basic callbacks
 
-extern fn output_created(handle: WlcHandle) -> bool {
+extern fn output_created(output: WlcOutput) -> bool {
     println!("output_created");
     return true;
 }
 
-extern fn output_destroyed(handle: WlcHandle) {
+extern fn output_destroyed(output: WlcOutput) {
     println!("output_destroyed");
 }
 
-extern fn output_focus(handle: WlcHandle, focused: bool) {
+extern fn output_focus(output: WlcOutput, focused: bool) {
     println!("output_focus: {}", focused);
 }
 
-extern fn output_resolution(handle: WlcHandle, old_size: Size, new_size: Size) {
+extern fn output_resolution(output: WlcOutput, old_size: Size, new_size: Size) {
     println!("output_resolution: {:?} to {:?}", old_size, new_size)
 }
 
-extern fn output_render_pre(handle: WlcHandle) {
+extern fn output_render_pre(output: WlcOutput) {
     println!("output_render_pre");
 }
 
-extern fn output_render_post(handle: WlcHandle) {
+extern fn output_render_post(output: WlcOutput) {
     println!("output_render_post");
 }
 
-extern fn view_created(handle: WlcHandle) -> bool {
+extern fn view_created(view: WlcView) -> bool {
     println!("view_created");
     true
 }
 
-extern fn view_destroyed(handle: WlcHandle) {
+extern fn view_destroyed(view: WlcView) {
     println!("view_destroyed");
 }
 
-extern fn view_focus(current: WlcHandle, focused: bool) {
+extern fn view_focus(current: WlcView, focused: bool) {
     println!("view_focus: {}", focused);
 }
 
-extern fn view_move_to_output(current: WlcHandle, q1: WlcHandle, q2: WlcHandle) {
+extern fn view_move_to_output(current: WlcView, q1: WlcView, q2: WlcView) {
     println!("view_move_to_output");
 }
 
-extern fn view_request_geometry(handle: WlcHandle, geometry: Geometry) {
+extern fn view_request_geometry(view: WlcView, geometry: Geometry) {
     println!("view_request_geometry: call wlc_view_set_geometry({:?})", geometry);
 }
 
-extern fn view_request_state(handle: WlcHandle, state: ViewState, handled: bool) {
+extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
     println!("view_request_state: call wlc_view_set_state({:?})", state);
 }
 
-extern fn view_request_move(handle: WlcHandle, dest: Point) {
+extern fn view_request_move(view: WlcView, dest: Point) {
     println!("view_request_move: to {}, start interactive mode.", dest);
 }
 
-extern fn view_request_resize(handle: WlcHandle, edge: ResizeEdge, location: Point) {
+extern fn view_request_resize(view: WlcView, edge: ResizeEdge, location: Point) {
     println!("view_request_resize: size {:?}, to {}, start interactive mode.",
              edge, location);
 }
 
-extern fn view_request_render_pre(handle: WlcHandle) {
+extern fn view_request_render_pre(view: WlcView) {
     println!("view_request_render_pre");
 }
 
-extern fn view_request_render_post(handle: WlcHandle) {
+extern fn view_request_render_post(view: WlcView) {
     println!("view_request_render_post");
 }
 
-extern fn keyboard_key(handle: WlcHandle, time: u32, mods: KeyboardModifiers,
+extern fn keyboard_key(view: WlcView, time: u32, mods: KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
     false
 }
 
-extern fn pointer_button(handle: WlcHandle, button: libc::c_uint, mods: KeyboardModifiers,
+extern fn pointer_button(view: WlcView, button: libc::c_uint, mods: KeyboardModifiers,
                   time: u32, state: ButtonState, point: Point) -> bool {
     println!("pointer_button: time {}, point {}", time, point);
     false
 }
 
-extern fn pointer_scroll(handle: WlcHandle, button: u32, mods: KeyboardModifiers,
+extern fn pointer_scroll(view: WlcView, button: u32, mods: KeyboardModifiers,
                   axis: ScrollAxis, heights: [u64; 2]) -> bool {
     println!("pointer_scroll");
     false
 }
 
-extern fn pointer_motion(handle: WlcHandle, dist: u32, point: Point) {
+extern fn pointer_motion(view: WlcView, dist: u32, point: Point) {
     println!("Pointer moved {} pixels? to {}", dist, point);
 }
 
-extern fn touch_touch(handle: WlcHandle, time: libc::c_uint, mods: KeyboardModifiers,
+extern fn touch_touch(view: WlcView, time: libc::c_uint, mods: KeyboardModifiers,
                touch: TouchType, key: i32, point: Point) -> bool {
     false
 }
