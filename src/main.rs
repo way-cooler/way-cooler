@@ -66,6 +66,37 @@ fn main() {
     rustwlc::run_wlc();
 }
 
+// Important rendering functions copied from wlc/example/example.c
+
+fn start_interactive_action(view: WlcView, origin: Point) -> bool {
+    true
+}
+
+fn stop_interactive_action() {
+    
+}
+
+fn start_interactive_move(view: WlcView, origin: Point) {
+    
+}
+
+fn start_interactive_resize(view: WlcView, edges: u32, origin: Point) {
+    
+}
+
+fn get_topmost_view(output: WlcOutput, offset: Size) {
+    
+}
+
+/// From example.c:
+/// very simple layout function
+/// you probably don't want to layout certain type of windows in wm
+fn render_output(output: WlcOutput) {
+    let resolution = output.get_resolution();
+    //let views = output.get_views();
+}
+
+
 // Hook up basic callbacks
 
 extern fn output_created(output: WlcOutput) -> bool {
@@ -95,15 +126,20 @@ extern fn output_render_post(output: WlcOutput) {
 
 extern fn view_created(view: WlcView) -> bool {
     println!("view_created");
+    view.bring_to_front();
+    view.focus();
+    //render_output(view.get_output());
     true
 }
 
 extern fn view_destroyed(view: WlcView) {
     println!("view_destroyed");
+    //let next_up = 
 }
 
 extern fn view_focus(current: WlcView, focused: bool) {
     println!("view_focus: {}", focused);
+    //view.set_state()
 }
 
 extern fn view_move_to_output(current: WlcView, q1: WlcView, q2: WlcView) {
@@ -141,8 +177,12 @@ extern fn keyboard_key(view: WlcView, time: u32, mods: KeyboardModifiers,
 }
 
 extern fn pointer_button(view: WlcView, button: libc::c_uint, mods: KeyboardModifiers,
-                  time: u32, state: ButtonState, point: Point) -> bool {
-    println!("pointer_button: time {}, point {}", time, point);
+                  key: u32, state: ButtonState, point: Point) -> bool {
+    println!("pointer_button: key {}, point {}", key, point);
+
+    if state == ButtonState::Pressed {
+        view.focus();
+    }
     false
 }
 
@@ -154,6 +194,7 @@ extern fn pointer_scroll(view: WlcView, button: u32, mods: KeyboardModifiers,
 
 extern fn pointer_motion(view: WlcView, dist: u32, point: Point) {
     println!("Pointer moved {} pixels? to {}", dist, point);
+    // TODO wlc_pointer_set_position
 }
 
 extern fn touch_touch(view: WlcView, time: libc::c_uint, mods: KeyboardModifiers,
