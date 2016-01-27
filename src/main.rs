@@ -8,6 +8,8 @@ use rustwlc::types::*;
 //use rustwlc::types::LibinputDevice;
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::types::interface::*;
+use rustwlc::input::pointer;
+use rustwlc::input::keyboard;
 
 fn main() {
     let interface: WlcInterface = WlcInterface {
@@ -192,9 +194,10 @@ extern fn pointer_scroll(view: WlcView, button: u32, mods: KeyboardModifiers,
     false
 }
 
-extern fn pointer_motion(view: WlcView, dist: u32, point: Point) {
-    println!("Pointer moved {} pixels? to {}", dist, point);
+extern fn pointer_motion(view: WlcView, time: u32, point: Point) {
+    println!("Pointer moved {} to {}", time, point);
     // TODO wlc_pointer_set_position
+    pointer::set_position(point);
 }
 
 extern fn touch_touch(view: WlcView, time: libc::c_uint, mods: KeyboardModifiers,
