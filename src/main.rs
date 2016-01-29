@@ -1,5 +1,6 @@
 #![feature(libc)]
 extern crate libc;
+use std::ffi; 
 
 extern crate rustwlc;
 
@@ -73,11 +74,18 @@ fn main() {
     };
     // Interfaces don't derive debug
     //println!("Created interface {:?}", interface);
+    rustwlc::log_set_handler(log_callback);
 
     if !rustwlc::init(interface) {
         panic!("Unable to initialize wlc!");
     }
     rustwlc::run_wlc();
+}
+
+
+extern fn log_callback(log_type: LogType, text: *const libc::c_char) {
+    let string_text = rustwlc::pointer_to_string(text);
+    println!("Wlc Log: {}", string_text);
 }
 
 // Important rendering functions copied from wlc/example/example.c
@@ -131,11 +139,11 @@ extern fn output_resolution(output: WlcOutput, old_size: Size, new_size: Size) {
 }
 
 extern fn output_render_pre(output: WlcOutput) {
-    println!("output_render_pre");
+    //println!("output_render_pre");
 }
 
 extern fn output_render_post(output: WlcOutput) {
-    println!("output_render_post");
+    //println!("output_render_post");
 }
 
 extern fn view_created(view: WlcView) -> bool {
@@ -178,17 +186,31 @@ extern fn view_request_resize(view: WlcView, edge: ResizeEdge, location: Point) 
 }
 
 extern fn view_request_render_pre(view: WlcView) {
-    println!("view_request_render_pre");
+    //println!("view_request_render_pre");
 }
 
 extern fn view_request_render_post(view: WlcView) {
-    println!("view_request_render_post");
+    //println!("view_request_render_post");
 }
 
 extern fn keyboard_key(view: WlcView, time: u32, mods: KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
+    use std::process::{Command};
     println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
              time, mods, key, state);
+    println!("Preparing to open the terminal...");
+    rustwlc::exec("weston-terminal".to_string(), vec!["weston-terminal".to_string()]);
+    // We are definitely able to open programs, they can definitely launch in the host X11 server.
+    //rustwlc::exec("emacs".to_string(), vec!["emacs".to_string()]);
+    //let output = std::process::Command::new("weston-terminal").output()
+    //.unwrap_or_else(|e| { println!("Could not unwrap output!"); panic!("aaaa") });
+    let mut child = Command::new("/bin/weston-terminal").spawn()
+        .unwrap_or_else(|e| { println!("Error spawning child: {}", e); panic!("1") });
+
+    //let ecode = child.wait().unwrap_or_else(|e| println!("Error unwrapping child"));
+    //println!("Output: {}", String::from_utf8(output.stdout).unwrap_or("nope".to_string()));
+
+
     false
 }
 
@@ -209,7 +231,7 @@ extern fn pointer_scroll(view: WlcView, button: u32, mods: KeyboardModifiers,
 }
 
 extern fn pointer_motion(view: WlcView, time: u32, point: Point) {
-    println!("Pointer moved {} to {}", time, point);
+    //println!("Pointer moved {} to {}", time, point);
     // TODO wlc_pointer_set_position
     pointer::set_position(point);
 }
