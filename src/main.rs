@@ -10,7 +10,19 @@ use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::types::interface::*;
 use rustwlc::input::pointer;
 use rustwlc::input::keyboard;
+/*
+struct CompositorAction {
+    view: WlcView,
+    grab: Point,
+    edges: u32
+}
 
+static mut compositor: CompositorAction = CompositorAction {
+    view: WlcView(0),
+    grab: Point{ x: 0, y: 0},
+    edges: 0
+};
+*/ 
 fn main() {
     let interface: WlcInterface = WlcInterface {
         output: OutputInterface {
@@ -130,7 +142,7 @@ extern fn view_created(view: WlcView) -> bool {
     println!("view_created");
     view.bring_to_front();
     view.focus();
-    //render_output(view.get_output());
+    render_output(view.get_output());
     true
 }
 
@@ -175,6 +187,8 @@ extern fn view_request_render_post(view: WlcView) {
 
 extern fn keyboard_key(view: WlcView, time: u32, mods: KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
+    println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
+             time, mods, key, state);
     false
 }
 
