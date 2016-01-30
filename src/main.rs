@@ -114,8 +114,49 @@ fn get_topmost_view(output: WlcOutput, offset: Size) {
 /// very simple layout function
 /// you probably don't want to layout certain type of windows in wm
 fn render_output(output: WlcOutput) {
+    use std::cmp;
     let resolution = output.get_resolution();
-    //let views = output.get_views();
+    let views = output.get_views();
+
+    if views.len() == 0 { println!("Didn't find any views to render :/"); }
+
+    for view in views {
+        view.set_geometry(0,
+                          Geometry {
+                              size: Size {
+                                  w: resolution.w as u32,
+                                  h: resolution.h as u32
+                              },
+                              origin: Point {
+                                  x: resolution.w as i32,
+                                  y: resolution.h as i32
+                              }
+                          });
+    }
+
+    /*
+    let mut toggle = false;
+    let mut y = 0u32;
+//    use std::cmp;
+
+    let w: u32 = resolution.w as u32 / 2u32;
+    let h: u32 = resolution.h as u32 / cmp::max((1u32 + views.len() as u32) / 2u32, 1);
+
+    for view in views {
+        let g = Geometry {
+            size: Size {
+                w: if toggle { w } else { 0 },
+                h: y
+            },
+            origin: Point {
+                x: if !toggle { resolution.w as i32 } else { w as i32 },
+                y: h as i32
+            }
+        };
+        view.set_geometry(0, g);
+        toggle = !toggle;
+        y = y + if !toggle { h } else { 0 };
+    }*/
 }
 
 
@@ -147,33 +188,39 @@ extern fn output_render_post(output: WlcOutput) {
 }
 
 extern fn view_created(view: WlcView) -> bool {
-    println!("view_created");
+    println!("view_created: {:?}", view);
+    let output = view.get_output();
+    println!("view_created: it's on output {:?}", output);
+    view.set_mask(output.get_mask());
     view.bring_to_front();
     view.focus();
-    render_output(view.get_output());
+    render_output(output);
     true
 }
 
 extern fn view_destroyed(view: WlcView) {
-    println!("view_destroyed");
-    //let next_up = 
+    println!("view_destroyed: {:?}", view);
+    render_output(view.get_output());
 }
 
 extern fn view_focus(current: WlcView, focused: bool) {
-    println!("view_focus: {}", focused);
-    //view.set_state()
+    println!("view_focus: {:?} {}", current, focused);
+    current.set_state(ViewState::Activated, focused);
 }
 
 extern fn view_move_to_output(current: WlcView, q1: WlcView, q2: WlcView) {
-    println!("view_move_to_output");
+    println!("view_move_to_output: {:?}, {:?}, {:?}", current, q1, q2);
 }
 
 extern fn view_request_geometry(view: WlcView, geometry: Geometry) {
-    println!("view_request_geometry: call wlc_view_set_geometry({:?})", geometry);
+    println!("view_request_geometry: {:?} wants {:?}", view, geometry);
+    view.set_geometry(0, geometry);
+    render_output(view.get_output());
 }
 
 extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
     println!("view_request_state: call wlc_view_set_state({:?})", state);
+    view.set_state(state, handled);
 }
 
 extern fn view_request_move(view: WlcView, dest: Point) {
@@ -198,6 +245,7 @@ extern fn keyboard_key(view: WlcView, time: u32, mods: KeyboardModifiers,
     use std::process::{Command};
     println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
              time, mods, key, state);
+    if state == KeyState::Pressed { return false; }
     println!("Preparing to open the terminal...");
     rustwlc::exec("weston-terminal".to_string(), vec!["weston-terminal".to_string()]);
     // We are definitely able to open programs, they can definitely launch in the host X11 server.
