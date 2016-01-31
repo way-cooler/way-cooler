@@ -27,49 +27,49 @@ static mut compositor: CompositorAction = CompositorAction {
 fn main() {
     let interface: WlcInterface = WlcInterface {
         output: OutputInterface {
-            created: output_created,
-            destroyed: output_destroyed,
-            focus: output_focus,
-            resolution: output_resolution,
+            created: Some(output_created),
+            destroyed: Some(output_destroyed),
+            focus: Some(output_focus),
+            resolution: Some(output_resolution),
 
             render: OutputRenderInterface {
-                pre: output_render_pre,
-                post: output_render_post
+                pre: Some(output_render_pre),
+                post: Some(output_render_post)
             }
         },
         view: ViewInterface {
-            created: view_created,
-            destroyed: view_destroyed,
-            focus: view_focus,
-            move_to_output: view_move_to_output,
+            created: Some(view_created),
+            destroyed: Some(view_destroyed),
+            focus: Some(view_focus),
+            move_to_output: Some(view_move_to_output),
             request: RequestInterface {
-                geometry: view_request_geometry,
-                state: view_request_state,
-                move_: view_request_move,
-                resize: view_request_resize,
+                geometry: Some(view_request_geometry),
+                state: Some(view_request_state),
+                move_: Some(view_request_move),
+                resize: Some(view_request_resize),
                 render: ViewRenderInterface {
-                    pre: view_request_render_pre,
-                    post: view_request_render_post
+                    pre: Some(view_request_render_pre),
+                    post: Some(view_request_render_post)
                 }
             }
         },
         keyboard: KeyboardInterface {
-            key: keyboard_key
+            key: Some(keyboard_key)
         },
         pointer: PointerInterface {
-            button: pointer_button,
-            scroll: pointer_scroll,
-            motion: pointer_motion
+            button: Some(pointer_button),
+            scroll: Some(pointer_scroll),
+            motion: Some(pointer_motion)
         },
         touch: TouchInterface {
-            touch: touch_touch
+            touch: Some(touch_touch)
         },
         compositor: CompositorInterface {
-            ready: compositor_ready
+            ready: Some(compositor_ready)
         },
         input: InputInterface {
-            created: input_created,
-            destroyed: input_destroyed
+            created: Some(input_created),
+            destroyed: Some(input_destroyed)
         }
     };
     // Interfaces don't derive debug
