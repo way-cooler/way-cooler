@@ -262,8 +262,10 @@ extern fn keyboard_key(view: WlcView, time: u32, mods: KeyboardModifiers,
     println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
              time, mods, key, state);
     if state == KeyState::Pressed { return false; }
-    println!("Preparing to open the terminal...");
-    rustwlc::exec("weston-terminal".to_string(), vec!["weston-terminal".to_string()]);
+    if key == 67 {
+        println!("Preparing to open the terminal...");
+        rustwlc::exec("weston-terminal".to_string(), vec!["weston-terminal".to_string()]);
+    
     // We are definitely able to open programs, they can definitely launch in the host X11 server.
     //rustwlc::exec("emacs".to_string(), vec!["emacs".to_string()]);
     //let output = std::process::Command::new("weston-terminal").output()
@@ -273,6 +275,7 @@ extern fn keyboard_key(view: WlcView, time: u32, mods: KeyboardModifiers,
 
     //let ecode = child.wait().unwrap_or_else(|e| println!("Error unwrapping child"));
     //println!("Output: {}", String::from_utf8(output.stdout).unwrap_or("nope".to_string()));
+    }
 
 
     false
