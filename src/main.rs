@@ -117,21 +117,33 @@ fn render_output(output: WlcOutput) {
     use std::cmp;
     let resolution = output.get_resolution();
     let views = output.get_views();
+    println!("Rendering {} views for {} (resolution = {:?})", views.len(), output.get_name(), resolution);
 
     if views.len() == 0 { println!("Didn't find any views to render :/"); }
 
     for view in views {
+        //println!("Found view {:?}: type {}, output {:?}, geometry {:?}, state: {}, parent: {:?}", view, view.get_type(), view.get_output(), view.get_geometry(), view.get_state(), view.get_parent());
+        println!("Setting {:?}", view);
+        println!("\tIts type: {}", view.get_type());
+        println!("\tIts output: {}", view.get_output().get_name());
+        println!("\tIts geometry: {:?}", view.get_geometry());
+        println!("\tIts state: {}", view.get_state());
+        println!("\tIts parent: {:?}", view.get_parent());
+        println!("\tIts title: {}", view.get_title());
+        // get_class doesn't work but maybe it's not supposed to
+        //println!("\tIts class: {}", view.get_class());
         view.set_geometry(0,
-                          Geometry {
+                          &Geometry {
                               size: Size {
-                                  w: resolution.w as u32,
-                                  h: resolution.h as u32
+                                  w: 200 as u32,
+                                  h: 200 as u32
                               },
                               origin: Point {
                                   x: resolution.w as i32,
                                   y: resolution.h as i32
                               }
                           });
+        println!("Attempted to set geometry, got {:?}", view.get_geometry());
     }
 
     /*
@@ -190,7 +202,11 @@ extern fn output_render_post(output: WlcOutput) {
 extern fn view_created(view: WlcView) -> bool {
     println!("view_created: {:?}", view);
     let output = view.get_output();
-    println!("view_created: it's on output {:?}", output);
+    //println!("view_created: it's on output {:?}", output);
+    //println!("Output: name {},",
+             //output.get_name());
+    //println!("View: type {}",
+    //           view.get_type());;
     view.set_mask(output.get_mask());
     view.bring_to_front();
     view.focus();
@@ -212,7 +228,7 @@ extern fn view_move_to_output(current: WlcView, q1: WlcView, q2: WlcView) {
     println!("view_move_to_output: {:?}, {:?}, {:?}", current, q1, q2);
 }
 
-extern fn view_request_geometry(view: WlcView, geometry: Geometry) {
+extern fn view_request_geometry(view: WlcView, geometry: *const Geometry) {
     println!("view_request_geometry: {:?} wants {:?}", view, geometry);
     view.set_geometry(0, geometry);
     render_output(view.get_output());
