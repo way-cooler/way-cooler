@@ -72,18 +72,10 @@ fn main() {
         }
     };
 
-    rustwlc::log_set_handler(log_callback);
-
     if !rustwlc::init(interface) {
         panic!("Unable to initialize wlc!");
     }
     rustwlc::run_wlc();
-}
-
-
-extern fn log_callback(log_type: LogType, text: *const libc::c_char) {
-    let string_text = rustwlc::pointer_to_string(text);
-    println!("Wlc Log {:?}: {}", log_type, string_text);
 }
 
 // Important rendering functions copied from wlc/example/example.c
