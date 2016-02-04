@@ -185,11 +185,9 @@ extern fn output_focus(output: WlcOutput, focused: bool) {
 }
 
 extern fn output_resolution(output: WlcOutput,
-                            old_size_ptr: *const Size, new_size_ptr: *const Size) {
-    unsafe {
-        println!("output_resolution: {:?} from  {:?} to {:?}",
-                 output, &*old_size_ptr, &*new_size_ptr);
-    }
+                            old_size_ptr: &Size, new_size_ptr: &Size) {
+    println!("output_resolution: {:?} from  {:?} to {:?}",
+             output, *old_size_ptr, *new_size_ptr);
 }
 
 extern fn output_render_pre(output: WlcOutput) {
@@ -224,27 +222,23 @@ extern fn view_move_to_output(current: WlcView, q1: WlcView, q2: WlcView) {
     println!("view_move_to_output: {:?}, {:?}, {:?}", current, q1, q2);
 }
 
-extern fn view_request_geometry(view: WlcView, geometry: *const Geometry) {
-    unsafe {
-        println!("view_request_geometry: {:?} wants {:?}", view, &*geometry);
-        view.set_geometry(0, geometry);
-        render_output(view.get_output());
-    }
+extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
+    println!("view_request_geometry: {:?} wants {:?}", view, geometry);
+    view.set_geometry(0, geometry);
+    render_output(view.get_output());
 }
 
 extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
     view.set_state(state, handled);
 }
 
-extern fn view_request_move(view: WlcView, dest: *const Point) {
-    //println!("view_request_move: to {}, start interactive mode.", &*dest);
+extern fn view_request_move(view: WlcView, dest: &Point) {
+    //println!("view_request_move: to {}, start interactive mode.", *dest);
 }
 
-extern fn view_request_resize(view: WlcView, edge: ResizeEdge, location: *const Point) {
-    unsafe {
-        println!("view_request_resize: size {:?}, to {}, start interactive mode.",
-                 edge, &*location);
-    }
+extern fn view_request_resize(view: WlcView, edge: ResizeEdge, location: &Point) {
+    println!("view_request_resize: size {:?}, to {}, start interactive mode.",
+             edge, *location);
 }
 
 extern fn view_request_render_pre(view: WlcView) {
@@ -253,45 +247,41 @@ extern fn view_request_render_pre(view: WlcView) {
 extern fn view_request_render_post(view: WlcView) {
 }
 
-extern fn keyboard_key(view: WlcView, time: u32, mods_ptr: *const KeyboardModifiers,
+extern fn keyboard_key(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
-    unsafe {
-        use std::process::{Command};
-        println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
-                 time, &*mods_ptr, key, state);
-        if state == KeyState::Pressed { return false; }
-        if key == 67 {
-            println!("Preparing to open the terminal...");
-            rustwlc::exec("/bin/weston-terminal".to_string(),
-                          vec!["/bin/weston-terminal".to_string()]);
-        }
+    use std::process::{Command};
+    println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
+             time, *mods_ptr, key, state);
+    if state == KeyState::Pressed { return false; }
+    if key == 67 {
+        println!("Preparing to open the terminal...");
+        rustwlc::exec("/bin/weston-terminal".to_string(),
+                      vec!["/bin/weston-terminal".to_string()]);
     }
     false
 }
 
-extern fn pointer_button(view: WlcView, button: u32, mods_ptr: *const KeyboardModifiers,
-                         key: u32, state: ButtonState, point_ptr: *const Point) -> bool {
-    unsafe {
-        println!("pointer_button: pressed {} at {}", key, &*point_ptr);
-        if state == ButtonState::Pressed {
-            view.focus();
-        }
+extern fn pointer_button(view: WlcView, button: u32, mods_ptr: &KeyboardModifiers,
+                         key: u32, state: ButtonState, point_ptr: &Point) -> bool {
+    println!("pointer_button: pressed {} at {}", key, *point_ptr);
+    if state == ButtonState::Pressed {
+        view.focus();
     }
     false
 }
 
-extern fn pointer_scroll(view: WlcView, button: u32, mods_ptr: *const KeyboardModifiers,
+extern fn pointer_scroll(view: WlcView, button: u32, mods_ptr: &KeyboardModifiers,
                   axis: ScrollAxis, heights: [u64; 2]) -> bool {
     println!("pointer_scroll");
     false
 }
 
-extern fn pointer_motion(view: WlcView, time: u32, point_ptr: *const Point) {
-    unsafe { pointer::set_position(&*point_ptr); }
+extern fn pointer_motion(view: WlcView, time: u32, point: &Point) {
+    pointer::set_position(point);
 }
 
-extern fn touch_touch(view: WlcView, time: u32, mods_ptr: *const KeyboardModifiers,
-               touch: TouchType, key: i32, point_ptr: *const Point) -> bool {
+extern fn touch_touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
+               touch: TouchType, key: i32, point_ptr: &Point) -> bool {
     false
 }
 
@@ -299,11 +289,11 @@ extern fn compositor_ready() {
     println!("Preparing compositor!");
 }
 
-extern fn input_created(device: *const LibinputDevice) -> bool {
+extern fn input_created(device: &LibinputDevice) -> bool {
     println!("input_created");
     false
 }
 
-extern fn input_destroyed(device: *const LibinputDevice) {
+extern fn input_destroyed(device: &LibinputDevice) {
     println!("input_destroyed");
 }
