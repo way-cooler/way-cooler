@@ -124,8 +124,8 @@ fn render_output(output: WlcOutput) {
         view.set_geometry(0,
                           &Geometry {
                               size: Size {
-                                  w: 200 as u32,
-                                  h: 200 as u32
+                                  w: 0 as u32,
+                                  h: 0 as u32
                               },
                               origin: Point {
                                   x: resolution.w as i32,
