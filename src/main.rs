@@ -241,16 +241,14 @@ extern fn view_request_render_post(view: WlcView) {
 
 extern fn keyboard_key(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
-    unsafe {
-        use std::process::{Command};
-        println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
-                 time, &*mods_ptr, key, state);
-        if state == KeyState::Pressed { return false; }
-        if key == 67 {
-            println!("Preparing to open the terminal...");
+    use std::process::{Command};
+    println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
+             time, &*mods_ptr, key, state);
+    if state == KeyState::Pressed { return false; }
+    if key == 67 {
+        println!("Preparing to open the terminal...");
         let mut child = Command::new("/bin/weston-terminal").spawn()
             .unwrap_or_else(|e| { println!("Error spawning child: {}", e); panic!("1") });
-        }
     }
     false
 }
