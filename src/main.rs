@@ -1,7 +1,3 @@
-#![feature(libc)]
-extern crate libc;
-use std::ffi; 
-
 extern crate rustwlc;
 
 use rustwlc::types;
