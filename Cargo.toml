@@ -3,5 +3,5 @@ name = "way-cooler"
 version = "0.1.0"
 authors = ["Joshua Hailman <hailman.j@husky.neu.edu>", "Preston Carpenter <carpenter.pr@husky.neu.edu>"]
 
-[dependencies.rustwlc]
-path = "../rust-wlc"
+[dependencies]
+rustwlc = "0.1.0"
