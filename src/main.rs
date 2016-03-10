@@ -35,11 +35,8 @@ fn main() {
 
     rustwlc::log_set_default_handler();
 
-    //let run_wlc = rustwlc::init(interface).expect("Unable to initialize wlc!");
-    if !rustwlc::init(interface) {
-        panic!("Unable to initialize wlc!");
-    }
-    rustwlc::run_wlc();
+    let run_wlc = rustwlc::init(interface).expect("Unable to initialize wlc!");
+    run_wlc();
 }
 
 

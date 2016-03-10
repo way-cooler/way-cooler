@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["Joshua Hailman <hailman.j@husky.neu.edu>", "Preston Carpenter <carpenter.pr@husky.neu.edu>"]
 
 [dependencies]
-rustwlc = "0.1.0"
+rustwlc = "0.2.0"
