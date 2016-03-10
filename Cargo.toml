@@ -1,7 +1,12 @@
 [package]
 name = "way-cooler"
+description = "Customizeable Wayland compositor written in Rust"
 version = "0.1.0"
-authors = ["Joshua Hailman <hailman.j@husky.neu.edu>", "Preston Carpenter <carpenter.pr@husky.neu.edu>"]
+repository = "https://github.com/Immington-Industries/way-cooler/"
+keywords = ["wlc", "Wayland", "compositor", "window", "manager"]
+readme = "README.md"
+license = "MIT"
+authors = ["Joshua Hailman <snirk.immington@gmail.com>", "Preston Carpenter <apragmaticplace@gmail.com>"]
 
-[dependencies.rustwlc]
-path = "../rust-wlc"
+[dependencies]
+rustwlc = "0.2.0"
