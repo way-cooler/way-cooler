@@ -10,3 +10,4 @@ authors = ["Joshua Hailman <snirk.immington@gmail.com>", "Preston Carpenter <apr
 
 [dependencies]
 rustwlc = "0.2.0"
+lazy_static = "*"

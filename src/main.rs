@@ -1,10 +1,14 @@
 extern crate rustwlc;
+#[macro_use]
+extern crate lazy_static;
 
 use rustwlc::types;
 use rustwlc::types::*;
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::interface::*;
 use rustwlc::input::{pointer, keyboard};
+
+mod registry;
 
 fn main() {
     let interface: WlcInterface = WlcInterface::new()
