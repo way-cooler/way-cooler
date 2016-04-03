@@ -102,6 +102,7 @@ pub extern fn keyboard_key(_view: WlcView, time: u32, mods: &KeyboardModifiers,
         let press = KeyPress::new(mods.mods, keys);
 
         if let Some(action) = keys::get(&press) {
+            println!("Found a key!");
             action();
             return EVENT_HANDLED;
         }
