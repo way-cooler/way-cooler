@@ -5,6 +5,7 @@ use rustwlc::input::{pointer, keyboard};
 use rustwlc::xkb::Keysym;
 
 use super::keys;
+use super::lua;
 use super::keys::{KeyEvent, KeyPress};
 
 /// If the event is handled by way-cooler
@@ -148,4 +149,5 @@ pub extern fn touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
 
 pub extern fn compositor_ready() {
     info!("Preparing compositor!");
+    lua::init();
 }

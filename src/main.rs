@@ -7,6 +7,7 @@ extern crate lazy_static;
 extern crate log;
 extern crate env_logger;
 extern crate libc;
+extern crate hlua;
 
 use rustwlc::interface::WlcInterface;
 use rustwlc::types::LogType;
@@ -16,6 +17,7 @@ use std::env;
 mod registry;
 mod keys;
 mod callbacks;
+mod lua;
 
 /// Callback to route wlc logs into env_logger
 extern "C" fn log_handler(level: LogType, message_ptr: *const libc::c_char) {
