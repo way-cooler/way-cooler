@@ -1,15 +1,17 @@
 //! Main module in way-cooler
 
 extern crate rustwlc;
-
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate hlua;
 
 use rustwlc::interface::WlcInterface;
 
 mod registry;
 mod keys;
 mod callbacks;
+mod lua;
 
 fn main() {
     let interface: WlcInterface = WlcInterface::new()
