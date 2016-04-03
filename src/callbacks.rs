@@ -2,6 +2,10 @@
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
+use rustwlc::xkb::Keysym;
+
+use super::keys;
+use super::keys::{KeyEvent, KeyPress};
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -81,11 +85,24 @@ pub extern fn view_request_resize(view: WlcView,
              edge, location);
 }
 
-pub extern fn keyboard_key(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
+pub extern fn keyboard_key(view: WlcView, time: u32, mods: &KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
     println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
-             time, &*mods_ptr, key, state);
-    false
+             time, &*mods, key, state);
+
+    if state == KeyState::Pressed {
+        let mut keys = keyboard::get_current_keys().into_iter()
+            .map(|&k| Keysym::from(k)).collect();
+
+        let press = KeyPress::new(mods.mods, keys);
+
+        if let Some(action) = keys::get(&press) {
+            action();
+            return EVENT_HANDLED;
+        }
+    }
+
+    return EVENT_PASS_THROUGH;
 }
 
 pub extern fn pointer_button(view: WlcView, button: u32,
