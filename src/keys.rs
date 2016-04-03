@@ -1,7 +1,7 @@
 //! Contains information for keybindings.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{RwLock};
+use std::sync::{Arc, RwLock};
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 use std::hash::{Hash, Hasher};
@@ -66,31 +66,26 @@ impl KeyPress {
 impl Hash for KeyPress {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         hasher.write_u32(self.modifiers.bits());
-        for sym in self.keys {
+        for ref sym in &self.keys {
             hasher.write_u32(sym.get_code());
         }
     }
 }
 
 /// The type of function a key press handler is.
-pub type KeyEvent = Box<FnOnce() + Send + Sync>;
+pub type KeyEvent = Arc<Box<FnOnce() + Send + Sync>>;
 
-pub fn get(keys: KeyPress) -> Option<KeyEvent> {
-    let mut val: Option<KeyEvent>;
-    {
-        let bindings = BINDINGS.read().unwrap();
-        val = bindings.get(keys).cloned();
+pub fn get(key: &KeyPress) -> Option<KeyEvent> {
+    let bindings = BINDINGS.read().unwrap();
+    match bindings.get(key) {
+        None => None,
+        Some(val) => Some(val.clone())
     }
-    val
 }
 
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
-    let bindings = BINDINGS.write().unwrap();
+    let mut bindings = BINDINGS.write().unwrap();
     for value in values {
-        bindings.set(value.0, value.1);
+        bindings.insert(value.0, value.1);
     }
-}
-
-pub fn register_keypress(press: KeyPress, func: KeyEvent) {
-    
 }
