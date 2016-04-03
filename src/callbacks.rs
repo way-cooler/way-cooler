@@ -21,11 +21,11 @@ pub extern fn output_created(output: WlcOutput) -> bool {
 }
 
 pub extern fn output_destroyed(output: WlcOutput) {
-    println!("output_destroyed");
+    println!("output_destroyed: {:?}", output);
 }
 
 pub extern fn output_focus(output: WlcOutput, focused: bool) {
-    println!("output_focus: {}", focused);
+    println!("output_focus: {:?} focus={}", output, focused);
 }
 
 pub extern fn output_resolution(output: WlcOutput,
@@ -33,7 +33,7 @@ pub extern fn output_resolution(output: WlcOutput,
     println!("output_resolution: {:?} from  {:?} to {:?}",
              output, *old_size_ptr, *new_size_ptr);
 }
-
+/*
 pub extern fn output_render_pre(output: WlcOutput) {
     //println!("output_render_pre");
 }
@@ -41,7 +41,7 @@ pub extern fn output_render_pre(output: WlcOutput) {
 pub extern fn output_render_post(output: WlcOutput) {
     //println!("output_render_post");
 }
-
+*/
 pub extern fn view_created(view: WlcView) -> bool {
     println!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
@@ -60,7 +60,8 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
     current.set_state(VIEW_ACTIVATED, focused);
 }
 
-pub extern fn view_move_to_output(current: WlcView, o1: WlcOutput, o2: WlcOutput) {
+pub extern fn view_move_to_output(current: WlcView,
+                                  o1: WlcOutput, o2: WlcOutput) {
     println!("view_move_to_output: {:?}, {:?}, {:?}", current, o1, o2);
 }
 
@@ -70,13 +71,15 @@ pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
 }
 
 pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
+    println!("view_request_state: {}, {:?}, handled: {}",
+    view.get_title(), state, handled);
     view.set_state(state, handled);
 }
 
 pub extern fn view_request_move(view: WlcView, dest: &Point) {
     // Called by views when they have a dang resize mouse thing, we should only
     // let it happen in view floating mode
-    //println!("view_request_move: to {}, start interactive mode.", *dest);
+    println!("view_request_move: to {}, start interactive mode.", *dest);
 }
 
 pub extern fn view_request_resize(view: WlcView,
@@ -85,7 +88,7 @@ pub extern fn view_request_resize(view: WlcView,
              edge, location);
 }
 
-pub extern fn keyboard_key(view: WlcView, time: u32, mods: &KeyboardModifiers,
+pub extern fn keyboard_key(_view: WlcView, time: u32, mods: &KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
     println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
              time, &*mods, key, state);
@@ -117,22 +120,24 @@ pub extern fn pointer_button(view: WlcView, button: u32,
     false
 }
 
-pub extern fn pointer_scroll(view: WlcView, button: u32,
-                         mods_ptr: &KeyboardModifiers, axis: ScrollAxis,
+pub extern fn pointer_scroll(_view: WlcView, button: u32,
+                         _mods_ptr: &KeyboardModifiers, axis: ScrollAxis,
                          heights: [u64; 2]) -> bool {
-    println!("pointer_scroll");
+    println!("pointer_scroll: press {}, {:?} to {:?}", button, axis, heights);
     false
 }
 
-pub extern fn pointer_motion(view: WlcView, time: u32, point: &Point) -> bool {
+pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     pointer::set_position(point);
     false
 }
 
+/*
 pub extern fn touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
                touch: TouchType, key: i32, point_ptr: &Point) -> bool {
     false
 }
+*/
 
 pub extern fn compositor_ready() {
     println!("Preparing compositor!");

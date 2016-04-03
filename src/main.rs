@@ -17,8 +17,8 @@ fn main() {
         .output_destroyed(callbacks::output_destroyed)
         .output_focus(callbacks::output_focus)
         .output_resolution(callbacks::output_resolution)
-        .output_render_pre(callbacks::output_render_pre)
-        .output_render_post(callbacks::output_render_post)
+        //.output_render_pre(callbacks::output_render_pre)
+        //.output_render_post(callbacks::output_render_post)
         .view_created(callbacks::view_created)
         .view_destroyed(callbacks::view_destroyed)
         .view_focus(callbacks::view_focus)
@@ -31,7 +31,7 @@ fn main() {
         .pointer_button(callbacks::pointer_button)
         .pointer_scroll(callbacks::pointer_scroll)
         .pointer_motion(callbacks::pointer_motion)
-        .touch_touch(callbacks::touch)
+        //.touch_touch(callbacks::touch)
         .compositor_ready(callbacks::compositor_ready);
         //.input_created(input_created)
         //.input_destroyed(input_destroyed);
