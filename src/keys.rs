@@ -57,9 +57,18 @@ impl KeyPress {
                     }
                 }
                 syms.sort_by_key(|s| s.get_code());
+                syms.dedup();
                 return Ok(KeyPress { modifiers: mods, keys: syms });
             }
         }
+    }
+
+    /// Creates a KeyPress from keys that are pressed at the moment
+    pub fn new(mods: KeyMod, mut keys: Vec<Keysym>) -> KeyPress {
+        keys.sort_by_key(|k| k.get_code());
+        keys.dedup();
+
+        KeyPress { modifiers: mods, keys: keys }
     }
 }
 
@@ -73,8 +82,9 @@ impl Hash for KeyPress {
 }
 
 /// The type of function a key press handler is.
-pub type KeyEvent = Arc<Box<FnOnce() + Send + Sync>>;
+pub type KeyEvent = Arc<Box<Fn() + Send + Sync>>;
 
+/// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     let bindings = BINDINGS.read().unwrap();
     match bindings.get(key) {
@@ -83,6 +93,7 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     }
 }
 
+/// Register a new key mapping
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
     let mut bindings = BINDINGS.write().unwrap();
     for value in values {
