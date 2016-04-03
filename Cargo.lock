@@ -4,6 +4,7 @@ version = "0.1.0"
 dependencies = [
  "env_logger 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustwlc 0.2.1 (git+https://github.com/Immington-Industries/rust-wlc.git)",
 ]
