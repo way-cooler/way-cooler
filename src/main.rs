@@ -1,9 +1,11 @@
 //! Main module in way-cooler
 
 extern crate rustwlc;
-
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 use rustwlc::interface::WlcInterface;
 
@@ -36,8 +38,10 @@ fn main() {
         //.input_created(input_created)
         //.input_destroyed(input_destroyed);
 
-    rustwlc::log_set_default_handler();
-
     let run_wlc = rustwlc::init(interface).expect("Unable to initialize wlc!");
+
+    env_logger::init().unwrap();
+    info!("Started logger");
+
     run_wlc();
 }
