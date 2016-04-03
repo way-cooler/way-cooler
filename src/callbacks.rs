@@ -88,23 +88,29 @@ pub extern fn view_request_resize(view: WlcView,
              edge, location);
 }
 
-pub extern fn keyboard_key(_view: WlcView, time: u32, mods: &KeyboardModifiers,
+pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
-    println!("keyboard_key: time {}, mods {:?}, key {:?}, state {:?}",
-             time, &*mods, key, state);
+    println!("[key] pressed, mods {:?}, key {:?}, state {:?}",
+             &*mods, key, state);
 
     if state == KeyState::Pressed {
         // TODO this function will throw an error in Rustwlc right now
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
-        let mut keys = vec![Keysym::from(key)];
+        let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
+        println!("[key] Found sym named {}", sym.get_name().unwrap());
+        let mut keys = vec![sym];
 
         let press = KeyPress::new(mods.mods, keys);
+        println!("[key] Created Keypress {:?}", press);
 
         if let Some(action) = keys::get(&press) {
-            println!("Found a key!");
+            println!("[key] Found a key!");
             action();
             return EVENT_HANDLED;
+        }
+        else {
+            println!("[key] No keypresses found.");
         }
     }
 
