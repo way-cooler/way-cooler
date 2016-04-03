@@ -91,8 +91,10 @@ pub extern fn keyboard_key(view: WlcView, time: u32, mods: &KeyboardModifiers,
              time, &*mods, key, state);
 
     if state == KeyState::Pressed {
-        let mut keys = keyboard::get_current_keys().into_iter()
-            .map(|&k| Keysym::from(k)).collect();
+        // TODO this function will throw an error in Rustwlc right now
+        // let mut keys = keyboard::get_current_keys().into_iter()
+        //      .map(|&k| Keysym::from(k)).collect();
+        let mut keys = vec![Keysym::from(key)];
 
         let press = KeyPress::new(mods.mods, keys);
 
