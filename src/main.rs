@@ -9,6 +9,7 @@ use rustwlc::interface::*;
 use rustwlc::input::{pointer, keyboard};
 
 mod registry;
+mod keys;
 
 fn main() {
     let interface: WlcInterface = WlcInterface::new()
