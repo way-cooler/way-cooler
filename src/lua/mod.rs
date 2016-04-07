@@ -2,11 +2,14 @@
 
 use hlua;
 use hlua::{Lua, LuaError};
+use hlua::any::AnyLuaValue;
+
 use std::thread;
-use std::time::Duration;
+
 use std::fs::{File};
 use std::path::Path;
 use std::io::Write;
+
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 
@@ -47,10 +50,14 @@ pub enum LuaQuery {
     },
     /// Create a new array
     EmptyArray(String),
+    /// Unused send type
+    Unused,
 }
 
 /// Messages received from lua thread
 pub enum LuaResponse {
+    /// Lua variable obtained
+    Variable(Option<AnyLuaValue>),
     /// Lua error
     Error(hlua::LuaError),
     /// A function is returned
@@ -63,7 +70,7 @@ unsafe impl Sync for LuaQuery { }
 unsafe impl Sync for LuaResponse { }
 
 pub fn init() {
-    print!("[lua] Initializing...");
+    trace!("Initializing...");
     let (query_tx, query_rx) = channel::<LuaQuery>();
     let (answer_tx, answer_rx) = channel::<LuaResponse>();
     {
@@ -75,23 +82,144 @@ pub fn init() {
     }
 
     thread::spawn(move || {
-        println!("[lua] Inside thread!");
+        trace!("thread: Inside thread!");
         let sender = answer_tx;
         let receiver = query_rx;
         let mut lua = Lua::new();
-        print!("[lua] Loading libs...");
+        trace!("thread: Loading libraries...");
         lua.openlibs();
-        println!(" done!");
-        println!("[lua] Creating init file");
+        trace!("thread: Libraries loaded");
+        trace!("thread: Testing hello world...");
         let mut file = File::create("/tmp/init.lua").unwrap();
         file.write(b"print('Hello world!')").unwrap();
-        println!("[lua] Created hello world file!");
-        println!("[lua] Executing init.lua...");
         lua.execute_from_reader::<(), File>(File::open("/tmp/init.lua")
                                             .unwrap()).unwrap();
-        println!("[lua] Done!");
-        thread::sleep(Duration::from_secs(10));
-        println!("[lua] Exiting thread...");
+        trace!("thread: Done!");
+        trace!("thread: Entering loop...");
+        thread_main_loop(sender, receiver, &mut lua);
     });
-    println!(" created thread.")
+    trace!("Created thread. Init finished.");
+}
+
+fn thread_main_loop(sender: Sender<LuaResponse>, receiver: Receiver<LuaQuery>,
+                    lua: &mut Lua) {
+    loop {
+        let request = receiver.recv();
+        match request {
+            Err(e) => {
+                error!("Lua thread: unable to receive message: {}", e);
+                error!("Lua thread: now panicking!");
+
+                panic!("Lua thread: lost contact with host, exiting!");
+            }
+            Ok(message) => {
+                trace!("Handling a request");
+                thread_handle_message(&sender, message, lua);
+            }
+        }
+    }
+}
+
+fn thread_handle_message(sender: &Sender<LuaResponse>, request: LuaQuery, lua: &mut Lua) {
+    match request {
+        LuaQuery::Terminate => {
+            trace!("thread: Received terminate signal");
+
+            info!("thread: Lua thread terminating!");
+            return;
+        },
+
+        LuaQuery::Restart => {
+            trace!("thread: Received restart signal!");
+
+            error!("thread: Lua thread restart not supported!");
+            panic!("Lua thread: Restart not supported!");
+        },
+
+        LuaQuery::Execute(code) => {
+            trace!("thread: Received request to execute code");
+            trace!("thread: Executing {:?}", code);
+
+            match lua.execute::<()>(&code) {
+                Err(error) => {
+                    warn!("thread: Error executing code: {:?}", error);
+                    let response = LuaResponse::Error(error);
+
+                    thread_send(&sender, response);
+                }
+                Ok(_) => {
+                    // This is gonna be really spammy one day
+                    trace!("thread: Code executed okay.");
+                }
+            }
+        },
+
+        LuaQuery::ExecuteFile(name) => {
+            trace!("thread: Received request to execute file {}", name);
+            info!("thread: Executing {}", name);
+
+            let path = Path::new(&name);
+            let try_file = File::open(path);
+
+            if let Ok(file) = try_file {
+                let result = lua.execute_from_reader::<(), File>(file);
+                if let Err(err) = result {
+                    warn!("thread: Error executing {}!", name);
+
+                    thread_send(&sender, LuaResponse::Error(err));
+                }
+                else {
+                    trace!("thread: Execution of {} successful.", name);
+                }
+            }
+            else { // Could not open file
+                // Unwrap_err is used because we're in the else of let
+                let read_error =
+                    LuaError::ReadError(try_file.unwrap_err());
+
+                thread_send(&sender, LuaResponse::Error(read_error));
+            }
+        },
+
+        LuaQuery::GetVariable(varname) => {
+            trace!("thread: Received request to get variable {}", varname);
+            let var_result = lua.get(varname.as_str());
+
+            match var_result {
+                Some(var) => {
+                    thread_send(&sender, LuaResponse::Variable(Some(var)));
+                }
+                None => {
+                    warn!("thread: Unable to get variable {}", varname);
+
+                    thread_send(&sender, LuaResponse::Variable(None));
+                }
+            }
+        },
+
+        LuaQuery::SetValue { name: name, val: val } => {
+            
+        },
+
+        LuaQuery::EmptyArray(name) => {
+            
+        },
+
+        _ => {
+            panic!("Unimplemented send type for lua thread!");
+        }
+    }
+}
+
+fn thread_send(sender: &Sender<LuaResponse>, response: LuaResponse)
+               -> Result<(), String> {
+    trace!("Called thread_send");
+    match sender.send(response) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            error!("thread: Unable to broadcast response!");
+            error!("thread: Shutting down in response to inability to continue!");
+            panic!("Lua thread unable to communicate with main thread, shutting down!");
+        }
+    }
 }
