@@ -16,12 +16,12 @@ lazy_static! {
         let press_f4 = KeyPress::from_key_names(vec!["Alt"],vec!["F4"]).unwrap();
         map.insert(press_f4, Arc::new(Box::new(key_f4)));
 
-        let press_l = KeyPress::from_key_names(vec!["Ctrl"], vec!["l"]).unwrap();
-        map.insert(press_l, Arc::new(Box::new(key_lua)));
-
         let press_k = KeyPress::from_key_names(
             vec!["Ctrl"], vec!["k"]).unwrap();
         map.insert(press_k, Arc::new(Box::new(key_sleep)));
+
+        let press_p = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"]).unwrap();
+        map.insert(press_p, Arc::new(Box::new(key_pointer_pos)));
 
         RwLock::new(map)
     };
@@ -38,8 +38,20 @@ fn key_sleep() {
     lua::send(LuaQuery::Execute("print('>entering sleep')\
                                  os.execute('sleep 5')\
                                  print('>leaving sleep')".to_string()));
-    //thread::sleep(Duration::from_secs(5));
     info!("keyhandler: Finished thread::sleep keypress!");
+}
+
+fn key_pointer_pos() {
+    use super::lua;
+    use lua::LuaQuery;
+    let code = "if wm == nil then print('wm table does not exist')\n\
+                elseif wm.pointer == nil then print('wm.pointer table does not exist')\n\
+                else\n\
+                print('get_position is a func, preparing execution')
+                local x, y = wm.pointer.get_position()\n\
+                print('The cursor is at ' .. x .. ', ' .. y)\n\
+                end".to_string();
+    lua::send(LuaQuery::Execute(code));
 }
 
 fn key_s() {
@@ -48,13 +60,6 @@ fn key_s() {
 
 fn key_f4() {
     info!("[Key handler] F4 keypress!");
-}
-
-fn key_lua() {
-    use super::lua;
-    use lua::LuaQuery;
-    info!("[Key handler] ctrl+l keypress!");
-    lua::send(LuaQuery::Execute("print('Hello world from lua keypress!')".to_string()));
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
