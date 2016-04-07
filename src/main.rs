@@ -11,18 +11,27 @@ extern crate libc;
 use rustwlc::interface::WlcInterface;
 use rustwlc::types::LogType;
 
+use std::env;
+
 mod registry;
 mod keys;
 mod callbacks;
 
+/// Callback to route wlc logs into env_logger
 extern "C" fn log_handler(level: LogType, message_ptr: *const libc::c_char) {
     let message = unsafe { rustwlc::pointer_to_string(message_ptr) };
     match level {
-        LogType::Info => info!("[wlc] {}", message),
-        LogType::Warn => warn!("[wlc] {}", message),
-        LogType::Error => error!("[wlc] {}", message),
-        LogType::Wayland => info!("[wlc:wayland] {}", message)
+        LogType::Info => info!("wlc: {}", message),
+        LogType::Warn => warn!("wlc: {}", message),
+        LogType::Error => error!("wlc: {}", message),
+        LogType::Wayland => info!("wayland: {}", message)
     }
+}
+
+/// Formats the log strings properly
+fn log_format(record: &log::LogRecord) -> String {
+    format!("{} [{}] {}", record.level(), record.location().module_path(),
+            record.args())
 }
 
 fn main() {
@@ -50,7 +59,13 @@ fn main() {
         //.input_created(input_created)
         //.input_destroyed(input_destroyed);
 
-    env_logger::init().unwrap();
+    let mut builder = env_logger::LogBuilder::new();
+    builder.format(log_format);
+    builder.filter(None, log::LogLevelFilter::Trace);
+    if env::var("WAY_COOLER_LOG").is_ok() {
+        builder.parse(&env::var("WAY_COOLER_LOG").unwrap());
+    }
+    builder.init().unwrap();
     info!("Logger initialized, setting wlc handler.");
     rustwlc::log_set_handler(log_handler);
 
