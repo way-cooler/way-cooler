@@ -76,8 +76,8 @@ pub fn init() {
 
     thread::spawn(move || {
         println!("[lua] Inside thread!");
-        let receiver = query_rx;
         let sender = answer_tx;
+        let receiver = query_rx;
         let mut lua = Lua::new();
         print!("[lua] Loading libs...");
         lua.openlibs();
