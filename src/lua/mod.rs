@@ -83,11 +83,11 @@ pub enum LuaSendError {
 
 /// Attemps to send a LuaQuery to the lua thread.
 pub fn try_send(query: LuaQuery) -> Result<(), LuaSendError> {
-    if !thread_running() { LuaSendError::ThreadClosed }
+    if !thread_running() { Err(LuaSendError::ThreadClosed) }
     else {
         match SENDER.lock().unwrap().send(query) {
             Ok(_) => Ok(()),
-            Err(_) => LuaSendError::Sender
+            Err(_) => Err(LuaSendError::Sender)
         }
     }
 }
@@ -240,7 +240,6 @@ fn thread_handle_message(sender: &Sender<LuaResponse>, request: LuaQuery, lua: &
         },
 
         LuaQuery::SetValue { name: name, val: val } => {
-            
         },
 
         LuaQuery::EmptyArray(name) => {
