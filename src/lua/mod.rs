@@ -217,15 +217,16 @@ fn thread_handle_message(sender: &Sender<LuaResponse>, request: LuaQuery, lua: &
     }
 }
 
-fn thread_send(sender: &Sender<LuaResponse>, response: LuaResponse)
-               -> Result<(), String> {
+fn thread_send(sender: &Sender<LuaResponse>, response: LuaResponse) {
     trace!("Called thread_send");
     match sender.send(response) {
-        Ok(()) => Ok(()),
         Err(e) => {
             error!("thread: Unable to broadcast response!");
-            error!("thread: Shutting down in response to inability to continue!");
-            panic!("Lua thread unable to communicate with main thread, shutting down!");
+            error!("thread: Shutting down in response to inability \
+                    to continue!");
+            panic!("Lua thread unable to communicate with main thread, \
+                    shutting down!");
         }
+        Ok(_) => {}
     }
 }
