@@ -149,5 +149,7 @@ pub extern fn touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
 
 pub extern fn compositor_ready() {
     info!("Preparing compositor!");
+    trace!("compositor_ready");
+    info!("Initializing lua...");
     lua::init();
 }
