@@ -69,6 +69,12 @@ unsafe impl Send for LuaResponse { }
 unsafe impl Sync for LuaQuery { }
 unsafe impl Sync for LuaResponse { }
 
+/// Send a value to the lua thread
+pub fn send(query: LuaQuery) {
+    SENDER.lock().unwrap().send(query).unwrap();
+}
+
+/// Initialize the lua thread
 pub fn init() {
     trace!("Initializing...");
     let (query_tx, query_rx) = channel::<LuaQuery>();
