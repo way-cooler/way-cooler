@@ -13,14 +13,33 @@ lazy_static! {
         let press_s = KeyPress::from_key_names(vec!["Mod4"], vec!["s"]).unwrap();
         map.insert(press_s, Arc::new(Box::new(key_s)));
 
-        let press_f4 = KeyPress::from_key_names(vec!["Alt"], vec!["F4"]).unwrap();
+        let press_f4 = KeyPress::from_key_names(vec!["Alt"],vec!["F4"]).unwrap();
         map.insert(press_f4, Arc::new(Box::new(key_f4)));
 
         let press_l = KeyPress::from_key_names(vec!["Ctrl"], vec!["l"]).unwrap();
         map.insert(press_l, Arc::new(Box::new(key_lua)));
 
+        let press_k = KeyPress::from_key_names(
+            vec!["Ctrl"], vec!["k"]).unwrap();
+        map.insert(press_k, Arc::new(Box::new(key_sleep)));
+
         RwLock::new(map)
     };
+}
+
+fn key_sleep() {
+    use std::thread;
+    use std::time::Duration;
+
+    use super::lua;
+    use lua::LuaQuery;
+
+    info!("keyhandler: Beginning thread::sleep keypress!");
+    lua::send(LuaQuery::Execute("print('>entering sleep')\
+                                 os.execute('sleep 5')\
+                                 print('>leaving sleep')".to_string()));
+    //thread::sleep(Duration::from_secs(5));
+    info!("keyhandler: Finished thread::sleep keypress!");
 }
 
 fn key_s() {
