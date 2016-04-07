@@ -13,6 +13,9 @@ use std::io::Write;
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 
+#[macro_use]
+mod funcs;
+
 lazy_static! {
     /// Sends requests to the lua thread
     static ref SENDER: Mutex<Sender<LuaQuery>> = {
@@ -129,9 +132,16 @@ pub fn init() {
         let sender = answer_tx;
         let receiver = query_rx;
         let mut lua = Lua::new();
-        trace!("thread: Loading libraries...");
+        trace!("thread: Loading core libraries...");
         lua.openlibs();
-        trace!("thread: Libraries loaded");
+        trace!("thread: loading way-cooler library...");
+        lua.execute_from_reader::<(), File>(
+            File::open("lib/lua/init.lua").unwrap()
+        );
+        trace!("thread: loading Rust libraries...");
+        funcs::register_libraries(&mut lua);
+        trace!("Finished loading libraries!");
+        // Only broadcast running after loading libs
         *RUNNING.write().unwrap() = true;
         trace!("thread: Testing hello world...");
         let mut file = File::create("/tmp/init.lua").unwrap();
