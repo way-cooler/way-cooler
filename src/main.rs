@@ -1,15 +1,29 @@
 //! Main module in way-cooler
 
 extern crate rustwlc;
-
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+extern crate libc;
 
 use rustwlc::interface::WlcInterface;
+use rustwlc::types::LogType;
 
 mod registry;
 mod keys;
 mod callbacks;
+
+extern "C" fn log_handler(level: LogType, message_ptr: *const libc::c_char) {
+    let message = unsafe { rustwlc::pointer_to_string(message_ptr) };
+    match level {
+        LogType::Info => info!("[wlc] {}", message),
+        LogType::Warn => warn!("[wlc] {}", message),
+        LogType::Error => error!("[wlc] {}", message),
+        LogType::Wayland => info!("[wlc:wayland] {}", message)
+    }
+}
 
 fn main() {
     let interface: WlcInterface = WlcInterface::new()
@@ -36,8 +50,13 @@ fn main() {
         //.input_created(input_created)
         //.input_destroyed(input_destroyed);
 
-    rustwlc::log_set_default_handler();
+    env_logger::init().unwrap();
+    info!("Logger initialized, setting wlc handler.");
+    rustwlc::log_set_handler(log_handler);
 
     let run_wlc = rustwlc::init(interface).expect("Unable to initialize wlc!");
+
+    info!("Started logger");
+
     run_wlc();
 }
