@@ -10,21 +10,21 @@ lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
         let mut map = HashMap::<KeyPress, KeyEvent>::new();
         let press_s = KeyPress::from_key_names(vec!["Mod4"], vec!["s"]).unwrap();
-        println!("[bindings] Press_s: {:?}", press_s);
+        trace!("[bindings] Press_s: {:?}", press_s);
         map.insert(press_s, Arc::new(Box::new(key_s)));
         let press_f4 = KeyPress::from_key_names(vec!["Alt"], vec!["F4"]).unwrap();
-        println!("[bindings] press_f4: {:?}", press_f4);
+        trace!("[bindings] press_f4: {:?}", press_f4);
         map.insert(press_f4, Arc::new(Box::new(key_f4)));
         RwLock::new(map)
     };
 }
 
 fn key_s() {
-    println!("S keypress!");
+    info!("[Key handler] S keypress!");
 }
 
 fn key_f4() {
-    println!("F4 keypress!");
+    info!("[Key handler] F4 keypress!");
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]

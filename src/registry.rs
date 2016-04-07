@@ -42,6 +42,7 @@ pub fn write_lock<'a>()
 
 /// Gets a value from the regsitry.
 pub fn get(name: &RegKey) -> Option<RegVal> {
+    trace!("get({})...", name);
     let mut val: Option<RegistryValue>;
     {
         let reg = REGISTRY.read().unwrap();
