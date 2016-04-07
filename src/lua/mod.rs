@@ -69,8 +69,16 @@ unsafe impl Send for LuaResponse { }
 unsafe impl Sync for LuaQuery { }
 unsafe impl Sync for LuaResponse { }
 
+/// Whether the lua thread is currently available
+pub fn thread_running() -> bool {
+    *RUNNING.read().unwrap()
+}
+
 /// Send a value to the lua thread
 pub fn send(query: LuaQuery) {
+    if !thread_running() {
+        panic!("lua: Attempted to message the lua thread while it is not active!");
+    }
     SENDER.lock().unwrap().send(query).unwrap();
 }
 
@@ -95,6 +103,7 @@ pub fn init() {
         trace!("thread: Loading libraries...");
         lua.openlibs();
         trace!("thread: Libraries loaded");
+        *RUNNING.write().unwrap() = true;
         trace!("thread: Testing hello world...");
         let mut file = File::create("/tmp/init.lua").unwrap();
         file.write(b"print('Hello world!')").unwrap();
@@ -115,6 +124,7 @@ fn thread_main_loop(sender: Sender<LuaResponse>, receiver: Receiver<LuaQuery>,
             Err(e) => {
                 error!("Lua thread: unable to receive message: {}", e);
                 error!("Lua thread: now panicking!");
+                *RUNNING.write().unwrap() = false;
 
                 panic!("Lua thread: lost contact with host, exiting!");
             }
@@ -130,6 +140,7 @@ fn thread_handle_message(sender: &Sender<LuaResponse>, request: LuaQuery, lua: &
     match request {
         LuaQuery::Terminate => {
             trace!("thread: Received terminate signal");
+            *RUNNING.write().unwrap() = false;
 
             info!("thread: Lua thread terminating!");
             return;
@@ -137,8 +148,10 @@ fn thread_handle_message(sender: &Sender<LuaResponse>, request: LuaQuery, lua: &
 
         LuaQuery::Restart => {
             trace!("thread: Received restart signal!");
-
             error!("thread: Lua thread restart not supported!");
+
+            *RUNNING.write().unwrap() = false;
+
             panic!("Lua thread: Restart not supported!");
         },
 
