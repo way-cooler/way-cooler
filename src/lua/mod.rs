@@ -74,7 +74,30 @@ pub fn thread_running() -> bool {
     *RUNNING.read().unwrap()
 }
 
-/// Send a value to the lua thread
+/// Errors which may arise from attempting
+/// to sending a message to the lua thread.
+pub enum LuaSendError {
+    ThreadClosed,
+    Sender
+}
+
+/// Attemps to send a LuaQuery to the lua thread.
+pub fn try_send(query: LuaQuery) -> Result<(), LuaSendError> {
+    if !thread_running() { LuaSendError::ThreadClosed }
+    else {
+        match SENDER.lock().unwrap().send(query) {
+            Ok(_) => Ok(()),
+            Err(_) => LuaSendError::Sender
+        }
+    }
+}
+
+/// Sends a value to the lua thread.
+///
+/// # Panics
+/// * If the lua thread is currently not running (check `lua::thread_running()`)
+/// * If the sender was unable to send, which should only happen
+/// if the lua thread isn't running.
 pub fn send(query: LuaQuery) {
     if !thread_running() {
         panic!("lua: Attempted to message the lua thread while it is not active!");
