@@ -5,6 +5,7 @@ use hlua::Lua;
 use std::thread;
 use std::time::Duration;
 use std::fs::{File};
+use std::path::Path;
 use std::io::Write;
 use std::sync::Mutex;
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -20,11 +21,21 @@ lazy_static! {
     };
 }
 
-
 /// Messages sent to the lua thread
 pub enum LuaQuery {
-    CallFunction(String),
-    GetVariable(String)
+    /// Execute a string
+    Execute(String),
+    /// Execute a file
+    ExecuteFile(String),
+    /// Get a variable
+    GetVariable(String),
+    /// Set a value
+    SetValue {
+        name: Box<::std::borrow::Borrow<str> + Sized>,
+        val: Box<hlua::Push<&'static mut Lua<'static>> + Sized>
+    },
+    /// Create a new array
+    EmptyArray(String),
 }
 
 /// Messages received from lua thread
@@ -54,16 +65,17 @@ pub fn init() {
         println!("[lua] Inside thread!");
         let receiver = query_rx;
         let sender = answer_tx;
-        let mut LUA = Lua::new();
+        let mut lua = Lua::new();
         print!("[lua] Loading libs...");
-        LUA.openlibs();
+        lua.openlibs();
         println!(" done!");
         println!("[lua] Creating init file");
         let mut file = File::create("/tmp/init.lua").unwrap();
         file.write(b"print('Hello world!')").unwrap();
         println!("[lua] Created hello world file!");
         println!("[lua] Executing init.lua...");
-        LUA.execute_from_reader::<(), File>(File::open("/tmp/init.lua").unwrap());
+        lua.execute_from_reader::<(), File>(File::open("/tmp/init.lua")
+                                            .unwrap()).unwrap();
         println!("[lua] Done!");
         thread::sleep(Duration::from_secs(10));
         println!("[lua] Exiting thread...");
