@@ -50,6 +50,8 @@ pub enum LuaQuery {
     },
     /// Create a new array
     EmptyArray(String),
+    /// Message to ping the lua thread
+    Ping,
     /// Unused send type
     Unused,
 }
@@ -61,7 +63,11 @@ pub enum LuaResponse {
     /// Lua error
     Error(hlua::LuaError),
     /// A function is returned
-    Function(hlua::functions_read::LuaFunction<String>)
+    Function(hlua::functions_read::LuaFunction<String>),
+    /// Pong response from lua ping
+    Pong,
+    /// Unused response type
+    Unused,
 }
 
 unsafe impl Send for LuaQuery { }
