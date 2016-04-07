@@ -9,12 +9,16 @@ use std::hash::{Hash, Hasher};
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
         let mut map = HashMap::<KeyPress, KeyEvent>::new();
+
         let press_s = KeyPress::from_key_names(vec!["Mod4"], vec!["s"]).unwrap();
-        trace!("[bindings] Press_s: {:?}", press_s);
         map.insert(press_s, Arc::new(Box::new(key_s)));
+
         let press_f4 = KeyPress::from_key_names(vec!["Alt"], vec!["F4"]).unwrap();
-        trace!("[bindings] press_f4: {:?}", press_f4);
         map.insert(press_f4, Arc::new(Box::new(key_f4)));
+
+        let press_l = KeyPress::from_key_names(vec!["Ctrl"], vec!["l"]).unwrap();
+        map.insert(press_l, Arc::new(Box::new(key_lua)));
+
         RwLock::new(map)
     };
 }
@@ -25,6 +29,13 @@ fn key_s() {
 
 fn key_f4() {
     info!("[Key handler] F4 keypress!");
+}
+
+fn key_lua() {
+    use super::lua;
+    use lua::LuaQuery;
+    info!("[Key handler] ctrl+l keypress!");
+    lua::send(LuaQuery::Execute("print('Hello world from lua keypress!')".to_string()));
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
