@@ -1,28 +1,39 @@
 //! Lua functionality
 
 use hlua;
-use hlua::Lua;
+use hlua::{Lua, LuaError};
 use std::thread;
 use std::time::Duration;
 use std::fs::{File};
 use std::path::Path;
 use std::io::Write;
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 
 lazy_static! {
+    /// Sends requests to the lua thread
     static ref SENDER: Mutex<Sender<LuaQuery>> = {
         let (tx, rx) = channel::<LuaQuery>();
         Mutex::new(tx)
     };
+
+    /// Receives data back from the lua thread
+    /// This should only be accessed by the lua thread itself.
     static ref RECEIVER: Mutex<Receiver<LuaResponse>> = {
         let (tx, rx) = channel::<LuaResponse>();
         Mutex::new(rx)
     };
+
+    /// Whether the lua thread is currently running
+    pub static ref RUNNING: RwLock<bool> = RwLock::new(false);
 }
 
 /// Messages sent to the lua thread
 pub enum LuaQuery {
+    /// Halt the lua thread
+    Terminate,
+    // Restart the lua thread
+    Restart,
     /// Execute a string
     Execute(String),
     /// Execute a file
@@ -40,7 +51,9 @@ pub enum LuaQuery {
 
 /// Messages received from lua thread
 pub enum LuaResponse {
+    /// Lua error
     Error(hlua::LuaError),
+    /// A function is returned
     Function(hlua::functions_read::LuaFunction<String>)
 }
 
