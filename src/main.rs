@@ -9,7 +9,6 @@ extern crate hlua;
 extern crate log;
 extern crate env_logger;
 extern crate libc;
-extern crate hlua;
 
 use rustwlc::interface::WlcInterface;
 use rustwlc::types::LogType;

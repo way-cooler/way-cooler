@@ -11,7 +11,6 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 [dependencies]
 rustwlc = { git = "https://github.com/Immington-Industries/rust-wlc.git" }
 lazy_static = "*"
-hlua = "0.1.*"
 log = "*"
 env_logger = "*"
 libc = "*"
