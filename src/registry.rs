@@ -18,8 +18,8 @@ lazy_static! {
 pub enum RegistryValue {
     /// An integer value
     Integer(i32),
-    /// A floating point value
-    Float(f32),
+    /// A Lua numeric value
+    Double(f64),
     /// A boolean value
     Boolean(bool),
     /// A string value
