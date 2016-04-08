@@ -135,3 +135,5 @@ function util.table.get_random(tab)
         return tab[math.random(1, len)]
     end
 end
+
+return util
