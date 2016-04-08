@@ -73,6 +73,45 @@ function util.string.line_count(text)
     return count
 end
 
+-- Escapes backslashes and quotes in a string.
+--
+-- Replaces " with \", ' with \', and \ with \\.
+-- @param text String to escape
+-- @return String escaped with quotes.
+function util.string.escape_quotes(text)
+    assert(type(text) == 'string', "string.escape: Expected a string")
+    text = text:gsub('\\', '\\\\')
+    text = text:gsub('"', '\\"')
+    text = text:gsub("'", "\\'")
+    return text
+end
+
+-- Escapes strings for HTML encoding.
+--
+-- Replaces <, >, &, ", and ' with their HTML &name; equivalents.
+-- @param test The text to escape
+-- @return HTML escaped text.
+function util.string.escape_html(text)
+    assert(type(text) == 'string', "string.html_escape: Expected a string")
+    builder = ""
+    for i = 1, text:len() do
+        if char == '<' then
+            builder = builder + '&lt;'
+        elseif char == '>' then
+            builder = builder + '&gt;'
+        elseif char == '&' then
+            builder = builder + '&amp;'
+        elseif char == '"' then
+            builder = builder + '&quot;'
+        elseif char == "'" then
+            builder = builder + '&apos;'
+        else
+            builder = builder + text[i]
+        end
+    end
+    return builder
+end
+
 -- Table functions
 
 util.table = {}
