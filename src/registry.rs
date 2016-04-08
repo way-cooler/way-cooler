@@ -64,3 +64,29 @@ pub fn set(name: RegKey, value: RegVal) -> Option<RegVal> {
     let ref mut reg = *write_lock();
     reg.insert(name, value)
 }
+
+use hlua::{Push, AsMutLua, PushGuard, LuaContext};
+
+impl<L: AsMutLua> Push<L> for RegistryValue {
+    fn push_to_lua(self, lua: L) -> PushGuard<L> {
+        unsafe {
+            match self {
+                RegistryValue::Boolean(val) => {
+                    val.push_to_lua(lua)
+                },
+                RegistryValue::Double(val) => {
+                    val.push_to_lua(lua)
+                },
+                RegistryValue::Integer(val) => {
+                    val.push_to_lua(lua)
+                },
+                RegistryValue::String(text) => {
+                    text.push_to_lua(lua)
+                },
+                RegistryValue::List(list) => {
+                    list.push_to_lua(lua)
+                }
+            }
+        }
+    }
+}
