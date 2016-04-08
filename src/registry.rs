@@ -29,26 +29,21 @@ pub enum RegistryValue {
 }
 
 /// Acquires a read lock on the registry.
-pub fn read_lock<'a>()
-                     -> RwLockReadGuard<'a, RegMap> {
+fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
     REGISTRY.read().unwrap()
 }
 
 /// Acquires a write lock on the registry.
-pub fn write_lock<'a>()
-                      -> RwLockWriteGuard<'a, RegMap> {
+fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
     REGISTRY.write().unwrap()
 }
 
 /// Gets a value from the regsitry.
 pub fn get(name: &RegKey) -> Option<RegVal> {
-    trace!("get({})...", name);
-    let mut val: Option<RegistryValue>;
-    {
-        let reg = REGISTRY.read().unwrap();
-        val = reg.get(name).cloned();
-    }
-    val
+    trace!("get: key {}", name);
+    let ref reg = *read_lock();
+    // cloned() is a method on Option<T> where T: Clone
+    reg.get(name).cloned()
 }
 
 /// Gets a value from the registry, or a default
@@ -60,3 +55,12 @@ pub fn get_or_default(name: &RegKey, value: RegVal) -> RegVal {
     }
 }
 
+/// Set a value in the registry.
+///
+/// If the key already exists, returns the old value.
+/// Returns `None` for new keys.
+pub fn set(name: RegKey, value: RegVal) -> Option<RegVal> {
+    trace!("set: {} = {:?}", &name, &value);
+    let ref mut reg = *write_lock();
+    reg.insert(name, value)
+}
