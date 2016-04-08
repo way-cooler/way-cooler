@@ -23,7 +23,6 @@ pub fn pointer_set_position(in_x: f64, in_y: f64) -> Result<(), String> {
     if in_y < 0f64 {
         return Err("Invalid negative y parameter!".to_string());
     }
-    //let &resolution = WlcOutput::focused().get_resolution();
     let x = in_x as i32;
     let y = in_y as i32;
     pointer::set_position(&Point { x: x, y: y });

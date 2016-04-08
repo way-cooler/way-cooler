@@ -11,18 +11,6 @@ mod input;
 
 /// Register all the Rust functions for the lua libraries
 pub fn register_libraries(lua: &mut Lua) {
-
-    // A macro for adding lua functions... could be a method but whatever
-    macro_rules! lua_function {
-        ($lua_name:expr => $name:ident -> $ret_type:ty = $body:expr) => {
-            trace!("Loading a library...");
-            fn $name() -> $ret_type {
-                $body
-            }
-            lua.set::<&'static str, _>($lua_name, hlua::function0($name));
-        }
-    }
-
     // Yeah, need to access individual tables
 
     let mut wm: LuaTable<_> = lua.get("wm").unwrap();
