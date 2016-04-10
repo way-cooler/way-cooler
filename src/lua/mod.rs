@@ -18,17 +18,11 @@ mod funcs;
 
 lazy_static! {
     /// Sends requests to the lua thread
-    static ref SENDER: Mutex<Sender<LuaQuery>> = {
-        let (tx, rx) = channel::<LuaQuery>();
-        Mutex::new(tx)
-    };
+    static ref SENDER: Mutex<Option<Sender<LuaQuery>>> = Mutex::new(None);
 
     /// Receives data back from the lua thread
     /// This should only be accessed by the lua thread itself.
-    static ref RECEIVER: Mutex<Receiver<LuaResponse>> = {
-        let (tx, rx) = channel::<LuaResponse>();
-        Mutex::new(rx)
-    };
+    static ref RECEIVER: Mutex<Option<Receiver<LuaResponse>>> = Mutex::new(None);
 
     /// Whether the lua thread is currently running
     pub static ref RUNNING: RwLock<bool> = RwLock::new(false);
@@ -85,33 +79,27 @@ pub fn thread_running() -> bool {
 
 /// Errors which may arise from attempting
 /// to sending a message to the lua thread.
+#[derive(Debug)]
 pub enum LuaSendError {
     ThreadClosed,
+    ThreadUninitialized,
     Sender
 }
 
 /// Attemps to send a LuaQuery to the lua thread.
 pub fn try_send(query: LuaQuery) -> Result<(), LuaSendError> {
-    if !thread_running() { Err(LuaSendError::ThreadClosed) }
-    else {
-        match SENDER.lock().unwrap().send(query) {
+    if !thread_running() {
+        Err(LuaSendError::ThreadClosed)
+    }
+    else if let Some(ref sender) = *SENDER.lock().unwrap() {
+        match sender.send(query) {
             Ok(_) => Ok(()),
             Err(_) => Err(LuaSendError::Sender)
         }
     }
-}
-
-/// Sends a value to the lua thread.
-///
-/// # Panics
-/// * If the lua thread is currently not running (check `lua::thread_running()`)
-/// * If the sender was unable to send, which should only happen
-/// if the lua thread isn't running.
-pub fn send(query: LuaQuery) {
-    if !thread_running() {
-        panic!("lua: Attempted to message the lua thread while it is not active!");
+    else {
+        Err(LuaSendError::ThreadUninitialized)
     }
-    SENDER.lock().unwrap().send(query).unwrap();
 }
 
 /// Initialize the lua thread
@@ -123,8 +111,8 @@ pub fn init() {
         let mut sender = SENDER.lock().unwrap();
         let mut receiver = RECEIVER.lock().unwrap();
 
-        *sender = query_tx;
-        *receiver = answer_rx;
+        *sender = Some(query_tx);
+        *receiver = Some(answer_rx);
     }
 
     thread::spawn(move || {
@@ -175,7 +163,8 @@ fn thread_main_loop(sender: Sender<LuaResponse>, receiver: Receiver<LuaQuery>,
     }
 }
 
-fn thread_handle_message(sender: &Sender<LuaResponse>, request: LuaQuery, lua: &mut Lua) {
+fn thread_handle_message(sender: &Sender<LuaResponse>,
+                         request: LuaQuery, lua: &mut Lua) {
     match request {
         LuaQuery::Terminate => {
             trace!("thread: Received terminate signal");

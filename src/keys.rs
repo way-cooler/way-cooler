@@ -35,9 +35,10 @@ fn key_sleep() {
     use lua::LuaQuery;
 
     info!("keyhandler: Beginning thread::sleep keypress!");
-    lua::send(LuaQuery::Execute("print('>entering sleep')\
+    lua::try_send(LuaQuery::Execute("print('>entering sleep')\
                                  os.execute('sleep 5')\
-                                 print('>leaving sleep')".to_string()));
+                                 print('>leaving sleep')".to_string()))
+                  .unwrap();
     info!("keyhandler: Finished thread::sleep keypress!");
 }
 
@@ -51,7 +52,7 @@ fn key_pointer_pos() {
                 local x, y = wm.pointer.get_position()\n\
                 print('The cursor is at ' .. x .. ', ' .. y)\n\
                 end".to_string();
-    lua::send(LuaQuery::Execute(code));
+    lua::try_send(LuaQuery::Execute(code)).unwrap();
 }
 
 fn key_s() {
