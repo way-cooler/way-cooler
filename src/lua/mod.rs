@@ -120,7 +120,7 @@ pub fn init() {
         let sender = answer_tx;
         let receiver = query_rx;
         let mut lua = Lua::new();
-        trace!("thread: Loading core libraries...");
+        debug!("thread: Loading core libraries...");
         lua.openlibs();
         trace!("thread: loading way-cooler library...");
         lua.execute_from_reader::<(), File>(
@@ -131,13 +131,7 @@ pub fn init() {
         trace!("Finished loading libraries!");
         // Only broadcast running after loading libs
         *RUNNING.write().unwrap() = true;
-        trace!("thread: Testing hello world...");
-        let mut file = File::create("/tmp/init.lua").unwrap();
-        file.write(b"print('Hello world!')").unwrap();
-        lua.execute_from_reader::<(), File>(File::open("/tmp/init.lua")
-                                            .unwrap()).unwrap();
-        trace!("thread: Done!");
-        trace!("thread: Entering loop...");
+        debug!("thread: Entering loop...");
         thread_main_loop(sender, receiver, &mut lua);
     });
     trace!("Created thread. Init finished.");
