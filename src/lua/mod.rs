@@ -116,25 +116,28 @@ pub fn init() {
     }
 
     thread::spawn(move || {
-        trace!("thread: Inside thread!");
-        let sender = answer_tx;
-        let receiver = query_rx;
-        let mut lua = Lua::new();
-        debug!("thread: Loading core libraries...");
-        lua.openlibs();
-        trace!("thread: loading way-cooler library...");
-        lua.execute_from_reader::<(), File>(
-            File::open("lib/lua/init.lua").unwrap()
-        );
-        trace!("thread: loading Rust libraries...");
-        funcs::register_libraries(&mut lua);
-        trace!("Finished loading libraries!");
-        // Only broadcast running after loading libs
-        *RUNNING.write().unwrap() = true;
-        debug!("thread: Entering loop...");
-        thread_main_loop(sender, receiver, &mut lua);
+        thread_init(answer_tx, query_rx);
     });
     trace!("Created thread. Init finished.");
+}
+
+fn thread_init(sender: Sender<LuaResponse>, receiver: Receiver<LuaQuery>) {
+    trace!("thread: initializing.");
+    let mut lua = Lua::new();
+    debug!("thread: Loading Lua libraries...");
+    lua.openlibs();
+    trace!("thread: Loading way-cooler lua extensions...");
+    // We should have some good file handling, read files from /usr by default,
+    // but for now we're reading directly from the source.
+    lua.execute_from_reader::<(), File>(
+        File::open("lib/lua/init.lua").unwrap()
+    );
+    trace!("thread: loading way-cooler libraries...");
+    funcs::register_libraries(&mut lua);
+    // Only ready after loading libs
+    *RUNNING.write().unwrap() = true;
+    debug!("thread: entering main loop...");
+    thread_main_loop(sender, receiver, &mut lua);
 }
 
 fn thread_main_loop(sender: Sender<LuaResponse>, receiver: Receiver<LuaQuery>,
@@ -239,10 +242,11 @@ fn thread_handle_message(sender: &Sender<LuaResponse>,
         },
 
         LuaQuery::SetValue { name: name, val: val } => {
+            panic!("thread: unimplemented LuaQuery::SetValue!");
         },
 
         LuaQuery::EmptyArray(name) => {
-            
+            panic!("thread: unimplemented LuaQuery::EmptyArray!");
         },
 
         _ => {
