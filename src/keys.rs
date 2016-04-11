@@ -9,14 +9,50 @@ use std::hash::{Hash, Hasher};
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
         let mut map = HashMap::<KeyPress, KeyEvent>::new();
+
         let press_s = KeyPress::from_key_names(vec!["Mod4"], vec!["s"]).unwrap();
-        trace!("[bindings] Press_s: {:?}", press_s);
         map.insert(press_s, Arc::new(Box::new(key_s)));
-        let press_f4 = KeyPress::from_key_names(vec!["Alt"], vec!["F4"]).unwrap();
-        trace!("[bindings] press_f4: {:?}", press_f4);
+
+        let press_f4 = KeyPress::from_key_names(vec!["Alt"],vec!["F4"]).unwrap();
         map.insert(press_f4, Arc::new(Box::new(key_f4)));
+
+        let press_k = KeyPress::from_key_names(
+            vec!["Ctrl"], vec!["k"]).unwrap();
+        map.insert(press_k, Arc::new(Box::new(key_sleep)));
+
+        let press_p = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"]).unwrap();
+        map.insert(press_p, Arc::new(Box::new(key_pointer_pos)));
+
         RwLock::new(map)
     };
+}
+
+fn key_sleep() {
+    use std::thread;
+    use std::time::Duration;
+
+    use super::lua;
+    use lua::LuaQuery;
+
+    info!("keyhandler: Beginning thread::sleep keypress!");
+    lua::try_send(LuaQuery::Execute("print('>entering sleep')\
+                                 os.execute('sleep 5')\
+                                 print('>leaving sleep')".to_string()))
+                  .unwrap();
+    info!("keyhandler: Finished thread::sleep keypress!");
+}
+
+fn key_pointer_pos() {
+    use super::lua;
+    use lua::LuaQuery;
+    let code = "if wm == nil then print('wm table does not exist')\n\
+                elseif wm.pointer == nil then print('wm.pointer table does not exist')\n\
+                else\n\
+                print('get_position is a func, preparing execution')
+                local x, y = wm.pointer.get_position()\n\
+                print('The cursor is at ' .. x .. ', ' .. y)\n\
+                end".to_string();
+    lua::try_send(LuaQuery::Execute(code)).unwrap();
 }
 
 fn key_s() {

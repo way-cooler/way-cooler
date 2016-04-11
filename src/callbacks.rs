@@ -5,6 +5,7 @@ use rustwlc::input::{pointer, keyboard};
 use rustwlc::xkb::Keysym;
 
 use super::keys;
+use super::lua;
 use super::keys::{KeyEvent, KeyPress};
 
 /// If the event is handled by way-cooler
@@ -90,19 +91,15 @@ pub extern fn view_request_resize(view: WlcView,
 
 pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
                        key: u32, state: KeyState) -> bool {
-    trace!("[key] pressed, mods {:?}, key {:?}, state {:?}",
-             &*mods, key, state);
-
     if state == KeyState::Pressed {
         // TODO this function will throw an error in Rustwlc right now
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
-        info!("[key] Found sym named {}", sym.get_name().unwrap());
         let mut keys = vec![sym];
 
         let press = KeyPress::new(mods.mods, keys);
-        info!("[key] Created Keypress {:?}", press);
+        trace!("keypress: {:?}", press);
 
         if let Some(action) = keys::get(&press) {
             info!("[key] Found a key!");
@@ -110,19 +107,31 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
             return EVENT_HANDLED;
         }
         else {
-            info!("[key] No keypresses found.");
+            trace!("keypress: No callback");
         }
     }
 
     return EVENT_PASS_THROUGH;
 }
 
-pub extern fn pointer_button(view: WlcView, button: u32,
-                         mods_ptr: &KeyboardModifiers, key: u32,
-                         state: ButtonState, point_ptr: &Point) -> bool {
-    trace!("pointer_button: pressed {} at {}", key, *point_ptr);
-    if state == ButtonState::Pressed && !view.is_root() {
-        view.focus();
+pub extern fn pointer_button(view: WlcView, _time: u32,
+                         mods: &KeyboardModifiers, button: u32,
+                         state: ButtonState, point: &Point) -> bool {
+    if state == ButtonState::Pressed {
+        trace!("button: 0x{:x}, point {}", &button, point);
+
+        if !view.is_root() {
+            view.focus();
+        }
+
+        if button == 0xfee9 {
+            trace!("Found left click?");
+        }
+
+        //let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
+        let sym = Keysym::from(button);
+        let press = KeyPress::new(mods.mods, vec![sym.clone()]);
+        trace!("sym: {} {:?}", &sym.get_name().unwrap(), press);
     }
     false
 }
@@ -148,4 +157,7 @@ pub extern fn touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
 
 pub extern fn compositor_ready() {
     info!("Preparing compositor!");
+    trace!("compositor_ready");
+    info!("Initializing lua...");
+    lua::init();
 }

@@ -18,8 +18,8 @@ lazy_static! {
 pub enum RegistryValue {
     /// An integer value
     Integer(i32),
-    /// A floating point value
-    Float(f32),
+    /// A Lua numeric value
+    Double(f64),
     /// A boolean value
     Boolean(bool),
     /// A string value
@@ -29,26 +29,21 @@ pub enum RegistryValue {
 }
 
 /// Acquires a read lock on the registry.
-pub fn read_lock<'a>()
-                     -> RwLockReadGuard<'a, RegMap> {
+fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
     REGISTRY.read().unwrap()
 }
 
 /// Acquires a write lock on the registry.
-pub fn write_lock<'a>()
-                      -> RwLockWriteGuard<'a, RegMap> {
+fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
     REGISTRY.write().unwrap()
 }
 
 /// Gets a value from the regsitry.
 pub fn get(name: &RegKey) -> Option<RegVal> {
-    trace!("get({})...", name);
-    let mut val: Option<RegistryValue>;
-    {
-        let reg = REGISTRY.read().unwrap();
-        val = reg.get(name).cloned();
-    }
-    val
+    trace!("get: key {}", name);
+    let ref reg = *read_lock();
+    // cloned() is a method on Option<T> where T: Clone
+    reg.get(name).cloned()
 }
 
 /// Gets a value from the registry, or a default
@@ -60,3 +55,38 @@ pub fn get_or_default(name: &RegKey, value: RegVal) -> RegVal {
     }
 }
 
+/// Set a value in the registry.
+///
+/// If the key already exists, returns the old value.
+/// Returns `None` for new keys.
+pub fn set(name: RegKey, value: RegVal) -> Option<RegVal> {
+    trace!("set: {} = {:?}", &name, &value);
+    let ref mut reg = *write_lock();
+    reg.insert(name, value)
+}
+
+use hlua::{Push, AsMutLua, PushGuard, LuaContext};
+
+impl<L: AsMutLua> Push<L> for RegistryValue {
+    fn push_to_lua(self, lua: L) -> PushGuard<L> {
+        unsafe {
+            match self {
+                RegistryValue::Boolean(val) => {
+                    val.push_to_lua(lua)
+                },
+                RegistryValue::Double(val) => {
+                    val.push_to_lua(lua)
+                },
+                RegistryValue::Integer(val) => {
+                    val.push_to_lua(lua)
+                },
+                RegistryValue::String(text) => {
+                    text.push_to_lua(lua)
+                },
+                RegistryValue::List(list) => {
+                    list.push_to_lua(lua)
+                }
+            }
+        }
+    }
+}
