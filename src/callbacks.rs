@@ -138,7 +138,7 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
 
 pub extern fn pointer_scroll(_view: WlcView, button: u32,
                          _mods_ptr: &KeyboardModifiers, axis: ScrollAxis,
-                         heights: [u64; 2]) -> bool {
+                         heights: [f64; 2]) -> bool {
     trace!("pointer_scroll: press {}, {:?} to {:?}", button, axis, heights);
     false
 }
