@@ -1,21 +1,9 @@
-//! way-cooler registry.
+//! Types used in the registry.
 
-use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use rustc_serialize::{Encodable, Decodable};
 use rustc_serialize::json::{Json, ToJson};
-
-pub type RegKey = String;
-pub type RegVal = RegistryValue;
-pub type RegMap = HashMap<RegKey, RegVal>;
-
-lazy_static! {
-    /// Registry variable for the registry
-    static ref REGISTRY: RwLock<RegMap> =
-        RwLock::new(HashMap::new());
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum RegistryAccess {
@@ -39,28 +27,6 @@ impl RegistryValue {
     /// Gets the json of a registry value
     pub fn get_json(&self) -> Json {
         self.object.to_json()
-    }
-}
-
-/// Acquires a read lock on the registry.
-fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
-    REGISTRY.read().unwrap()
-}
-
-/// Acquires a write lock on the registry.
-fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
-    REGISTRY.write().unwrap()
-}
-
-/// Gets a Json object from a registry key
-pub fn get_json(name: &RegKey) -> Option<Json> {
-    trace!("get_json: {}", name);
-    let ref reg = *read_lock();
-    if let Some(ref val) = reg.get(name) {
-        Some(val.get_json())
-    }
-    else {
-        None
     }
 }
 
