@@ -1,8 +1,12 @@
 //! Lua functionality
 
 use hlua;
-use hlua::{Lua, LuaError};
+use hlua::{Lua, LuaError, Push, PushGuard, AsMutLua, LuaContext};
 use hlua::any::AnyLuaValue;
+
+use hlua_ffi;
+use hlua_ffi::lua_State;
+use libc::c_int;
 
 use std::thread;
 
@@ -124,6 +128,9 @@ pub fn init() {
 fn thread_init(sender: Sender<LuaResponse>, receiver: Receiver<LuaQuery>) {
     trace!("thread: initializing.");
     let mut lua = Lua::new();
+    //unsafe {
+    //    hlua_ffi::lua_atpanic(&mut lua.as_mut_lua().0, thread_on_panic);
+    //}
     debug!("thread: Loading Lua libraries...");
     lua.openlibs();
     trace!("thread: Loading way-cooler lua extensions...");
@@ -267,4 +274,10 @@ fn thread_send(sender: &Sender<LuaResponse>, response: LuaResponse) {
         }
         Ok(_) => {}
     }
+}
+
+extern "C" fn thread_on_panic(state: *mut lua_State) -> c_int {
+    *RUNNING.write().unwrap() = false;
+    error!("Lua thread is panicking!");
+    0
 }
