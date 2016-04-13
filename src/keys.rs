@@ -23,6 +23,10 @@ lazy_static! {
         let press_p = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"]).unwrap();
         map.insert(press_p, Arc::new(Box::new(key_pointer_pos)));
 
+        let press_esc = KeyPress::from_key_names(vec!["Ctrl"],
+                                                 vec!["Escape"]).unwrap();
+        map.insert(press_esc, Arc::new(Box::new(key_esc)));
+
         RwLock::new(map)
     };
 }
@@ -61,6 +65,11 @@ fn key_s() {
 
 fn key_f4() {
     info!("[Key handler] F4 keypress!");
+}
+
+fn key_esc() {
+    info!("handler: Esc keypress!");
+    ::rustwlc::terminate();
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
