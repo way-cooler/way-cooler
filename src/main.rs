@@ -63,6 +63,7 @@ fn main() {
     callback::pointer_motion(callbacks::pointer_motion);
         //.touch_touch(callbacks::touch)
     callback::compositor_ready(callbacks::compositor_ready);
+    callback::compositor_terminate(callbacks::compositor_terminating);
         //.input_created(input_created)
         //.input_destroyed(input_destroyed);
 
