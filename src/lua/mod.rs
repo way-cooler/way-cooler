@@ -132,7 +132,7 @@ pub fn try_send(query: LuaQuery) -> Result<Receiver<LuaResponse>,LuaSendError> {
     if !thread_running() {
         Err(LuaSendError::ThreadClosed)
     }
-    else if let Some(ref sender) = *SENDER.lock().unwrap() {
+    else if let Some(sender) = SENDER.lock().unwrap().clone() {
         let (tx, rx) = channel();
         let message = LuaMessage { reply: tx, query: query };
         match sender.send(message) {
