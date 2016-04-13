@@ -304,8 +304,13 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
 
 fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
     match sender.send(response) {
-        Err(_) => {
-            warn!("A requester of the lua thread has ignored a response!");
+        Err(err) => {
+            match err.0 {
+                LuaResponse::Pong => {}, // Those are boring
+                _ => {
+                    warn!("thread: Someone ignored an important Lua response!");
+                }
+            }
         }
         Ok(_) => {}
     }
