@@ -36,7 +36,7 @@ fn convert_json(json: Json) -> AnyLuaValue {
         Json::I64(val) => AnyLuaValue::LuaNumber((val as i32) as f64),
         Json::U64(val) => AnyLuaValue::LuaNumber((val as u32) as f64),
         Json::Null => AnyLuaValue::LuaString("none".to_string()),
-        Json::Array(mut vals) => {
+        Json::Array(vals) => {
             let mut count = 0f64;
             // Gotta love that 1-based indexing. Start at zero but increment for
             // the first one. It works here at least.
@@ -45,7 +45,7 @@ fn convert_json(json: Json) -> AnyLuaValue {
                 (AnyLuaValue::LuaNumber(count), convert_json(v))
             }).collect())
         },
-        Json::Object(mut vals) => {
+        Json::Object(vals) => {
             AnyLuaValue::LuaArray(vals.into_iter().map(|(key, val)| {
                 (AnyLuaValue::LuaString(key), convert_json(val))
             }).collect())

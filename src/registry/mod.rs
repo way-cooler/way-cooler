@@ -1,14 +1,14 @@
 //! way-cooler registry.
 
+use std::ops::Deref;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::Decodable;
 use rustc_serialize::json;
-use rustc_serialize::json::{Json, ToJson, EncoderError};
+use rustc_serialize::json::{Json, ToJson};
 
 mod types;
-
 pub use self::types::{RegistryAccess, RegistryValue};
 
 type RegMap = HashMap<String, RegistryValue>;
@@ -22,7 +22,9 @@ lazy_static! {
 /// Error types that can happen
 #[derive(Debug, PartialEq, Eq)]
 pub enum RegistryError {
+    /// The value in the registry could not be parsed
     InvalidJson,
+    /// The registry key was not found
     KeyNotFound
 }
 
@@ -48,8 +50,8 @@ pub fn get_json(name: &String) -> Option<Arc<Json>> {
     }
 }
 
-use std::ops::Deref;
-
+/// Gets an object from the regsitry, decoding its internal json
+/// representation.
 pub fn get<T: Decodable>(name: &String) -> Result<T, RegistryError> {
     let maybe_json = get_json(name);
     if let Some(json_arc) = maybe_json {
@@ -64,6 +66,7 @@ pub fn get<T: Decodable>(name: &String) -> Result<T, RegistryError> {
     }
 }
 
+/// Set a key in the registry to a particular value
 pub fn set<T: ToJson>(key: String, val: T) {
     trace!("set: {}", key);
     let ref mut write_reg = *write_lock();

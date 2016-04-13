@@ -1,9 +1,7 @@
 //! Types used in the registry.
 
-use std::fmt::{Debug, Display, Formatter};
-
 use std::sync::Arc;
-use rustc_serialize::{Encodable, Decodable};
+
 use rustc_serialize::json::{Json, ToJson};
 
 /// How much access things have

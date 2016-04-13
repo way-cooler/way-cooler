@@ -17,7 +17,6 @@ extern crate lua52_sys as hlua_ffi;
 extern crate rustc_serialize;
 
 use rustwlc::callback;
-use rustwlc::interface::WlcInterface;
 use rustwlc::types::LogType;
 
 use std::env;

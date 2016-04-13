@@ -1,12 +1,8 @@
 //! Lua functionality
 
 use hlua;
-use hlua::{Lua, LuaError, Push, PushGuard, AsMutLua, LuaContext};
+use hlua::{Lua, LuaError};
 use hlua::any::AnyLuaValue;
-
-use hlua_ffi;
-use hlua_ffi::lua_State;
-use libc::c_int;
 
 use std::thread;
 
@@ -87,8 +83,11 @@ pub fn thread_running() -> bool {
 /// to sending a message to the lua thread.
 #[derive(Debug)]
 pub enum LuaSendError {
+    /// The thread crashed, was shut down, or rebooted.
     ThreadClosed,
+    /// The thread has not been initialized yet (maybe not used)
     ThreadUninitialized,
+    /// The sender had an issue, most likey because the thread panicked
     Sender
 }
 
@@ -140,7 +139,7 @@ fn thread_init(sender: Sender<LuaResponse>, receiver: Receiver<LuaQuery>) {
     // but for now we're reading directly from the source.
     lua.execute_from_reader::<(), File>(
         File::open("lib/lua/init.lua").unwrap()
-    );
+    ).unwrap();
     trace!("thread: loading way-cooler libraries...");
     funcs::register_libraries(&mut lua);
     // Only ready after loading libs
@@ -250,11 +249,11 @@ fn thread_handle_message(sender: &Sender<LuaResponse>,
             }
         },
 
-        LuaQuery::SetValue { name: name, val: val } => {
+        LuaQuery::SetValue { name: _name, val: _val } => {
             panic!("thread: unimplemented LuaQuery::SetValue!");
         },
 
-        LuaQuery::EmptyArray(name) => {
+        LuaQuery::EmptyArray(_name) => {
             panic!("thread: unimplemented LuaQuery::EmptyArray!");
         },
 
@@ -267,7 +266,7 @@ fn thread_handle_message(sender: &Sender<LuaResponse>,
 fn thread_send(sender: &Sender<LuaResponse>, response: LuaResponse) {
     trace!("Called thread_send");
     match sender.send(response) {
-        Err(e) => {
+        Err(_) => {
             error!("thread: Unable to broadcast response!");
             error!("thread: Shutting down in response to inability \
                     to continue!");
@@ -276,10 +275,4 @@ fn thread_send(sender: &Sender<LuaResponse>, response: LuaResponse) {
         }
         Ok(_) => {}
     }
-}
-
-extern "C" fn thread_on_panic(state: *mut lua_State) -> c_int {
-    *RUNNING.write().unwrap() = false;
-    error!("Lua thread is panicking!");
-    0
 }
