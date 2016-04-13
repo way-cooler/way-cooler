@@ -4,6 +4,8 @@ use hlua;
 use hlua::{Lua, LuaError};
 use hlua::any::AnyLuaValue;
 
+use rustc_serialize::json::Json;
+
 use std::thread;
 
 use std::fs::{File};
@@ -30,29 +32,42 @@ lazy_static! {
     pub static ref RUNNING: RwLock<bool> = RwLock::new(false);
 }
 
+/// Represents an identifier for dealing with nested tables.
+///
+/// To access foo.bar.baz, use vec!["foo", "bar", "baz"].
+///
+/// To access foo[2], use vec!["foo", 2].
+pub type LuaIdentifier = Vec<AnyLuaValue>;
+
 /// Messages sent to the lua thread
+#[derive(Debug)]
 pub enum LuaQuery {
+    /// Pings the lua thread
+    Ping,
     /// Halt the lua thread
     Terminate,
     // Restart the lua thread
     Restart,
+
     /// Execute a string
     Execute(String),
     /// Execute a file
-    ExecuteFile(String),
-    /// Get a variable
-    GetVariable(String),
+    ExecFile(String),
+
+    /// Get a variable, expecting an AnyLuaValue
+    GetValue(LuaIdentifier),
+    /// Invoke a function found at the position,
+    /// with the specified arguments.
+    Invoke(LuaIdentifier, Vec<AnyLuaValue>),
     /// Set a value
     SetValue {
-        name: Box<::std::borrow::Borrow<str> + Sized>,
-        val: Box<hlua::Push<&'static mut Lua<'static>> + Sized>
+        /// The name of the thing to stuff
+        name: LuaIdentifier,
+        /// The value to store.
+        val: Json
     },
-    /// Create a new array
-    EmptyArray(String),
-    /// Message to ping the lua thread
-    Ping,
-    /// Unused send type
-    Unused,
+    /// Create a new table
+    NewTable(LuaIdentifier),
 }
 
 /// Messages received from lua thread
@@ -65,8 +80,6 @@ pub enum LuaResponse {
     Function(hlua::functions_read::LuaFunction<String>),
     /// Pong response from lua ping
     Pong,
-    /// Unused response type
-    Unused,
 }
 
 unsafe impl Send for LuaQuery { }
@@ -206,7 +219,7 @@ fn thread_handle_message(sender: &Sender<LuaResponse>,
             }
         },
 
-        LuaQuery::ExecuteFile(name) => {
+        LuaQuery::ExecFile(name) => {
             trace!("thread: Received request to execute file {}", name);
             info!("thread: Executing {}", name);
 
@@ -233,16 +246,16 @@ fn thread_handle_message(sender: &Sender<LuaResponse>,
             }
         },
 
-        LuaQuery::GetVariable(varname) => {
-            trace!("thread: Received request to get variable {}", varname);
-            let var_result = lua.get(varname.as_str());
+        LuaQuery::GetValue(varname) => {
+            trace!("thread: Received request to get variable {:?}", varname);
+            let var_result = lua.get(format!("{:?}", varname));
 
             match var_result {
                 Some(var) => {
                     thread_send(&sender, LuaResponse::Variable(Some(var)));
                 }
                 None => {
-                    warn!("thread: Unable to get variable {}", varname);
+                    warn!("thread: Unable to get variable {:?}", varname);
 
                     thread_send(&sender, LuaResponse::Variable(None));
                 }
@@ -253,10 +266,13 @@ fn thread_handle_message(sender: &Sender<LuaResponse>,
             panic!("thread: unimplemented LuaQuery::SetValue!");
         },
 
-        LuaQuery::EmptyArray(_name) => {
-            panic!("thread: unimplemented LuaQuery::EmptyArray!");
+        LuaQuery::NewTable(_name) => {
+            panic!("thread: unimplemented LuaQuery::NewTable!");
         },
 
+        LuaQuery::Ping => {
+            panic!("thread: unimplemented LuaQuery::Ping!");
+        },
         _ => {
             panic!("Unimplemented send type for lua thread!");
         }
