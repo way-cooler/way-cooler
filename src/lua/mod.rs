@@ -19,6 +19,8 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 
 #[macro_use]
 mod funcs;
+#[cfg(test)]
+mod tests;
 
 lazy_static! {
     /// Sends requests to the lua thread
