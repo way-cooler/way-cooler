@@ -12,7 +12,6 @@ extern crate env_logger;
 
 #[macro_use]
 extern crate hlua;
-extern crate lua52_sys as hlua_ffi;
 
 extern crate rustc_serialize;
 
