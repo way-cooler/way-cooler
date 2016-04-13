@@ -15,19 +15,14 @@ pub enum RegistryAccess {
 }
 
 /// Values stored in the registry
+#[derive(Debug)]
 pub struct RegistryValue {
     access: RegistryAccess,
     object: Arc<Json>
 }
 
-//#[derive(RustcSeralizeable)]
-struct Point {
-    x: u32,
-    y: u32
-}
-
 impl RegistryValue {
-
+    /// Creates a new RegistryValue
     pub fn new<T>(access: RegistryAccess, data: T) -> RegistryValue
         where T: ToJson  {
         RegistryValue {
