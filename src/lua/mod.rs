@@ -305,12 +305,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
 fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
     match sender.send(response) {
         Err(_) => {
-            error!("thread: Unable to broadcast response!");
-            error!("thread: Shutting down in response to inability \
-                    to continue!");
-            *RUNNING.write().unwrap() = false;
-            panic!("Lua thread unable to communicate with main thread, \
-                    shutting down!");
+            warn!("A requester of the lua thread has ignored a response!");
         }
         Ok(_) => {}
     }
