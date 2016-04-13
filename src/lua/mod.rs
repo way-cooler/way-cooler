@@ -7,10 +7,11 @@ use hlua::any::AnyLuaValue;
 use rustc_serialize::json::Json;
 
 use std::thread;
-
 use std::fs::{File};
 use std::path::Path;
 use std::io::Write;
+use std::fmt::{Debug, Formatter};
+use std::fmt::Result as FmtResult;
 
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -22,7 +23,7 @@ mod tests;
 
 lazy_static! {
     /// Sends requests to the lua thread
-    static ref SENDER: Mutex<Option<Sender<LuaQuery>>> = Mutex::new(None);
+    static ref SENDER: Mutex<Option<Sender<LuaMessage>>> = Mutex::new(None);
 
     /// Receives data back from the lua thread
     /// This should only be accessed by the lua thread itself.
@@ -82,10 +83,34 @@ pub enum LuaResponse {
     Pong,
 }
 
+#[derive(Debug)]
+struct LuaMessage {
+    reply: Sender<LuaResponse>,
+    query: LuaQuery
+}
+
 unsafe impl Send for LuaQuery { }
-unsafe impl Send for LuaResponse { }
 unsafe impl Sync for LuaQuery { }
+unsafe impl Send for LuaResponse { }
 unsafe impl Sync for LuaResponse { }
+unsafe impl Send for LuaMessage { }
+unsafe impl Sync for LuaMessage { }
+
+impl Debug for LuaResponse {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match *self {
+            LuaResponse::Variable(ref var) =>
+                write!(f, "LuaResponse::Variable({:?})", var),
+            LuaResponse::Error(ref err) =>
+                write!(f, "LuaResponse::Error({:?})", err),
+            LuaResponse::Function(_) =>
+                write!(f, "LuaResponse::Function"),
+            LuaResponse::Pong =>
+                write!(f, "LuaResponse::Pong")
+        }
+    }
+}
+
 
 /// Whether the lua thread is currently available
 pub fn thread_running() -> bool {
@@ -100,19 +125,22 @@ pub enum LuaSendError {
     ThreadClosed,
     /// The thread has not been initialized yet (maybe not used)
     ThreadUninitialized,
-    /// The sender had an issue, most likey because the thread panicked
-    Sender
+    /// The sender had an issue, most likey because the thread panicked.
+    /// Following the `Sender` API, the original value sent is returned.
+    Sender(LuaQuery)
 }
 
 /// Attemps to send a LuaQuery to the lua thread.
-pub fn try_send(query: LuaQuery) -> Result<(), LuaSendError> {
+pub fn try_send(query: LuaQuery) -> Result<Receiver<LuaResponse>,LuaSendError> {
     if !thread_running() {
         Err(LuaSendError::ThreadClosed)
     }
     else if let Some(ref sender) = *SENDER.lock().unwrap() {
-        match sender.send(query) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(LuaSendError::Sender)
+        let (tx, rx) = channel();
+        let message = LuaMessage { reply: tx, query: query };
+        match sender.send(message) {
+            Ok(_) => Ok(rx),
+            Err(e) => Err(LuaSendError::Sender(e.0.query))
         }
     }
     else {
@@ -123,7 +151,7 @@ pub fn try_send(query: LuaQuery) -> Result<(), LuaSendError> {
 /// Initialize the lua thread
 pub fn init() {
     trace!("Initializing...");
-    let (query_tx, query_rx) = channel::<LuaQuery>();
+    let (query_tx, query_rx) = channel::<LuaMessage>();
     let (answer_tx, answer_rx) = channel::<LuaResponse>();
     {
         let mut sender = SENDER.lock().unwrap();
