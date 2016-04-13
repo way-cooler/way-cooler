@@ -15,6 +15,9 @@ use rustc_serialize::json::{Json, ToJson};
 mod types;
 pub use self::types::{RegistryAccess, RegistryValue};
 
+#[cfg(test)]
+mod tests;
+
 type RegMap = HashMap<String, RegistryValue>;
 
 lazy_static! {
@@ -57,7 +60,7 @@ where String: Borrow<K>, K: Hash + Eq + Display {
 
 /// Gets an object from the regsitry, decoding its internal json
 /// representation.
-pub fn get<T, K>(name: &K) -> Result<T, RegistryError>
+pub fn get<K, T>(name: &K) -> Result<T, RegistryError>
 where T: Decodable, String: Borrow<K>, K: Hash + Eq + Display {
     let maybe_json = get_json(name);
     if let Some(json_arc) = maybe_json {
