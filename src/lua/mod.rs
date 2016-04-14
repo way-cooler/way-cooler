@@ -1,8 +1,7 @@
 //! Lua functionality
 
 use hlua;
-use hlua::{Lua, LuaError};
-use hlua::any::AnyLuaValue;
+use hlua::{Lua, LuaError, LuaTable, AnyLuaValue};
 
 use rustc_serialize::json::Json;
 
@@ -69,6 +68,8 @@ pub enum LuaQuery {
 
 /// Messages received from lua thread
 pub enum LuaResponse {
+    /// If the identifier had length 0
+    InvalidName,
     /// Lua variable obtained
     Variable(Option<AnyLuaValue>),
     /// Lua error
@@ -228,17 +229,14 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
 
         LuaQuery::Execute(code) => {
             trace!("thread: Received request to execute code");
-            trace!("thread: Executing {:?}", code);
+            trace!("thread: Executing {}", code);
 
             match lua.execute::<()>(&code) {
                 Err(error) => {
                     warn!("thread: Error executing code: {:?}", error);
-                    let response = LuaResponse::Error(error);
-
-                    thread_send(request.reply, response);
+                    thread_send(request.reply, LuaResponse::Error(error));
                 }
                 Ok(_) => {
-                    // This is gonna be really spammy one day
                     trace!("thread: Code executed okay.");
                     thread_send(request.reply, LuaResponse::Pong);
                 }
@@ -246,7 +244,6 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
         },
 
         LuaQuery::ExecFile(name) => {
-            trace!("thread: Received request to execute file {}", name);
             info!("thread: Executing {}", name);
 
             let path = Path::new(&name);
@@ -275,17 +272,17 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
 
         LuaQuery::GetValue(varname) => {
             trace!("thread: Received request to get variable {:?}", varname);
-            let var_result = lua.get(format!("{:?}", varname));
 
-            match var_result {
-                Some(var) => {
-                    thread_send(request.reply, LuaResponse::Variable(Some(var)));
-                }
-                None => {
-                    warn!("thread: Unable to get variable {:?}", varname);
-
-                    thread_send(request.reply, LuaResponse::Variable(None));
-                }
+            if varname.len() == 0 {
+                thread_send(request.reply, LuaResponse::Variable(None));
+            }
+            let mut maybe_table = lua.get(varname[0]);
+            if varname.len() == 1 {
+                thread_send(request.reply,
+                    LuaResponse::Variable(table));
+            }
+            for name in varname {
+                
             }
         },
 
@@ -293,12 +290,22 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             panic!("thread: unimplemented LuaQuery::SetValue!");
         },
 
-        LuaQuery::NewTable(_name) => {
-            panic!("thread: unimplemented LuaQuery::NewTable!");
+        LuaQuery::NewTable(name_list) => {
+            if name_list.len() == 0 {
+                thread_send(request.reply, LuaResponse::Error(
+                    LuaError::SyntaxError("Name cannot be empty")));
+            }
+            else {
+                let mut curr_table = lua.empty_array(name_list[0]);
+                for name in name_list.into_iter().skip(1) {
+                    curr_table = lua.empty_array(name);
+                }
+                thread_send(request.reply, LuaResponse::Pong);
+            }
         },
 
         LuaQuery::Ping => {
-            panic!("thread: unimplemented LuaQuery::Ping!");
+            thread_send(request.reply, LuaResponse::Pong);
         },
         _ => {
             panic!("Unimplemented send type for lua thread!");
@@ -317,5 +324,12 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
             }
         }
         Ok(_) => {}
+    }
+}
+
+fn get_name_table<'a, 'b>(lua: &mut Lua<'b>, names: LuaIdentifier)
+                          -> LuaTable<PushGuard<&'a mut Lua<'b>>> {
+    if names.len == 0 {
+        
     }
 }
