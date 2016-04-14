@@ -80,7 +80,6 @@ pub enum LuaResponse {
 }
 
 /// Struct sent to the lua query
-#[derive(Debug)]
 struct LuaMessage {
     reply: Sender<LuaResponse>,
     query: LuaQuery
@@ -108,6 +107,11 @@ impl Debug for LuaResponse {
     }
 }
 
+impl Debug for LuaMessage {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "LuaMessage({:?})", self.query)
+    }
+}
 
 /// Whether the lua thread is currently available
 pub fn thread_running() -> bool {

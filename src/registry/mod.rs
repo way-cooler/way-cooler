@@ -58,7 +58,7 @@ where String: Borrow<K>, K: Hash + Eq + Display {
     }
 }
 
-/// Gets an object from the regsitry, decoding its internal json
+/// Gets an object from the registry, decoding its internal json
 /// representation.
 pub fn get<K, T>(name: &K) -> Result<T, RegistryError>
 where T: Decodable, String: Borrow<K>, K: Hash + Eq + Display {

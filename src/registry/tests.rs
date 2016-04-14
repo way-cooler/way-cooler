@@ -21,8 +21,6 @@ impl ToJson for Point {
     }
 }
 
-const i32_SIZE: usize = 32usize / 8usize;
-
 impl Decodable for Point {
     fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
         let mut x = 0;
