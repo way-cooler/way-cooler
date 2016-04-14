@@ -3,11 +3,11 @@
 use super::super::super::registry;
 use registry::RegistryAccess;
 
-use hlua::{LuaTable};
 use hlua::any::AnyLuaValue;
 
 use rustc_serialize::json::{Json, ToJson};
 use std::ops::Deref;
+
 pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue)
              -> Result<AnyLuaValue, &'static str> {
     if let AnyLuaValue::LuaString(key) = lua_key {
@@ -23,6 +23,7 @@ pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue)
             }
         }
         else {
+            // Should be nil, nil doesn't seem to be included
             Err("No value found for that key!")
         }
     }
