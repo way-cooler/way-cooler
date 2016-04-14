@@ -35,7 +35,7 @@ pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue)
 // Prevent lua from changing the registry?
 pub fn new_index(table: AnyLuaValue, key: AnyLuaValue, val: AnyLuaValue)
                  -> Result<(), &'static str> {
-    Err("You can't set the registry!")
+    //Err("You can't set the registry!")
 }
 
 fn convert_json(json: Json) -> AnyLuaValue {
@@ -45,7 +45,7 @@ fn convert_json(json: Json) -> AnyLuaValue {
         Json::F64(val) => AnyLuaValue::LuaNumber(val),
         Json::I64(val) => AnyLuaValue::LuaNumber((val as i32) as f64),
         Json::U64(val) => AnyLuaValue::LuaNumber((val as u32) as f64),
-        Json::Null => AnyLuaValue::LuaString("none".to_string()),
+        Json::Null => AnyLuaValue::LuaNil,
         Json::Array(vals) => {
             let mut count = 0f64;
             // Gotta love that 1-based indexing. Start at zero but increment for
