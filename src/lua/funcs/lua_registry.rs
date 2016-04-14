@@ -35,7 +35,7 @@ pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue)
 // Prevent lua from changing the registry?
 pub fn new_index(table: AnyLuaValue, key: AnyLuaValue, val: AnyLuaValue)
                  -> Result<(), &'static str> {
-    //Err("You can't set the registry!")
+    Err("You can't set the registry!")
 }
 
 fn convert_json(json: Json) -> AnyLuaValue {
