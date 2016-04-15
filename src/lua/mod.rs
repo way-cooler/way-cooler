@@ -1,7 +1,7 @@
 //! Lua functionality
 
 use hlua;
-use hlua::{Lua, LuaError, LuaTable};
+use hlua::{Lua, LuaError, LuaTable, PushGuard};
 use hlua::any::AnyLuaValue;
 
 use rustc_serialize::json::Json;
@@ -284,7 +284,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             // Table[0] String had to be cloned, it'd be nice if Rust let us
             // borrow out parts of memory
             match lua.get::<AnyLuaValue, _>(varname[0].clone()) {
-                Some(mut table) => {
+                Some(table) => {
                     let full_table = walk_table(table, &varname[1..]);
                     thread_send(request.reply,
                                 LuaResponse::Variable(full_table));
@@ -298,19 +298,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
         },
 
         LuaQuery::NewTable(name_list) => {
-            /*
-            if name_list.len() == 0 {
-                thread_send(request.reply, LuaResponse::Error(
-                    LuaError::SyntaxError("Name cannot be empty".to_string())));
-            }
-            else {
-                let mut curr_table = lua.empty_array(name_list[0]);
-                for name in name_list.into_iter().skip(1) {
-                    curr_table = lua.empty_array(name);
-                }
-                thread_send(request.reply, LuaResponse::Pong);
-            }
-            */
+            panic!("thread: unimplemented LuaQuery::NewTable!");
         },
 
         LuaQuery::Ping => {
@@ -328,7 +316,7 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
             match err.0 {
                 LuaResponse::Pong => {}, // Those are boring
                 _ => {
-                    warn!("thread: Someone ignored an important Lua response!");
+                    warn!("thread: Someone dropped an important Lua response!");
                 }
             }
         }
@@ -336,10 +324,10 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
     }
 }
 
-fn walk_table(mut table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
+fn walk_table(table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
     if let Some(name) = names.first() {
-        if let AnyLuaValue::LuaArray(mut arr) = table {
-            for (mut key, mut val) in arr {
+        if let AnyLuaValue::LuaArray(arr) = table {
+            for (key, val) in arr {
                 if let AnyLuaValue::LuaString(key_str) = key {
                     if *key_str == *name {
                         return walk_table(val, &names[1..]);
@@ -356,3 +344,25 @@ fn walk_table(mut table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
         return Some(table); // ???
     }
 }
+
+/*
+fn set_value<'l>(lua: &'l mut Lua, mut table: PushGuard<LuaTable<Lua>>,
+             names: &[String], val: AnyLuaValue) {
+    // Should not be reached!
+    if names.len() == 0 {
+        return;
+    }
+    // The last name is the name of the value
+    else if names.len() == 1 {
+        table.set(names[0].clone(), val);
+    }
+    else {
+        let maybe_table = table.get::<_, _>(names[0]);
+        match maybe_table {
+            Some(new_table) => {
+                set_value(&mut lua, new_table, &names[1..], val);
+            }
+            None => { return; }
+        }
+    }
+}*/
