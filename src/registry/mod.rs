@@ -36,12 +36,12 @@ pub enum RegistryError {
 }
 
 /// Acquires a read lock on the registry.
-fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
+pub fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
     REGISTRY.read().unwrap()
 }
 
 /// Acquires a write lock on the registry.
-fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
+pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
     REGISTRY.write().unwrap()
 }
 
