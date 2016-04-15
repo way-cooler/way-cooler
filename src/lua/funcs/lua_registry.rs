@@ -1,17 +1,26 @@
 //! Metamethods for accesssing the registry values!
 
 use super::super::super::registry;
+use registry::RegistryAccess;
 
 use hlua::{LuaTable};
 use hlua::any::AnyLuaValue;
 
 use rustc_serialize::json::{Json, ToJson};
 use std::ops::Deref;
-pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue) -> Result<AnyLuaValue, &'static str> {
+pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue)
+             -> Result<AnyLuaValue, &'static str> {
     if let AnyLuaValue::LuaString(key) = lua_key {
         let maybe_json = registry::get_json(&key);
-        if let Some(json) = maybe_json {
-            Ok(convert_json(json.deref().to_json()))
+        if let Some(json_pair) = maybe_json {
+            let (access, json) = json_pair;
+            if access == RegistryAccess::Private {
+                // TODO In lua_async: return nil
+                Err("No value found for that key!")
+            }
+            else {
+                Ok(convert_json(json.deref().to_json()))
+            }
         }
         else {
             Err("No value found for that key!")
