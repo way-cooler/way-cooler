@@ -1,7 +1,8 @@
 //! Lua functionality
 
 use hlua;
-use hlua::{Lua, LuaError, LuaTable, AnyLuaValue};
+use hlua::{Lua, LuaError, LuaTable};
+use hlua::any::AnyLuaValue;
 
 use rustc_serialize::json::Json;
 
@@ -11,6 +12,7 @@ use std::path::Path;
 use std::io::Write;
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
+use std::borrow::Borrow;
 
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -33,7 +35,7 @@ lazy_static! {
 /// To access foo.bar.baz, use vec!["foo", "bar", "baz"].
 ///
 /// To access foo[2], use vec!["foo", 2].
-pub type LuaIdentifier = Vec<AnyLuaValue>;
+pub type LuaIdent = Vec<String>;
 
 /// Messages sent to the lua thread
 #[derive(Debug)]
@@ -51,19 +53,19 @@ pub enum LuaQuery {
     ExecFile(String),
 
     /// Get a variable, expecting an AnyLuaValue
-    GetValue(LuaIdentifier),
+    GetValue(LuaIdent),
     /// Invoke a function found at the position,
     /// with the specified arguments.
-    Invoke(LuaIdentifier, Vec<AnyLuaValue>),
+    Invoke(LuaIdent, Vec<AnyLuaValue>),
     /// Set a value
     SetValue {
         /// The name of the thing to stuff
-        name: LuaIdentifier,
+        name: LuaIdent,
         /// The value to store.
         val: Json
     },
     /// Create a new table
-    NewTable(LuaIdentifier),
+    NewTable(LuaIdent),
 }
 
 /// Messages received from lua thread
@@ -96,6 +98,8 @@ unsafe impl Sync for LuaMessage { }
 impl Debug for LuaResponse {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match *self {
+            LuaResponse::InvalidName =>
+                write!(f, "LuaResponse::InvalidName"),
             LuaResponse::Variable(ref var) =>
                 write!(f, "LuaResponse::Variable({:?})", var),
             LuaResponse::Error(ref err) =>
@@ -274,15 +278,18 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             trace!("thread: Received request to get variable {:?}", varname);
 
             if varname.len() == 0 {
-                thread_send(request.reply, LuaResponse::Variable(None));
+                thread_send(request.reply, LuaResponse::InvalidName);
+                return;
             }
-            let mut maybe_table = lua.get(varname[0]);
-            if varname.len() == 1 {
-                thread_send(request.reply,
-                    LuaResponse::Variable(table));
-            }
-            for name in varname {
-                
+            // Table[0] String had to be cloned, it'd be nice if Rust let us
+            // borrow out parts of memory
+            match lua.get::<AnyLuaValue, _>(varname[0].clone()) {
+                Some(mut table) => {
+                    let full_table = walk_table(table, &varname[1..]);
+                    thread_send(request.reply,
+                                LuaResponse::Variable(full_table));
+                },
+                None => thread_send(request.reply, LuaResponse::Variable(None))
             }
         },
 
@@ -291,9 +298,10 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
         },
 
         LuaQuery::NewTable(name_list) => {
+            /*
             if name_list.len() == 0 {
                 thread_send(request.reply, LuaResponse::Error(
-                    LuaError::SyntaxError("Name cannot be empty")));
+                    LuaError::SyntaxError("Name cannot be empty".to_string())));
             }
             else {
                 let mut curr_table = lua.empty_array(name_list[0]);
@@ -302,6 +310,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
                 }
                 thread_send(request.reply, LuaResponse::Pong);
             }
+            */
         },
 
         LuaQuery::Ping => {
@@ -327,9 +336,23 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
     }
 }
 
-fn get_name_table<'a, 'b>(lua: &mut Lua<'b>, names: LuaIdentifier)
-                          -> LuaTable<PushGuard<&'a mut Lua<'b>>> {
-    if names.len == 0 {
-        
+fn walk_table(mut table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
+    if let Some(name) = names.first() {
+        if let AnyLuaValue::LuaArray(mut arr) = table {
+            for (mut key, mut val) in arr {
+                if let AnyLuaValue::LuaString(key_str) = key {
+                    if *key_str == *name {
+                        return walk_table(val, &names[1..]);
+                    }
+                }
+            }
+            return None;
+        }
+        else {
+            return None;
+        }
+    }
+    else {
+        return Some(table); // ???
     }
 }
