@@ -293,8 +293,28 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             }
         },
 
-        LuaQuery::SetValue { name: _name, val: _val } => {
-            panic!("thread: unimplemented LuaQuery::SetValue!");
+        LuaQuery::SetValue { name: name, val: val } => {
+            trace!("thread: SetValue: Setting {:?} to {:?}", name, val);
+            /*
+            let maybe_table: Option<LuaTable<_>> = lua.get::<_, _>(name[0]);
+
+            let table: LuaTable<_>;
+
+            if name.len() == 0 {
+                thread_send(request.reply, LuaResponse::InvalidName);
+            }
+            else if name.len() == 1 {
+                let lua_val = 
+                table.set(name[0], val);
+            }
+            else {
+                match maybe_table {
+                    Some(table) => {
+                        
+                    }
+                }
+            }*/
+            unimplemented!();
         },
 
         LuaQuery::NewTable(name_list) => {
@@ -366,3 +386,30 @@ fn set_value<'l>(lua: &'l mut Lua, mut table: PushGuard<LuaTable<Lua>>,
         }
     }
 }*/
+
+/// Converts a Json map into an AnyLuaValue
+pub fn json_to_lua(json: Json) -> AnyLuaValue {
+    match json {
+        Json::String(val)  => AnyLuaValue::LuaString(val),
+        Json::Boolean(val) => AnyLuaValue::LuaBoolean(val),
+        Json::F64(val)     => AnyLuaValue::LuaNumber(val),
+        Json::I64(val)     => AnyLuaValue::LuaNumber((val as i32) as f64),
+        Json::U64(val)     => AnyLuaValue::LuaNumber((val as u32) as f64),
+        Json::Null         => AnyLuaValue::LuaNil,
+        Json::Array(vals)  => {
+            let mut count = 0f64;
+            // Gotta love that 1-based indexing. Start at zero but increment for
+            // the first one. It works here at least.
+            AnyLuaValue::LuaArray(vals.into_iter().map(|v| {
+                count += 1.0;
+                (AnyLuaValue::LuaNumber(count), json_to_lua(v))
+            }).collect())
+        },
+        Json::Object(vals) => {
+            AnyLuaValue::LuaArray(vals.into_iter().map(|(key, val)| {
+                (AnyLuaValue::LuaString(key), json_to_lua(val))
+            }).collect())
+        }
+    }
+}
+
