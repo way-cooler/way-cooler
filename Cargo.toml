@@ -9,6 +9,7 @@ license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
 
 [dependencies]
+libc = "*"
 rustwlc = "^0.3"
 lazy_static = "*"
 log = "*"
