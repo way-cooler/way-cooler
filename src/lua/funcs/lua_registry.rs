@@ -20,7 +20,7 @@ pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue)
                 Err("No value found for that key!")
             }
             else {
-                Ok(convert_json(json.deref().to_json()))
+                Ok(json_to_lua(json.deref().to_json()))
             }
         }
         else {
