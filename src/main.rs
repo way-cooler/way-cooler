@@ -1,17 +1,21 @@
 //! Main module in way-cooler
 
-extern crate rustwlc;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate hlua;
+
+extern crate rustwlc;
+extern crate libc;
+
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate libc;
+
+#[macro_use]
+extern crate hlua;
+
+extern crate rustc_serialize;
 
 use rustwlc::callback;
-use rustwlc::interface::WlcInterface;
 use rustwlc::types::LogType;
 
 use std::env;
