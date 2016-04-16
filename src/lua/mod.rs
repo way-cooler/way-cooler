@@ -397,18 +397,20 @@ pub fn json_to_lua(json: Json) -> AnyLuaValue {
         Json::U64(val)     => AnyLuaValue::LuaNumber((val as u32) as f64),
         Json::Null         => AnyLuaValue::LuaNil,
         Json::Array(vals)  => {
-            let mut count = 0f64;
-            // Gotta love that 1-based indexing. Start at zero but increment for
-            // the first one. It works here at least.
-            AnyLuaValue::LuaArray(vals.into_iter().map(|v| {
-                count += 1.0;
-                (AnyLuaValue::LuaNumber(count), json_to_lua(v))
-            }).collect())
+            let mut lua_arr = Vec::with_capacity(vals.len());
+            for (ix, val) in vals.into_iter().enumerate() {
+                lua_arr.push((AnyLuaValue::LuaNumber(ix as f64 + 1.0),
+                              json_to_lua(val)));
+            }
+            AnyLuaValue::LuaArray(lua_arr)
         },
         Json::Object(vals) => {
-            AnyLuaValue::LuaArray(vals.into_iter().map(|(key, val)| {
-                (AnyLuaValue::LuaString(key), json_to_lua(val))
-            }).collect())
+            let mut lua_table = Vec::with_capacity(vals.len());
+            for (key, val) in vals.into_iter() {
+                lua_table.push((AnyLuaValue::LuaString(key),
+                                json_to_lua(val)));
+            }
+            AnyLuaValue::LuaArray(lua_table)
         }
     }
 }
