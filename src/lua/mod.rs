@@ -302,19 +302,24 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
                 thread_send(request.reply, LuaResponse::InvalidName);
             }
             else if name.len() == 1 {
-                let lua_val = 
+                let lua_val =
                 table.set(name[0], val);
             }
             else {
                 match maybe_table {
-                    Some(table) => {
-                        
-                    }
+                    Some(table) =>
                 }
             }*/
-            unimplemented!();
         },
-
+        LuaQuery::Invoke(ident, vals) => {
+            panic!("thread: unimplemented LuaQuery::Invoke!");
+            /*
+            if ident.len() == 0 {
+                thread_send(request.reply, LuaResponse::InvalidName);
+                return;
+            }
+            */
+        },
         LuaQuery::NewTable(name_list) => {
             panic!("thread: unimplemented LuaQuery::NewTable!");
         },
@@ -322,9 +327,6 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
         LuaQuery::Ping => {
             thread_send(request.reply, LuaResponse::Pong);
         },
-        _ => {
-            panic!("Unimplemented send type for lua thread!");
-        }
     }
 }
 
@@ -352,15 +354,10 @@ fn walk_table(table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
                     }
                 }
             }
-            return None;
         }
-        else {
-            return None;
-        }
+        return None;
     }
-    else {
-        return Some(table); // ???
-    }
+    return Some(table); // ???
 }
 
 /*
