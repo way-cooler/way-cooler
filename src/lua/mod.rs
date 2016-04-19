@@ -58,12 +58,7 @@ pub enum LuaQuery {
     /// with the specified arguments.
     Invoke(LuaIdent, Vec<AnyLuaValue>),
     /// Set a value
-    SetValue {
-        /// The name of the thing to stuff
-        name: LuaIdent,
-        /// The value to store.
-        val: Json
-    },
+    SetValue(LuaIdent, Json),
     /// Create a new table
     NewTable(LuaIdent),
 }
@@ -293,7 +288,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             }
         },
 
-        LuaQuery::SetValue { name: name, val: val } => {
+        LuaQuery::SetValue(name, val) => {
             trace!("thread: SetValue: Setting {:?} to {:?}", name, val);
             /*
             let maybe_table: Option<LuaTable<_>> = lua.get::<_, _>(name[0]);
