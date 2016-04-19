@@ -6,10 +6,13 @@ use hlua::any::AnyLuaValue;
 
 use rustc_serialize::json::Json;
 
+use std::collections::BTreeMap;
+
 use std::thread;
 use std::fs::{File};
 use std::path::Path;
 use std::io::Write;
+
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 use std::borrow::Borrow;
@@ -58,12 +61,7 @@ pub enum LuaQuery {
     /// with the specified arguments.
     Invoke(LuaIdent, Vec<AnyLuaValue>),
     /// Set a value
-    SetValue {
-        /// The name of the thing to stuff
-        name: LuaIdent,
-        /// The value to store.
-        val: Json
-    },
+    SetValue(LuaIdent, Json),
     /// Create a new table
     NewTable(LuaIdent),
 }
@@ -99,7 +97,7 @@ impl Debug for LuaResponse {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match *self {
             LuaResponse::InvalidName =>
-                write!(f, "LuaResponse::InvalidName"),
+                write!(f, "LuaReponse::InvalidName"),
             LuaResponse::Variable(ref var) =>
                 write!(f, "LuaResponse::Variable({:?})", var),
             LuaResponse::Error(ref err) =>
@@ -293,7 +291,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             }
         },
 
-        LuaQuery::SetValue { name: name, val: val } => {
+        LuaQuery::SetValue(name, val) => {
             trace!("thread: SetValue: Setting {:?} to {:?}", name, val);
             /*
             let maybe_table: Option<LuaTable<_>> = lua.get::<_, _>(name[0]);
@@ -397,19 +395,90 @@ pub fn json_to_lua(json: Json) -> AnyLuaValue {
         Json::U64(val)     => AnyLuaValue::LuaNumber((val as u32) as f64),
         Json::Null         => AnyLuaValue::LuaNil,
         Json::Array(vals)  => {
-            let mut count = 0f64;
-            // Gotta love that 1-based indexing. Start at zero but increment for
-            // the first one. It works here at least.
-            AnyLuaValue::LuaArray(vals.into_iter().map(|v| {
-                count += 1.0;
-                (AnyLuaValue::LuaNumber(count), json_to_lua(v))
-            }).collect())
+            let mut lua_arr = Vec::with_capacity(vals.len());
+            for (ix, val) in vals.into_iter().enumerate() {
+                lua_arr.push((AnyLuaValue::LuaNumber(ix as f64 + 1.0),
+                              json_to_lua(val)));
+            }
+            AnyLuaValue::LuaArray(lua_arr)
         },
         Json::Object(vals) => {
-            AnyLuaValue::LuaArray(vals.into_iter().map(|(key, val)| {
-                (AnyLuaValue::LuaString(key), json_to_lua(val))
-            }).collect())
+            let mut lua_table = Vec::with_capacity(vals.len());
+            for (key, val) in vals.into_iter() {
+                lua_table.push((AnyLuaValue::LuaString(key),
+                                json_to_lua(val)));
+            }
+            AnyLuaValue::LuaArray(lua_table)
         }
     }
 }
 
+/// Converts an `AnyLuaValue` to a `Json`.
+///
+/// For an already-matched `LuaArray`, use `lua_array_to_json`.
+///
+/// For a `LuaArray` that should be mapped to a `JsonObject`,
+/// use `lua_object_to_json`.
+pub fn lua_to_json(lua: AnyLuaValue) -> Result<Json, ()> {
+    match lua {
+        AnyLuaValue::LuaNil => Ok(Json::Null),
+        AnyLuaValue::LuaString(val) => Ok(Json::String(val)),
+        AnyLuaValue::LuaNumber(val) => Ok(Json::F64(val)),
+        AnyLuaValue::LuaBoolean(val) => Ok(Json::Boolean(val)),
+        AnyLuaValue::LuaArray(arr) => lua_array_to_json(arr),
+        AnyLuaValue::LuaOther => Err(())
+    }
+}
+
+pub fn lua_array_to_json(arr: Vec<(AnyLuaValue, AnyLuaValue)>)
+                         -> Result<Json, ()> {
+    // Check if every key is a number
+    let mut counter = 0.0; // Account for first index?
+
+    for &(ref key, ref _val) in &arr {
+        match *key {
+            AnyLuaValue::LuaNumber(num) => {
+                counter += num;
+            }
+            AnyLuaValue::LuaString(_) => {
+                break;
+            }
+            // Non-string keys are not allowed
+            _ => {
+                return Err(());
+            }
+        }
+    }
+
+    // Gauss' trick
+    let desired_sum = ((arr.len()) * (arr.len() + 1)) / 2;
+    if counter != desired_sum as f64 {
+        return lua_object_to_json(arr);
+    }
+
+    let mut json_arr: Vec<Json> = Vec::with_capacity(arr.len());
+
+    for (_key, val) in arr.into_iter() {
+        let lua_val = try!(lua_to_json(val));
+        json_arr.push(lua_val);
+    }
+    Ok(Json::Array(json_arr))
+}
+
+pub fn lua_object_to_json(obj: Vec<(AnyLuaValue, AnyLuaValue)>)
+                          -> Result<Json, ()> {
+    let mut json_obj: BTreeMap<String, Json> = BTreeMap::new();
+
+    for (key, val) in obj.into_iter() {
+        match key {
+            AnyLuaValue::LuaString(text) => {
+                json_obj.insert(text, try!(lua_to_json(val)));
+            },
+            AnyLuaValue::LuaNumber(ix) => {
+                json_obj.insert(format!("{}", ix), try!(lua_to_json(val)));
+            }
+            _ => { return Err(()); }
+        }
+    }
+    Ok(Json::Object(json_obj))
+}

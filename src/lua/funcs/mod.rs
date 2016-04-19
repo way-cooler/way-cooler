@@ -31,6 +31,7 @@ fn init_registry(lua: &mut Lua) {
     let mut reg_table: LuaTable<_> = lua.get("registry").unwrap();
     let mut meta_reg = reg_table.get_or_create_metatable();
     meta_reg.set("__metatable", "Turtles all the way down");
+    meta_reg.set("__tostring", hlua::function1(lua_registry::to_string));
     meta_reg.set("__index", hlua::function2(lua_registry::index));
     meta_reg.set("__newindex", hlua::function3(lua_registry::new_index));
 }

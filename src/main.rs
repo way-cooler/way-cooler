@@ -2,8 +2,11 @@
 
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate bitflags;
 
 extern crate rustwlc;
+extern crate libc;
 
 #[macro_use]
 extern crate log;
@@ -25,7 +28,7 @@ mod callbacks;
 mod lua;
 
 /// Callback to route wlc logs into env_logger
-extern "C" fn log_handler(level: LogType, message_ptr: *const i8) {
+extern "C" fn log_handler(level: LogType, message_ptr: *const libc::c_char) {
     let message = unsafe { rustwlc::pointer_to_string(message_ptr) };
     match level {
         LogType::Info => info!("wlc: {}", message),

@@ -13,12 +13,12 @@ use rustc_serialize::{Decodable, json};
 use rustc_serialize::json::{Json, ToJson};
 
 mod types;
-pub use self::types::{RegistryAccess, RegistryValue};
+pub use self::types::*; // Export constants too
 
 #[cfg(test)]
 mod tests;
 
-type RegMap = HashMap<String, RegistryValue>;
+pub type RegMap = HashMap<String, RegistryValue>;
 
 lazy_static! {
     /// Registry variable for the registry
@@ -36,22 +36,22 @@ pub enum RegistryError {
 }
 
 /// Acquires a read lock on the registry.
-fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
+pub fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
     REGISTRY.read().unwrap()
 }
 
 /// Acquires a write lock on the registry.
-fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
+pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
     REGISTRY.write().unwrap()
 }
 
 /// Gets a Json object from a registry key
-pub fn get_json<K>(name: &K) -> Option<Arc<Json>>
+pub fn get_json<K>(name: &K) -> Option<(AccessFlags, Arc<Json>)>
 where String: Borrow<K>, K: Hash + Eq + Display {
     trace!("get_json: {}", *name);
     let ref reg = *read_lock();
     if let Some(val) = reg.get(name) {
-        Some(val.get_json())
+        Some((val.flags(), val.get_json()))
     }
     else {
         None
@@ -60,13 +60,14 @@ where String: Borrow<K>, K: Hash + Eq + Display {
 
 /// Gets an object from the registry, decoding its internal json
 /// representation.
-pub fn get<K, T>(name: &K) -> Result<T, RegistryError>
+pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
 where T: Decodable, String: Borrow<K>, K: Hash + Eq + Display {
     let maybe_json = get_json(name);
-    if let Some(json_arc) = maybe_json {
+    if let Some(json_pair) = maybe_json {
+        let (access, json_arc) = json_pair;
         let mut decoder = json::Decoder::new(json_arc.deref().to_json());
         match T::decode(&mut decoder) {
-            Ok(val) => Ok(val),
+            Ok(val) => Ok((access, val)),
             Err(e) => Err(RegistryError::InvalidJson)
         }
     }
@@ -76,10 +77,10 @@ where T: Decodable, String: Borrow<K>, K: Hash + Eq + Display {
 }
 
 /// Set a key in the registry to a particular value
-pub fn set<T: ToJson>(key: String, val: T) {
+pub fn set<T: ToJson>(key: String, flags: AccessFlags, val: T) {
     trace!("set: {}", key);
     let ref mut write_reg = *write_lock();
-    let regvalue = RegistryValue::new(RegistryAccess::Public, val);
+    let regvalue = RegistryValue::new(flags, val);
     write_reg.insert(key, regvalue);
 }
 
