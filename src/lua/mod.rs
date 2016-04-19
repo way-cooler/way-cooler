@@ -135,7 +135,7 @@ pub enum LuaSendError {
 }
 
 /// Attemps to send a LuaQuery to the lua thread.
-pub fn try_send(query: LuaQuery) -> Result<Receiver<LuaResponse>,LuaSendError> {
+pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>,LuaSendError> {
     if !thread_running() {
         Err(LuaSendError::ThreadClosed)
     }

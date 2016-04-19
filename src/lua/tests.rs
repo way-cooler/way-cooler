@@ -17,16 +17,16 @@ fn big_lua_test() {
     thread::sleep(Duration::from_secs(5));
     test_variable();
 
-    try_send(LuaQuery::Terminate).unwrap();
+    send(LuaQuery::Terminate).unwrap();
     thread::sleep(Duration::from_millis(500u64));
     assert!(!thread_running())
 }
 
 fn test_variable() {
-    try_send(LuaQuery::Execute("hello = 'hello world!'".to_string()))
+    send(LuaQuery::Execute("hello = 'hello world!'".to_string()))
         .unwrap();
 
-    try_send(LuaQuery::Execute("assert(hello == 'hello world!')".to_string()))
+    send(LuaQuery::Execute("assert(hello == 'hello world!')".to_string()))
         .unwrap();
 }
 

@@ -163,5 +163,5 @@ pub extern fn compositor_ready() {
 
 pub extern fn compositor_terminating() {
     info!("Compositor terminating!");
-    lua::try_send(lua::LuaQuery::Terminate).ok();
+    lua::send(lua::LuaQuery::Terminate).ok();
 }
