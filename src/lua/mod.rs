@@ -8,13 +8,14 @@ use rustc_serialize::json::Json;
 
 use std::collections::BTreeMap;
 
+use std::fmt::{Debug, Formatter};
+use std::fmt::Result as FmtResult;
+
 use std::thread;
 use std::fs::{File};
 use std::path::Path;
 use std::io::Write;
 
-use std::fmt::{Debug, Formatter};
-use std::fmt::Result as FmtResult;
 use std::borrow::Borrow;
 
 use std::sync::{Mutex, RwLock};
@@ -25,6 +26,9 @@ mod funcs;
 #[cfg(test)]
 mod tests;
 
+mod types;
+pub use self::types::{LuaQuery, LuaFunc, LuaIdent, LuaResponse};
+
 lazy_static! {
     /// Sends requests to the lua thread
     static ref SENDER: Mutex<Option<Sender<LuaMessage>>> = Mutex::new(None);
@@ -33,52 +37,6 @@ lazy_static! {
     pub static ref RUNNING: RwLock<bool> = RwLock::new(false);
 }
 
-/// Represents an identifier for dealing with nested tables.
-///
-/// To access foo.bar.baz, use vec!["foo", "bar", "baz"].
-///
-/// To access foo[2], use vec!["foo", 2].
-pub type LuaIdent = Vec<String>;
-
-/// Messages sent to the lua thread
-#[derive(Debug)]
-pub enum LuaQuery {
-    /// Pings the lua thread
-    Ping,
-    /// Halt the lua thread
-    Terminate,
-    // Restart the lua thread
-    Restart,
-
-    /// Execute a string
-    Execute(String),
-    /// Execute a file
-    ExecFile(String),
-
-    /// Get a variable, expecting an AnyLuaValue
-    GetValue(LuaIdent),
-    /// Invoke a function found at the position,
-    /// with the specified arguments.
-    Invoke(LuaIdent, Vec<AnyLuaValue>),
-    /// Set a value
-    SetValue(LuaIdent, Json),
-    /// Create a new table
-    NewTable(LuaIdent),
-}
-
-/// Messages received from lua thread
-pub enum LuaResponse {
-    /// If the identifier had length 0
-    InvalidName,
-    /// Lua variable obtained
-    Variable(Option<AnyLuaValue>),
-    /// Lua error
-    Error(hlua::LuaError),
-    /// A function is returned
-    Function(hlua::functions_read::LuaFunction<String>),
-    /// Pong response from lua ping
-    Pong,
-}
 
 /// Struct sent to the lua query
 struct LuaMessage {
@@ -86,29 +44,9 @@ struct LuaMessage {
     query: LuaQuery
 }
 
-unsafe impl Send for LuaQuery { }
-unsafe impl Sync for LuaQuery { }
-unsafe impl Send for LuaResponse { }
-unsafe impl Sync for LuaResponse { }
 unsafe impl Send for LuaMessage { }
 unsafe impl Sync for LuaMessage { }
 
-impl Debug for LuaResponse {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match *self {
-            LuaResponse::InvalidName =>
-                write!(f, "LuaReponse::InvalidName"),
-            LuaResponse::Variable(ref var) =>
-                write!(f, "LuaResponse::Variable({:?})", var),
-            LuaResponse::Error(ref err) =>
-                write!(f, "LuaResponse::Error({:?})", err),
-            LuaResponse::Function(_) =>
-                write!(f, "LuaResponse::Function"),
-            LuaResponse::Pong =>
-                write!(f, "LuaResponse::Pong")
-        }
-    }
-}
 
 impl Debug for LuaMessage {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -135,7 +73,7 @@ pub enum LuaSendError {
 }
 
 /// Attemps to send a LuaQuery to the lua thread.
-pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>,LuaSendError> {
+pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     if !thread_running() {
         Err(LuaSendError::ThreadClosed)
     }
@@ -290,7 +228,10 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
                 None => thread_send(request.reply, LuaResponse::Variable(None))
             }
         },
-
+        LuaQuery::ExecWithLua(func) => {
+            func(lua);
+            thread_send(request.reply, LuaResponse::Pong);
+        },
         LuaQuery::SetValue(name, val) => {
             trace!("thread: SetValue: Setting {:?} to {:?}", name, val);
             /*
