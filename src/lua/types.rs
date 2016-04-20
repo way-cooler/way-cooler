@@ -9,6 +9,8 @@ use rustc_serialize::json::Json;
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
+use std::cmp::{PartialEq, Eq};
+
 /// Represents an identifier for dealing with nested tables.
 ///
 /// To access foo.bar.baz, use vec!["foo", "bar", "baz"].
@@ -62,6 +64,28 @@ impl Debug for LuaQuery {
 unsafe impl Send for LuaQuery { }
 unsafe impl Sync for LuaQuery { }
 
+impl PartialEq for LuaQuery {
+    fn eq(&self, other: &LuaQuery) -> bool {
+        match (self, other) {
+            (&LuaQuery::Ping, &LuaQuery::Ping) => true,
+            (&LuaQuery::Terminate, &LuaQuery::Terminate) => true,
+            (&LuaQuery::Restart, &LuaQuery::Restart) => true,
+
+            (&LuaQuery::Execute(ref s1), &LuaQuery::Execute(ref s2)) =>
+                s1 == s2,
+            (&LuaQuery::ExecFile(ref s1), &LuaQuery::ExecFile(ref s2)) =>
+                s1 == s2,
+            (&LuaQuery::GetValue(ref i1), &LuaQuery::GetValue(ref i2)) =>
+                i1 == i2,
+            (&LuaQuery::ExecWithLua(_), &LuaQuery::ExecWithLua(_)) => true,
+
+            _ => false
+        }
+    }
+}
+
+impl Eq for LuaQuery { }
+
 /// Messages received from lua thread
 pub enum LuaResponse {
     /// If the identifier had length 0
@@ -74,6 +98,23 @@ pub enum LuaResponse {
     Function(hlua::functions_read::LuaFunction<String>),
     /// Pong response from lua ping
     Pong,
+}
+
+impl PartialEq for LuaResponse {
+    fn eq(&self, other: &LuaResponse) -> bool {
+        match (self, other) {
+            (&LuaResponse::InvalidName, &LuaResponse::InvalidName) => true,
+            (&LuaResponse::Pong, &LuaResponse::Pong) => true,
+
+            (&LuaResponse::Variable(ref v1), &LuaResponse::Variable(ref v2)) =>
+                v1 == v2,
+            (&LuaResponse::Error(ref e1), &LuaResponse::Error(ref e2)) =>
+                format!("{:?}", e1) == format!("{:?}", e2),
+            (&LuaResponse::Function(_), &LuaResponse::Function(_)) => true,
+
+            _ => false
+        }
+    }
 }
 
 unsafe impl Send for LuaResponse { }
