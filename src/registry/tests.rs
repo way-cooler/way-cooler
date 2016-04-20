@@ -45,11 +45,11 @@ fn registry_tests() {
     let numbers = vec![1, 2, 3, 4, 5];
     let point = Point { x: -11, y: 12 };
 
-    set(String::from("test_num"), num);
-    set(String::from("test_double"), double);
-    set(String::from("test_string"), string.clone());
-    set(String::from("test_numbers"), numbers.clone());
-    set(String::from("test_point"), point.clone());
+    set(String::from("test_num"), LUA_ACCESS, num);
+    set(String::from("test_double"), LUA_ACCESS, double);
+    set(String::from("test_string"), LUA_ACCESS, string.clone());
+    set(String::from("test_numbers"), LUA_ACCESS, numbers.clone());
+    set(String::from("test_point"), LUA_ACCESS, point.clone());
 
     assert!(contains_key(&String::from("test_num")));
     assert!(contains_key(&String::from("test_double")));
@@ -59,7 +59,7 @@ fn registry_tests() {
 
     assert_eq!(get::<_, i32>(&String::from("test_num")).unwrap().1, num);
     assert_eq!(get::<_, f64>(&String::from("test_double")).unwrap().1, double);
-    assert_eq!(get::<_, String>(&String::from("test_string")).unwrap().1, string);
+    assert_eq!(get::<_,String>(&String::from("test_string")).unwrap().1, string);
     assert_eq!(get::<_, Vec<i32>>(&String::from("test_numbers")).unwrap().1,
                numbers);
     assert_eq!(get::<_, Point>(&String::from("test_point")).unwrap().1, point);
@@ -100,7 +100,7 @@ where T: ::std::fmt::Debug + Decodable + PartialEq {
     for _ in 1 .. 100 {
         if let Ok(acc_val) = get::<_, T>(&name) {
             let (acc, val) = acc_val;
-            assert_eq!(acc, RegistryAccess::Public);
+            assert!(acc.contains(LUA_ACCESS));
             assert_eq!(val, in_val);
         }
         else {

@@ -14,7 +14,7 @@ use super::*;
 fn big_lua_test() {
     println!("Testing lua thread...");
     super::init();
-    thread::sleep(Duration::from_secs(5));
+    thread::sleep(Duration::from_secs(2));
     test_variable();
 
     send(LuaQuery::Terminate).unwrap();
@@ -23,11 +23,13 @@ fn big_lua_test() {
 }
 
 fn test_variable() {
-    send(LuaQuery::Execute("hello = 'hello world!'".to_string()))
-        .unwrap();
+    let response = send(LuaQuery::Execute("hello = 'hello world!'".to_string()))
+        .unwrap().recv().unwrap();
+    assert_eq!(response, LuaResponse::Pong);
 
-    send(LuaQuery::Execute("assert(hello == 'hello world!')".to_string()))
-        .unwrap();
+    let assertion = send(LuaQuery::Execute("assert(hello == 'hello world!')"
+                                        .to_string())).unwrap().recv().unwrap();
+    assert_eq!(assertion, LuaResponse::Pong);
 }
 
 fn test_bad_code() {
