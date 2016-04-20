@@ -237,42 +237,9 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             }
         },
         LuaQuery::ExecWithLua(func) => {
-            func(lua);
-            thread_send(request.reply, LuaResponse::Pong);
+            let result = func(lua);
+            thread_send(request.reply, LuaResponse::Variable(result));
         },
-        LuaQuery::SetValue(name, val) => {
-            trace!("thread: SetValue: Setting {:?} to {:?}", name, val);
-            /*
-            let maybe_table: Option<LuaTable<_>> = lua.get::<_, _>(name[0]);
-
-            let table: LuaTable<_>;
-
-            if name.len() == 0 {
-                thread_send(request.reply, LuaResponse::InvalidName);
-            }
-            else if name.len() == 1 {
-                let lua_val =
-                table.set(name[0], val);
-            }
-            else {
-                match maybe_table {
-                    Some(table) =>
-                }
-            }*/
-        },
-        LuaQuery::Invoke(ident, vals) => {
-            panic!("thread: unimplemented LuaQuery::Invoke!");
-            /*
-            if ident.len() == 0 {
-                thread_send(request.reply, LuaResponse::InvalidName);
-                return;
-            }
-            */
-        },
-        LuaQuery::NewTable(name_list) => {
-            panic!("thread: unimplemented LuaQuery::NewTable!");
-        },
-
         LuaQuery::Ping => {
             thread_send(request.reply, LuaResponse::Pong);
         },
@@ -292,44 +259,6 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
         Ok(_) => {}
     }
 }
-
-fn walk_table(table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
-    if let Some(name) = names.first() {
-        if let AnyLuaValue::LuaArray(arr) = table {
-            for (key, val) in arr {
-                if let AnyLuaValue::LuaString(key_str) = key {
-                    if *key_str == *name {
-                        return walk_table(val, &names[1..]);
-                    }
-                }
-            }
-        }
-        return None;
-    }
-    return Some(table); // ???
-}
-
-/*
-fn set_value<'l>(lua: &'l mut Lua, mut table: PushGuard<LuaTable<Lua>>,
-             names: &[String], val: AnyLuaValue) {
-    // Should not be reached!
-    if names.len() == 0 {
-        return;
-    }
-    // The last name is the name of the value
-    else if names.len() == 1 {
-        table.set(names[0].clone(), val);
-    }
-    else {
-        let maybe_table = table.get::<_, _>(names[0]);
-        match maybe_table {
-            Some(new_table) => {
-                set_value(&mut lua, new_table, &names[1..], val);
-            }
-            None => { return; }
-        }
-    }
-}*/
 
 /// Converts a Json map into an AnyLuaValue
 pub fn json_to_lua(json: Json) -> AnyLuaValue {

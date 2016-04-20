@@ -17,7 +17,7 @@ use std::fmt::Result as FmtResult;
 pub type LuaIdent = Vec<String>;
 
 /// Methods that the Lua thread can execute.
-pub type LuaFunc = fn(&mut Lua);
+pub type LuaFunc = fn(&mut Lua) -> AnyLuaValue;
 
 /// Messages sent to the lua thread
 pub enum LuaQuery {
@@ -35,13 +35,6 @@ pub enum LuaQuery {
 
     /// Get a variable, expecting an AnyLuaValue
     GetValue(LuaIdent),
-    /// Invoke a function found at the position,
-    /// with the specified arguments.
-    Invoke(LuaIdent, Vec<AnyLuaValue>),
-    /// Set a value
-    SetValue(LuaIdent, Json),
-    /// Create a new table
-    NewTable(LuaIdent),
     /// Execute some Rust using the Lua context.
     ExecWithLua(LuaFunc),
 }
@@ -58,12 +51,6 @@ impl Debug for LuaQuery {
                 write!(f, "LuaQuery::ExecFile({:?})", val),
             &LuaQuery::GetValue(ref val) =>
                 write!(f, "LuaQuery::GetValue({:?})", val),
-            &LuaQuery::Invoke(ref ident, ref val) =>
-                write!(f, "LuaQuery::Invoke({:?}, {:?})", ident, val),
-            &LuaQuery::SetValue(ref name, ref json) =>
-                write!(f, "LuaQuery::SetValue({:?}, {:?})", name, json),
-            &LuaQuery::NewTable(ref name) =>
-                write!(f, "LuaQuery::NewTable({:?})", name),
             // This is why there's no #[derive(Debug)],
             // and why we have lua/types.rs
             &LuaQuery::ExecWithLua(_) =>
