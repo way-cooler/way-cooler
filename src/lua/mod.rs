@@ -75,18 +75,26 @@ pub enum LuaSendError {
 /// Attemps to send a LuaQuery to the lua thread.
 pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     if !thread_running() {
-        Err(LuaSendError::ThreadClosed)
+        return Err(LuaSendError::ThreadClosed);
     }
-    else if let Some(sender) = SENDER.lock().unwrap().clone() {
-        let (tx, rx) = channel();
-        let message = LuaMessage { reply: tx, query: query };
-        match sender.send(message) {
-            Ok(_) => Ok(rx),
-            Err(e) => Err(LuaSendError::Sender(e.0.query))
+    let thread_sender: Sender<LuaMessage>;
+    {
+        let maybe_sender = SENDER.lock().unwrap();
+        match *maybe_sender {
+            Some(ref real_sender) => {
+                thread_sender = real_sender.clone();
+            },
+            // If the sender doesn't exist yet, the thread doesn't either
+            None => {
+                return Err(LuaSendError::ThreadUninitialized);
+            }
         }
     }
-    else {
-        Err(LuaSendError::ThreadUninitialized)
+    let (tx, rx) = channel();
+    let message = LuaMessage { reply: tx, query: query };
+    match thread_sender.send(message) {
+        Ok(_) => Ok(rx),
+        Err(e) => Err(LuaSendError::Sender(e.0.query))
     }
 }
 
