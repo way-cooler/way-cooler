@@ -100,6 +100,22 @@ pub enum LuaResponse {
     Pong,
 }
 
+impl LuaResponse {
+    /// Whether this response is an InvalidName or Error
+    pub fn is_err(&self) -> bool {
+        match self {
+            &LuaResponse::InvalidName | &LuaResponse::Error(_) => true,
+            _ => false
+        }
+    }
+
+    /// If this response is a Variable, Function, or Pong
+    #[inline]
+    pub fn is_ok(&self) -> bool {
+        !self.is_err()
+    }
+}
+
 impl PartialEq for LuaResponse {
     fn eq(&self, other: &LuaResponse) -> bool {
         match (self, other) {
