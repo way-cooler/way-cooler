@@ -238,7 +238,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
         },
         LuaQuery::ExecWithLua(func) => {
             let result = func(lua);
-            thread_send(request.reply, LuaResponse::Variable(result));
+            thread_send(request.reply, LuaResponse::Variable(Some(result)));
         },
         LuaQuery::Ping => {
             thread_send(request.reply, LuaResponse::Pong);
@@ -260,6 +260,21 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
     }
 }
 
+fn walk_table(table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
+    if let Some(name) = names.first() {
+        if let AnyLuaValue::LuaArray(arr) = table {
+            for (key, val) in arr {
+                if let AnyLuaValue::LuaString(key_str) = key {
+                    if *key_str == *name {
+                        return walk_table(val, &names[1..]);
+                    }
+                }
+            }
+        }
+        return None;
+    }
+    return Some(table);
+}
 /// Converts a Json map into an AnyLuaValue
 pub fn json_to_lua(json: Json) -> AnyLuaValue {
     match json {
