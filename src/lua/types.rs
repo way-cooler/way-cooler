@@ -11,13 +11,6 @@ use std::fmt::Result as FmtResult;
 
 use std::cmp::{PartialEq, Eq};
 
-/// Represents an identifier for dealing with nested tables.
-///
-/// To access foo.bar.baz, use vec!["foo", "bar", "baz"].
-///
-/// To access foo[2], use vec!["foo", 2].
-pub type LuaIdent = Vec<String>;
-
 /// Methods that the Lua thread can execute.
 pub type LuaFunc = fn(&mut Lua) -> AnyLuaValue;
 
@@ -34,11 +27,8 @@ pub enum LuaQuery {
     Execute(String),
     /// Execute a file
     ExecFile(String),
-
-    /// Get a variable, expecting an AnyLuaValue
-    GetValue(LuaIdent),
     /// Execute some Rust using the Lua context.
-    ExecWithLua(LuaFunc),
+    ExecRust(LuaFunc),
 }
 
 impl Debug for LuaQuery {
@@ -51,12 +41,10 @@ impl Debug for LuaQuery {
                 write!(f, "LuaQuery::Execute({:?})", val),
             &LuaQuery::ExecFile(ref val) =>
                 write!(f, "LuaQuery::ExecFile({:?})", val),
-            &LuaQuery::GetValue(ref val) =>
-                write!(f, "LuaQuery::GetValue({:?})", val),
             // This is why there's no #[derive(Debug)],
             // and why we have lua/types.rs
-            &LuaQuery::ExecWithLua(_) =>
-                write!(f, "LuaQuery::ExecWithLua()")
+            &LuaQuery::ExecRust(_) =>
+                write!(f, "LuaQuery::ExecRust()")
         }
     }
 }
@@ -75,9 +63,7 @@ impl PartialEq for LuaQuery {
                 s1 == s2,
             (&LuaQuery::ExecFile(ref s1), &LuaQuery::ExecFile(ref s2)) =>
                 s1 == s2,
-            (&LuaQuery::GetValue(ref i1), &LuaQuery::GetValue(ref i2)) =>
-                i1 == i2,
-            (&LuaQuery::ExecWithLua(_), &LuaQuery::ExecWithLua(_)) => true,
+            (&LuaQuery::ExecRust(_), &LuaQuery::ExecRust(_)) => true,
 
             _ => false
         }
