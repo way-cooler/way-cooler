@@ -5,8 +5,9 @@ use std::time::Duration;
 use std::thread;
 use std::collections::BTreeMap;
 
+use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
-use hlua::LuaError;
+use hlua::{Lua, LuaError};
 use rustc_serialize::json::{Json, ToJson, Object};
 
 use super::*;
@@ -86,7 +87,7 @@ fn thread_exec_file_ok() {
 
     // Print the method from the file
     let test_receiver = send(LuaQuery::Execute(
-        "foo = confirm_file()".to_string())).unwrap();
+        "confirm_file()".to_string())).unwrap();
     let test_result = test_receiver.recv().unwrap();
     assert!(test_result.is_ok());
     assert!(test_result == LuaResponse::Pong);
@@ -126,6 +127,21 @@ fn thread_exec_file_err() {
             }
         }
         _ => panic!("Got wrong LuaResponse type: {:?}", syntax_result)
+    }
+}
+
+fn test_rust_exec() {
+    wait_for_thread();
+}
+
+fn rust_lua_fn(lua: &mut Lua) -> AnyLuaValue {
+    {
+        let mut foo = lua.empty_array("foo");
+        foo.set("bar", 12);
+    }
+    match lua.get::<AnyLuaValue, _>("foo") {
+        Some(LuaArray(arr)) => AnyLuaValue::LuaBoolean(true),
+        _ => AnyLuaValue::LuaBoolean(false)
     }
 }
 
