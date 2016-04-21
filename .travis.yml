@@ -1,0 +1,22 @@
+language: rust
+addons:
+  apt:
+    packages:
+      - libwayland-server0
+      - libxkbcommon-dev
+      - cmake
+before_install:
+  - mkdir -p /home/travis/build/Immington-Industries/way-cooler/target/debug/deps/
+  - wget https://www.dropbox.com/s/4xjpxwxwy3ulem8/libwlc.so?dl=0 --output-document=/home/travis/build/Immington-Industries/way-cooler/target/debug/deps/libwlc.so
+rust:
+  - stable
+  - beta
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+notifications:
+  email: false
+script: cargo build --verbose
+after_failure:
+  - ls -R
