@@ -134,7 +134,7 @@ fn thread_exec_file_err() {
 #[test]
 fn test_rust_exec() {
     wait_for_thread();
-    let rust_receiver = send(LuaQuery::ExecWithLua(rust_lua_fn)).unwrap();
+    let rust_receiver = send(LuaQuery::ExecRust(rust_lua_fn)).unwrap();
     let rust_result = rust_receiver.recv().unwrap();
     assert!(rust_result.is_ok());
 

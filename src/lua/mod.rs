@@ -236,7 +236,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
                 None => thread_send(request.reply, LuaResponse::Variable(None))
             }
         },
-        LuaQuery::ExecWithLua(func) => {
+        LuaQuery::ExecRust(func) => {
             let result = func(lua);
             thread_send(request.reply, LuaResponse::Variable(Some(result)));
         },

@@ -38,7 +38,7 @@ pub enum LuaQuery {
     /// Get a variable, expecting an AnyLuaValue
     GetValue(LuaIdent),
     /// Execute some Rust using the Lua context.
-    ExecWithLua(LuaFunc),
+    ExecRust(LuaFunc),
 }
 
 impl Debug for LuaQuery {
@@ -55,8 +55,8 @@ impl Debug for LuaQuery {
                 write!(f, "LuaQuery::GetValue({:?})", val),
             // This is why there's no #[derive(Debug)],
             // and why we have lua/types.rs
-            &LuaQuery::ExecWithLua(_) =>
-                write!(f, "LuaQuery::ExecWithLua()")
+            &LuaQuery::ExecRust(_) =>
+                write!(f, "LuaQuery::ExecRust()")
         }
     }
 }
@@ -77,7 +77,7 @@ impl PartialEq for LuaQuery {
                 s1 == s2,
             (&LuaQuery::GetValue(ref i1), &LuaQuery::GetValue(ref i2)) =>
                 i1 == i2,
-            (&LuaQuery::ExecWithLua(_), &LuaQuery::ExecWithLua(_)) => true,
+            (&LuaQuery::ExecRust(_), &LuaQuery::ExecRust(_)) => true,
 
             _ => false
         }
