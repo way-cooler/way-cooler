@@ -4,7 +4,14 @@ addons:
     packages:
       - libwayland-server0
       - libxkbcommon-dev
-      - cmake
+      - libudev1
+      - libudev1-dev
+      - libxcb-composite0
+      - libxcb-composite0-dev
+      - libglew-dev
+      - libegl1-mesa-dev
+      - libgbm1
+      - libgbm-dev
 before_install:
   - mkdir -p /home/travis/build/Immington-Industries/way-cooler/target/debug/deps/
   - wget https://www.dropbox.com/s/4xjpxwxwy3ulem8/libwlc.so?dl=0 --output-document=/home/travis/build/Immington-Industries/way-cooler/target/debug/deps/libwlc.so
