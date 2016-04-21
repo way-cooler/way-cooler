@@ -227,7 +227,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             }
             // Table[0] String had to be cloned, it'd be nice if Rust let us
             // borrow out parts of memory
-            match lua.get::<AnyLuaValue, _>(varname[0].clone()) {
+            match lua.get::<AnyLuaValue, _>(varname[0].borrow()) {
                 Some(table) => {
                     let full_table = walk_table(table, &varname[1..]);
                     thread_send(request.reply,
@@ -365,7 +365,7 @@ pub fn lua_object_to_json(obj: Vec<(AnyLuaValue, AnyLuaValue)>)
                 json_obj.insert(text, try!(lua_to_json(val)));
             },
             AnyLuaValue::LuaNumber(ix) => {
-                json_obj.insert(format!("{}", ix), try!(lua_to_json(val)));
+                json_obj.insert(ix.to_string(), try!(lua_to_json(val)));
             }
             _ => { return Err(()); }
         }
