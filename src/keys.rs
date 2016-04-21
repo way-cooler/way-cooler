@@ -23,6 +23,10 @@ lazy_static! {
         let press_p = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"]).unwrap();
         map.insert(press_p, Arc::new(Box::new(key_pointer_pos)));
 
+        let press_esc = KeyPress::from_key_names(vec!["Ctrl"],
+                                                 vec!["Escape"]).unwrap();
+        map.insert(press_esc, Arc::new(Box::new(key_esc)));
+
         RwLock::new(map)
     };
 }
@@ -35,7 +39,7 @@ fn key_sleep() {
     use lua::LuaQuery;
 
     info!("keyhandler: Beginning thread::sleep keypress!");
-    lua::try_send(LuaQuery::Execute("print('>entering sleep')\
+    lua::send(LuaQuery::Execute("print('>entering sleep')\
                                  os.execute('sleep 5')\
                                  print('>leaving sleep')".to_string()))
                   .unwrap();
@@ -52,7 +56,7 @@ fn key_pointer_pos() {
                 local x, y = wm.pointer.get_position()\n\
                 print('The cursor is at ' .. x .. ', ' .. y)\n\
                 end".to_string();
-    lua::try_send(LuaQuery::Execute(code)).unwrap();
+    lua::send(LuaQuery::Execute(code)).unwrap();
 }
 
 fn key_s() {
@@ -61,6 +65,11 @@ fn key_s() {
 
 fn key_f4() {
     info!("[Key handler] F4 keypress!");
+}
+
+fn key_esc() {
+    info!("handler: Esc keypress!");
+    ::rustwlc::terminate();
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]

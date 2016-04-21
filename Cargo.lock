@@ -2,6 +2,7 @@
 name = "way-cooler"
 version = "0.1.0"
 dependencies = [
+ "bitflags 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hlua 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -21,6 +22,11 @@ dependencies = [
 [[package]]
 name = "bitflags"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "bitflags"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
