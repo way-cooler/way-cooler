@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
+use hlua::lua_tables::LuaTable;
 use hlua::{Lua, LuaError};
 use rustc_serialize::json::{Json, ToJson, Object};
 
@@ -130,19 +131,38 @@ fn thread_exec_file_err() {
     }
 }
 
+#[test]
 fn test_rust_exec() {
     wait_for_thread();
+    let rust_receiver = send(LuaQuery::ExecWithLua(rust_lua_fn)).unwrap();
+    let rust_result = rust_receiver.recv().unwrap();
+    assert!(rust_result.is_ok());
+
+    match rust_result {
+        LuaResponse::Variable(Some(var)) => {
+            match var {
+                AnyLuaValue::LuaBoolean(b) => {
+                    if !b {
+                        panic!("Rust function failed!");
+                    }
+                },
+                _ => panic!("Rust function returned wrong AnyLuaValue")
+            }
+        },
+        _ => panic!("Got wrong LuaResponse from Rust function!")
+    }
 }
 
 fn rust_lua_fn(lua: &mut Lua) -> AnyLuaValue {
     {
         let mut foo = lua.empty_array("foo");
-        foo.set("bar", 12);
+        foo.set("bar", 12.0);
     }
-    match lua.get::<AnyLuaValue, _>("foo") {
-        Some(LuaArray(arr)) => AnyLuaValue::LuaBoolean(true),
-        _ => AnyLuaValue::LuaBoolean(false)
-    }
+    let mut maybe_foo = lua.get::<LuaTable<_>, _>("foo");
+    assert!(maybe_foo.is_some());
+    let mut foo = maybe_foo.unwrap();
+    assert!(foo.get::<f64, _>("bar").is_some());
+    AnyLuaValue::LuaBoolean(true)
 }
 
 #[test]
