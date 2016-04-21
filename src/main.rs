@@ -6,7 +6,6 @@ extern crate lazy_static;
 extern crate bitflags;
 
 extern crate rustwlc;
-extern crate libc;
 
 #[macro_use]
 extern crate log;
@@ -28,8 +27,7 @@ mod callbacks;
 mod lua;
 
 /// Callback to route wlc logs into env_logger
-extern "C" fn log_handler(level: LogType, message_ptr: *const libc::c_char) {
-    let message = unsafe { rustwlc::pointer_to_string(message_ptr) };
+fn log_handler(level: LogType, message: &str) {
     match level {
         LogType::Info => info!("wlc: {}", message),
         LogType::Warn => warn!("wlc: {}", message),
@@ -77,7 +75,7 @@ fn main() {
     }
     builder.init().unwrap();
     info!("Logger initialized, setting wlc handler.");
-    rustwlc::log_set_handler(log_handler);
+    rustwlc::log_set_rust_handler(log_handler);
 
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
 

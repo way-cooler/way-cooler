@@ -9,8 +9,7 @@ license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
 
 [dependencies]
-libc = "*"
-rustwlc = "^0.3"
+rustwlc = { git = "https://github.com/Immington-Industries/rust-wlc.git" }
 lazy_static = "*"
 log = "*"
 env_logger = "*"
