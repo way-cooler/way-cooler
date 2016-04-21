@@ -72,7 +72,7 @@ fn main() {
     }
     builder.init().unwrap();
     info!("Logger initialized, setting wlc handler.");
-    rustwlc::log_set_handler(log_handler);
+    rustwlc::log_set_rust_handler(log_handler);
 
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
 
