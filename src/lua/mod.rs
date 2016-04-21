@@ -27,7 +27,7 @@ mod funcs;
 mod tests;
 
 mod types;
-pub use self::types::{LuaQuery, LuaFunc, LuaIdent, LuaResponse};
+pub use self::types::{LuaQuery, LuaFunc, LuaResponse};
 
 lazy_static! {
     /// Sends requests to the lua thread
@@ -217,25 +217,6 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
                 thread_send(request.reply, LuaResponse::Error(read_error));
             }
         },
-
-        LuaQuery::GetValue(varname) => {
-            trace!("thread: Received request to get variable {:?}", varname);
-
-            if varname.len() == 0 {
-                thread_send(request.reply, LuaResponse::InvalidName);
-                return;
-            }
-            // Table[0] String had to be cloned, it'd be nice if Rust let us
-            // borrow out parts of memory
-            match lua.get::<AnyLuaValue, _>(varname[0].borrow()) {
-                Some(table) => {
-                    let full_table = walk_table(table, &varname[1..]);
-                    thread_send(request.reply,
-                                LuaResponse::Variable(full_table));
-                },
-                None => thread_send(request.reply, LuaResponse::Variable(None))
-            }
-        },
         LuaQuery::ExecRust(func) => {
             let result = func(lua);
             thread_send(request.reply, LuaResponse::Variable(Some(result)));
@@ -260,21 +241,6 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
     }
 }
 
-fn walk_table(table: AnyLuaValue, names: &[String]) -> Option<AnyLuaValue> {
-    if let Some(name) = names.first() {
-        if let AnyLuaValue::LuaArray(arr) = table {
-            for (key, val) in arr {
-                if let AnyLuaValue::LuaString(key_str) = key {
-                    if *key_str == *name {
-                        return walk_table(val, &names[1..]);
-                    }
-                }
-            }
-        }
-        return None;
-    }
-    return Some(table);
-}
 /// Converts a Json map into an AnyLuaValue
 pub fn json_to_lua(json: Json) -> AnyLuaValue {
     match json {
