@@ -1,7 +1,5 @@
 //! Layout handling
 
-extern crate rustwlc;
-
 use rustwlc::handle::{WlcView, WlcOutput};
 
 enum ContainerTypes {
