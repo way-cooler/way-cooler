@@ -2,7 +2,8 @@
 
 use rustwlc::handle::{WlcView, WlcOutput};
 
-enum ContainerTypes {
+#[derive(PartialEq, Clone, Copy)]
+pub enum ContainerType {
     Root,        /* Root container, only one exists */
     Output,      /* Output, like a monitor or head */
     Workspace,   /* A workspace */
@@ -23,12 +24,15 @@ pub trait Containable {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent<T: Containable>(&self) -> Option<T>;
+    fn get_parent(&self) -> Option<&Containable>;
 
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children<T: Containable>(&self) -> Vec<T>;
+    fn get_children(&self) -> Vec<Box<Containable>>;
+
+    /// Gets the type of the container
+    fn get_type(&self) -> ContainerType;
 
     /// Returns true if this container is focused.
     fn is_focused(&self) -> bool;
@@ -37,7 +41,7 @@ pub trait Containable {
     fn remove_container(self);
 
     /// Sets this container (and everything in it) to given visibility
-    fn set_visibility(visibilty: bool);
+    fn set_visibility(&mut self, visibilty: bool);
 
     /// Gets the X and Y dimensions of the container
     fn get_dimensions(&self) -> (u64, u64);
@@ -46,7 +50,7 @@ pub trait Containable {
     fn get_position(&self) -> (i64, i64);
 
     /// Finds a parent container with the given type
-    fn get_parent_by_type<T: Containable>(&self, type_: T) -> T;
+    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable>;
 }
 
 /// View specific functions
@@ -67,10 +71,12 @@ pub trait Viewable {
     fn active_workspace<T: Containable>(&self) -> T;
 }
 
-struct Container {
-    // Can't be a view, that's the View struct's job
+struct Container<T: Containable> {
     handle: Option<WlcOutput>,
-    type_: ContainerTypes,
+    
+    parent: Box<T>,
+    children: Vec<Box<T>>,
+    type_: ContainerType,
     layout: Layout,
 
     width: u64,
@@ -83,6 +89,66 @@ struct Container {
     is_focused: bool,
     is_floating: bool,
 }
+
+impl<C: Containable> Containable for Container<C> {
+    
+    /// Gets the parent that this container sits in.
+    ///
+    /// If the container is the root, it returns None
+    fn get_parent(&self) -> Option<&Containable> {
+        match self.type_ {
+            ContainerType::Root => None,
+            _ => Some(&*self.parent as &Containable),
+        }
+    }
+    /// Gets the children of this container.
+    ///
+    /// Views never have children
+    fn get_children(&self) -> Vec<Box<Containable>> {
+        unimplemented!();
+    }
+
+    fn get_type(&self) -> ContainerType {
+        self.type_
+    }
+
+    /// Returns true if this container is focused.
+    fn is_focused(&self) -> bool { 
+        self.is_focused
+    }
+
+    /// Removes this container and all of its children
+    fn remove_container(self) {
+        for child in self.children {
+            child.remove_container();
+        }
+    }
+
+    /// Sets this container (and everything in it) to given visibility
+    fn set_visibility(&mut self, visibilty: bool) {
+        self.visible = visibilty
+    }
+
+    /// Gets the X (width) and Y (height) dimensions of the container
+    fn get_dimensions(&self) -> (u64, u64) {
+        (self.width, self.height)
+    }
+
+    /// Gets the position of this container on the screen
+    fn get_position(&self) -> (i64, i64) {
+        (self.x, self.y)
+    }
+
+    /// Finds a parent container with the given type, if there is any
+    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable> {
+        let mut container = self.get_parent();
+        while container.is_some() && container.unwrap().get_type() != type_ {
+            container = container.unwrap().get_parent();
+        }
+        container
+    }
+}
+
 
 struct View {
     handle: Option<WlcView>,
