@@ -71,6 +71,9 @@ pub trait Containable {
         unimplemented!();
     }
 
+    fn is_root(&self) {
+        self.get_type == ContainerType::Root
+
 
     /// Finds a parent container with the given type, if there is any
     fn get_parent_by_type(&self, type_: ContainerType) -> Option<Rc<Node>> {
