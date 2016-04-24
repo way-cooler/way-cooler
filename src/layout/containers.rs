@@ -55,7 +55,7 @@ pub trait Containable {
     fn remove_container(&self);
 
     /// Sets this container (and everything in it) to given visibility
-    fn set_visibility(&mut self, visibilty: bool);
+    fn set_visibility(&mut self, visibility: bool);
 
     /// Gets the X and Y dimensions of the container
     fn get_dimensions(&self) -> (u64, u64);
@@ -144,8 +144,8 @@ impl Containable for Container {
     }
 
     /// Sets this container (and everything in it) to given visibility
-    fn set_visibility(&mut self, visibilty: bool) {
-        self.visible = visibilty
+    fn set_visibility(&mut self, visibility: bool) {
+        self.visible = visibility
     }
 
     /// Gets the X (width) and Y (height) dimensions of the container
@@ -171,6 +171,7 @@ impl Containable for Container {
 
 struct View {
     handle: Option<WlcView>,
+    parent: Box<Containable>,
 
     width: u64,
     height: u64,
@@ -181,4 +182,55 @@ struct View {
     visible: bool,
     is_focused: bool,
     is_floating: bool,
+}
+
+impl Containable for View {
+    /// Gets the parent that this container sits in.
+    ///
+    /// If the container is the root, it returns None
+    fn get_parent(&self) -> Option<&Containable> {
+        Some(&*self.parent)
+    }
+
+    /// Gets the children of this container.
+    ///
+    /// Views never have children
+    fn get_children(&self) -> Vec<Weak<Box<Containable>>> {
+        unimplemented!();
+    }
+
+    /// Gets the type of the container
+    fn get_type(&self) -> ContainerType {
+        ContainerType::View
+    }
+
+    /// Returns true if this container is focused.
+    fn is_focused(&self) -> bool {
+        self.is_focused
+    }
+
+    /// Removes this container and all of its children
+    fn remove_container(&self) {
+        unimplemented!();
+    }
+
+    /// Sets this container (and everything in it) to given visibility
+    fn set_visibility(&mut self, visibility: bool) {
+        self.visible = visibility
+    }
+
+    /// Gets the X and Y dimensions of the container
+    fn get_dimensions(&self) -> (u64, u64) {
+        (self.width, self.height)
+    }
+
+    /// Gets the position of this container on the screen
+    fn get_position(&self) -> (i64, i64) {
+        (self.x, self.y)
+    }
+
+    /// Finds a parent container with the given type
+    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable> {
+        unimplemented!();
+    }
 }
