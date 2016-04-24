@@ -9,6 +9,7 @@ pub enum ContainerType {
     Output,      /* Output, like a monitor or head */
     Workspace,   /* A workspace */
     View         /* A view (aka a window) */
+}
 
 /// Types of container
 enum ContainerTypes {
