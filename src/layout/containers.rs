@@ -39,7 +39,7 @@ pub trait Containable {
     fn is_focused(&self) -> bool;
 
     /// Removes this container and all of its children
-    fn remove_container(self);
+    fn remove_container(&self);
 
     /// Sets this container (and everything in it) to given visibility
     fn set_visibility(&mut self, visibilty: bool);
@@ -64,7 +64,7 @@ pub trait Viewable {
 
     /// Returns true if this view is a parent is an ancestor of the child
     fn is_parent_of<T: Containable>(&self, child: T) -> bool;
-    
+
     /// Returns true if this view is a child is an decedent of the parent
     fn is_child_of<T: Containable>(&self, parent: T) -> bool;
 
@@ -74,7 +74,7 @@ pub trait Viewable {
 
 struct Container<T: Containable> {
     handle: Option<WlcOutput>,
-    
+
     parent: Box<T>,
     children: Vec<Rc<Box<Containable>>>,
     type_: ContainerType,
@@ -92,7 +92,7 @@ struct Container<T: Containable> {
 }
 
 impl<C: Containable> Containable for Container<C> {
-    
+
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
@@ -114,13 +114,20 @@ impl<C: Containable> Containable for Container<C> {
     }
 
     /// Returns true if this container is focused.
-    fn is_focused(&self) -> bool { 
+    fn is_focused(&self) -> bool {
         self.is_focused
     }
 
     /// Removes this container and all of its children
-    fn remove_container(self) {
-        unimplemented!();
+    fn remove_container(&self) {
+        for child in self.get_children() {
+            if let Some(child) = child.upgrade() {
+                if let Ok(child) = Rc::try_unwrap(child) {
+                    child.remove_container();
+                    drop(child);
+                }
+            }
+        }
     }
 
     /// Sets this container (and everything in it) to given visibility
