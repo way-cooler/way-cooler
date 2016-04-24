@@ -36,12 +36,12 @@ pub trait Containable {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Weak<Node>;
+    fn get_parent(&self) -> Option<Rc<Node>>;
 
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Weak<Node>>>;
+    fn get_children(&self) -> Option<Vec<Rc<Node>>>;
 
     /// Gets the type of the container
     fn get_type(&self) -> ContainerType;
@@ -78,13 +78,13 @@ pub trait Containable {
 
     /// Finds a parent container with the given type, if there is any
     fn get_parent_by_type(&self, type_: ContainerType) -> Option<Rc<Node>> {
-        let mut container = self.get_parent().upgrade();
+        let mut container = self.get_parent();
         loop {
             if let Some(parent) = container {
                 if parent.get_type() == type_ {
                     return Some(parent);
                 }
-                container = parent.get_parent().upgrade();
+                container = parent.get_parent();
             } else {
                 return None;
             }
@@ -128,31 +128,21 @@ impl Containable for Container {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Weak<Node> {
-        self.parent.clone()
-        /*
+    fn get_parent(&self) -> Option<Rc<Node>> {
         match self.type_ {
-            ContainerType::Root => { 
-                // such hack
-                unsafe {
-                    // very unsafe
-                    use std::mem;
-                    let _dummy: Node = mem::uninitialized();
-                    // much dummy
-                    let _rc_dummy = Rc::new(_dummy);
-                    Rc::downgrade(&_rc_dummy)}
-            },
-            _ => self.parent.clone(),
-        }*/
+            ContainerType::Root => None,
+            _ => self.parent.upgrade()
+        }
     }
+    
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Weak<Node>>> {
+    fn get_children(&self) -> Option<Vec<Rc<Node>>> {
         if self.children.len() == 0 {
             None
         } else {
-            Some(self.children.iter().map(|child| Rc::downgrade(&child)).collect())
+            Some(self.children.clone())
         }
     }
 
@@ -168,12 +158,8 @@ impl Containable for Container {
     /// Removes this container and all of its children
     fn remove_container(&self) -> Result<(), &'static str> {
         for child in self.get_children().expect("No children") {
-            if let Some(child) = child.upgrade() {
-                if let Ok(child) = Rc::try_unwrap(child) {
-                    child.remove_container().ok();
-                    drop(child);
-                }
-            }
+            child.remove_container().ok();
+            drop(child);
         }
         Ok(())
     }
@@ -215,14 +201,14 @@ impl Containable for View {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Weak<Node> {
-        self.parent.clone()
+    fn get_parent(&self) -> Option<Rc<Node>> {
+        self.parent.upgrade()
     }
 
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Weak<Node>>> {
+    fn get_children(&self) -> Option<Vec<Rc<Node>>> {
         None
     }
 
@@ -281,13 +267,13 @@ impl Viewable for View {
 
     /// Gets the active workspace of the view
     fn active_workspace(&self) -> Rc<Node> {
-        let mut workspace = self.get_parent().upgrade();
+        let mut workspace = self.get_parent();
         loop {
             if let Some(parent) = workspace {
                 if parent.get_type() == ContainerType::Workspace {
                     return parent
                 }
-                workspace = parent.get_parent().upgrade();
+                workspace = parent.get_parent();
             } else {
                 // Should never happen under our current setup
                 panic!("View not attached to a workspace!")
