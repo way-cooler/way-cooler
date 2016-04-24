@@ -71,8 +71,9 @@ pub trait Containable {
         unimplemented!();
     }
 
-    fn is_root(&self) {
-        self.get_type == ContainerType::Root
+    fn is_root(&self) -> bool {
+        self.get_type() == ContainerType::Root
+    }
 
 
     /// Finds a parent container with the given type, if there is any
@@ -287,6 +288,9 @@ impl Viewable for View {
                     return parent
                 }
                 workspace = parent.get_parent().upgrade();
+            } else {
+                // Should never happen under our current setup
+                panic!("View not attached to a workspace!")
             }
         }
     }
