@@ -7,10 +7,14 @@ type Node = Box<Containable>;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum ContainerType {
-    Root,        /* Root container, only one exists */
-    Output,      /* Output, like a monitor or head */
-    Workspace,   /* A workspace */
-    View         /* A view (aka a window) */
+    /// Root container, only one exists 
+    Root,
+    /// WlcOutput/Monitor
+    Output,
+    /// A workspace 
+    Workspace,
+    /// A view (window)
+    View
 }
 
 /// Types of container
