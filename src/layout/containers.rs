@@ -43,7 +43,7 @@ pub trait Containable {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Vec<Weak<Box<Containable>>>;
+    fn get_children(&self) -> Option<Vec<Weak<Box<Containable>>>>;
 
     /// Gets the type of the container
     fn get_type(&self) -> ContainerType;
@@ -52,7 +52,7 @@ pub trait Containable {
     fn is_focused(&self) -> bool;
 
     /// Removes this container and all of its children
-    fn remove_container(&self);
+    fn remove_container(&self) -> Result<(), &'static str>;
 
     /// Sets this container (and everything in it) to given visibility
     fn set_visibility(&mut self, visibility: bool);
@@ -124,8 +124,12 @@ impl Containable for Container {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Vec<Weak<Box<Containable>>> {
-        self.children.iter().map(|child| Rc::downgrade(&child)).collect()
+    fn get_children(&self) -> Option<Vec<Weak<Box<Containable>>>> {
+        if self.children.len() == 0 {
+            None
+        } else {
+            Some(self.children.iter().map(|child| Rc::downgrade(&child)).collect())
+        }
     }
 
     fn get_type(&self) -> ContainerType {
@@ -138,8 +142,8 @@ impl Containable for Container {
     }
 
     /// Removes this container and all of its children
-    fn remove_container(&self) {
-        for child in self.get_children() {
+    fn remove_container(&self) -> Result<(), &'static str> {
+        for child in self.get_children().expect("No children") {
             if let Some(child) = child.upgrade() {
                 if let Ok(child) = Rc::try_unwrap(child) {
                     child.remove_container();
@@ -147,6 +151,7 @@ impl Containable for Container {
                 }
             }
         }
+        Ok(())
     }
 
     /// Sets this container (and everything in it) to given visibility
@@ -193,8 +198,8 @@ impl Containable for View {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Vec<Weak<Box<Containable>>> {
-        unimplemented!();
+    fn get_children(&self) -> Option<Vec<Weak<Box<Containable>>>> {
+        None
     }
 
     /// Gets the type of the container
@@ -208,7 +213,7 @@ impl Containable for View {
     }
 
     /// Removes this container and all of its children
-    fn remove_container(&self) {
+    fn remove_container(&self) -> Result<(), &'static str> {
         unimplemented!();
     }
 
