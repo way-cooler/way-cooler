@@ -1,14 +1,20 @@
 //! Layout handling
 
-use rustwlc::handle::{WlcView, WlcOutput};
+use rustwlc::{WlcView, WlcOutput};
 
+/// Types of container
 enum ContainerTypes {
-    Root,        /* Root container, only one exists */
-    Output,      /* Output, like a monitor or head */
-    Workspace,   /* A workspace */
-    View         /* A view (aka a window) */
+    /// Root container, only one exists
+    Root,
+    /// WlcOutput/monitor
+    Output,
+    /// A workspace
+    Workspace,
+    /// A view (window)
+    View
 }
 
+/// Layout mode for a container
 enum Layout {
     None,
     Horizontal,
@@ -59,7 +65,7 @@ pub trait Viewable {
 
     /// Returns true if this view is a parent is an ancestor of the child
     fn is_parent_of<T: Containable>(&self, child: T) -> bool;
-    
+
     /// Returns true if this view is a child is an decedent of the parent
     fn is_child_of<T: Containable>(&self, parent: T) -> bool;
 
