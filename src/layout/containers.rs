@@ -85,10 +85,10 @@ pub trait Viewable {
     fn active_workspace<T: Containable>(&self) -> T;
 }
 
-struct Container<T: Containable> {
+struct Container {
     handle: Option<WlcOutput>,
 
-    parent: Box<T>,
+    parent: Box<Containable>,
     children: Vec<Rc<Box<Containable>>>,
     type_: ContainerType,
     layout: Layout,
@@ -104,7 +104,7 @@ struct Container<T: Containable> {
     is_floating: bool,
 }
 
-impl<C: Containable> Containable for Container<C> {
+impl Containable for Container {
 
     /// Gets the parent that this container sits in.
     ///
@@ -112,7 +112,7 @@ impl<C: Containable> Containable for Container<C> {
     fn get_parent(&self) -> Option<&Containable> {
         match self.type_ {
             ContainerType::Root => None,
-            _ => Some(&*self.parent as &Containable),
+            _ => Some(&*self.parent),
         }
     }
     /// Gets the children of this container.
