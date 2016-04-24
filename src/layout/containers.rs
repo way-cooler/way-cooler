@@ -1,6 +1,7 @@
 //! Layout handling
 
 use rustwlc::handle::{WlcView, WlcOutput};
+use std::rc::{Rc, Weak};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum ContainerType {
@@ -29,7 +30,7 @@ pub trait Containable {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Vec<Box<Containable>>;
+    fn get_children(&self) -> Vec<Weak<&Containable>>;
 
     /// Gets the type of the container
     fn get_type(&self) -> ContainerType;
@@ -75,7 +76,7 @@ struct Container<T: Containable> {
     handle: Option<WlcOutput>,
     
     parent: Box<T>,
-    children: Vec<Box<T>>,
+    children: Vec<Rc<T>>,
     type_: ContainerType,
     layout: Layout,
 
@@ -104,7 +105,7 @@ impl<C: Containable> Containable for Container<C> {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Vec<Box<Containable>> {
+    fn get_children(&self) -> Vec<Weak<&Containable>> {
         unimplemented!();
     }
 
@@ -119,9 +120,7 @@ impl<C: Containable> Containable for Container<C> {
 
     /// Removes this container and all of its children
     fn remove_container(self) {
-        for child in self.children {
-            child.remove_container();
-        }
+        unimplemented!();
     }
 
     /// Sets this container (and everything in it) to given visibility
