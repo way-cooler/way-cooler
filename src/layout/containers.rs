@@ -77,11 +77,11 @@ pub trait Containable {
 
 
     /// Finds a parent container with the given type, if there is any
-    fn get_parent_by_type(&self, type_: ContainerType) -> Option<Rc<Node>> {
+    fn get_parent_by_type(&self, container_type: ContainerType) -> Option<Rc<Node>> {
         let mut container = self.get_parent();
         loop {
             if let Some(parent) = container {
-                if parent.get_type() == type_ {
+                if parent.get_type() == container_type {
                     return Some(parent);
                 }
                 container = parent.get_parent();
@@ -109,7 +109,7 @@ struct Container {
 
     parent: Weak<Node>,
     children: Vec<Rc<Node>>,
-    type_: ContainerType,
+    container_type: ContainerType,
     layout: Layout,
 
     width: u64,
@@ -129,7 +129,7 @@ impl Containable for Container {
     ///
     /// If the container is the root, it returns None
     fn get_parent(&self) -> Option<Rc<Node>> {
-        match self.type_ {
+        match self.container_type {
             ContainerType::Root => None,
             _ => self.parent.upgrade()
         }
@@ -147,7 +147,7 @@ impl Containable for Container {
     }
 
     fn get_type(&self) -> ContainerType {
-        self.type_
+        self.container_type
     }
 
     /// Returns true if this container is focused.
