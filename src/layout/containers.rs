@@ -40,7 +40,7 @@ pub trait Containable {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<&Containable>;
+    fn get_parent(&self) -> Weak<Node>;
 
     /// Gets the children of this container.
     ///
@@ -66,12 +66,18 @@ pub trait Containable {
     fn get_position(&self) -> (i64, i64);
 
     /// Finds a parent container with the given type, if there is any
-    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable> {
-        let mut container = self.get_parent();
-        while container.is_some() && container.unwrap().get_type() != type_ {
-            container = container.unwrap().get_parent();
+    fn get_parent_by_type(&self, type_: ContainerType) -> Option<Rc<Node>> {
+        let mut container = self.get_parent().upgrade();
+        loop {
+            if let Some(parent) = container {
+                if parent.get_type() == type_ {
+                    return Some(parent);
+                }
+                container = parent.get_parent().upgrade();
+            } else {
+                return None;
+            }
         }
-        container
     }
 }
 
@@ -96,7 +102,7 @@ pub trait Viewable {
 struct Container {
     handle: Option<WlcOutput>,
 
-    parent: Node,
+    parent: Weak<Node>,
     children: Vec<Rc<Node>>,
     type_: ContainerType,
     layout: Layout,
@@ -117,11 +123,22 @@ impl Containable for Container {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<&Containable> {
+    fn get_parent(&self) -> Weak<Node> {
+        self.parent.clone()
+        /*
         match self.type_ {
-            ContainerType::Root => None,
-            _ => Some(&*self.parent),
-        }
+            ContainerType::Root => { 
+                // such hack
+                unsafe {
+                    // very unsafe
+                    use std::mem;
+                    let _dummy: Node = mem::uninitialized();
+                    // much dummy
+                    let _rc_dummy = Rc::new(_dummy);
+                    Rc::downgrade(&_rc_dummy)}
+            },
+            _ => self.parent.clone(),
+        }*/
     }
     /// Gets the children of this container.
     ///
@@ -176,7 +193,7 @@ impl Containable for Container {
 
 struct View {
     handle: Option<WlcView>,
-    parent: Node,
+    parent: Weak<Node>,
 
     width: u64,
     height: u64,
@@ -193,8 +210,8 @@ impl Containable for View {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<&Containable> {
-        Some(&*self.parent)
+    fn get_parent(&self) -> Weak<Node> {
+        self.parent.clone()
     }
 
     /// Gets the children of this container.
