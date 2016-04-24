@@ -3,7 +3,7 @@
 use rustwlc::handle::{WlcView, WlcOutput};
 use std::rc::{Rc, Weak};
 
-type Node = Box<Containable>;
+pub type Node = Box<Containable>;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum ContainerType {
@@ -169,7 +169,7 @@ impl Containable for Container {
         for child in self.get_children().expect("No children") {
             if let Some(child) = child.upgrade() {
                 if let Ok(child) = Rc::try_unwrap(child) {
-                    child.remove_container();
+                    child.remove_container().ok();
                     drop(child);
                 }
             }
