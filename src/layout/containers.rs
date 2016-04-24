@@ -196,7 +196,7 @@ impl Containable for Container {
 
 
 struct View {
-    handle: Option<WlcView>,
+    handle: Option<Box<WlcView>>,
     parent: Weak<Node>,
 
     width: u64,
@@ -237,7 +237,11 @@ impl Containable for View {
 
     /// Removes this container and all of its children
     fn remove_container(&self) -> Result<(), &'static str> {
-        unimplemented!();
+        if let Some(ref handle) = self.handle {
+            handle.close();
+        }
+        drop(self);
+        Ok(())
     }
 
     /// Sets this container (and everything in it) to given visibility
