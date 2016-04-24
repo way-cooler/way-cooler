@@ -226,9 +226,4 @@ impl Containable for View {
     fn get_position(&self) -> (i64, i64) {
         (self.x, self.y)
     }
-
-    /// Finds a parent container with the given type
-    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable> {
-        unimplemented!();
-    }
 }
