@@ -1,6 +1,10 @@
 //! Layout handling
 
+// remove
+#![allow(unused)]
+
 use rustwlc::handle::{WlcView, WlcOutput};
+use rustwlc::types::VIEW_MAXIMIZED;
 use std::rc::{Rc, Weak};
 
 pub type Node = Box<Containable>;
@@ -88,7 +92,7 @@ pub trait Viewable {
     fn is_child_of<T: Containable>(&self, parent: T) -> bool;
 
     /// Gets the active workspace of the view
-    fn active_workspace<T: Containable>(&self) -> T;
+    fn active_workspace(&self) -> Rc<Node>;
 }
 
 struct Container {
@@ -245,5 +249,47 @@ impl Containable for View {
     /// Gets the position of this container on the screen
     fn get_position(&self) -> (i64, i64) {
         (self.x, self.y)
+    }
+}
+
+impl Viewable for View {
+    /// Determines if the view is full screen
+    fn is_fullscreen(&self) -> bool {
+        if let Some(ref handle) = self.handle {
+            match handle.get_state() {
+                VIEW_MAXIMIZED => true,
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Figures out if the view is focused
+    fn is_active(&self) -> bool {
+        self.is_focused
+    }
+
+    /// Returns true if this view is a parent is an ancestor of the child
+    fn is_parent_of<T: Containable>(&self, child: T) -> bool {
+        unimplemented!(); 
+    }
+
+    /// Returns true if this view is a child is an decedent of the parent
+    fn is_child_of<T: Containable>(&self, parent: T) -> bool {
+        unimplemented!(); 
+    }
+
+    /// Gets the active workspace of the view
+    fn active_workspace(&self) -> Rc<Node> {
+        let mut workspace = self.get_parent().upgrade();
+        loop {
+            if let Some(parent) = workspace {
+                if parent.get_type() == ContainerType::Workspace {
+                    return parent
+                }
+                workspace = parent.get_parent().upgrade();
+            }
+        }
     }
 }
