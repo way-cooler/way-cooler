@@ -3,6 +3,8 @@
 use rustwlc::handle::{WlcView, WlcOutput};
 use std::rc::{Rc, Weak};
 
+type Node = Box<Containable>;
+
 #[derive(PartialEq, Clone, Copy)]
 pub enum ContainerType {
     Root,        /* Root container, only one exists */
@@ -43,7 +45,7 @@ pub trait Containable {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Weak<Box<Containable>>>>;
+    fn get_children(&self) -> Option<Vec<Weak<Node>>>;
 
     /// Gets the type of the container
     fn get_type(&self) -> ContainerType;
@@ -94,8 +96,8 @@ pub trait Viewable {
 struct Container {
     handle: Option<WlcOutput>,
 
-    parent: Box<Containable>,
-    children: Vec<Rc<Box<Containable>>>,
+    parent: Node,
+    children: Vec<Rc<Node>>,
     type_: ContainerType,
     layout: Layout,
 
@@ -124,7 +126,7 @@ impl Containable for Container {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Weak<Box<Containable>>>> {
+    fn get_children(&self) -> Option<Vec<Weak<Node>>> {
         if self.children.len() == 0 {
             None
         } else {
@@ -174,7 +176,7 @@ impl Containable for Container {
 
 struct View {
     handle: Option<WlcView>,
-    parent: Box<Containable>,
+    parent: Node,
 
     width: u64,
     height: u64,
@@ -198,7 +200,7 @@ impl Containable for View {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Weak<Box<Containable>>>> {
+    fn get_children(&self) -> Option<Vec<Weak<Node>>> {
         None
     }
 
