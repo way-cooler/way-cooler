@@ -61,6 +61,17 @@ pub trait Containable {
     /// Gets the position of this container on the screen
     fn get_position(&self) -> (i64, i64);
 
+    /// Returns true if this container is a parent of the child
+    fn is_parent_of(&self, child: Rc<Node>) -> bool {
+        unimplemented!();
+    }
+
+    /// Returns true if this view is a child is an decedent of the parent
+    fn is_child_of(&self, parent: Rc<Node>) -> bool {
+        unimplemented!();
+    }
+
+
     /// Finds a parent container with the given type, if there is any
     fn get_parent_by_type(&self, type_: ContainerType) -> Option<Rc<Node>> {
         let mut container = self.get_parent().upgrade();
@@ -84,12 +95,6 @@ pub trait Viewable {
 
     /// Figures out if the view is focused
     fn is_active(&self) -> bool;
-
-    /// Returns true if this view is a parent is an ancestor of the child
-    fn is_parent_of<T: Containable>(&self, child: T) -> bool;
-
-    /// Returns true if this view is a child is an decedent of the parent
-    fn is_child_of<T: Containable>(&self, parent: T) -> bool;
 
     /// Gets the active workspace of the view
     fn active_workspace(&self) -> Rc<Node>;
@@ -268,16 +273,6 @@ impl Viewable for View {
     /// Figures out if the view is focused
     fn is_active(&self) -> bool {
         self.is_focused
-    }
-
-    /// Returns true if this view is a parent is an ancestor of the child
-    fn is_parent_of<T: Containable>(&self, child: T) -> bool {
-        unimplemented!(); 
-    }
-
-    /// Returns true if this view is a child is an decedent of the parent
-    fn is_child_of<T: Containable>(&self, parent: T) -> bool {
-        unimplemented!(); 
     }
 
     /// Gets the active workspace of the view
