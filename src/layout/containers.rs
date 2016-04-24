@@ -63,8 +63,14 @@ pub trait Containable {
     /// Gets the position of this container on the screen
     fn get_position(&self) -> (i64, i64);
 
-    /// Finds a parent container with the given type
-    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable>;
+    /// Finds a parent container with the given type, if there is any
+    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable> {
+        let mut container = self.get_parent();
+        while container.is_some() && container.unwrap().get_type() != type_ {
+            container = container.unwrap().get_parent();
+        }
+        container
+    }
 }
 
 /// View specific functions
@@ -158,14 +164,6 @@ impl Containable for Container {
         (self.x, self.y)
     }
 
-    /// Finds a parent container with the given type, if there is any
-    fn get_parent_by_type(&self, type_: ContainerType) -> Option<&Containable> {
-        let mut container = self.get_parent();
-        while container.is_some() && container.unwrap().get_type() != type_ {
-            container = container.unwrap().get_parent();
-        }
-        container
-    }
 }
 
 
