@@ -17,18 +17,6 @@ pub enum ContainerType {
     View
 }
 
-/// Types of container
-enum ContainerTypes {
-    /// Root container, only one exists
-    Root,
-    /// WlcOutput/monitor
-    Output,
-    /// A workspace
-    Workspace,
-    /// A view (window)
-    View
-}
-
 /// Layout mode for a container
 enum Layout {
     None,
