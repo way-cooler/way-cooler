@@ -9,8 +9,20 @@ pub enum ContainerType {
     Output,      /* Output, like a monitor or head */
     Workspace,   /* A workspace */
     View         /* A view (aka a window) */
+
+/// Types of container
+enum ContainerTypes {
+    /// Root container, only one exists
+    Root,
+    /// WlcOutput/monitor
+    Output,
+    /// A workspace
+    Workspace,
+    /// A view (window)
+    View
 }
 
+/// Layout mode for a container
 enum Layout {
     None,
     Horizontal,
