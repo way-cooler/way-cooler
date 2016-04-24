@@ -30,7 +30,7 @@ pub trait Containable {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Vec<Weak<&Containable>>;
+    fn get_children(&self) -> Vec<Weak<Box<Containable>>>;
 
     /// Gets the type of the container
     fn get_type(&self) -> ContainerType;
@@ -76,7 +76,7 @@ struct Container<T: Containable> {
     handle: Option<WlcOutput>,
     
     parent: Box<T>,
-    children: Vec<Rc<T>>,
+    children: Vec<Rc<Box<Containable>>>,
     type_: ContainerType,
     layout: Layout,
 
@@ -105,8 +105,8 @@ impl<C: Containable> Containable for Container<C> {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Vec<Weak<&Containable>> {
-        unimplemented!();
+    fn get_children(&self) -> Vec<Weak<Box<Containable>>> {
+        self.children.iter().map(|child| Rc::downgrade(&child)).collect()
     }
 
     fn get_type(&self) -> ContainerType {
