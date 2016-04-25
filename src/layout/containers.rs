@@ -56,7 +56,7 @@ pub trait Containable {
     fn set_visibility(&mut self, visibility: bool);
 
     /// Gets the X and Y dimensions of the container
-    fn get_dimensions(&self) -> (u64, u64);
+    fn get_dimensions(&self) -> (u32, u32);
 
     /// Gets the position of this container on the screen
     fn get_position(&self) -> (i64, i64);
@@ -112,8 +112,8 @@ pub struct Container {
     container_type: ContainerType,
     layout: Layout,
 
-    width: u64,
-    height: u64,
+    width: u32,
+    height: u32,
 
     x: i64,
     y: i64,
@@ -173,7 +173,7 @@ impl Containable for Container {
     }
 
     /// Gets the X (width) and Y (height) dimensions of the container
-    fn get_dimensions(&self) -> (u64, u64) {
+    fn get_dimensions(&self) -> (u32, u32) {
         (self.width, self.height)
     }
 
@@ -189,8 +189,8 @@ pub struct View {
     handle: Option<Box<WlcView>>,
     parent: Weak<Node>,
 
-    width: u64,
-    height: u64,
+    width: u32,
+    height: u32,
 
     x: i64,
     y: i64,
@@ -240,7 +240,7 @@ impl Containable for View {
     }
 
     /// Gets the X and Y dimensions of the container
-    fn get_dimensions(&self) -> (u64, u64) {
+    fn get_dimensions(&self) -> (u32, u32) {
         (self.width, self.height)
     }
 
