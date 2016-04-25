@@ -124,6 +124,68 @@ pub struct Container {
 }
 
 
+struct Root {
+    children: Vec<Rc<Node>>,
+}
+
+impl Containable for Root {
+    fn get_parent(&self) -> Option<Rc<Node>> {
+        None
+    }
+
+    fn get_children(&self) -> Option<Vec<Rc<Node>>> {
+        Some(self.children.clone())
+    }
+
+    fn get_type(&self) -> ContainerType {
+        ContainerType::Root
+    }
+
+    fn is_focused(&self) -> bool {
+        true
+    }
+
+    fn remove_container(&self) -> Result<(), &'static str> {
+        panic!("Cannot remove the root of the tree");
+    }
+
+    fn set_visibility(&mut self, visibility: bool) {
+        panic!("Root is not a physical thing");
+    }
+
+    fn get_dimensions(&self) -> (u32, u32) {
+        panic!("Root has no dimension");
+    }
+
+    fn get_position(&self) -> (i64, i64) {
+        panic!("Root has no position");
+    }
+
+    fn is_parent_of(&self, child: Rc<Node>) -> bool {
+        true
+    }
+
+    fn is_child_of(&self, parent: Rc<Node>) -> bool {
+        false
+    }
+
+    fn is_root(&self) -> bool {
+        true
+    }
+}
+
+impl Container {
+    /// Makes the root container. There should be only one of these
+    /// Does not ensure that this is the only root container
+    /* NOTE Need to find a way to ensure there is only one of these things
+     * Perhaps set a static global variable
+     */
+    pub fn new_root(output: WlcOutput) -> Node {
+        trace!("Root created");
+        Box::new(Root { children: vec!() })
+    }
+}
+
 impl Containable for Container {
 
     /// Gets the parent that this container sits in.
