@@ -10,7 +10,7 @@ mod tests {
     fn it_works() {
         let mut result = vec!();
         for _ in 1..10 {
-            result.push(Container::new_test_container());
+            result.push(Container::new_root());
         }
         for thing in result {
             drop(thing);

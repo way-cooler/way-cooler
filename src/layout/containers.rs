@@ -180,7 +180,7 @@ impl Container {
     /* NOTE Need to find a way to ensure there is only one of these things
      * Perhaps set a static global variable
      */
-    pub fn new_root(output: WlcOutput) -> Node {
+    pub fn new_root() -> Node {
         trace!("Root created");
         Box::new(Root { children: vec!() })
     }
