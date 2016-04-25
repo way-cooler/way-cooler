@@ -6,10 +6,11 @@
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::types::VIEW_MAXIMIZED;
 use std::rc::{Rc, Weak};
+use std::fmt;
 
 pub type Node = Box<Containable>;
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ContainerType {
     /// Root container, only one exists 
     Root,
@@ -128,13 +129,26 @@ struct Root {
     children: Vec<Rc<Node>>,
 }
 
+impl fmt::Debug for Root {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let children = self.children.iter().map(|child| 
+                                                format!("{:?}", child.get_type()));
+        let children_string = children.collect::<Vec<_>>().join(",");
+        write!(f, "Root window. Children:\n{}", children_string)
+    }
+}
+
 impl Containable for Root {
     fn get_parent(&self) -> Option<Rc<Node>> {
         None
     }
 
     fn get_children(&self) -> Option<Vec<Rc<Node>>> {
-        Some(self.children.clone())
+        if self.children.len() == 0 {
+            None
+        } else {
+            Some(self.children.clone())
+        }
     }
 
     fn get_type(&self) -> ContainerType {
@@ -142,7 +156,7 @@ impl Containable for Root {
     }
 
     fn is_focused(&self) -> bool {
-        true
+        false
     }
 
     fn remove_container(&self) -> Result<(), &'static str> {
@@ -150,11 +164,11 @@ impl Containable for Root {
     }
 
     fn set_visibility(&mut self, visibility: bool) {
-        panic!("Root is not a physical thing");
+        trace!("Setting visibility of root");
     }
 
     fn get_dimensions(&self) -> (u32, u32) {
-        panic!("Root has no dimension");
+        panic!("Root has no dimensions");
     }
 
     fn get_position(&self) -> (i64, i64) {
