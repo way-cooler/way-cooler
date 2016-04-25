@@ -22,7 +22,7 @@ pub enum ContainerType {
 }
 
 /// Layout mode for a container
-enum Layout {
+pub enum Layout {
     None,
     Horizontal,
     Vertical,
@@ -104,7 +104,7 @@ pub trait Viewable {
     fn active_workspace(&self) -> Rc<Node>;
 }
 
-struct Container {
+pub struct Container {
     handle: Option<WlcOutput>,
 
     parent: Weak<Node>,
@@ -122,6 +122,7 @@ struct Container {
     is_focused: bool,
     is_floating: bool,
 }
+
 
 impl Containable for Container {
 
@@ -157,9 +158,11 @@ impl Containable for Container {
 
     /// Removes this container and all of its children
     fn remove_container(&self) -> Result<(), &'static str> {
-        for child in self.get_children().expect("No children") {
-            child.remove_container().ok();
-            drop(child);
+        if let Some(children) = self.get_children() {
+            for child in children {
+                child.remove_container().ok();
+                drop(child);
+            }
         }
         Ok(())
     }
@@ -182,7 +185,7 @@ impl Containable for Container {
 }
 
 
-struct View {
+pub struct View {
     handle: Option<Box<WlcView>>,
     parent: Weak<Node>,
 
@@ -280,4 +283,5 @@ impl Viewable for View {
             }
         }
     }
+    
 }
