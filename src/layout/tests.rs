@@ -18,7 +18,7 @@ mod tests {
     #[test]
     /// Verify that root node has required properties
     fn root_validity() {
-        let root = Rc::new(Container::new_root());
+        let root = Container::new_root();
         // Make sure it starts with no children
         // This will change when we add Workspaces when we make the root
         assert!(root.get_children().is_none());
