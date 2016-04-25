@@ -4,21 +4,21 @@
 mod tests {
     use rustwlc::handle::{WlcView, WlcOutput};
     use std::rc::*;
-    use super::super::containers::{Container, ContainerType, Layout, Node};
+    use super::super::containers::{Container, ContainerType, Layout, Root};
 
     #[test]
     #[should_panic(expected = "Can only be one root")]
     /// Test to make sure that there can be only one root node
     fn test_one_root() {
-        let root = Container::new_root();
+        let root = Root::new_root();
         // Should panic
-        let root2 = Container::new_root();
+        let root2 = Root::new_root();
     }
 
     #[test]
     /// Verify that root node has required properties
     fn root_validity() {
-        let root = Container::new_root();
+        let root = Root::new_root();
         // Make sure it starts with no children
         // This will change when we add Workspaces when we make the root
         assert!(root.get_children().is_none());
@@ -40,21 +40,21 @@ mod tests {
     #[should_panic(expected = "Cannot remove the root of the tree")]
     /// Ensures you cannot remove the root node
     fn remove_root_test() {
-        let root = Container::new_root();
+        let root = Root::new_root();
         root.remove_container();
     }
 
     #[test]
     #[should_panic(expected = "Root has no dimensions")]
     fn get_root_dimensions_test() {
-        let root = Container::new_root();
+        let root = Root::new_root();
         root.get_dimensions();
     }
     
     #[test]
     #[should_panic(expected = "Root has no position")]
     fn get_root_position_test() {
-        let root = Container::new_root();
+        let root = Root::new_root();
         root.get_position();
     }
 }

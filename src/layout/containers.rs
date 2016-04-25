@@ -8,7 +8,8 @@ use rustwlc::types::VIEW_MAXIMIZED;
 use std::rc::{Rc, Weak};
 use std::fmt;
 
-pub type Node = Box<Containable>;
+pub type Container = Box<Containable>;
+pub type Node = Rc<Container>;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ContainerType {
@@ -37,12 +38,12 @@ pub trait Containable {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<Rc<Node>>;
+    fn get_parent(&self) -> Option<Node>;
 
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Rc<Node>>>;
+    fn get_children(&self) -> Option<Vec<Node>>;
 
     /// Gets the type of the container
     fn get_type(&self) -> ContainerType;
@@ -63,12 +64,12 @@ pub trait Containable {
     fn get_position(&self) -> (i64, i64);
 
     /// Returns true if this container is a parent of the child
-    fn is_parent_of(&self, child: Rc<Node>) -> bool {
+    fn is_parent_of(&self, child: Node) -> bool {
         unimplemented!();
     }
 
     /// Returns true if this view is a child is an decedent of the parent
-    fn is_child_of(&self, parent: Rc<Node>) -> bool {
+    fn is_child_of(&self, parent: Node) -> bool {
         unimplemented!();
     }
 
@@ -78,7 +79,7 @@ pub trait Containable {
 
 
     /// Finds a parent container with the given type, if there is any
-    fn get_parent_by_type(&self, container_type: ContainerType) -> Option<Rc<Node>> {
+    fn get_parent_by_type(&self, container_type: ContainerType) -> Option<Node> {
         let mut container = self.get_parent();
         loop {
             if let Some(parent) = container {
@@ -102,14 +103,14 @@ pub trait Viewable {
     fn is_active(&self) -> bool;
 
     /// Gets the active workspace of the view
-    fn active_workspace(&self) -> Rc<Node>;
+    fn active_workspace(&self) -> Node;
 }
 
-pub struct Container {
+pub struct Workspace {
     handle: Option<WlcOutput>,
 
-    parent: Weak<Node>,
-    children: Vec<Rc<Node>>,
+    parent: Weak<Container>,
+    children: Vec<Node>,
     container_type: ContainerType,
     layout: Layout,
 
@@ -125,8 +126,8 @@ pub struct Container {
 }
 
 
-struct Root {
-    children: Vec<Rc<Node>>,
+pub struct Root {
+    children: Vec<Node>,
 }
 
 impl fmt::Debug for Root {
@@ -139,11 +140,11 @@ impl fmt::Debug for Root {
 }
 
 impl Containable for Root {
-    fn get_parent(&self) -> Option<Rc<Node>> {
+    fn get_parent(&self) -> Option<Node> {
         None
     }
 
-    fn get_children(&self) -> Option<Vec<Rc<Node>>> {
+    fn get_children(&self) -> Option<Vec<Node>> {
         if self.children.len() == 0 {
             None
         } else {
@@ -175,11 +176,11 @@ impl Containable for Root {
         panic!("Root has no position");
     }
 
-    fn is_parent_of(&self, child: Rc<Node>) -> bool {
+    fn is_parent_of(&self, child: Node) -> bool {
         true
     }
 
-    fn is_child_of(&self, parent: Rc<Node>) -> bool {
+    fn is_child_of(&self, parent: Node) -> bool {
         false
     }
 
@@ -188,24 +189,24 @@ impl Containable for Root {
     }
 }
 
-impl Container {
+impl Root {
     /// Makes the root container. There should be only one of these
     /// Does not ensure that this is the only root container
     /* NOTE Need to find a way to ensure there is only one of these things
      * Perhaps set a static global variable
      */
-    pub fn new_root() -> Rc<Node> {
+    pub fn new_root() -> Node {
         trace!("Root created");
         Rc::new(Box::new(Root { children: vec!() }))
     }
 }
 
-impl Containable for Container {
+impl Containable for Workspace {
 
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<Rc<Node>> {
+    fn get_parent(&self) -> Option<Node> {
         match self.container_type {
             ContainerType::Root => None,
             _ => self.parent.upgrade()
@@ -215,7 +216,7 @@ impl Containable for Container {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Rc<Node>>> {
+    fn get_children(&self) -> Option<Vec<Node>> {
         if self.children.len() == 0 {
             None
         } else {
@@ -263,7 +264,7 @@ impl Containable for Container {
 
 pub struct View {
     handle: Option<Box<WlcView>>,
-    parent: Weak<Node>,
+    parent: Weak<Container>,
 
     width: u32,
     height: u32,
@@ -280,14 +281,14 @@ impl Containable for View {
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<Rc<Node>> {
+    fn get_parent(&self) -> Option<Node> {
         self.parent.upgrade()
     }
 
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Rc<Node>>> {
+    fn get_children(&self) -> Option<Vec<Node>> {
         None
     }
 
@@ -345,7 +346,7 @@ impl Viewable for View {
     }
 
     /// Gets the active workspace of the view
-    fn active_workspace(&self) -> Rc<Node> {
+    fn active_workspace(&self) -> Node {
         let mut workspace = self.get_parent();
         loop {
             if let Some(parent) = workspace {
