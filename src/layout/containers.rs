@@ -6,12 +6,13 @@
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::types::VIEW_MAXIMIZED;
 use std::rc::{Rc, Weak};
-use std::fmt;
+use std::fmt::{Debug, Formatter};
+use std::fmt::Result as FmtResult;
 
 pub type Container = Box<Containable>;
 pub type Node = Rc<Container>;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContainerType {
     /// Root container, only one exists 
     Root,
@@ -24,6 +25,7 @@ pub enum ContainerType {
 }
 
 /// Layout mode for a container
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
     None,
     Horizontal,
@@ -163,12 +165,12 @@ pub struct Root {
     children: Vec<Node>,
 }
 
-impl fmt::Debug for Root {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let children = self.children.iter().map(|child| 
-                                                format!("{:?}", child.get_type()));
-        let children_string = children.collect::<Vec<_>>().join(",");
-        write!(f, "Root window. Children:\n{}", children_string)
+impl Debug for Root {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "Root: ");
+            f.debug_list()
+            .entries(self.children.iter().map(|child: &Node| child.get_type()))
+            .finish()
     }
 }
 
@@ -250,7 +252,7 @@ impl Containable for Workspace {
             _ => self.parent.upgrade()
         }
     }
-    
+
     /// Gets the children of this container.
     ///
     /// Views never have children
@@ -303,7 +305,6 @@ impl Containable for Workspace {
     }
 
 }
-
 
 pub struct View {
     handle: Option<Box<WlcView>>,
@@ -407,5 +408,4 @@ impl Viewable for View {
             }
         }
     }
-    
 }
