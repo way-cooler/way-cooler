@@ -4,7 +4,7 @@
 mod tests {
     use rustwlc::handle::{WlcView, WlcOutput};
     use std::rc::*;
-    use super::super::containers::{Container, ContainerType, Layout, Root};
+    use super::super::containers::*;
 
     #[test]
     #[should_panic(expected = "Can only be one root")]
@@ -56,5 +56,14 @@ mod tests {
     fn get_root_position_test() {
         let root = Root::new_root();
         root.get_position();
+    }
+
+    #[test]
+    fn workspace_validity_test() {
+        let root = Root::new_root();
+        for _ in 1..10 {
+            Workspace::new_workspace(root.clone());
+        }
+        assert_eq!(root.get_children().unwrap().len(),10);
     }
 }

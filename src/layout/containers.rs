@@ -77,6 +77,8 @@ pub trait Containable {
         self.get_type() == ContainerType::Root
     }
 
+    fn add_child(&mut self, container: Node);
+
 
     /// Finds a parent container with the given type, if there is any
     fn get_parent_by_type(&self, container_type: ContainerType) -> Option<Node> {
@@ -125,6 +127,37 @@ pub struct Workspace {
     is_floating: bool,
 }
 
+impl Workspace {
+    /// Makes a new workspace container. This should only be called by root
+    /// since it will properly initialize the right number and properly put
+    /// them in the main tree.
+    pub fn new_workspace(root: Node) -> Node {
+        let workspace: Node =
+            Rc::new(Box::new(
+                Workspace {
+                    handle: None,
+                    parent: Rc::downgrade(&root),
+                    children: vec!(),
+                    container_type: ContainerType::Root,
+                    // NOTE Change this to some other default
+                    layout: Layout::None,
+                    // NOTE Figure out how to initialize these properly
+                    width: 0,
+                    height: 0,
+                    x: 0,
+                    y: 0,
+                    visible: false,
+                    is_focused: false,
+                    is_floating: false,
+                }));
+        if let Some(root) = Rc::get_mut(&mut root.clone()) {
+            root.add_child(workspace.clone());
+            workspace
+        } else {
+            panic!("There was a weak reference to root, couldn't get mut");
+        }
+    }
+}
 
 pub struct Root {
     children: Vec<Node>,
@@ -154,6 +187,11 @@ impl Containable for Root {
 
     fn get_type(&self) -> ContainerType {
         ContainerType::Root
+    }
+
+    fn add_child(&mut self, container: Node) {
+        // NOTE check to make sure we are not adding a duplicate
+        self.children.push(container);
     }
 
     fn is_focused(&self) -> bool {
@@ -224,6 +262,11 @@ impl Containable for Workspace {
         }
     }
 
+    fn add_child(&mut self, container: Node) {
+        // NOTE check to make sure we are not adding a duplicate
+        self.children.push(container);
+    }
+
     fn get_type(&self) -> ContainerType {
         self.container_type
     }
@@ -290,6 +333,10 @@ impl Containable for View {
     /// Views never have children
     fn get_children(&self) -> Option<Vec<Node>> {
         None
+    }
+
+    fn add_child(&mut self, container: Node) {
+        panic!("Views can not have children");
     }
 
     /// Gets the type of the container
