@@ -306,6 +306,7 @@ impl Containable for Workspace {
 
 }
 
+#[derive(Debug)]
 pub struct View {
     handle: Option<Box<WlcView>>,
     parent: Weak<Container>,
@@ -409,3 +410,32 @@ impl Viewable for View {
         }
     }
 }
+
+impl Debug for Containable {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f.debug_struct("Containable")
+            .field("type", &self.get_type())
+            .field("parent", &self.get_parent())
+            .field("children", &self.get_children())
+            .field("focused", &self.is_focused())
+            .finish()
+    }
+}
+
+/*
+impl Debug for View {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f.debug_struct("View")
+            .field("parent", &self.parent.upgrade())
+            .field("handle", &self.handle)
+            .field("visible", &self.visible)
+            .field("is_focused", &self.is_focused)
+            .field("is_floating", &self.is_floating)
+            .field("x", &self.x)
+            .field("y", &self.y)
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .finish()
+    }
+}
+*/
