@@ -6,7 +6,8 @@
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::types::VIEW_MAXIMIZED;
 use std::rc::{Rc, Weak};
-use std::fmt;
+use std::fmt::{Debug, Formatter};
+use std::fmt::Result as FmtResult;
 
 pub type Node = Rc<Container>;
 
@@ -16,7 +17,7 @@ enum Handle {
     Output(WlcOutput)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContainerType {
     /// Root container, only one exists 
     Root,
@@ -29,7 +30,7 @@ pub enum ContainerType {
 }
 
 /// Layout mode for a container
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
     None,
     Horizontal,
@@ -39,7 +40,6 @@ pub enum Layout {
     Floating
 }
 
-#[derive(Debug)]
 pub struct Container {
     handle: Option<Handle>,
     parent: Option<Weak<Container>>,
@@ -121,6 +121,22 @@ impl Container {
         }
     }
 
+    fn add_child(&mut self, container: Node) {
+        // NOTE check to make sure we are not adding a duplicate
+        self.children.push(container);
+    }
+
+    /// Removes this container and all of its children
+    fn remove_container(&self) -> Result<(), &'static str> {
+        if let Some(children) = self.get_children() {
+            for child in children {
+                child.remove_container().ok();
+                drop(child);
+            }
+        }
+        Ok(())
+    }
+
     /// Gets the children of this container.
     ///
     /// Views never have children
@@ -185,13 +201,6 @@ impl Container {
         self.get_type() == ContainerType::Root
     }
 
-    /// Adds the node to the children of this container
-    pub fn add_child(&mut self, container: Node) {
-        //if ! self.children.contains(&container) {
-            self.children.push(container);
-        //}
-    }
-
     /// Finds a parent container with the given type, if there is any
     pub fn get_parent_by_type(&self, container_type: ContainerType) -> Option<Node> {
         let mut container = self.get_parent();
@@ -205,5 +214,16 @@ impl Container {
                 return None;
             }
         }
+    }
+}
+
+impl Debug for Container {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f.debug_struct("Containable")
+            .field("type", &self.get_type())
+            .field("parent", &self.get_parent())
+            .field("children", &self.get_children())
+            .field("focused", &self.is_focused())
+            .finish()
     }
 }
