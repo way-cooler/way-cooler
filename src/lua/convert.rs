@@ -4,19 +4,31 @@ use hlua::any::AnyLuaValue::*;
 use std::ops::Deref;
 use std::iter::Iterator;
 
+/// Represents types which can be serialized into a Lua table (AnyLuaValue).
+///
+/// If you wish to continue using the object after serialization, consider
+/// using `impl<a> ToTable for &'a T`, which will take an `&T` as its `self`.
 pub trait ToTable {
-    fn to_table(&self) -> AnyLuaValue;
+    /// Write this value into an AnyLuaValue
+    fn to_table(self) -> AnyLuaValue;
 }
 
+/// Represents types which can be serialized from a Lua table (AnyLuaValue).
+///
+/// For convenience, this method takes in a `LuaDecoder` (obtained from
+/// `LuaDecoder::new(AnyLuaValue)`). See methods on `LuaDecoder`.
 pub trait FromTable {
-    fn from_table(decoder: &mut LuaDecoder) -> Self;
+    /// Attempt to parse this value from the decoder.
+    fn from_table(decoder: &mut LuaDecoder) -> ConvertResult<Self>
+        where Self: Sized;
 }
 
+// Implementation for standard numeric types
 macro_rules! numeric_impl {
     ($($typ:ty), +) => {
         $(impl ToTable for $typ {
-            fn to_table(&self) -> AnyLuaValue {
-                LuaNumber(*self as f64)
+            fn to_table(self) -> AnyLuaValue {
+                LuaNumber(self as f64)
             }
         })+
     }
@@ -27,35 +39,42 @@ numeric_impl!(i8, i16, i32);
 numeric_impl!(u8, u16, u32);
 numeric_impl!(f32, f64);
 
+// Implementation for &Ts which use Copy syntax
+impl<'a, T> ToTable for &'a T where T: Copy {
+    fn to_table(self) -> AnyLuaValue {
+        self.clone().to_table()
+    }
+}
+
 impl ToTable for bool {
-    fn to_table(&self) -> AnyLuaValue {
-        LuaBoolean(*self)
+    fn to_table(self) -> AnyLuaValue {
+        LuaBoolean(self)
     }
 }
 
 impl ToTable for String {
-    fn to_table(&self) -> AnyLuaValue {
-        LuaString((*self).clone())
+    fn to_table(self) -> AnyLuaValue {
+        LuaString(self)
     }
 }
 
 impl<T: ToTable> ToTable for Option<T> {
-    fn to_table(&self) -> AnyLuaValue {
+    fn to_table(self) -> AnyLuaValue {
         match self {
-            &Some(ref val) => val.to_table(),
-            &None => LuaNil
+            Some(val) => val.to_table(),
+            None => LuaNil
         }
     }
 }
 
 impl ToTable for () {
-    fn to_table(&self) -> AnyLuaValue {
+    fn to_table(self) -> AnyLuaValue {
         LuaNil
     }
 }
 
 /// Errors a converter can run into
-enum ConverterError {
+pub enum ConverterError {
     /// The type of value present did not match the one expected
     UnexpectedType(AnyLuaValue),
     /// The table index expected did not exist
@@ -72,6 +91,10 @@ pub struct LuaDecoder {
 }
 
 impl LuaDecoder {
+    pub fn new(val: AnyLuaValue) -> LuaDecoder {
+        LuaDecoder { val: val }
+    }
+
     pub fn get_u32(&self) -> ConvertResult<u32> {
         unimplemented!()
     }
@@ -92,16 +115,3 @@ impl LuaDecoder {
         unimplemented!()
     }
 }
-
-/*
-
-$name =>
-
-
-struct $name { ($field : $type, )+ }
-
-
-( ($meta )+ (struct $name { ($field : $type, )+ }); )+
-
-
- */
