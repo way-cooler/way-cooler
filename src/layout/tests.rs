@@ -2,23 +2,21 @@
 
 #[cfg(test)]
 mod tests {
-    use rustwlc::handle::{WlcView, WlcOutput};
-    use std::rc::*;
     use super::super::containers::*;
 
     #[test]
     #[should_panic(expected = "Can only be one root")]
     /// Test to make sure that there can be only one root node
     fn test_one_root() {
-        let root = Root::new_root();
+        let _root = Container::new_root();
         // Should panic
-        let root2 = Root::new_root();
+        let _root2 = Container::new_root();
     }
 
     #[test]
     /// Verify that root node has required properties
     fn root_validity() {
-        let root = Root::new_root();
+        let root = Container::new_root();
         // Make sure it starts with no children
         // This will change when we add Workspaces when we make the root
         assert!(root.get_children().is_none());
@@ -33,36 +31,16 @@ mod tests {
         // Root is not a child of anything, including itself
         // NOTE Add more test when we have more container types
         assert!(! root.is_child_of(root.clone()));
+        assert_eq!(root.get_position(), (0, 0));
+        assert_eq!(root.get_dimensions(), (0, 0));
         assert!(root.is_root());
     }
 
     #[test]
-    #[should_panic(expected = "Cannot remove the root of the tree")]
-    /// Ensures you cannot remove the root node
-    fn remove_root_test() {
-        let root = Root::new_root();
-        root.remove_container();
-    }
-
-    #[test]
-    #[should_panic(expected = "Root has no dimensions")]
-    fn get_root_dimensions_test() {
-        let root = Root::new_root();
-        root.get_dimensions();
-    }
-    
-    #[test]
-    #[should_panic(expected = "Root has no position")]
-    fn get_root_position_test() {
-        let root = Root::new_root();
-        root.get_position();
-    }
-
-    #[test]
     fn workspace_validity_test() {
-        let root = Root::new_root();
+        let root = Container::new_root();
         for _ in 1..10 {
-            Workspace::new_workspace(root.clone());
+            Container::new_workspace(root.clone());
         }
         assert_eq!(root.get_children().unwrap().len(),10);
     }

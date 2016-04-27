@@ -8,8 +8,13 @@ use rustwlc::types::VIEW_MAXIMIZED;
 use std::rc::{Rc, Weak};
 use std::fmt;
 
-pub type Container = Box<Containable>;
 pub type Node = Rc<Container>;
+
+#[derive(Debug)]
+enum Handle {
+    View(WlcView),
+    Output(WlcOutput)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ContainerType {
@@ -24,6 +29,7 @@ pub enum ContainerType {
 }
 
 /// Layout mode for a container
+#[derive(Debug)]
 pub enum Layout {
     None,
     Horizontal,
@@ -33,55 +39,161 @@ pub enum Layout {
     Floating
 }
 
+#[derive(Debug)]
+pub struct Container {
+    handle: Option<Handle>,
+    parent: Option<Weak<Container>>,
+    children: Vec<Node>,
+    container_type: ContainerType,
+    layout: Layout,
+    width: u32,
+    height: u32,
+    x: i64,
+    y: i64,
+    visible: bool,
+    is_focused: bool,
+    is_floating: bool,
+}
+
 /// Like i3, everything (workspaces, containers, views) are containable.
-pub trait Containable {
+impl Container {
+    
+    /// Makes the root container. There should be only one of these
+    /// Does not ensure that this is the only root container
+    // NOTE Need to find a way to ensure there is only one of these things
+    // Perhaps set a static global variable
+    pub fn new_root() -> Node {
+        trace!("Root created");
+        Rc::new(Container {
+            handle: None,
+            parent: None,
+            children: vec!(),
+            container_type: ContainerType::Root,
+            layout: Layout::None,
+            width: 0,
+            height: 0,
+            x: 0,
+            y: 0,
+            visible: false,
+            is_focused: false,
+            is_floating: false
+        })
+    }
+    
+    /// Makes a new workspace container. This should only be called by root
+    /// since it will properly initialize the right number and properly put
+    /// them in the main tree.
+    pub fn new_workspace(root: Node) -> Node {
+        let workspace: Node =
+            Rc::new(Container {
+                handle: None,
+                parent: Some(Rc::downgrade(&root)),
+                children: vec!(),
+                container_type: ContainerType::Root,
+                // NOTE Change this to some other default
+                layout: Layout::None,
+                // NOTE Figure out how to initialize these properly
+                width: 0,
+                height: 0,
+                x: 0,
+                y: 0,
+                visible: false,
+                is_focused: false,
+                is_floating: false,
+                });
+        if let Some(root) = Rc::get_mut(&mut root.clone()) {
+            root.add_child(workspace.clone());
+            workspace
+        } else {
+            panic!("There was a weak reference to root, couldn't initialize workspace");
+        }
+    }
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<Node>;
+    pub fn get_parent(&self) -> Option<Node> {
+        if self.is_root() {
+            None
+        } else {
+            // NOTE Clone has to be done here because e have to store the parent
+            // as an option since `Weak::new` is unstable
+            self.parent.clone().unwrap().upgrade()
+        }
+    }
 
     /// Gets the children of this container.
     ///
     /// Views never have children
-    fn get_children(&self) -> Option<Vec<Node>>;
+    pub fn get_children(&self) -> Option<Vec<Node>> {
+        if self.children.len() > 0 {
+            Some(self.children.clone())
+        } else {
+            None
+        }
+    }
 
     /// Gets the type of the container
-    fn get_type(&self) -> ContainerType;
+    pub fn get_type(&self) -> ContainerType {
+        self.container_type
+    }
 
     /// Returns true if this container is focused.
-    fn is_focused(&self) -> bool;
+    pub fn is_focused(&self) -> bool {
+        self.is_focused
+    }
 
-    /// Removes this container and all of its children
-    fn remove_container(&self) -> Result<(), &'static str>;
+    /// Removes the child at the specified index
+    // NOTE Make a wrapper function that can take a reference and remove it
+    pub fn remove_child(&mut self, index: usize) -> Result<Node, &'static str> {
+        Ok(self.children.remove(index))
+    }
 
     /// Sets this container (and everything in it) to given visibility
-    fn set_visibility(&mut self, visibility: bool);
+    pub fn set_visibility(&mut self, visibility: bool) {
+        self.visible = visibility
+    }
 
     /// Gets the X and Y dimensions of the container
-    fn get_dimensions(&self) -> (u32, u32);
+    pub fn get_dimensions(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
 
     /// Gets the position of this container on the screen
-    fn get_position(&self) -> (i64, i64);
+    pub fn get_position(&self) -> (i64, i64) {
+        (self.x, self.y)
+    }
 
     /// Returns true if this container is a parent of the child
-    fn is_parent_of(&self, child: Node) -> bool {
-        unimplemented!();
+    pub fn is_parent_of(&self, child: Node) -> bool {
+        if self.is_root() {
+            true
+        } else {
+            unimplemented!();
+        }
     }
 
     /// Returns true if this view is a child is an decedent of the parent
-    fn is_child_of(&self, parent: Node) -> bool {
-        unimplemented!();
+    pub fn is_child_of(&self, parent: Node) -> bool {
+        if self.is_root() {
+            false
+        } else {
+            unimplemented!();
+        }
     }
 
-    fn is_root(&self) -> bool {
+    pub fn is_root(&self) -> bool {
         self.get_type() == ContainerType::Root
     }
 
-    fn add_child(&mut self, container: Node);
-
+    /// Adds the node to the children of this container
+    pub fn add_child(&mut self, container: Node) {
+        //if ! self.children.contains(&container) {
+            self.children.push(container);
+        //}
+    }
 
     /// Finds a parent container with the given type, if there is any
-    fn get_parent_by_type(&self, container_type: ContainerType) -> Option<Node> {
+    pub fn get_parent_by_type(&self, container_type: ContainerType) -> Option<Node> {
         let mut container = self.get_parent();
         loop {
             if let Some(parent) = container {
@@ -94,318 +206,4 @@ pub trait Containable {
             }
         }
     }
-}
-
-/// View specific functions
-pub trait Viewable {
-    /// Determines if the view is full screen
-    fn is_fullscreen(&self) -> bool;
-
-    /// Figures out if the view is focused
-    fn is_active(&self) -> bool;
-
-    /// Gets the active workspace of the view
-    fn active_workspace(&self) -> Node;
-}
-
-pub struct Workspace {
-    handle: Option<WlcOutput>,
-
-    parent: Weak<Container>,
-    children: Vec<Node>,
-    container_type: ContainerType,
-    layout: Layout,
-
-    width: u32,
-    height: u32,
-
-    x: i64,
-    y: i64,
-
-    visible: bool,
-    is_focused: bool,
-    is_floating: bool,
-}
-
-impl Workspace {
-    /// Makes a new workspace container. This should only be called by root
-    /// since it will properly initialize the right number and properly put
-    /// them in the main tree.
-    pub fn new_workspace(root: Node) -> Node {
-        let workspace: Node =
-            Rc::new(Box::new(
-                Workspace {
-                    handle: None,
-                    parent: Rc::downgrade(&root),
-                    children: vec!(),
-                    container_type: ContainerType::Root,
-                    // NOTE Change this to some other default
-                    layout: Layout::None,
-                    // NOTE Figure out how to initialize these properly
-                    width: 0,
-                    height: 0,
-                    x: 0,
-                    y: 0,
-                    visible: false,
-                    is_focused: false,
-                    is_floating: false,
-                }));
-        if let Some(root) = Rc::get_mut(&mut root.clone()) {
-            root.add_child(workspace.clone());
-            workspace
-        } else {
-            panic!("There was a weak reference to root, couldn't get mut");
-        }
-    }
-}
-
-pub struct Root {
-    children: Vec<Node>,
-}
-
-impl fmt::Debug for Root {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let children = self.children.iter().map(|child| 
-                                                format!("{:?}", child.get_type()));
-        let children_string = children.collect::<Vec<_>>().join(",");
-        write!(f, "Root window. Children:\n{}", children_string)
-    }
-}
-
-impl Containable for Root {
-    fn get_parent(&self) -> Option<Node> {
-        None
-    }
-
-    fn get_children(&self) -> Option<Vec<Node>> {
-        if self.children.len() == 0 {
-            None
-        } else {
-            Some(self.children.clone())
-        }
-    }
-
-    fn get_type(&self) -> ContainerType {
-        ContainerType::Root
-    }
-
-    fn add_child(&mut self, container: Node) {
-        // NOTE check to make sure we are not adding a duplicate
-        self.children.push(container);
-    }
-
-    fn is_focused(&self) -> bool {
-        false
-    }
-
-    fn remove_container(&self) -> Result<(), &'static str> {
-        panic!("Cannot remove the root of the tree");
-    }
-
-    fn set_visibility(&mut self, visibility: bool) {
-        trace!("Setting visibility of root");
-    }
-
-    fn get_dimensions(&self) -> (u32, u32) {
-        panic!("Root has no dimensions");
-    }
-
-    fn get_position(&self) -> (i64, i64) {
-        panic!("Root has no position");
-    }
-
-    fn is_parent_of(&self, child: Node) -> bool {
-        true
-    }
-
-    fn is_child_of(&self, parent: Node) -> bool {
-        false
-    }
-
-    fn is_root(&self) -> bool {
-        true
-    }
-}
-
-impl Root {
-    /// Makes the root container. There should be only one of these
-    /// Does not ensure that this is the only root container
-    /* NOTE Need to find a way to ensure there is only one of these things
-     * Perhaps set a static global variable
-     */
-    pub fn new_root() -> Node {
-        trace!("Root created");
-        Rc::new(Box::new(Root { children: vec!() }))
-    }
-}
-
-impl Containable for Workspace {
-
-    /// Gets the parent that this container sits in.
-    ///
-    /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<Node> {
-        match self.container_type {
-            ContainerType::Root => None,
-            _ => self.parent.upgrade()
-        }
-    }
-    
-    /// Gets the children of this container.
-    ///
-    /// Views never have children
-    fn get_children(&self) -> Option<Vec<Node>> {
-        if self.children.len() == 0 {
-            None
-        } else {
-            Some(self.children.clone())
-        }
-    }
-
-    fn add_child(&mut self, container: Node) {
-        // NOTE check to make sure we are not adding a duplicate
-        self.children.push(container);
-    }
-
-    fn get_type(&self) -> ContainerType {
-        self.container_type
-    }
-
-    /// Returns true if this container is focused.
-    fn is_focused(&self) -> bool {
-        self.is_focused
-    }
-
-    /// Removes this container and all of its children
-    fn remove_container(&self) -> Result<(), &'static str> {
-        if let Some(children) = self.get_children() {
-            for child in children {
-                child.remove_container().ok();
-                drop(child);
-            }
-        }
-        Ok(())
-    }
-
-    /// Sets this container (and everything in it) to given visibility
-    fn set_visibility(&mut self, visibility: bool) {
-        self.visible = visibility
-    }
-
-    /// Gets the X (width) and Y (height) dimensions of the container
-    fn get_dimensions(&self) -> (u32, u32) {
-        (self.width, self.height)
-    }
-
-    /// Gets the position of this container on the screen
-    fn get_position(&self) -> (i64, i64) {
-        (self.x, self.y)
-    }
-
-}
-
-
-pub struct View {
-    handle: Option<Box<WlcView>>,
-    parent: Weak<Container>,
-
-    width: u32,
-    height: u32,
-
-    x: i64,
-    y: i64,
-
-    visible: bool,
-    is_focused: bool,
-    is_floating: bool,
-}
-
-impl Containable for View {
-    /// Gets the parent that this container sits in.
-    ///
-    /// If the container is the root, it returns None
-    fn get_parent(&self) -> Option<Node> {
-        self.parent.upgrade()
-    }
-
-    /// Gets the children of this container.
-    ///
-    /// Views never have children
-    fn get_children(&self) -> Option<Vec<Node>> {
-        None
-    }
-
-    fn add_child(&mut self, container: Node) {
-        panic!("Views can not have children");
-    }
-
-    /// Gets the type of the container
-    fn get_type(&self) -> ContainerType {
-        ContainerType::View
-    }
-
-    /// Returns true if this container is focused.
-    fn is_focused(&self) -> bool {
-        self.is_focused
-    }
-
-    /// Removes this container and all of its children
-    fn remove_container(&self) -> Result<(), &'static str> {
-        if let Some(ref handle) = self.handle {
-            handle.close();
-        }
-        drop(self);
-        Ok(())
-    }
-
-    /// Sets this container (and everything in it) to given visibility
-    fn set_visibility(&mut self, visibility: bool) {
-        self.visible = visibility
-    }
-
-    /// Gets the X and Y dimensions of the container
-    fn get_dimensions(&self) -> (u32, u32) {
-        (self.width, self.height)
-    }
-
-    /// Gets the position of this container on the screen
-    fn get_position(&self) -> (i64, i64) {
-        (self.x, self.y)
-    }
-}
-
-impl Viewable for View {
-    /// Determines if the view is full screen
-    fn is_fullscreen(&self) -> bool {
-        if let Some(ref handle) = self.handle {
-            match handle.get_state() {
-                VIEW_MAXIMIZED => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
-    }
-
-    /// Figures out if the view is focused
-    fn is_active(&self) -> bool {
-        self.is_focused
-    }
-
-    /// Gets the active workspace of the view
-    fn active_workspace(&self) -> Node {
-        let mut workspace = self.get_parent();
-        loop {
-            if let Some(parent) = workspace {
-                if parent.get_type() == ContainerType::Workspace {
-                    return parent
-                }
-                workspace = parent.get_parent();
-            } else {
-                // Should never happen under our current setup
-                panic!("View not attached to a workspace!")
-            }
-        }
-    }
-    
 }
