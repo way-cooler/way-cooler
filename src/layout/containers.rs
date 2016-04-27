@@ -8,6 +8,7 @@ use rustwlc::types::VIEW_MAXIMIZED;
 use std::rc::{Rc, Weak};
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
+use std::cell::RefCell;
 
 pub type Node = Rc<Container>;
 
@@ -42,8 +43,8 @@ pub enum Layout {
 
 pub struct Container {
     handle: Option<Handle>,
-    parent: Option<Weak<Container>>,
-    children: Vec<Node>,
+    parent: RefCell<Option<Weak<Container>>>,
+    children: RefCell<Vec<Node>>,
     container_type: ContainerType,
     layout: Layout,
     width: u32,
@@ -66,8 +67,8 @@ impl Container {
         trace!("Root created");
         Rc::new(Container {
             handle: None,
-            parent: None,
-            children: vec!(),
+            parent: RefCell::new(None),
+            children: RefCell::new(vec!()),
             container_type: ContainerType::Root,
             layout: Layout::None,
             width: 0,
@@ -83,12 +84,13 @@ impl Container {
     /// Makes a new workspace container. This should only be called by root
     /// since it will properly initialize the right number and properly put
     /// them in the main tree.
-    pub fn new_workspace(root: Node) -> Node {
+    pub fn new_workspace(root: &mut Node) -> Node {
+        println!("weak: {}, strong: {}", Rc::weak_count(root), Rc::strong_count(root));
         let workspace: Node =
             Rc::new(Container {
                 handle: None,
-                parent: Some(Rc::downgrade(&root)),
-                children: vec!(),
+                parent: RefCell::new(Some(Rc::downgrade(&root))),
+                children: RefCell::new(vec!()),
                 container_type: ContainerType::Root,
                 // NOTE Change this to some other default
                 layout: Layout::None,
@@ -101,7 +103,8 @@ impl Container {
                 is_focused: false,
                 is_floating: false,
                 });
-        if let Some(root) = Rc::get_mut(&mut root.clone()) {
+        println!("weak: {}, strong: {}", Rc::weak_count(root), Rc::strong_count(root));
+        if let Some(root) = Rc::get_mut(root) {
             root.add_child(workspace.clone());
             workspace
         } else {
@@ -115,15 +118,15 @@ impl Container {
         if self.is_root() {
             None
         } else {
-            // NOTE Clone has to be done here because e have to store the parent
-            // as an option since `Weak::new` is unstable
-            self.parent.clone().unwrap().upgrade()
+            // NOTE Clone has to be done here because we have to store the
+            // parent as an option since the `Weak::new` is unstable
+            self.parent.borrow().clone().unwrap().upgrade()
         }
     }
 
     fn add_child(&mut self, container: Node) {
         // NOTE check to make sure we are not adding a duplicate
-        self.children.push(container);
+        self.children.borrow_mut().push(container);
     }
 
     /// Removes this container and all of its children
@@ -141,8 +144,8 @@ impl Container {
     ///
     /// Views never have children
     pub fn get_children(&self) -> Option<Vec<Node>> {
-        if self.children.len() > 0 {
-            Some(self.children.clone())
+        if self.children.borrow().len() > 0 {
+            Some(self.children.borrow().clone())
         } else {
             None
         }
@@ -161,7 +164,7 @@ impl Container {
     /// Removes the child at the specified index
     // NOTE Make a wrapper function that can take a reference and remove it
     pub fn remove_child(&mut self, index: usize) -> Result<Node, &'static str> {
-        Ok(self.children.remove(index))
+        Ok(self.children.borrow_mut().remove(index))
     }
 
     /// Sets this container (and everything in it) to given visibility

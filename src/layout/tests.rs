@@ -38,9 +38,9 @@ mod tests {
 
     #[test]
     fn workspace_validity_test() {
-        let root = Container::new_root();
+        let mut root = Container::new_root();
         for _ in 1..10 {
-            Container::new_workspace(root.clone());
+            Container::new_workspace(&mut root);
         }
         assert_eq!(root.get_children().unwrap().len(),10);
     }

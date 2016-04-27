@@ -1,4 +1,5 @@
 //! Main module in way-cooler
+#![feature(rc_counts)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -26,6 +27,7 @@ mod keys;
 mod callbacks;
 mod lua;
 mod layout;
+
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
