@@ -26,6 +26,8 @@ pub enum ContainerType {
     Output,
     /// A workspace 
     Workspace,
+    /// A Container, houses views and other containers
+    Container,
     /// A view (window)
     View
 }
@@ -91,6 +93,7 @@ impl Container {
         }
         let workspace: Node =
             Rc::new(RefCell::new(Container {
+                // NOTE Give this an output
                 handle: None,
                 parent: Some(Rc::downgrade(&root)),
                 children: vec!(),
@@ -109,6 +112,35 @@ impl Container {
         root.borrow_mut().add_child(workspace.clone());
         workspace
     }
+
+    /// Makes a new container. These hold views and other containers.
+    /// Container hold information about specific parts of the tree in some
+    /// workspace and the layout of the views within.
+    pub fn new_container(parent_: &mut Node, view: WlcView) -> Node {
+        let mut parent = parent_.borrow_mut();
+        if parent.is_root() {
+            panic!("Container cannot be a direct child of root");
+        }
+        let container = Rc::new(RefCell::new(Container {
+            handle: Some(Handle::View(view)),
+            parent: Some(Rc::downgrade(&parent_)),
+            children: vec!(),
+            container_type: ContainerType::Container,
+            // NOTE Get default, either from config or from workspace
+            layout: Layout::None,
+            // NOTE Get this information from somewhere, or set it later
+            width: 0,
+            height: 0,
+            x: 0,
+            y: 0,
+            visible: false,
+            is_focused: false,
+            is_floating: false,
+        }));
+        parent.add_child(container.clone());
+        container
+    }
+
     /// Gets the parent that this container sits in.
     ///
     /// If the container is the root, it returns None
