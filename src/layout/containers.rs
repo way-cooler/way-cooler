@@ -187,12 +187,12 @@ impl Container {
     /// Gets the children of this container.
     ///
     /// Views never have children
-    pub fn get_children(&self) -> Option<Vec<Node>> {
+    pub fn get_children(&self) -> Option<&[Node]> {
         if self.get_type() == ContainerType::View {
             None
         }
         else {
-            Some(self.children.clone())
+            Some(self.children.as_slice())
         } 
     }
 

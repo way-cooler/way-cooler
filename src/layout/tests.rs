@@ -55,7 +55,7 @@ mod tests {
         let root = root_setup();
         let root_copy = Rc::make_mut(&mut root.clone()).clone().into_inner();
         assert_eq!(root.borrow().get_children().unwrap().len(), 10);
-        for container_ in root.borrow().get_children().unwrap() {
+        for container_ in root.borrow().get_children().unwrap().to_vec() {
             // Workspaces start out empty
             let mut container = container_.borrow_mut();
             assert_eq!(container.get_children().unwrap().len(), 0);
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn container_validity_test() {
         let root = root_setup();
-        for mut workspace_ in root.borrow().get_children().unwrap() {
+        for mut workspace_ in root.borrow().get_children().unwrap().to_vec() {
             let workspace_copy = Rc::make_mut(&mut workspace_.clone()).clone().into_inner();
             let container_ = Container::new_container(&mut workspace_, WlcView::root());
             let mut container = container_.borrow_mut();
@@ -134,8 +134,8 @@ mod tests {
     #[test]
     fn remove_container_test() {
         let root = root_setup();
-        let mut workspace = &mut root.borrow().get_children().unwrap()[0];
-        let container = Container::new_container(&mut workspace, WlcView::root());
+        let mut workspace = &mut root.borrow().get_children().unwrap().to_vec()[0];
+        let container = Container::new_container(workspace, WlcView::root());
 
         let container_ref = Rc::downgrade(&workspace.borrow().get_children().unwrap()[0].clone());
         // Still points to the container
@@ -169,7 +169,7 @@ mod tests {
     /// Tests to make sure only workspaces can be children of the top node
     fn root_workspace_only() {
         let root = root_setup();
-        let container = &mut root.borrow().get_children().unwrap()[0];
+        let container = &mut root.borrow().get_children().unwrap().to_vec()[0];
         Container::new_workspace(container);
     }
 
