@@ -24,6 +24,7 @@ use std::env;
 mod registry;
 mod keys;
 mod callbacks;
+mod convert;
 mod lua;
 
 /// Callback to route wlc logs into env_logger

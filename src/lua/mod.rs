@@ -23,7 +23,6 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 
 #[macro_use]
 mod funcs;
-pub mod convert;
 #[cfg(test)]
 mod tests;
 
