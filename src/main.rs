@@ -1,5 +1,4 @@
 //! Main module in way-cooler
-#![feature(rc_counts)]
 
 #[macro_use]
 extern crate lazy_static;
