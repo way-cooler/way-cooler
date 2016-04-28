@@ -1,117 +1,69 @@
-use hlua::any::AnyLuaValue;
-use hlua::any::AnyLuaValue::*;
+//! Conversions between AnyLuaValue and structures.
+//! Also see macros.
 
-use std::ops::Deref;
-use std::iter::Iterator;
+mod serialize;
+mod deserialize;
 
-/// Represents types which can be serialized into a Lua table (AnyLuaValue).
-///
-/// If you wish to continue using the object after serialization, consider
-/// using `impl<a> ToTable for &'a T`, which will take an `&T` as its `self`.
-pub trait ToTable {
-    /// Write this value into an AnyLuaValue
-    fn to_table(self) -> AnyLuaValue;
-}
+pub use self::serialize::ToTable;
+pub use self::deserialize::
+{FromTable, LuaDecoder, ConverterError, ConvertResult};
 
-/// Represents types which can be serialized from a Lua table (AnyLuaValue).
-///
-/// For convenience, this method takes in a `LuaDecoder` (obtained from
-/// `LuaDecoder::new(AnyLuaValue)`). See methods on `LuaDecoder`.
-pub trait FromTable {
-    /// Attempt to parse this value from the decoder.
-    fn from_table(decoder: &mut LuaDecoder) -> ConvertResult<Self>
-        where Self: Sized;
-}
+// Tests for serialize <-> deserialize compatability
 
-// Implementation for standard numeric types
-macro_rules! numeric_impl {
-    ($($typ:ty), +) => {
-        $(impl ToTable for $typ {
-            fn to_table(self) -> AnyLuaValue {
-                LuaNumber(self as f64)
-            }
-        })+
+#[cfg(test)]
+mod tests {
+    use hlua::any::AnyLuaValue;
+    use hlua::any::AnyLuaValue::*;
+    use super::*;
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    struct Point {
+        x: i32,
+        y: u32
     }
-}
 
-numeric_impl!(usize, isize);
-numeric_impl!(i8, i16, i32);
-numeric_impl!(u8, u16, u32);
-numeric_impl!(f32, f64);
-
-// Implementation for &Ts which use Copy syntax
-impl<'a, T> ToTable for &'a T where T: Copy {
-    fn to_table(self) -> AnyLuaValue {
-        self.clone().to_table()
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct Coord {
+        name: String,
+        point: Point
     }
-}
 
-impl ToTable for bool {
-    fn to_table(self) -> AnyLuaValue {
-        LuaBoolean(self)
-    }
-}
-
-impl ToTable for String {
-    fn to_table(self) -> AnyLuaValue {
-        LuaString(self)
-    }
-}
-
-impl<T: ToTable> ToTable for Option<T> {
-    fn to_table(self) -> AnyLuaValue {
-        match self {
-            Some(val) => val.to_table(),
-            None => LuaNil
+    impl ToTable for Point {
+        fn to_table(self) -> AnyLuaValue {
+            LuaArray(vec![
+                (LuaString("x".to_string()), LuaNumber(self.x as f64)),
+                (LuaString("y".to_string()), LuaNumber(self.y as f64))
+            ])
         }
     }
-}
-
-impl ToTable for () {
-    fn to_table(self) -> AnyLuaValue {
-        LuaNil
+    impl ToTable for Coord {
+        fn to_table(self) -> AnyLuaValue {
+            LuaArray(vec![
+                (LuaString("name".to_string()), LuaString(self.name)),
+                (LuaString("point".to_string()), self.point.to_table())
+            ])
+        }
     }
-}
-
-/// Errors a converter can run into
-pub enum ConverterError {
-    /// The type of value present did not match the one expected
-    UnexpectedType(AnyLuaValue),
-    /// The table index expected did not exist
-    MissingTableIndex(String),
-    /// The table index present was not valid
-    InvalidTableIndex(AnyLuaValue)
-}
-
-pub type ConvertResult<T> = Result<T, ConverterError>;
-
-/// Can decode values with a FromTable
-pub struct LuaDecoder {
-    val: AnyLuaValue
-}
-
-impl LuaDecoder {
-    pub fn new(val: AnyLuaValue) -> LuaDecoder {
-        LuaDecoder { val: val }
+    impl FromTable for Point {
+        fn from_table(decoder: LuaDecoder) -> ConvertResult<Point> {
+            let (decoder, x) = try!(decoder.read_field("x".to_string()));
+            let (_, y) = try!(decoder.read_field("y".to_string()));
+            Ok(Point { x: x, y: y })
+        }
+    }
+    impl FromTable for Coord {
+        fn from_table(decoder: LuaDecoder) -> ConvertResult<Coord> {
+            let (decoder, name) = try!(decoder.read_field("name".to_string()));
+            let (_, point) = try!(decoder.read_field("point".to_string()));
+            Ok(Coord { name: name, point: point })
+        }
     }
 
-    pub fn get_u32(&self) -> ConvertResult<u32> {
-        unimplemented!()
-    }
-
-    pub fn get_i32(&self) -> ConvertResult<i32> {
-        unimplemented!()
-    }
-
-    pub fn get_f64(&self) -> ConvertResult<i32> {
-        unimplemented!()
-    }
-
-    pub fn get_string(&self) -> ConvertResult<String> {
-        unimplemented!()
-    }
-
-    pub fn read_field<T, F>(&self, func: F) -> ConvertResult<T> {
-        unimplemented!()
+    #[test]
+    fn test_point_and_coord() {
+        let origin = Point { x: 0 , y: 0 };
+        let origin_table = origin.clone().to_table();
+        let origin_from_table = Point::from_lua_table(origin_table);
+        assert_eq!(origin, origin_from_table.unwrap());
     }
 }
