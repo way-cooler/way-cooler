@@ -139,11 +139,6 @@ mod tests {
     fn basic_tree_test() {
         let mut root = root_setup();
         assert_eq!(root.borrow().get_children().unwrap().len(),10);
-        // Remove half the nodes
-        for _ in 0..5 {
-            root.borrow_mut().remove_child_at(0).unwrap();
-        }
-        assert_eq!(root.borrow().get_children().unwrap().len(),5);
         // NOTE Enhance with adding containers to the workspaces
     }
         
