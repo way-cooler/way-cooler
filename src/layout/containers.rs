@@ -167,7 +167,7 @@ impl Container {
             parent.add_child(container.clone());
         } else {
             // Regular case, create as sibling of current container
-            // parent.add_sibling(container);
+            parent.add_sibling(container.clone());
         }
         container
     }
@@ -196,6 +196,14 @@ impl Container {
         }
         // NOTE check to make sure we are not adding a duplicate
         self.children.push(container);
+    }
+
+    pub fn add_sibling(&mut self, container: Node) {
+        if self.is_root() {
+            panic!("Root has no sibling, cannot add sibling to root");
+        }
+        let parent = self.get_parent().unwrap();
+        parent.borrow_mut().add_child(container);
     }
 
     /// Removes this container and all of its children.
