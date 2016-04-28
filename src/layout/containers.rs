@@ -169,7 +169,7 @@ impl Container {
 
     /// Removes this container and all of its children
     pub fn remove_container(&mut self) -> Result<(), &'static str> {
-        if self.is_root() {
+        if self.is_root() || self.get_type() == ContainerType::Workspace {
             panic!("Cannot remove root container");
         }
         if let Some(parent) = self.get_parent() {
@@ -203,6 +203,9 @@ impl Container {
 
     /// Removes the child at the specified index
     pub fn remove_child_at(&mut self, index: usize) -> Result<Node, &'static str> {
+        if self.children[index].borrow().get_type() == ContainerType::Workspace {
+            panic!("Can not remove workspace");
+        }
         Ok(self.children.remove(index))
     }
 
@@ -211,6 +214,9 @@ impl Container {
     pub fn remove_child(&mut self, node: &mut Container) -> Result<Node, &'static str> {
         for (index, child) in self.children.clone().iter().enumerate() {
             if *child.borrow() == *node {
+                if child.borrow().get_type() == ContainerType::Workspace {
+                    panic!("Can not remove workspace");
+                }
                 return Ok(self.children.remove(index));
             }
         }

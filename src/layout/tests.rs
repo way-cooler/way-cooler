@@ -98,6 +98,14 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expect = "Cannot remove root container")]
+    fn ensure_workspace_container_unremovable_test() {
+        let root = root_setup();
+        let workspace = root.borrow().get_children().unwrap()[0].clone();
+        workspace.borrow_mut().remove_container().ok();
+    }
+
+    #[test]
     #[should_panic(expect = "Only workspaces can be added to the root node")]
     /// Tests to make sure only workspaces can be children of the top node
     fn root_workspace_only() {
