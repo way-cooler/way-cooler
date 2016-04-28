@@ -31,7 +31,7 @@ mod tests {
     /// Verify that root node has required properties
     fn root_validity_test() {
         let main: Node = Container::new_root();
-        let root = main.borrow_mut();
+        let root = main.borrow();
         // Make sure it starts with no children (but can have children)
         assert_eq!(root.get_children().unwrap().len(), 0);
         // This is the tippity-top of the tree
@@ -42,9 +42,9 @@ mod tests {
         assert!(! root.is_focused());
         // Root is parent of all nodes, including itself
         assert!(root.is_parent_of(main.clone()));
-        // Root is not a child of anything, including itself
+        // Root is not a child of anything, except for itself
         // NOTE Add more test when we have more container types
-        assert!(! root.is_child_of(main.clone()));
+        assert!(root.is_child_of(main.clone()));
         assert_eq!(root.get_position(), (0, 0));
         assert_eq!(root.get_dimensions(), (0, 0));
         assert!(root.is_root());
@@ -76,6 +76,57 @@ mod tests {
             // NOTE add test for is_parent_of
             assert!(container.is_child_of(root.clone()));
             assert!(! container.is_root());
+            assert_eq!(container.get_parent_by_type(ContainerType::Root).unwrap(), root);
+        }
+    }
+
+    #[test]
+    fn container_validity_test() {
+        let root = root_setup();
+        for mut workspace_ in root.borrow().get_children().unwrap() {
+            let workspace_copy = Rc::make_mut(&mut workspace_.clone()).clone().into_inner();
+            let container_ = Container::new_container(&mut workspace_, WlcView::root());
+            let mut container = container_.borrow_mut();
+            // No children
+            assert_eq!(container.get_children().unwrap().len(), 0);
+            // Is the only child of the workspace
+            let container_parent = Rc::make_mut(&mut container.get_parent().unwrap().clone()).clone().into_inner();
+            assert_eq!(workspace_copy, container_parent);
+            // drop our copy of container here, because otherwise it panics at
+            // run time. Another way to do this is at the beginning, but this is
+            // a good test of what we need to do to stay dynamic
+            drop(container);
+            let inner_workspace = Container::new_container(&mut container_.clone(), WlcView::root());
+            container = container_.borrow_mut();
+            assert_eq!(container.get_children().unwrap().len(), 1);
+            let self_as_child = container.get_children().unwrap()[0].clone();
+            assert_eq!(*self_as_child.borrow(), *inner_workspace.borrow());
+            assert_eq!(container.get_type(), ContainerType::Container);
+            drop(container);
+            let container2 = container_.borrow();
+            assert!(container2.is_parent_of(inner_workspace.clone()));
+            drop(container2);
+            container = container_.borrow_mut();
+            // We also need to drop our copy of the container here when checking
+            // if we are a child of the container, since we have to borrow the
+            // container right here again in order to check if it's the parent.
+            //
+            // Again, this is only an "issue" because we are borrow_mut for
+            // such a long period of time
+            drop(container);
+            assert!(inner_workspace.borrow().is_child_of(container_.clone()));
+            container = container_.borrow_mut();
+            assert!(! container.is_focused());
+            container.set_visibility(true);
+            assert!(container.get_visibility());
+            container.set_visibility(false);
+            assert!(! container.get_visibility());
+            // NOTE change these once they can be set properly
+            assert_eq!(container.get_dimensions(), (0,0));
+            assert_eq!(container.get_position(), (0,0));
+            assert!(container.is_child_of(root.clone()));
+            assert!(! container.is_root());
+            assert_eq!(container.get_parent_by_type(ContainerType::Workspace).unwrap(), workspace_);
             assert_eq!(container.get_parent_by_type(ContainerType::Root).unwrap(), root);
         }
     }

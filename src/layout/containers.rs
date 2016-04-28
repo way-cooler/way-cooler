@@ -257,21 +257,19 @@ impl Container {
         if self.is_root() {
             true
         } else {
-            unimplemented!();
+            while ! child.borrow().is_root() {
+                let parent = child.borrow().get_parent().unwrap();
+                if child == parent {
+                    return true
+                }
+            }
+            return false;
         }
     }
 
     /// Returns true if this container is a child is an decedent of the parent
     pub fn is_child_of(&self, parent: Node) -> bool {
-        if self.is_root() {
-            false
-        } else {
-            if let Some(my_parent) = self.get_parent() {
-                my_parent == parent
-            } else {
-                false 
-            }
-        }
+        parent.borrow().is_parent_of(Rc::new(RefCell::new(self.clone())))
     }
 
     pub fn is_root(&self) -> bool {
