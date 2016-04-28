@@ -63,7 +63,7 @@ mod tests {
             // NOTE add test for add_child
             assert_eq!(container.get_type(), ContainerType::Workspace);
             assert!(! container.is_focused());
-            // NOTE add test for remove_child 
+            // NOTE add test for remove_child_at 
             assert!(! container.get_visibility());
             container.set_visibility(true);
             assert!(container.get_visibility());
@@ -77,6 +77,17 @@ mod tests {
             assert!(! container.is_root());
             assert_eq!(container.get_parent_by_type(ContainerType::Root).unwrap(), root);
         }
+    }
+
+    #[test]
+    fn remove_container_test() {
+        let root = root_setup();
+        let container_ref = Rc::downgrade(&root.borrow().get_children().unwrap()[0].clone());
+        // Still points to the container
+        assert!(container_ref.clone().upgrade().is_some());
+        // remove root
+        root.borrow_mut().remove_container();
+        assert!(! container_ref.clone().upgrade().is_some());
     }
 
     #[test]
@@ -110,7 +121,7 @@ mod tests {
         assert_eq!(root.borrow().get_children().unwrap().len(),10);
         // Remove half the nodes
         for _ in 0..5 {
-            root.borrow_mut().remove_child(0).ok();
+            root.borrow_mut().remove_child_at(0).ok();
         }
         assert_eq!(root.borrow().get_children().unwrap().len(),5);
         // NOTE Enhance with adding containers to the workspaces
