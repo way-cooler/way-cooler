@@ -90,7 +90,7 @@ mod tests {
         // Still points to the container
         assert!(container_ref.clone().upgrade().is_some());
         // removes workspace's reference to it
-        container.borrow().remove_container().ok();
+        container.borrow().remove_container().unwrap();
         // We still can see it, so it's still alive
         assert!(container_ref.clone().upgrade().is_some());
         // drop our reference to it
@@ -137,14 +137,11 @@ mod tests {
     /// can be removed, and that you can add simple containers to the
     /// workspaces. (Does not test views)
     fn basic_tree_test() {
-        let mut root = Container::new_root();
-        for _ in 0..10 {
-            Container::new_workspace(&mut root);
-        }
+        let mut root = root_setup();
         assert_eq!(root.borrow().get_children().unwrap().len(),10);
         // Remove half the nodes
         for _ in 0..5 {
-            root.borrow_mut().remove_child_at(0).ok();
+            root.borrow_mut().remove_child_at(0).unwrap();
         }
         assert_eq!(root.borrow().get_children().unwrap().len(),5);
         // NOTE Enhance with adding containers to the workspaces
