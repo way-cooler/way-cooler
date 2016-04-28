@@ -52,8 +52,8 @@ pub struct Container {
     layout: Layout,
     width: u32,
     height: u32,
-    x: i64,
-    y: i64,
+    x: i32,
+    y: i32,
     visible: bool,
     is_focused: bool,
     is_floating: bool,
@@ -116,13 +116,13 @@ impl Container {
     /// Makes a new container. These hold views and other containers.
     /// Container hold information about specific parts of the tree in some
     /// workspace and the layout of the views within.
-    pub fn new_container(parent_: &mut Node, view: WlcView) -> Node {
+    pub fn new_container(parent_: &mut Node, output: WlcOutput) -> Node {
         let mut parent = parent_.borrow_mut();
         if parent.is_root() {
             panic!("Container cannot be a direct child of root");
         }
         let container = Rc::new(RefCell::new(Container {
-            handle: Some(Handle::View(view)),
+            handle: Some(Handle::Output(output)),
             parent: Some(Rc::downgrade(&parent_)),
             children: vec!(),
             container_type: ContainerType::Container,
@@ -138,6 +138,37 @@ impl Container {
             is_floating: false,
         }));
         parent.add_child(container.clone());
+        container
+    }
+
+    /// Makes a new view. A view holds either a Wayland or an X Wayland window.
+    pub fn new_view(parent_: &mut Node, view: WlcView) -> Node {
+        let mut parent = parent_.borrow_mut();
+        let geometry = view.get_geometry().unwrap().clone();
+        if parent.is_root() {
+            panic!("View cannot be a direct child of root");
+        }
+        let container = Rc::new(RefCell::new(Container {
+            handle: Some(Handle::View(view)),
+            parent: Some(Rc::downgrade(&parent_)),
+            children: vec!(),
+            container_type: ContainerType::View,
+            layout: Layout::None,
+            width: geometry.size.w,
+            height: geometry.size.h,
+            x: geometry.origin.x,
+            y: geometry.origin.y,
+            visible: false,
+            is_focused: false,
+            is_floating: false
+        }));
+        if parent.get_type() == ContainerType::Workspace {
+            // Case of focused workspace, just create a child of it
+            parent.add_child(container.clone());
+        } else {
+            // Regular case, create as sibling of current container
+            // parent.add_sibling(container);
+        }
         container
     }
 
@@ -248,7 +279,7 @@ impl Container {
     }
 
     /// Gets the position of this container on the screen
-    pub fn get_position(&self) -> (i64, i64) {
+    pub fn get_position(&self) -> (i32, i32) {
         (self.x, self.y)
     }
 

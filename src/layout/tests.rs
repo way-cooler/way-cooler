@@ -85,7 +85,7 @@ mod tests {
         let root = root_setup();
         for mut workspace_ in root.borrow().get_children().unwrap().to_vec() {
             let workspace_copy = Rc::make_mut(&mut workspace_.clone()).clone().into_inner();
-            let container_ = Container::new_container(&mut workspace_, WlcView::root());
+            let container_ = Container::new_container(&mut workspace_, WlcView::root().as_output());
             let mut container = container_.borrow_mut();
             // No children
             assert_eq!(container.get_children().unwrap().len(), 0);
@@ -96,7 +96,7 @@ mod tests {
             // run time. Another way to do this is at the beginning, but this is
             // a good test of what we need to do to stay dynamic
             drop(container);
-            let inner_workspace = Container::new_container(&mut container_.clone(), WlcView::root());
+            let inner_workspace = Container::new_container(&mut container_.clone(), WlcView::root().as_output());
             container = container_.borrow_mut();
             assert_eq!(container.get_children().unwrap().len(), 1);
             let self_as_child = container.get_children().unwrap()[0].clone();
@@ -135,7 +135,7 @@ mod tests {
     fn remove_container_test() {
         let root = root_setup();
         let mut workspace = &mut root.borrow().get_children().unwrap().to_vec()[0];
-        let container = Container::new_container(workspace, WlcView::root());
+        let container = Container::new_container(workspace, WlcView::root().as_output());
 
         let container_ref = Rc::downgrade(&workspace.borrow().get_children().unwrap()[0].clone());
         // Still points to the container
