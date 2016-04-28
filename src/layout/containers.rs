@@ -144,7 +144,13 @@ impl Container {
     /// Makes a new view. A view holds either a Wayland or an X Wayland window.
     pub fn new_view(parent_: &mut Node, view: WlcView) -> Node {
         let mut parent = parent_.borrow_mut();
-        let geometry = view.get_geometry().unwrap().clone();
+        let (mut w, mut h, mut x, mut y) = (0u32, 0u32, 0i32, 0i32);
+        if let Some(geometry) = view.get_geometry().clone() {
+            h = geometry.size.h;
+            w = geometry.size.w;
+            x = geometry.origin.x;
+            y = geometry.origin.y;
+        }
         if parent.is_root() {
             panic!("View cannot be a direct child of root");
         }
@@ -154,10 +160,10 @@ impl Container {
             children: vec!(),
             container_type: ContainerType::View,
             layout: Layout::None,
-            width: geometry.size.w,
-            height: geometry.size.h,
-            x: geometry.origin.x,
-            y: geometry.origin.y,
+            width: w,
+            height: h,
+            x: x,
+            y: y,
             visible: false,
             is_focused: false,
             is_floating: false
@@ -193,6 +199,8 @@ impl Container {
         if self.get_type() == ContainerType::Workspace 
             && container.borrow().get_type() == ContainerType::Workspace {
             panic!("Only containers can be children of a workspace");
+        } else if self.get_type() == ContainerType::View {
+            panic!("Cannot add child to a view");
         }
         // NOTE check to make sure we are not adding a duplicate
         self.children.push(container);

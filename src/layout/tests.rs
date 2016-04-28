@@ -132,6 +132,31 @@ mod tests {
     }
 
     #[test]
+    fn view_validity_test() {
+        let root = root_setup();
+        for mut workspace_ in root.borrow().get_children().unwrap().to_vec() {
+            let workspace_copy = Rc::make_mut(&mut workspace_.clone()).clone().into_inner();
+            let mut container_ = Container::new_container(&mut workspace_, WlcView::root().as_output());
+            let view = Container::new_view(&mut container_, WlcView::root());
+            assert_eq!(view.borrow().get_parent().unwrap(), container_);
+            // Add child test
+            // The view was added as a sibling, so it's not a child of the container
+            assert_eq!(container_.borrow().get_children().unwrap().len(), 0);
+            view.borrow_mut().add_sibling(container_.clone());
+            assert_eq!(container_.borrow().get_children().unwrap().len(), 1);
+        }
+    }
+
+    #[test]
+    #[should_panic(expect = "Cannot add child to a view")]
+    fn ensure_views_cant_have_children_test() {
+        let root = root_setup();
+        let mut workspace = root.borrow_mut().get_children().unwrap().to_vec()[0].clone();
+        let view = Container::new_view(&mut workspace, WlcView::root());
+        view.borrow_mut().add_child(workspace);
+    }
+
+    #[test]
     fn remove_container_test() {
         let root = root_setup();
         let mut workspace = &mut root.borrow().get_children().unwrap().to_vec()[0];
