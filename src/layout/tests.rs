@@ -4,6 +4,7 @@
 mod tests {
     use super::super::containers::*;
     use std::rc::*;
+    use rustwlc::handle::*;
 
     #[cfg(test)]
     /// Sets up a root node with 10 workspaces
@@ -82,11 +83,18 @@ mod tests {
     #[test]
     fn remove_container_test() {
         let root = root_setup();
-        let container_ref = Rc::downgrade(&root.borrow().get_children().unwrap()[0].clone());
+        let mut workspace = &mut root.borrow().get_children().unwrap()[0];
+        let container = Container::new_container(&mut workspace, WlcView::root());
+
+        let container_ref = Rc::downgrade(&workspace.borrow().get_children().unwrap()[0].clone());
         // Still points to the container
         assert!(container_ref.clone().upgrade().is_some());
-        // remove root
-        root.borrow_mut().remove_container().ok();
+        // removes workspace's reference to it
+        container.borrow().remove_container().ok();
+        // We still can see it, so it's still alive
+        assert!(container_ref.clone().upgrade().is_some());
+        // drop our reference to it
+        drop(container);
         assert!(! container_ref.clone().upgrade().is_some());
     }
 
@@ -94,7 +102,7 @@ mod tests {
     #[should_panic(expect = "Cannot remove root container")]
     fn ensure_root_container_unremovable_test() {
         let root = root_setup();
-        root.borrow_mut().remove_container().ok();
+        root.borrow_mut().remove_container().expect("Cannot remove root container");
     }
 
     #[test]
@@ -102,7 +110,7 @@ mod tests {
     fn ensure_workspace_container_unremovable_test() {
         let root = root_setup();
         let workspace = root.borrow().get_children().unwrap()[0].clone();
-        workspace.borrow_mut().remove_container().ok();
+        workspace.borrow_mut().remove_container().expect("Cannot remove root container");
     }
 
     #[test]

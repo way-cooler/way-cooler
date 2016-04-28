@@ -167,15 +167,18 @@ impl Container {
         self.children.push(container);
     }
 
-    /// Removes this container and all of its children
-    pub fn remove_container(&mut self) -> Result<(), &'static str> {
-        if self.is_root() || self.get_type() == ContainerType::Workspace {
-            panic!("Cannot remove root container");
+    /// Removes this container and all of its children.
+    /// You MUST call this function while `borrow`ing, a mutable borrow will
+    /// cause it to panic at run time
+    pub fn remove_container(&self) -> Result<(), &'static str> {
+        if self.is_root() {
+            return Err("Cannot remove root container");
+        } else if self.get_type() == ContainerType::Workspace  {
+            return Err("Cannot remove workspace container");
         }
         if let Some(parent) = self.get_parent() {
             parent.borrow_mut().remove_child(self);
         }
-        self.children = vec!();
         Ok(())
     }
 
@@ -204,23 +207,23 @@ impl Container {
     /// Removes the child at the specified index
     pub fn remove_child_at(&mut self, index: usize) -> Result<Node, &'static str> {
         if self.children[index].borrow().get_type() == ContainerType::Workspace {
-            panic!("Can not remove workspace");
+            return Err("Cannot remove workspace")
         }
         Ok(self.children.remove(index))
     }
 
     /// Removes the given child from this container's children.
     /// If the child is not present, then an error is returned
-    pub fn remove_child(&mut self, node: &mut Container) -> Result<Node, &'static str> {
+    pub fn remove_child(&mut self, node: &Container) -> Result<Node, &'static str> {
         for (index, child) in self.children.clone().iter().enumerate() {
             if *child.borrow() == *node {
                 if child.borrow().get_type() == ContainerType::Workspace {
-                    panic!("Can not remove workspace");
+                    return Err("Can not remove workspace");
                 }
                 return Ok(self.children.remove(index));
             }
         }
-        return Err("");//&format!("Could not find child {:?} in {:?}", node, self));
+        return Err("Could not find child in container");//format!("Could not find child {:?} in {:?}", node, self));
     }
 
     /// Sets this container (and everything in it) to given visibility
@@ -297,7 +300,7 @@ impl Debug for Container {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         f.debug_struct("Containable")
             .field("type", &self.get_type())
-            .field("parent", &self.get_parent())
+            //.field("parent", &self.get_parent())
             .field("children", &self.get_children())
             .field("focused", &self.is_focused())
             .finish()
