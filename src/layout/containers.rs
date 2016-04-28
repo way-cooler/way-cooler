@@ -10,9 +10,9 @@ use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 use std::cell::RefCell;
 
-pub type Node = Rc<Container>;
+pub type Node = Rc<RefCell<Container>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Handle {
     View(WlcView),
     Output(WlcOutput)
@@ -41,10 +41,11 @@ pub enum Layout {
     Floating
 }
 
+#[derive(Clone)]
 pub struct Container {
     handle: Option<Handle>,
-    parent: RefCell<Option<Weak<Container>>>,
-    children: RefCell<Vec<Node>>,
+    parent: Option<Weak<RefCell<Container>>>,
+    children: Vec<Node>,
     container_type: ContainerType,
     layout: Layout,
     width: u32,
@@ -65,10 +66,10 @@ impl Container {
     // Perhaps set a static global variable
     pub fn new_root() -> Node {
         trace!("Root created");
-        Rc::new(Container {
+        Rc::new(RefCell::new(Container {
             handle: None,
-            parent: RefCell::new(None),
-            children: RefCell::new(vec!()),
+            parent: None,
+            children: vec!(),
             container_type: ContainerType::Root,
             layout: Layout::None,
             width: 0,
@@ -78,20 +79,22 @@ impl Container {
             visible: false,
             is_focused: false,
             is_floating: false
-        })
+        }))
     }
     
     /// Makes a new workspace container. This should only be called by root
     /// since it will properly initialize the right number and properly put
     /// them in the main tree.
     pub fn new_workspace(root: &mut Node) -> Node {
-        println!("weak: {}, strong: {}", Rc::weak_count(root), Rc::strong_count(root));
+        if ! root.borrow().is_root() {
+            panic!("Only workspaces can be added to the root node");
+        }
         let workspace: Node =
-            Rc::new(Container {
+            Rc::new(RefCell::new(Container {
                 handle: None,
-                parent: RefCell::new(Some(Rc::downgrade(&root))),
-                children: RefCell::new(vec!()),
-                container_type: ContainerType::Root,
+                parent: Some(Rc::downgrade(&root)),
+                children: vec!(),
+                container_type: ContainerType::Workspace,
                 // NOTE Change this to some other default
                 layout: Layout::None,
                 // NOTE Figure out how to initialize these properly
@@ -102,14 +105,9 @@ impl Container {
                 visible: false,
                 is_focused: false,
                 is_floating: false,
-                });
-        println!("weak: {}, strong: {}", Rc::weak_count(root), Rc::strong_count(root));
-        if let Some(root) = Rc::get_mut(root) {
-            root.add_child(workspace.clone());
-            workspace
-        } else {
-            panic!("There was a weak reference to root, couldn't initialize workspace");
-        }
+                }));
+        root.borrow_mut().add_child(workspace.clone());
+        workspace
     }
     /// Gets the parent that this container sits in.
     ///
@@ -120,20 +118,28 @@ impl Container {
         } else {
             // NOTE Clone has to be done here because we have to store the
             // parent as an option since the `Weak::new` is unstable
-            self.parent.borrow().clone().unwrap().upgrade()
+            if let Some(parent) = self.parent.clone() {
+                parent.upgrade()
+            } else {
+                None
+            }
         }
     }
 
-    fn add_child(&mut self, container: Node) {
+    pub fn add_child(&mut self, container: Node) {
+        if self.get_type() == ContainerType::Workspace 
+            && container.borrow().get_type() == ContainerType::Workspace {
+            panic!("Only containers can be children of a workspace");
+        }
         // NOTE check to make sure we are not adding a duplicate
-        self.children.borrow_mut().push(container);
+        self.children.push(container);
     }
 
     /// Removes this container and all of its children
-    fn remove_container(&self) -> Result<(), &'static str> {
+    pub fn remove_container(&self) -> Result<(), &'static str> {
         if let Some(children) = self.get_children() {
             for child in children {
-                child.remove_container().ok();
+                child.borrow_mut().remove_container().ok();
                 drop(child);
             }
         }
@@ -144,11 +150,12 @@ impl Container {
     ///
     /// Views never have children
     pub fn get_children(&self) -> Option<Vec<Node>> {
-        if self.children.borrow().len() > 0 {
-            Some(self.children.borrow().clone())
-        } else {
+        if self.get_type() == ContainerType::View {
             None
         }
+        else {
+            Some(self.children.clone())
+        } 
     }
 
     /// Gets the type of the container
@@ -164,12 +171,17 @@ impl Container {
     /// Removes the child at the specified index
     // NOTE Make a wrapper function that can take a reference and remove it
     pub fn remove_child(&mut self, index: usize) -> Result<Node, &'static str> {
-        Ok(self.children.borrow_mut().remove(index))
+        Ok(self.children.remove(index))
     }
 
     /// Sets this container (and everything in it) to given visibility
     pub fn set_visibility(&mut self, visibility: bool) {
         self.visible = visibility
+    }
+
+    /// Gets the visibility of the container
+    pub fn get_visibility(&self) -> bool {
+        self.visible
     }
 
     /// Gets the X and Y dimensions of the container
@@ -191,12 +203,16 @@ impl Container {
         }
     }
 
-    /// Returns true if this view is a child is an decedent of the parent
+    /// Returns true if this container is a child is an decedent of the parent
     pub fn is_child_of(&self, parent: Node) -> bool {
         if self.is_root() {
             false
         } else {
-            unimplemented!();
+            if let Some(my_parent) = self.get_parent() {
+                my_parent == parent
+            } else {
+                false 
+            }
         }
     }
 
@@ -209,16 +225,24 @@ impl Container {
         let mut container = self.get_parent();
         loop {
             if let Some(parent) = container {
-                if parent.get_type() == container_type {
+                if parent.borrow().get_type() == container_type {
                     return Some(parent);
                 }
-                container = parent.get_parent();
+                container = parent.borrow().get_parent();
             } else {
                 return None;
             }
         }
     }
 }
+
+impl PartialEq for Container {
+    fn eq(&self, other: &Container) -> bool {
+        self.get_type() == other.get_type()
+    }
+}
+
+impl Eq for Container { }
 
 impl Debug for Container {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
