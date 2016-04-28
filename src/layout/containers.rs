@@ -137,6 +137,9 @@ impl Container {
 
     /// Removes this container and all of its children
     pub fn remove_container(&mut self) -> Result<(), &'static str> {
+        if self.is_root() {
+            panic!("Cannot remove root container");
+        }
         if let Some(parent) = self.get_parent() {
             parent.borrow_mut().remove_child(self);
         }

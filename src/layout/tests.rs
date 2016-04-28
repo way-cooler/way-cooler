@@ -86,8 +86,15 @@ mod tests {
         // Still points to the container
         assert!(container_ref.clone().upgrade().is_some());
         // remove root
-        root.borrow_mut().remove_container();
+        root.borrow_mut().remove_container().ok();
         assert!(! container_ref.clone().upgrade().is_some());
+    }
+
+    #[test]
+    #[should_panic(expect = "Cannot remove root container")]
+    fn ensure_root_container_unremovable_test() {
+        let root = root_setup();
+        root.borrow_mut().remove_container().ok();
     }
 
     #[test]
