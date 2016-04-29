@@ -5,6 +5,7 @@ mod tests {
     use super::super::containers::*;
     use std::rc::*;
     use rustwlc::handle::*;
+    use rustwlc::types::*;
 
     #[cfg(test)]
     /// Sets up a root node with 10 workspaces
@@ -136,7 +137,10 @@ mod tests {
         let root = root_setup();
         for mut workspace_ in root.borrow().get_children().unwrap().to_vec() {
             let mut container_ = Container::new_container(&mut workspace_, WlcView::root().as_output());
-            let view = Container::new_view(&mut container_, WlcView::root());
+            // hack to give it a size and origin point.
+            let view_hack = WlcView::root();
+            view_hack.set_geometry(EDGE_NONE, &Geometry { origin: Point { x: 0, y: 0}, size: Size { w: 0, h: 0}});
+            let view = Container::new_view(&mut container_, view_hack);
             assert_eq!(view.borrow().get_parent().unwrap(), container_);
             // Add child test
             // The view was added as a sibling, so it's not a child of the container

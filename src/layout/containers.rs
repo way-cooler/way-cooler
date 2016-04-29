@@ -177,26 +177,20 @@ impl Container {
     /// Makes a new view. A view holds either a Wayland or an X Wayland window.
     pub fn new_view(parent_: &mut Node, wlc_view: WlcView) -> Node {
         let mut parent = parent_.borrow_mut();
-        let (mut w, mut h, mut x, mut y) = (0u32, 0u32, 0i32, 0i32);
-        if let Some(geometry) = wlc_view.get_geometry().clone() {
-            h = geometry.size.h;
-            w = geometry.size.w;
-            x = geometry.origin.x;
-            y = geometry.origin.y;
-        }
+        let geometry = wlc_view.get_geometry().unwrap();
         if parent.is_root() {
             panic!("View cannot be a direct child of root");
         }
         let view = Rc::new(RefCell::new(Container {
-            handle: Some(Handle::View(wlc_view)),
+            handle: Some(Handle::View(wlc_view.clone())),
             parent: Some(Rc::downgrade(&parent_)),
             children: vec!(),
             container_type: ContainerType::View,
             layout: Layout::None,
-            width: w,
-            height: h,
-            x: x,
-            y: y,
+            width: geometry.size.w,
+            height: geometry.size.h,
+            x: geometry.origin.x,
+            y: geometry.origin.y,
             visible: false,
             is_focused: false,
             is_floating: false
