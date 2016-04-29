@@ -35,7 +35,7 @@ impl RegistryValue {
         self.flags
     }
 
-    /// Gets the json of a registry value
+    /// Gets the Lua of a registry value
     pub fn get_lua(&self) -> Arc<AnyLuaValue> {
         self.object.clone()
     }

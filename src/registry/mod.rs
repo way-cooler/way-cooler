@@ -45,15 +45,15 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
     REGISTRY.write().unwrap()
 }
 
-/// Gets a Json object from a registry key
+/// Gets a Lua object from a registry key
 pub fn get_lua<K>(name: &K) -> Option<(AccessFlags, Arc<AnyLuaValue>)>
 where String: Borrow<K>, K: Hash + Eq + Display {
-    trace!("get_json: {}", *name);
+    trace!("get_lua: {}", *name);
     let ref reg = *read_lock();
     reg.get(name).map(|val| (val.flags(), val.get_lua()))
 }
 
-/// Gets an object from the registry, decoding its internal json
+/// Gets an object from the registry, decoding its internal Lua
 /// representation.
 pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
 where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
