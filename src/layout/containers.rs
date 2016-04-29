@@ -195,23 +195,25 @@ impl Container {
         }
     }
 
-    pub fn add_child(&mut self, container: Node) {
+    pub fn add_child(&mut self, container: Node) -> Result<(), &'static str> {
         if self.get_type() == ContainerType::Workspace 
             && container.borrow().get_type() == ContainerType::Workspace {
-            panic!("Only containers can be children of a workspace");
+            return Err("Only containers can be children of a workspace");
         } else if self.get_type() == ContainerType::View {
-            panic!("Cannot add child to a view");
+            return Err("Cannot add child to a view");
         }
         // NOTE check to make sure we are not adding a duplicate
         self.children.push(container);
+        Ok(())
     }
 
-    pub fn add_sibling(&mut self, container: Node) {
+    pub fn add_sibling(&mut self, container: Node) -> Result<(), &'static str> {
         if self.is_root() {
-            panic!("Root has no sibling, cannot add sibling to root");
+            return Err("Root has no sibling, cannot add sibling to root");
         }
         let parent = self.get_parent().unwrap();
         parent.borrow_mut().add_child(container);
+        Ok(())
     }
 
     /// Removes this container and all of its children.
