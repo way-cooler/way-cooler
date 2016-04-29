@@ -3,6 +3,8 @@
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
 
+use std::cmp::Ordering;
+
 /// Represents types which can be serialized from a Lua table (AnyLuaValue).
 ///
 /// For convenience, this method takes in a `LuaDecoder` (obtained from
@@ -92,6 +94,22 @@ impl LuaDecoder {
                 format!("Expected table, got {:?}", self.val)))
         }
     }
+
+    pub fn get_unordered_array<T>(self) -> ConvertResult<Vec<T>>
+    where T: FromTable {
+        match self.val {
+            LuaArray(mut arr) => {
+                let mut turn = Vec::with_capacity(arr.len());
+                // Completely ignore the keys, push values of type T
+                for (_, val) in arr.into_iter() {
+                    turn.push(try!(T::from_lua_table(val)));
+                }
+                Ok(turn)
+            }
+            _ => Err(ConverterError::UnexpectedType(
+                 format!("Expected table/vec, got {:?}", self.val)))
+        }
+    }
 }
 
 macro_rules! primitive_decode {
@@ -130,5 +148,11 @@ primitive_decode! {
 impl FromTable for String {
     fn from_table(decoder: LuaDecoder) -> ConvertResult<String> {
         decoder.get_string()
+    }
+}
+
+impl<T: FromTable> FromTable for Vec<T> {
+    fn from_table(decoder: LuaDecoder) -> ConvertResult<Vec<T>> {
+        decoder.get_unordered_array()
     }
 }
