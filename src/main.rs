@@ -21,6 +21,8 @@ use rustwlc::types::LogType;
 
 use std::env;
 
+#[macro_use]
+mod macros;
 mod registry;
 mod keys;
 mod callbacks;
