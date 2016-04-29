@@ -110,6 +110,7 @@ impl Container {
                 is_floating: false,
                 }));
         root.borrow_mut().add_child(workspace.clone());
+        trace!("Workspace created");
         workspace
     }
 
@@ -138,14 +139,15 @@ impl Container {
             is_floating: false,
         }));
         parent.add_child(container.clone());
+        trace!("Container created");
         container
     }
 
     /// Makes a new view. A view holds either a Wayland or an X Wayland window.
-    pub fn new_view(parent_: &mut Node, view: WlcView) -> Node {
+    pub fn new_view(parent_: &mut Node, wlc_view: WlcView) -> Node {
         let mut parent = parent_.borrow_mut();
         let (mut w, mut h, mut x, mut y) = (0u32, 0u32, 0i32, 0i32);
-        if let Some(geometry) = view.get_geometry().clone() {
+        if let Some(geometry) = wlc_view.get_geometry().clone() {
             h = geometry.size.h;
             w = geometry.size.w;
             x = geometry.origin.x;
@@ -154,8 +156,8 @@ impl Container {
         if parent.is_root() {
             panic!("View cannot be a direct child of root");
         }
-        let container = Rc::new(RefCell::new(Container {
-            handle: Some(Handle::View(view)),
+        let view = Rc::new(RefCell::new(Container {
+            handle: Some(Handle::View(wlc_view)),
             parent: Some(Rc::downgrade(&parent_)),
             children: vec!(),
             container_type: ContainerType::View,
@@ -170,12 +172,13 @@ impl Container {
         }));
         if parent.get_type() == ContainerType::Workspace {
             // Case of focused workspace, just create a child of it
-            parent.add_child(container.clone());
+            parent.add_child(view.clone());
         } else {
             // Regular case, create as sibling of current container
-            parent.add_sibling(container.clone());
+            parent.add_sibling(view.clone());
         }
-        container
+        trace!("View created");
+        view
     }
 
     /// Gets the parent that this container sits in.
@@ -212,6 +215,7 @@ impl Container {
             return Err("Root has no sibling, cannot add sibling to root");
         }
         let parent = self.get_parent().unwrap();
+        trace!("Borrowing container {:?} (parent of {:?}) as mutable", parent, self);
         parent.borrow_mut().add_child(container);
         Ok(())
     }
@@ -228,6 +232,7 @@ impl Container {
         if let Some(parent) = self.get_parent() {
             // NOTE Add check here to ensure we can borrow mutably once that
             // feature stabilizes
+            trace!("Borrowing container {:?} (parent of {:?}) as mutable", parent, self);
             parent.borrow_mut().remove_child(self);
         }
         Ok(())
