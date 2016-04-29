@@ -1,39 +1,20 @@
 //! Tests for the registry
 
-use std::collections::BTreeMap;
 use std::sync::mpsc;
 use std::thread;
 
 use super::*;
 
-use rustc_serialize::{Decodable, Decoder};
-use rustc_serialize::json;
-use rustc_serialize::json::{Json, ToJson};
+use super::super::convert::{ToTable, FromTable, LuaDecoder};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct Point {
-    x: i32,
-    y: i32
-}
+use hlua;
+use hlua::any::AnyLuaValue;
 
-impl ToJson for Point {
-    fn to_json(&self) -> Json {
-        let mut map = BTreeMap::new();
-        map.insert("x".to_string(), Json::I64(self.x as i64));
-        map.insert("y".to_string(), Json::I64(self.y as i64));
-        Json::Object(map)
-    }
-}
-
-impl Decodable for Point {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let mut x = 0;
-        let mut y = 0;
-
-        x = try!(d.read_struct_field("x", 1, |d| d.read_i32()));
-        y = try!(d.read_struct_field("y", 1, |d| d.read_i32()));
-
-        Ok(Point { x: x, y: y })
+lua_convertable! {
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    struct Point {
+        x: i32,
+        y: i32,
     }
 }
 
@@ -96,8 +77,8 @@ fn registry_tests() {
 }
 
 fn read_thread<T>(name: String, in_val: T, sender: mpsc::Sender<bool>)
-where T: ::std::fmt::Debug + Decodable + PartialEq {
-    for _ in 1 .. 100 {
+where T: ::std::fmt::Debug + FromTable + PartialEq {
+    for _ in 1 .. 50 {
         if let Ok(acc_val) = get::<_, T>(&name) {
             let (acc, val) = acc_val;
             assert!(acc.contains(LUA_ACCESS));
