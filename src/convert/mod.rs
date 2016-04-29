@@ -1,8 +1,8 @@
 //! Conversions between AnyLuaValue and structures.
 //! Also see macros.
 
-mod serialize;
-mod deserialize;
+pub mod serialize;
+pub mod deserialize;
 
 pub use self::serialize::ToTable;
 pub use self::deserialize::
