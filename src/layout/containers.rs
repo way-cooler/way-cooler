@@ -83,6 +83,37 @@ impl Container {
             is_floating: false
         }))
     }
+
+    /// Makes a new output. These can only be children of the root node. They
+    /// contain information about which monitor (output) its children are being
+    /// displayed on.
+    pub fn new_output(root: Node, wlc_output: WlcOutput) -> Node {
+        if ! root.borrow().is_root() {
+            panic!("Output containers can only be children of the root");
+        }
+
+        let size = wlc_output.get_resolution();
+        let output = Rc::new(RefCell::new(Container {
+            handle: Some(Handle::Output(wlc_output.clone())),
+            parent: Some(Rc::downgrade(&root)),
+            children: vec!(),
+            container_type: ContainerType::Output,
+            // NOTE Should be initialized to some default here, so the children
+            // know which output they are on
+            layout: Layout::None,
+            // NOTE These should be set, right?
+            width: size.w,
+            height: size.h,
+            x: 0,
+            y: 0,
+            visible: false,
+            is_focused: false,
+            is_floating: false
+        }));
+        // NOTE Should automatically add a new workspace here, there are edge
+        // cases to worry about though so leaving that out for now
+        output
+    }
     
     /// Makes a new workspace container. This should only be called by root
     /// since it will properly initialize the right number and properly put
