@@ -10,7 +10,7 @@ use super::super::convert::{ToTable, FromTable, LuaDecoder};
 use hlua;
 use hlua::any::AnyLuaValue;
 
-lua_convertable! {
+lua_convertible! {
     #[derive(Debug, Clone, Eq, PartialEq)]
     struct Point {
         x: i32,

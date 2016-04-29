@@ -15,7 +15,7 @@
 // }
 //
 // }
-macro_rules! lua_convertable {
+macro_rules! lua_convertible {
     (  $(#[$attr:meta])*
        struct $name:ident { $($fname:ident : $ftype:ty, )+  }  ) => {
 
@@ -52,7 +52,7 @@ macro_rules! lua_convertable {
 mod tests {
     use super::super::convert::{ToTable, FromTable, LuaDecoder};
     use hlua;
-    lua_convertable! {
+    lua_convertible! {
         #[derive(Debug, Clone, PartialEq)]
         struct Point {
             x: f32,
@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lua_convertable() {
+    fn test_lua_convertible() {
         let point = Point { x: 0f32, y: 0f32 };
         let lua_point = point.clone().to_table();
         let maybe_point = Point::from_table(LuaDecoder::new(lua_point));
