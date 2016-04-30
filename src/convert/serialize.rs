@@ -28,13 +28,6 @@ numeric_impl!(i8, i16, i32);
 numeric_impl!(u8, u16, u32);
 numeric_impl!(f32, f64);
 
-// Implementation for &Ts which use Copy syntax
-impl<'a, T> ToTable for &'a T where T: Copy + ToTable {
-    fn to_table(self) -> AnyLuaValue {
-        self.clone().to_table()
-    }
-}
-
 impl ToTable for bool {
     fn to_table(self) -> AnyLuaValue {
         LuaBoolean(self)
@@ -62,6 +55,19 @@ impl<T: ToTable> ToTable for Vec<T> {
             .map(|(ix, val)| {
                 (LuaNumber(ix as f64), val.to_table())
             }).collect())
+    }
+}
+
+use std::collections::HashMap;
+use std::hash::Hash;
+impl<K, V> ToTable for HashMap<K, V>
+where K: Eq + Hash + ToTable, V: ToTable {
+    fn to_table(self) -> AnyLuaValue {
+        let mut table = Vec::with_capacity(self.capacity());
+        for (key, value) in self.into_iter() {
+            table.push((key.to_table(), value.to_table()));
+        }
+        LuaArray(table)
     }
 }
 
