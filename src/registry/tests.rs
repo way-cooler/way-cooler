@@ -14,7 +14,7 @@ lua_convertible! {
     #[derive(Debug, Clone, Eq, PartialEq)]
     struct Point {
         x: i32,
-        y: i32,
+        y: i32
     }
 }
 

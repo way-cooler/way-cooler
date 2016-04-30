@@ -1,23 +1,22 @@
 //! Warning: extreme macros
 
-// TODO visibility
-// Usage:
-// lua_convert! {
-//
-// struct Point {
-//     x: i32,
-//     y: i32
-// };
-//
-// struct Bar {
-//     name: String,
-//     point: Point
-// }
-//
-// }
+/// This macro creates structs that implement `ToTable` and `FromTable`.
+///
+/// # Examples:
+///
+/// ```rust
+/// lua_convertible! {
+///     #[derive(Debug)]
+///     // #[attribtue]
+///     struct Point {
+///         x: i32,
+///         y: i32
+///     }
+/// }
+/// ```
 macro_rules! lua_convertible {
     (  $(#[$attr:meta])*
-       struct $name:ident { $($fname:ident : $ftype:ty, )+  }  ) => {
+       struct $name:ident { $($fname:ident : $ftype:ty),+  }  ) => {
 
         $(#[$attr])*
         pub struct $name {
@@ -56,7 +55,7 @@ mod tests {
         #[derive(Debug, Clone, PartialEq)]
         struct Point {
             x: f32,
-            y: f32,
+            y: f32
         }
     }
 
