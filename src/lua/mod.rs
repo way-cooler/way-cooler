@@ -114,9 +114,6 @@ pub fn init() {
 fn thread_init(receiver: Receiver<LuaMessage>) {
     trace!("thread: initializing.");
     let mut lua = Lua::new();
-    //unsafe {
-    //    hlua_ffi::lua_atpanic(&mut lua.as_mut_lua().0, thread_on_panic);
-    //}
     debug!("thread: Loading Lua libraries...");
     lua.openlibs();
     trace!("thread: Loading way-cooler lua extensions...");
