@@ -30,7 +30,7 @@ lazy_static! {
 #[derive(Debug, PartialEq, Eq)]
 pub enum RegistryError {
     /// The value in the registry could not be parsed
-    InvalidLua,
+    InvalidLua(ConverterError),
     /// The registry key was not found
     KeyNotFound
 }
@@ -49,21 +49,20 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
 pub fn get_lua<K>(name: &K) -> Option<(AccessFlags, Arc<AnyLuaValue>)>
 where String: Borrow<K>, K: Hash + Eq + Display {
     trace!("get_lua: {}", *name);
-    let ref reg = *read_lock();
+    let reg = read_lock();
     reg.get(name).map(|val| (val.flags(), val.get_lua()))
 }
 
 /// Gets an object from the registry, decoding its internal Lua
 /// representation.
 pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
-where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
-    let maybe_lua = get_lua(name);
-    if let Some(lua_pair) = maybe_lua {
+    where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
+    if let Some(lua_pair) = get_lua(name) {
         let (access, lua_arc) = lua_pair;
         // Ultimately, values must be cloned out of the registry as well
         match T::from_lua_table(lua_arc.deref().clone()) {
             Ok(val) => Ok((access, val)),
-            Err(e) => Err(RegistryError::InvalidLua)
+            Err(e) => Err(RegistryError::InvalidLua(e))
         }
     }
     else {
@@ -75,7 +74,7 @@ where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
 pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
     trace!("set: {:?} {}", flags, key);
     let regvalue = RegistryValue::new(flags, val);
-    let ref mut write_reg = *write_lock();
+    let mut write_reg = write_lock();
     write_reg.insert(key, regvalue);
 }
 
@@ -83,6 +82,6 @@ pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
 pub fn contains_key<K>(key: &K) -> bool
 where String: Borrow<K>, K: Hash + Eq + Display {
     trace!("contains_key: {}", *key);
-    let ref read_reg = *read_lock();
+    let read_reg = read_lock();
     read_reg.contains_key(key)
 }
