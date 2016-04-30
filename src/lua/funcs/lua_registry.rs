@@ -13,7 +13,7 @@ pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
     if let LuaString(key) = lua_key {
         if let Some(lua_pair) = registry::get_lua(&key) {
             let (access, lua_arc) = lua_pair;
-            if access.contains(registry::LUA_ACCESS) {
+            if access.contains(registry::LUA_READ) {
                 return lua_arc.deref().clone();
             }
         }

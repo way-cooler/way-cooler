@@ -26,11 +26,11 @@ fn registry_tests() {
     let numbers = vec![1, 2, 3, 4, 5];
     let point = Point { x: -11, y: 12 };
 
-    set(String::from("test_num"), LUA_ACCESS, num);
-    set(String::from("test_double"), LUA_ACCESS, double);
-    set(String::from("test_string"), LUA_ACCESS, string.clone());
-    set(String::from("test_numbers"), LUA_ACCESS, numbers.clone());
-    set(String::from("test_point"), LUA_ACCESS, point.clone());
+    set(String::from("test_num"), LUA_READ, num);
+    set(String::from("test_double"), LUA_READ, double);
+    set(String::from("test_string"), LUA_READ, string.clone());
+    set(String::from("test_numbers"), LUA_READ, numbers.clone());
+    set(String::from("test_point"), LUA_READ, point.clone());
 
     assert!(contains_key(&String::from("test_num")));
     assert!(contains_key(&String::from("test_double")));
@@ -81,7 +81,7 @@ where T: ::std::fmt::Debug + FromTable + PartialEq {
     for _ in 1 .. 50 {
         if let Ok(acc_val) = get::<_, T>(&name) {
             let (acc, val) = acc_val;
-            assert!(acc.contains(LUA_ACCESS));
+            assert!(acc.contains(LUA_READ));
             assert_eq!(val, in_val);
         }
         else {

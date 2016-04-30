@@ -8,7 +8,7 @@ bitflags! {
     /// Access permissions for items in the registry
     pub flags AccessFlags: u8 {
         const LUA_PRIVATE = 0b00000000,
-        const LUA_ACCESS  = 0b00000001,
+        const LUA_READ    = 0b00000001,
         const LUA_WRITE   = 0b00000010,
     }
 }
