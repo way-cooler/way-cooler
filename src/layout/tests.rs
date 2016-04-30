@@ -11,8 +11,9 @@ mod tests {
     /// Sets up a root node with 10 workspaces
     fn root_setup() -> Node {
         let mut root = Container::new_root();
+        let mut output = Container::new_output(&mut root, WlcView::root().as_output());
         for _ in 0..10 {
-            Container::new_workspace(&mut root);
+            Container::new_workspace(&mut output);
         }
         root
     }
@@ -46,22 +47,23 @@ mod tests {
         // Root is not a child of anything, except for itself
         // NOTE Add more test when we have more container types
         assert!(root.is_child_of(main.clone()));
-        assert_eq!(root.get_position(), (0, 0));
-        assert_eq!(root.get_dimensions(), (0, 0));
+        assert!(root.get_position().is_none());
+        assert!(root.get_dimensions().is_none());
         assert!(root.is_root());
     }
 
     #[test]
     fn workspace_validity_test() {
         let root = root_setup();
-        let root_copy = Rc::make_mut(&mut root.clone()).clone().into_inner();
-        assert_eq!(root.borrow().get_children().unwrap().len(), 10);
-        for container_ in root.borrow().get_children().unwrap().to_vec() {
+        assert_eq!(root.borrow().get_children().unwrap().len(), 1);
+        let output = &mut root.borrow().get_children().unwrap().to_vec()[0];
+        let output_copy = Rc::make_mut(&mut output.clone()).clone().into_inner();
+        for container_ in output.borrow().get_children().unwrap().to_vec() {
             // Workspaces start out empty
             let mut container = container_.borrow_mut();
             assert_eq!(container.get_children().unwrap().len(), 0);
             let container_copy = Rc::make_mut(&mut container.get_parent().unwrap().clone()).clone().into_inner();
-            assert_eq!(container_copy, root_copy);
+            assert_eq!(container_copy, output_copy);
             // NOTE add test for add_child
             assert_eq!(container.get_type(), ContainerType::Workspace);
             assert!(! container.is_focused());
@@ -71,9 +73,9 @@ mod tests {
             assert!(container.get_visibility());
             container.set_visibility(false);
             assert!(! container.get_visibility());
-            // NOTE change these once they can be set properly
-            assert_eq!(container.get_dimensions(), (0,0));
-            assert_eq!(container.get_position(), (0,0));
+            // NOTE Add these once they can be set properly
+            //assert_eq!(container.get_dimensions().unwrap(), (0,0));
+            //assert_eq!(container.get_position().unwrap(), (0,0));
             // NOTE add test for is_parent_of
             assert!(container.is_child_of(root.clone()));
             assert!(! container.is_root());
@@ -84,9 +86,10 @@ mod tests {
     #[test]
     fn container_validity_test() {
         let root = root_setup();
-        for mut workspace_ in root.borrow().get_children().unwrap().to_vec() {
+        for output in root.borrow().get_children().unwrap().to_vec() {
+            let mut workspace_ = &mut output.borrow().get_children().unwrap().to_vec()[0];
             let workspace_copy = Rc::make_mut(&mut workspace_.clone()).clone().into_inner();
-            let container_ = Container::new_container(&mut workspace_, WlcView::root().as_output());
+            let container_ = Container::new_container(&mut workspace_);
             let mut container = container_.borrow_mut();
             // No children
             assert_eq!(container.get_children().unwrap().len(), 0);
@@ -97,7 +100,7 @@ mod tests {
             // run time. Another way to do this is at the beginning, but this is
             // a good test of what we need to do to stay dynamic
             drop(container);
-            let inner_workspace = Container::new_container(&mut container_.clone(), WlcView::root().as_output());
+            let inner_workspace = Container::new_container(&mut container_.clone());
             container = container_.borrow_mut();
             assert_eq!(container.get_children().unwrap().len(), 1);
             let self_as_child = container.get_children().unwrap()[0].clone();
@@ -122,12 +125,12 @@ mod tests {
             assert!(container.get_visibility());
             container.set_visibility(false);
             assert!(! container.get_visibility());
-            // NOTE change these once they can be set properly
-            assert_eq!(container.get_dimensions(), (0,0));
-            assert_eq!(container.get_position(), (0,0));
+            // NOTE add these once they can be set properly
+            //assert_eq!(container.get_dimensions().unwrap(), (0,0));
+            //assert_eq!(container.get_position().unwrap(), (0,0));
             assert!(container.is_child_of(root.clone()));
             assert!(! container.is_root());
-            assert_eq!(container.get_parent_by_type(ContainerType::Workspace).unwrap(), workspace_);
+            assert_eq!(container.get_parent_by_type(ContainerType::Workspace).unwrap(), *workspace_);
             assert_eq!(container.get_parent_by_type(ContainerType::Root).unwrap(), root);
         }
     }
@@ -135,8 +138,9 @@ mod tests {
     #[test]
     fn view_validity_test() {
         let root = root_setup();
-        for mut workspace_ in root.borrow().get_children().unwrap().to_vec() {
-            let mut container_ = Container::new_container(&mut workspace_, WlcView::root().as_output());
+        let output = &root.borrow().get_children().unwrap().to_vec()[0];
+        for mut workspace_ in output.borrow().get_children().unwrap().to_vec() {
+            let mut container_ = Container::new_container(&mut workspace_);
             // hack to give it a size and origin point.
             let view_hack = WlcView::root();
             view_hack.set_geometry(EDGE_NONE, &Geometry { origin: Point { x: 0, y: 0}, size: Size { w: 0, h: 0}});
@@ -162,8 +166,9 @@ mod tests {
     #[test]
     fn remove_container_test() {
         let root = root_setup();
-        let mut workspace = &mut root.borrow().get_children().unwrap().to_vec()[0];
-        let container = Container::new_container(workspace, WlcView::root().as_output());
+        let output = &mut root.borrow().get_children().unwrap().to_vec()[0];
+        let workspace = &mut output.borrow().get_children().unwrap().to_vec()[0];
+        let container = Container::new_container(workspace);
 
         let container_ref = Rc::downgrade(&workspace.borrow().get_children().unwrap()[0].clone());
         // Still points to the container
@@ -206,7 +211,8 @@ mod tests {
     /// Tests to ensure that only containers can be the children of a workspace
     fn only_containers_for_workspace_children_test() {
         let root = root_setup();
-        let container = root.borrow().get_children().unwrap()[0].clone();
+        let output = &root.borrow().get_children().unwrap().to_vec()[0];
+        let container = output.borrow().get_children().unwrap()[0].clone();
         container.borrow_mut().add_child(container.clone()).unwrap();
     }
 
@@ -217,7 +223,9 @@ mod tests {
     /// workspaces. (Does not test views)
     fn basic_tree_test() {
         let mut root = root_setup();
-        assert_eq!(root.borrow().get_children().unwrap().len(),10);
+        assert_eq!(root.borrow().get_children().unwrap().len(), 1);
+        let output = root.borrow().get_children().unwrap()[0].clone();
+        assert_eq!(output.borrow().get_children().unwrap().len(), 10);
         // NOTE Enhance with adding containers to the workspaces
     }
         

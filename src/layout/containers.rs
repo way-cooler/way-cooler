@@ -13,7 +13,7 @@ use std::cell::RefCell;
 pub type Node = Rc<RefCell<Container>>;
 
 #[derive(Debug, Clone)]
-enum Handle {
+pub enum Handle {
     View(WlcView),
     Output(WlcOutput)
 }
@@ -50,10 +50,6 @@ pub struct Container {
     children: Vec<Node>,
     container_type: ContainerType,
     layout: Layout,
-    width: u32,
-    height: u32,
-    x: i32,
-    y: i32,
     visible: bool,
     is_focused: bool,
     is_floating: bool,
@@ -74,10 +70,6 @@ impl Container {
             children: vec!(),
             container_type: ContainerType::Root,
             layout: Layout::None,
-            width: 0,
-            height: 0,
-            x: 0,
-            y: 0,
             visible: false,
             is_focused: false,
             is_floating: false
@@ -87,9 +79,9 @@ impl Container {
     /// Makes a new output. These can only be children of the root node. They
     /// contain information about which monitor (output) its children are being
     /// displayed on.
-    pub fn new_output(root: Node, wlc_output: WlcOutput) -> Node {
+    pub fn new_output(root: &mut Node, wlc_output: WlcOutput) -> Node {
         if ! root.borrow().is_root() {
-            panic!("Output containers can only be children of the root");
+            panic!("Output containers can only be children of the root, not {:?}", root.borrow().get_type());
         }
 
         let size = wlc_output.get_resolution();
@@ -101,46 +93,37 @@ impl Container {
             // NOTE Should be initialized to some default here, so the children
             // know which output they are on
             layout: Layout::None,
-            // NOTE These should be set, right?
-            width: size.w,
-            height: size.h,
-            x: 0,
-            y: 0,
             visible: false,
             is_focused: false,
             is_floating: false
         }));
         // NOTE Should automatically add a new workspace here, there are edge
         // cases to worry about though so leaving that out for now
+        root.borrow_mut().add_child(output.clone());
         output
     }
     
-    /// Makes a new workspace container. This should only be called by root
-    /// since it will properly initialize the right number and properly put
-    /// them in the main tree.
-    pub fn new_workspace(root: &mut Node) -> Node {
-        if ! root.borrow().is_root() {
-            panic!("Only workspaces can be added to the root node");
+    /// Makes a new workspace container. These can only be attached to output
+    /// containers. They will inherit the output of the parent container.
+    pub fn new_workspace(parent_: &mut Node) -> Node {
+        let parent = parent_.borrow();
+        if parent.get_type() != ContainerType::Output {
+            panic!("Workspaces can only be children of an output container, not {:?}", parent.get_type());
         }
         let workspace: Node =
             Rc::new(RefCell::new(Container {
-                // NOTE Give this an output
-                handle: None,
-                parent: Some(Rc::downgrade(&root)),
+                handle: Some(parent.get_handle().unwrap()),
+                parent: Some(Rc::downgrade(&parent_)),
                 children: vec!(),
                 container_type: ContainerType::Workspace,
                 // NOTE Change this to some other default
                 layout: Layout::None,
-                // NOTE Figure out how to initialize these properly
-                width: 0,
-                height: 0,
-                x: 0,
-                y: 0,
                 visible: false,
                 is_focused: false,
                 is_floating: false,
                 }));
-        root.borrow_mut().add_child(workspace.clone());
+        drop(parent);
+        parent_.borrow_mut().add_child(workspace.clone());
         trace!("Workspace created");
         workspace
     }
@@ -148,23 +131,20 @@ impl Container {
     /// Makes a new container. These hold views and other containers.
     /// Container hold information about specific parts of the tree in some
     /// workspace and the layout of the views within.
-    pub fn new_container(parent_: &mut Node, output: WlcOutput) -> Node {
+    pub fn new_container(parent_: &mut Node) -> Node {
         let mut parent = parent_.borrow_mut();
-        if parent.is_root() {
-            panic!("Container cannot be a direct child of root");
+        if ! (parent.get_type() == ContainerType::Container 
+            || parent.get_type() == ContainerType::Workspace) {
+            panic!("Container can only be child of container or workspace, not {:?}", parent.get_type());
         }
+        let output = parent.get_handle().unwrap();
         let container = Rc::new(RefCell::new(Container {
-            handle: Some(Handle::Output(output)),
+            handle: Some(output),
             parent: Some(Rc::downgrade(&parent_)),
             children: vec!(),
             container_type: ContainerType::Container,
             // NOTE Get default, either from config or from workspace
             layout: Layout::None,
-            // NOTE Get this information from somewhere, or set it later
-            width: 0,
-            height: 0,
-            x: 0,
-            y: 0,
             visible: false,
             is_focused: false,
             is_floating: false,
@@ -177,9 +157,8 @@ impl Container {
     /// Makes a new view. A view holds either a Wayland or an X Wayland window.
     pub fn new_view(parent_: &mut Node, wlc_view: WlcView) -> Node {
         let mut parent = parent_.borrow_mut();
-        let geometry = wlc_view.get_geometry().unwrap();
         if parent.is_root() {
-            panic!("View cannot be a direct child of root");
+            panic!("View cannot be a direct child of root, not {:?}", parent.get_type());
         }
         let view = Rc::new(RefCell::new(Container {
             handle: Some(Handle::View(wlc_view.clone())),
@@ -187,10 +166,6 @@ impl Container {
             children: vec!(),
             container_type: ContainerType::View,
             layout: Layout::None,
-            width: geometry.size.w,
-            height: geometry.size.h,
-            x: geometry.origin.x,
-            y: geometry.origin.y,
             visible: false,
             is_focused: false,
             is_floating: false
@@ -280,6 +255,13 @@ impl Container {
         self.container_type
     }
 
+    /// Gets the handle of the container. This could either be an output (a
+    /// monitor), or a view (a Wayland or X Wayland Window)
+    pub fn get_handle(&self) -> Option<Handle> {
+        self.handle.clone()
+    }
+
+
     /// Returns true if this container is focused.
     pub fn is_focused(&self) -> bool {
         self.is_focused
@@ -321,14 +303,38 @@ impl Container {
         self.visible
     }
 
-    /// Gets the X and Y dimensions of the container
-    pub fn get_dimensions(&self) -> (u32, u32) {
-        (self.width, self.height)
+    /// Gets the X and Y dimensions of the container. Width is the first
+    /// value, height is the second.
+    pub fn get_dimensions(&self) -> Option<(u32, u32)> {
+        if let Some(ref handle) = self.handle {
+            match handle {
+                &Handle::Output(ref output) => {
+                    let size = output.get_resolution();
+                    Some((size.w, size.h))
+                }
+                &Handle::View(ref view) => {
+                    let ref size = view.get_geometry().unwrap().size;
+                    Some((size.w, size.h))
+                }
+            }
+        } else {
+            None
+        }
     }
 
-    /// Gets the position of this container on the screen
-    pub fn get_position(&self) -> (i32, i32) {
-        (self.x, self.y)
+    /// Gets the position of this container on the screen. 
+    pub fn get_position(&self) -> Option<(i32, i32)> {
+        if let Some(ref handle) = self.handle {
+            match handle {
+                &Handle::Output(ref output) => None,
+                &Handle::View(ref view) => {
+                    let ref origin = view.get_geometry().unwrap().origin;
+                    Some((origin.x, origin.y))
+                }
+            }
+        } else {
+            None
+        }
     }
 
     /// Returns true if this container is a parent of the child
