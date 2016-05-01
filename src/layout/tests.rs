@@ -87,7 +87,7 @@ mod tests {
     fn container_validity_test() {
         let root = root_setup();
         for output in root.borrow().get_children().unwrap().to_vec() {
-            let mut workspace_ = &mut output.borrow().get_children().unwrap().to_vec()[0];
+            let mut workspace_ = &mut output.borrow().get_children().unwrap()[0];
             let workspace_copy = Rc::make_mut(&mut workspace_.clone()).clone().into_inner();
             let container_ = Container::new_container(&mut workspace_, Layout::Horizontal);
             let mut container = container_.borrow_mut();
@@ -106,13 +106,10 @@ mod tests {
             assert_eq!(outer_container.borrow().get_children().unwrap().len(), 1);
             assert_eq!(container.get_children().unwrap().len(), 0);
             let self_as_child = outer_container.borrow().get_children().unwrap()[0].clone();
-            println!("here");
             drop(container);
             assert_eq!(*self_as_child.borrow(), *outer_container.borrow());
-            println!("here");
             let container = container_.borrow();
             assert_eq!(container.get_type(), ContainerType::Container);
-            println!("here");
             drop(container);
             let container2 = container_.borrow();
             assert!(container2.is_parent_of(outer_container.clone()));
