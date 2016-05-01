@@ -35,7 +35,6 @@ pub enum ContainerType {
 /// Layout mode for a container
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
-    None,
     Horizontal,
     Vertical,
     Stacked,
@@ -49,7 +48,7 @@ pub struct Container {
     parent: Option<Weak<RefCell<Container>>>,
     children: Vec<Node>,
     container_type: ContainerType,
-    layout: Layout,
+    layout: Option<Layout>,
     visible: bool,
     is_focused: bool,
     is_floating: bool,
@@ -60,8 +59,6 @@ impl Container {
     
     /// Makes the root container. There should be only one of these
     /// Does not ensure that this is the only root container
-    // NOTE Need to find a way to ensure there is only one of these things
-    // Perhaps set a static global variable
     pub fn new_root() -> Node {
         trace!("Root created");
         Rc::new(RefCell::new(Container {
@@ -69,7 +66,7 @@ impl Container {
             parent: None,
             children: vec!(),
             container_type: ContainerType::Root,
-            layout: Layout::None,
+            layout: None,
             visible: false,
             is_focused: false,
             is_floating: false
@@ -90,9 +87,7 @@ impl Container {
             parent: Some(Rc::downgrade(&root)),
             children: vec!(),
             container_type: ContainerType::Output,
-            // NOTE Should be initialized to some default here, so the children
-            // know which output they are on
-            layout: Layout::None,
+            layout: None,
             visible: false,
             is_focused: false,
             is_floating: false
@@ -112,12 +107,11 @@ impl Container {
         }
         let workspace: Node =
             Rc::new(RefCell::new(Container {
-                handle: Some(parent.get_handle().unwrap()),
+                handle: Some(parent.get_handle().expect("Workspace could not get handle from output parent")),
                 parent: Some(Rc::downgrade(&parent_)),
                 children: vec!(),
                 container_type: ContainerType::Workspace,
-                // NOTE Change this to some other default
-                layout: Layout::None,
+                layout: Some(Layout::Horizontal),
                 visible: false,
                 is_focused: false,
                 is_floating: false,
@@ -131,20 +125,20 @@ impl Container {
     /// Makes a new container. These hold views and other containers.
     /// Container hold information about specific parts of the tree in some
     /// workspace and the layout of the views within.
-    pub fn new_container(parent_: &mut Node) -> Node {
+    pub fn new_container(parent_: &mut Node, mut layout: Layout) -> Node {
         let mut parent = parent_.borrow_mut();
         if ! (parent.get_type() == ContainerType::Container 
             || parent.get_type() == ContainerType::Workspace) {
             panic!("Container can only be child of container or workspace, not {:?}", parent.get_type());
         }
-        let output = parent.get_handle().unwrap();
+        let output = parent.get_handle().expect("Container could not get handle from parent");
+        // NOTE Make sure we do all of the Container specific init stuff
         let container = Rc::new(RefCell::new(Container {
             handle: Some(output),
             parent: Some(Rc::downgrade(&parent_)),
             children: vec!(),
             container_type: ContainerType::Container,
-            // NOTE Get default, either from config or from workspace
-            layout: Layout::None,
+            layout: Some(layout),
             visible: false,
             is_focused: false,
             is_floating: false,
@@ -165,7 +159,7 @@ impl Container {
             parent: Some(Rc::downgrade(&parent_)),
             children: vec!(),
             container_type: ContainerType::View,
-            layout: Layout::None,
+            layout: None,
             visible: false,
             is_focused: false,
             is_floating: false
@@ -190,8 +184,6 @@ impl Container {
         if self.is_root() {
             None
         } else {
-            // NOTE Clone has to be done here because we have to store the
-            // parent as an option since the `Weak::new` is unstable
             if let Some(parent) = self.parent.clone() {
                 parent.upgrade()
             } else {
@@ -216,7 +208,7 @@ impl Container {
         if self.is_root() {
             return Err("Root has no sibling, cannot add sibling to root");
         }
-        let parent = self.get_parent().unwrap();
+        let parent = self.get_parent().expect("Could not get parent, was removed from tree");
         trace!("Borrowing container {:?} (parent of {:?}) as mutable", parent, self);
         parent.borrow_mut().add_child(container);
         Ok(())
@@ -261,6 +253,11 @@ impl Container {
     /// monitor), or a view (a Wayland or X Wayland Window)
     pub fn get_handle(&self) -> Option<Handle> {
         self.handle.clone()
+    }
+
+    /// Gets the layout of the container, if there is one.
+    pub fn get_layout(&self) -> Option<Layout> {
+        self.layout
     }
 
 
@@ -315,7 +312,7 @@ impl Container {
                     Some((size.w, size.h))
                 }
                 &Handle::View(ref view) => {
-                    let ref size = view.get_geometry().unwrap().size;
+                    let ref size = view.get_geometry().expect("View did not have a geometry").size;
                     Some((size.w, size.h))
                 }
             }
@@ -330,7 +327,7 @@ impl Container {
             match handle {
                 &Handle::Output(ref output) => None,
                 &Handle::View(ref view) => {
-                    let ref origin = view.get_geometry().unwrap().origin;
+                    let ref origin = view.get_geometry().expect("View did not have a geometry").origin;
                     Some((origin.x, origin.y))
                 }
             }
@@ -345,7 +342,7 @@ impl Container {
             true
         } else {
             while ! child.borrow().is_root() {
-                let parent = child.borrow().get_parent().unwrap();
+                let parent = child.borrow().get_parent().expect("Could not get parent, was removed from tree");
                 if child == parent {
                     return true
                 }
