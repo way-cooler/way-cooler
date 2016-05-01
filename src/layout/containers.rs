@@ -12,7 +12,7 @@ use std::cell::RefCell;
 
 pub type Node = Rc<RefCell<Container>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Handle {
     View(WlcView),
     Output(WlcOutput)
@@ -402,7 +402,18 @@ impl Container {
 
 impl PartialEq for Container {
     fn eq(&self, other: &Container) -> bool {
-        self.get_type() == other.get_type()
+        if self.get_type() == other.get_type() {
+            if let Some(self_handle) = self.get_handle() {
+                if let Some(other_handle) = other.get_handle() {
+                    if self_handle == other_handle {
+                        return true
+                    }
+                }
+            } else {
+                return true
+            }
+        }
+        return false
     }
 }
 
