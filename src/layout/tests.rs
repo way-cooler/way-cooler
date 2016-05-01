@@ -87,7 +87,7 @@ mod tests {
     fn container_validity_test() {
         let root = root_setup();
         for output in root.borrow().get_children().unwrap().to_vec() {
-            let mut workspace_ = &mut output.borrow().get_children().unwrap()[0];
+            let mut workspace_ = &mut output.borrow().get_children().unwrap().to_vec()[0];
             let workspace_copy = Rc::make_mut(&mut workspace_.clone()).clone().into_inner();
             let container_ = Container::new_container(&mut workspace_, Layout::Horizontal);
             let mut container = container_.borrow_mut();
