@@ -156,7 +156,7 @@ impl Container {
 
     /// Makes a new view. A view holds either a Wayland or an X Wayland window.
     pub fn new_view(parent_: &mut Node, wlc_view: WlcView) -> Node {
-        let mut parent = parent_.borrow_mut();
+        let parent = parent_.borrow();
         if parent.is_root() {
             panic!("View cannot be a direct child of root, not {:?}", parent.get_type());
         }
@@ -172,6 +172,8 @@ impl Container {
         }));
         if parent.get_type() == ContainerType::Workspace {
             // Case of focused workspace, just create a child of it
+            drop(parent);
+            let mut parent = parent_.borrow_mut();
             parent.add_child(view.clone());
         } else {
             // Regular case, create as sibling of current container
@@ -210,7 +212,7 @@ impl Container {
         Ok(())
     }
 
-    pub fn add_sibling(&mut self, container: Node) -> Result<(), &'static str> {
+    pub fn add_sibling(&self, container: Node) -> Result<(), &'static str> {
         if self.is_root() {
             return Err("Root has no sibling, cannot add sibling to root");
         }
