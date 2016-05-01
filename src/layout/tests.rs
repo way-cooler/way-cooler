@@ -81,6 +81,7 @@ mod tests {
             let container_ = Container::new_container(&mut workspace_, Layout::Horizontal);
             let mut container = container_.borrow_mut();
             // No children
+            println!("here");
             assert_eq!(container.get_children().unwrap().len(), 0);
             // Is the only child of the workspace
             let container_parent = Rc::make_mut(&mut container.get_parent().unwrap().clone()).clone().into_inner();
@@ -91,6 +92,7 @@ mod tests {
             drop(container);
             // This new workspace will now be the outer one, the old workspace is now on the inside
             let outer_container = Container::new_container(&mut container_.clone(), Layout::Horizontal);
+            println!("here");
             container = container_.borrow_mut();
             assert_eq!(outer_container.borrow().get_children().unwrap().len(), 1);
             assert_eq!(container.get_children().unwrap().len(), 0);
@@ -138,12 +140,11 @@ mod tests {
             let view_hack = WlcView::root();
             view_hack.set_geometry(EDGE_NONE, &Geometry { origin: Point { x: 0, y: 0}, size: Size { w: 0, h: 0}});
             let view = Container::new_view(&mut container_, view_hack);
-            assert_eq!(view.borrow().get_parent().unwrap(), container_);
-            // Add child test
+            assert_eq!(view.borrow().get_parent().unwrap(), workspace_);
             // The view was added as a sibling, so it's not a child of the container
             assert_eq!(container_.borrow().get_children().unwrap().len(), 0);
-            view.borrow_mut().add_sibling(container_.clone()).unwrap();
-            assert_eq!(container_.borrow().get_children().unwrap().len(), 1);
+            add_sibling(view.clone(), container_.clone()).unwrap();
+            assert_eq!(container_.borrow().get_children().unwrap().len(), 0);
         }
     }
 
@@ -153,7 +154,7 @@ mod tests {
         let root = root_setup();
         let mut workspace = root.borrow_mut().get_children().unwrap().to_vec()[0].clone();
         let view = Container::new_view(&mut workspace, WlcView::root());
-        view.borrow_mut().add_child(workspace).unwrap();
+        add_child(view.clone(), workspace.clone()).unwrap();
     }
 
     #[test]
@@ -197,7 +198,7 @@ mod tests {
         let root = root_setup();
         let output = &root.borrow().get_children().unwrap().to_vec()[0];
         let container = output.borrow().get_children().unwrap()[0].clone();
-        container.borrow_mut().add_child(container.clone()).unwrap();
+        add_child(container.clone(), container.clone()).unwrap();
     }
 
     

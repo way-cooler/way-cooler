@@ -94,7 +94,7 @@ impl Container {
         }));
         // NOTE Should automatically add a new workspace here, there are edge
         // cases to worry about though so leaving that out for now
-        root.borrow_mut().add_child(output.clone());
+        add_child(root.clone(), output.clone());
         output
     }
     
@@ -117,7 +117,7 @@ impl Container {
                 is_floating: false,
                 }));
         drop(parent);
-        parent_.borrow_mut().add_child(workspace.clone());
+        add_child(parent_.clone(), workspace.clone());
         trace!("Workspace created");
         workspace
     }
@@ -148,7 +148,8 @@ impl Container {
             if let Some(layout) = workspace.get_layout() {
                 container.borrow_mut().set_layout(layout);
             }
-            workspace.add_child(container.clone());
+            drop(workspace);
+            add_child(parent_.clone(), container.clone());
         } else {
             // Need to add the "parent" as the child of the container we just made.
             drop(parent);
@@ -159,9 +160,10 @@ impl Container {
             // Need to remove the child from their parent
             parent_of_child.borrow_mut().remove_child(&child_clone.clone());
             // Add the container we just made as a child, replacing the one we removed
-            parent_of_child.borrow_mut().add_child(container.clone());
+            add_child(parent_of_child.clone(), container.clone());
             // The new container is now a child of the old child's parent
-            container.borrow_mut().add_child(child_.clone());
+            drop(child);
+            add_child(container.clone(), child_.clone());
         }
         trace!("Container created");
         container
@@ -184,13 +186,14 @@ impl Container {
             is_floating: false
         }));
         if parent.get_type() == ContainerType::Workspace {
-            // Case of focused workspace, just create a child of it
             drop(parent);
-            let mut parent = parent_.borrow_mut();
-            parent.add_child(view.clone());
+            // Case of focused workspace, just create a child of it
+            add_child(parent_.clone(), view.clone());
         } else {
+            drop(parent);
+            // Case of focused workspace, just create a child of it
             // Regular case, create as sibling of current container
-            parent.add_sibling(view.clone());
+            add_sibling(parent_.clone(), view.clone()).unwrap();
         }
         trace!("View created");
         view
@@ -211,24 +214,12 @@ impl Container {
         }
     }
 
-    pub fn add_child(&mut self, container: Node) -> Result<(), &'static str> {
-        if self.get_type() == ContainerType::Workspace 
-            && container.borrow().get_type() == ContainerType::Workspace {
-            return Err("Only containers can be children of a workspace");
-        } else if self.get_type() == ContainerType::View {
-            return Err("Cannot add child to a view");
-        }
-        self.children.push(container);
-        Ok(())
-    }
-
-    pub fn add_sibling(&self, container: Node) -> Result<(), &'static str> {
+    /// Sets the parent of this container
+    pub fn set_parent(&mut self, parent: Weak<RefCell<Container>>) -> Result<(), &'static str> {
         if self.is_root() {
-            return Err("Root has no sibling, cannot add sibling to root");
+            return Err("Root does not have a parent");
         }
-        let parent = self.get_parent().expect("Could not get parent, was removed from tree");
-        trace!("Borrowing container {:?} (parent of {:?}) as mutable", parent, self);
-        parent.borrow_mut().add_child(container);
+        self.parent = Some(parent);
         Ok(())
     }
 
@@ -391,6 +382,29 @@ impl Container {
             }
         }
     }
+}
+
+pub fn add_child(parent: Node, child: Node) -> Result<(), &'static str> {
+    if parent.borrow().get_type() == ContainerType::Workspace 
+        && child.borrow().get_type() == ContainerType::Workspace {
+        return Err("Only containers can be children of a workspace");
+    } else if parent.borrow().get_type() == ContainerType::View {
+        return Err("Cannot add child to a view");
+    }
+    child.borrow_mut().set_parent(Rc::downgrade(&parent.clone()));
+    parent.borrow_mut().children.push(child);
+    Ok(())
+}
+
+pub fn add_sibling(current_node: Node, new_sibling: Node) -> Result<(), &'static str> {
+    if current_node.borrow().is_root() {
+        return Err("Root has no sibling, cannot add sibling to root");
+    }
+    let parent = current_node.borrow().get_parent().expect("Could not get parent, was removed from tree");
+    trace!("Borrowing container {:?} (parent of {:?}) as mutable", parent, current_node);
+    drop(current_node);
+    add_child(parent.clone(), new_sibling);
+    Ok(())
 }
 
 impl PartialEq for Container {
