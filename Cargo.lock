@@ -7,7 +7,6 @@ dependencies = [
  "hlua 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustwlc 0.3.2 (git+https://github.com/Immington-Industries/rust-wlc.git)",
 ]
 
@@ -114,11 +113,6 @@ dependencies = [
 [[package]]
 name = "regex-syntax"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "rustc-serialize"
-version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]

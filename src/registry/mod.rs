@@ -6,11 +6,11 @@ use std::fmt::Display;
 use std::hash::Hash;
 use std::borrow::Borrow;
 
+use hlua::any::AnyLuaValue;
+use convert::{ToTable, FromTable, LuaDecoder, ConverterError};
+
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-use rustc_serialize::{Decodable, json};
-use rustc_serialize::json::{Json, ToJson};
 
 mod types;
 pub use self::types::*; // Export constants too
@@ -30,7 +30,7 @@ lazy_static! {
 #[derive(Debug, PartialEq, Eq)]
 pub enum RegistryError {
     /// The value in the registry could not be parsed
-    InvalidJson,
+    InvalidLua(ConverterError),
     /// The registry key was not found
     KeyNotFound
 }
@@ -45,30 +45,24 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
     REGISTRY.write().unwrap()
 }
 
-/// Gets a Json object from a registry key
-pub fn get_json<K>(name: &K) -> Option<(AccessFlags, Arc<Json>)>
+/// Gets a Lua object from a registry key
+pub fn get_lua<K>(name: &K) -> Option<(AccessFlags, Arc<AnyLuaValue>)>
 where String: Borrow<K>, K: Hash + Eq + Display {
-    trace!("get_json: {}", *name);
-    let ref reg = *read_lock();
-    if let Some(val) = reg.get(name) {
-        Some((val.flags(), val.get_json()))
-    }
-    else {
-        None
-    }
+    trace!("get_lua: {}", *name);
+    let reg = read_lock();
+    reg.get(name).map(|val| (val.flags(), val.get_lua()))
 }
 
-/// Gets an object from the registry, decoding its internal json
+/// Gets an object from the registry, decoding its internal Lua
 /// representation.
 pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
-where T: Decodable, String: Borrow<K>, K: Hash + Eq + Display {
-    let maybe_json = get_json(name);
-    if let Some(json_pair) = maybe_json {
-        let (access, json_arc) = json_pair;
-        let mut decoder = json::Decoder::new(json_arc.deref().to_json());
-        match T::decode(&mut decoder) {
+    where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
+    if let Some(lua_pair) = get_lua(name) {
+        let (access, lua_arc) = lua_pair;
+        // Ultimately, values must be cloned out of the registry as well
+        match T::from_lua_table(lua_arc.deref().clone()) {
             Ok(val) => Ok((access, val)),
-            Err(e) => Err(RegistryError::InvalidJson)
+            Err(e) => Err(RegistryError::InvalidLua(e))
         }
     }
     else {
@@ -77,10 +71,10 @@ where T: Decodable, String: Borrow<K>, K: Hash + Eq + Display {
 }
 
 /// Set a key in the registry to a particular value
-pub fn set<T: ToJson>(key: String, flags: AccessFlags, val: T) {
-    trace!("set: {}", key);
-    let ref mut write_reg = *write_lock();
+pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
+    trace!("set: {:?} {}", flags, key);
     let regvalue = RegistryValue::new(flags, val);
+    let mut write_reg = write_lock();
     write_reg.insert(key, regvalue);
 }
 
@@ -88,6 +82,6 @@ pub fn set<T: ToJson>(key: String, flags: AccessFlags, val: T) {
 pub fn contains_key<K>(key: &K) -> bool
 where String: Borrow<K>, K: Hash + Eq + Display {
     trace!("contains_key: {}", *key);
-    let ref read_reg = *read_lock();
+    let read_reg = read_lock();
     read_reg.contains_key(key)
 }

@@ -4,8 +4,6 @@ use hlua;
 use hlua::{Lua, LuaError};
 use hlua::any::AnyLuaValue;
 
-use rustc_serialize::json::Json;
-
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 

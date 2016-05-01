@@ -14,16 +14,17 @@ extern crate env_logger;
 #[macro_use]
 extern crate hlua;
 
-extern crate rustc_serialize;
-
 use rustwlc::callback;
 use rustwlc::types::LogType;
 
 use std::env;
 
+#[macro_use]
+mod macros;
 mod registry;
 mod keys;
 mod callbacks;
+mod convert;
 mod lua;
 
 /// Callback to route wlc logs into env_logger
