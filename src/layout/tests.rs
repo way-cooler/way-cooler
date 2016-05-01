@@ -19,17 +19,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Can only be one root")]
-    /// Test to make sure that there can be only one root node
-    fn test_one_root() {
-        let _root = Container::new_root();
-        // Should panic
-        let _root2 = Container::new_root();
-        // remove when we fix it
-        panic!("Can only be one root");
-    }
-
-    #[test]
     /// Verify that root node has required properties
     fn root_validity_test() {
         let main: Node = Container::new_root();
@@ -199,15 +188,6 @@ mod tests {
         let root = root_setup();
         let workspace = root.borrow().get_children().unwrap()[0].clone();
         workspace.borrow_mut().remove_container().expect("Cannot remove root container");
-    }
-
-    #[test]
-    #[should_panic(expect = "Only workspaces can be added to the root node")]
-    /// Tests to make sure only workspaces can be children of the top node
-    fn root_workspace_only() {
-        let root = root_setup();
-        let container = &mut root.borrow().get_children().unwrap().to_vec()[0];
-        Container::new_workspace(container);
     }
 
     #[test]
