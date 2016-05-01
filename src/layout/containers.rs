@@ -218,7 +218,6 @@ impl Container {
         } else if self.get_type() == ContainerType::View {
             return Err("Cannot add child to a view");
         }
-        // NOTE check to make sure we are not adding a duplicate
         self.children.push(container);
         Ok(())
     }
@@ -243,8 +242,6 @@ impl Container {
             return Err("Cannot remove workspace container");
         }
         if let Some(parent) = self.get_parent() {
-            // NOTE Add check here to ensure we can borrow mutably once that
-            // feature stabilizes
             trace!("Borrowing container {:?} (parent of {:?}) as mutable", parent, self);
             parent.borrow_mut().remove_child(self);
         }
@@ -287,8 +284,6 @@ impl Container {
 
     /// Removes the child at the specified index
     pub fn remove_child_at(&mut self, index: usize) -> Result<Node, &'static str> {
-        // NOTE Add check here to ensure we can borrow once that
-        // feature stabilizes
         if self.children[index].borrow().get_type() == ContainerType::Workspace {
             return Err("Cannot remove workspace")
         }
@@ -299,8 +294,6 @@ impl Container {
     /// If the child is not present, then an error is returned
     pub fn remove_child(&mut self, node: &Container) -> Result<Node, &'static str> {
         for (index, child) in self.children.clone().iter().enumerate() {
-            // NOTE Add check here to ensure we can borrow once that
-            // feature stabilizes
             if *child.borrow() == *node {
                 if child.borrow().get_type() == ContainerType::Workspace {
                     return Err("Can not remove workspace");
@@ -410,7 +403,7 @@ impl PartialEq for Container {
                     }
                 }
             } else {
-                return true
+                return self.get_handle().is_none() && other.get_handle().is_none()
             }
         }
         return false
