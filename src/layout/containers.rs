@@ -143,7 +143,26 @@ impl Container {
             is_focused: false,
             is_floating: false,
         }));
-        parent.add_child(container.clone());
+        if parent.get_type() == ContainerType::Workspace {
+            let mut workspace = parent;
+            if let Some(layout) = workspace.get_layout() {
+                container.borrow_mut().set_layout(layout);
+            }
+            workspace.add_child(container.clone());
+        } else {
+            // Need to add the "parent" as the child of the container we just made.
+            drop(parent);
+            let child_ = parent_.clone();
+            let child = child_.borrow();
+            let parent_of_child = child.get_parent().expect("Parent container has no parent");
+            let child_clone = Rc::make_mut(&mut child_.clone()).clone().into_inner();
+            // Need to remove the child from their parent
+            parent_of_child.borrow_mut().remove_child(&child_clone.clone());
+            // Add the container we just made as a child, replacing the one we removed
+            parent_of_child.borrow_mut().add_child(container.clone());
+            // The new container is now a child of the old child's parent
+            container.borrow_mut().add_child(child_.clone());
+        }
         trace!("Container created");
         container
     }
@@ -295,6 +314,11 @@ impl Container {
     /// Sets this container (and everything in it) to given visibility
     pub fn set_visibility(&mut self, visibility: bool) {
         self.visible = visibility
+    }
+
+    /// Sets the layout of the container.
+    pub fn set_layout(&mut self, layout: Layout) {
+        self.layout = Some(layout)
     }
 
     /// Gets the visibility of the container

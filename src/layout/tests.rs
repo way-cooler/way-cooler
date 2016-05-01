@@ -100,17 +100,24 @@ mod tests {
             // run time. Another way to do this is at the beginning, but this is
             // a good test of what we need to do to stay dynamic
             drop(container);
-            let inner_workspace = Container::new_container(&mut container_.clone(), Layout::Horizontal);
+            // This new workspace will now be the outer one, the old workspace is now on the inside
+            let outer_container = Container::new_container(&mut container_.clone(), Layout::Horizontal);
             container = container_.borrow_mut();
-            assert_eq!(container.get_children().unwrap().len(), 1);
-            let self_as_child = container.get_children().unwrap()[0].clone();
-            assert_eq!(*self_as_child.borrow(), *inner_workspace.borrow());
+            assert_eq!(outer_container.borrow().get_children().unwrap().len(), 1);
+            assert_eq!(container.get_children().unwrap().len(), 0);
+            let self_as_child = outer_container.borrow().get_children().unwrap()[0].clone();
+            println!("here");
+            drop(container);
+            assert_eq!(*self_as_child.borrow(), *outer_container.borrow());
+            println!("here");
+            let container = container_.borrow();
             assert_eq!(container.get_type(), ContainerType::Container);
+            println!("here");
             drop(container);
             let container2 = container_.borrow();
-            assert!(container2.is_parent_of(inner_workspace.clone()));
+            assert!(container2.is_parent_of(outer_container.clone()));
             drop(container2);
-            container = container_.borrow_mut();
+            let mut container = container_.borrow_mut();
             // We also need to drop our copy of the container here when checking
             // if we are a child of the container, since we have to borrow the
             // container right here again in order to check if it's the parent.
@@ -118,7 +125,7 @@ mod tests {
             // Again, this is only an "issue" because we are borrow_mut for
             // such a long period of time
             drop(container);
-            assert!(inner_workspace.borrow().is_child_of(container_.clone()));
+            assert!(outer_container.borrow().is_child_of(container_.clone()));
             container = container_.borrow_mut();
             assert!(! container.is_focused());
             container.set_visibility(true);
