@@ -62,7 +62,9 @@ impl<T> Node<T> {
 
     /// Remove a child at the given index
     pub fn remove_child_at(&mut self, index: usize) -> Node<T> {
-        self.children.remove(index)
+        let mut child = self.children.remove(index);
+        child.parent = ptr::null_mut();
+        child
     }
 
     /// Whether this node is a parent of another node
@@ -105,7 +107,8 @@ impl<T> Drop for Node<T> {
     fn drop(&mut self) {
         println!("Dropping a node.");
         self.parent = ptr::null_mut();
-        for child in &mut self.children {
+        let children: &mut Vec<Node<T>> = &mut self.children;
+        for mut child in children {
             println!("> Unlinking a child");
             child.parent = ptr::null_mut();
         }
