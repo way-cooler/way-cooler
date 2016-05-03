@@ -3,7 +3,9 @@
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
 
-use std::cmp::Ordering;
+use std::hash::Hash;
+use std::cmp::Eq;
+use std::collections::HashMap;
 
 /// Represents types which can be serialized from a Lua table (AnyLuaValue).
 ///
@@ -29,6 +31,16 @@ pub enum ConverterError {
     MissingTableIndex(String),
     /// The table index present was not valid
     InvalidTableIndex(String)
+}
+
+impl ConverterError {
+    pub fn into_message(self) -> String {
+        match self {
+            ConverterError::UnexpectedType(m) => m,
+            ConverterError::MissingTableIndex(m) => m,
+            ConverterError::InvalidTableIndex(m) => m
+        }
+    }
 }
 
 /// Results for conversion operations
@@ -95,19 +107,52 @@ impl LuaDecoder {
         }
     }
 
-    pub fn get_unordered_array<T>(self) -> ConvertResult<Vec<T>>
-    where T: FromTable {
+    pub fn get_unordered_array<T: FromTable>(self) -> ConvertResult<Vec<T>> {
         match self.val {
             LuaArray(mut arr) => {
                 let mut turn = Vec::with_capacity(arr.len());
                 // Completely ignore the keys, push values of type T
-                for (_, val) in arr.into_iter() {
-                    turn.push(try!(T::from_lua_table(val)));
+                for (_, lua_val) in arr.into_iter() {
+                    match T::from_lua_table(lua_val) {
+                        Ok(val) => turn.push(val),
+                        Err(err) => {
+                            return Err(ConverterError::InvalidTableIndex(
+                                format!("Attempted to parse value in a Vec, \
+                                got error: {}", err.into_message())));
+                        }
+                    }
                 }
-                Ok(turn)
+                return Ok(turn);
             }
             _ => Err(ConverterError::UnexpectedType(
-                 format!("Expected table/vec, got {:?}", self.val)))
+                 format!("Expected table for Vec, got {:?}", self.val)))
+        }
+    }
+
+    pub fn get_hash_map<K, V>(self) -> ConvertResult<HashMap<K, V>>
+        where K: Eq + Hash + FromTable, V: FromTable {
+        match self.val {
+            LuaArray(arr) => {
+                let mut map = HashMap::with_capacity(arr.len());
+                for (lua_key, lua_value) in arr.into_iter() {
+                    match K::from_lua_table(lua_key) {
+                        Ok(key) => match V::from_lua_table(lua_value) {
+                            Ok(value) => { map.insert(key, value); },
+                            Err(e) =>
+                                return Err(ConverterError::InvalidTableIndex(
+                                    format!("Attempted to parse value in a Hash\
+                                             Map, got error: {}",
+                                            e.into_message())))
+                        },
+                        Err(e) => return Err(ConverterError::InvalidTableIndex(
+                        format!("Attempted to parse key in a HashMap, got error\
+                                 : {}", e.into_message())))
+                    }
+                }
+                return Ok(map);
+            },
+            _ => Err(ConverterError::UnexpectedType(
+            format!("Expected table for HashMap, got {:?}", self.val)))
         }
     }
 }
@@ -118,13 +163,24 @@ macro_rules! primitive_decode {
             pub fn $fun(self) -> ConvertResult<$ptype> {
                 match self.val {
                     AnyLuaValue::LuaNumber(num) => Ok(num as $ptype),
-                    _ => Err(ConverterError::UnexpectedType(
-                        format!("Expected {}, got {:?}", stringify!($ptype), self.val)))
+                    other => Err(ConverterError::UnexpectedType(
+                        format!("Expected {}, got {:?}",
+                                stringify!($ptype), other)))
                 }
             }
         }
 
         impl FromTable for $ptype {
+            fn from_table(decoder: LuaDecoder) -> ConvertResult<$ptype> {
+                LuaDecoder::$fun(decoder)
+            }
+        })+
+    }
+}
+
+macro_rules! type_fn_decode {
+    ( $( $ptype:ty => $fun:ident), + ) => {
+        $(impl FromTable for $ptype {
             fn from_table(decoder: LuaDecoder) -> ConvertResult<$ptype> {
                 LuaDecoder::$fun(decoder)
             }
@@ -145,14 +201,25 @@ primitive_decode! {
     f64, get_f64;
 }
 
-impl FromTable for String {
-    fn from_table(decoder: LuaDecoder) -> ConvertResult<String> {
-        decoder.get_string()
-    }
+type_fn_decode! {
+    String => get_string,
+    bool => get_bool
 }
 
 impl<T: FromTable> FromTable for Vec<T> {
     fn from_table(decoder: LuaDecoder) -> ConvertResult<Vec<T>> {
         decoder.get_unordered_array()
+    }
+}
+
+impl<T: FromTable> FromTable for Option<T> {
+    fn from_table(decoder: LuaDecoder) -> ConvertResult<Option<T>> {
+        decoder.get_option()
+    }
+}
+
+impl<K, V> FromTable for HashMap<K, V> where K: Hash + Eq + FromTable, V: FromTable {
+    fn from_table(decoder: LuaDecoder) -> ConvertResult<HashMap<K,V>> {
+        decoder.get_hash_map()
     }
 }
