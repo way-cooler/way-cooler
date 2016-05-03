@@ -1,7 +1,8 @@
 //! It's a tree!
 
 use std::ptr;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
+use std::fmt::Debug;
 
 #[derive(Debug, PartialEq, Eq)]
 struct Node<T> {
@@ -12,6 +13,8 @@ struct Node<T> {
 }
 
 impl<T> Node<T> {
+    /// Create a new node with the existing value.
+    /// For root-style constructors.
     pub fn new(val: T) -> Node<T> {
         Node {
             parent: ptr::null_mut(),
@@ -20,6 +23,7 @@ impl<T> Node<T> {
         }
     }
 
+    /// Add a new child node to this node, using a value
     pub fn new_child(&mut self, val: T) {
         let self_mut = self as *mut Node<T>;
         self.children.push(Node {
@@ -29,16 +33,12 @@ impl<T> Node<T> {
         })
     }
 
-    pub fn adopt(&mut self, mut other: Node<T>) {
-        let self_ptr = self as *mut Node<T>;
-        other.parent = self_ptr;
-        self.children.push(other);
-    }
-
+    /// Whether this node has a (currently-reachable) parent
     pub fn has_parent(&self) -> bool {
         self.parent.is_null()
     }
 
+    /// Gets the parent of this node (if it exists)
     pub fn get_parent<'a>(&'a self) -> Option<&'a mut Node<T>> {
         if self.parent.is_null() {
             return None;
@@ -48,27 +48,24 @@ impl<T> Node<T> {
         }
     }
 
-    /// Sets the parent of the node.
-    /// Does not update the parent of the old node
-    pub fn set_parent(&mut self, new: &mut Node<T>) {
-        unsafe { self.parent = new as *mut Node<T>; }
-    }
-
+    /// Borrow the children of this node.
     pub fn get_children<'a>(&'a self) -> &Vec<Node<T>> {
         &self.children
     }
 
+    /// Mutably borrow the children of this mutable node
     pub fn get_mut_children(&mut self) -> &mut Vec<Node<T>> {
         &mut self.children
     }
 
+    /// Remove a child at the given index
     pub fn remove_child_at(&mut self, index: usize) -> Node<T> {
         self.children.remove(index)
     }
 
-
+    /// Whether this node is a parent of another node
     pub fn is_parent_of(&self, other: Node<T>) -> bool {
-        true
+        self.parent == other.parent
     }
 }
 
@@ -101,6 +98,7 @@ impl <T: PartialEq> Node<T> {
 impl<T> Drop for Node<T> {
     fn drop(&mut self) {
         trace!("Dropping a node!!!!");
+        self.parent = ptr::null_mut();
     }
 }
 
