@@ -24,13 +24,15 @@ impl<T> Node<T> {
     }
 
     /// Add a new child node to this node, using a value
-    pub fn new_child(&mut self, val: T) {
+    pub fn new_child(&mut self, val: T) -> &mut Node<T> {
         let self_mut = self as *mut Node<T>;
         self.children.push(Node {
             parent: self_mut,
             val: val,
             children: Vec::new()
-        })
+        });
+        let last_ix = self.children.len() -1;
+        &mut self.children[last_ix]
     }
 
     /// Whether this node has a (currently-reachable) parent
@@ -70,6 +72,9 @@ impl<T> Node<T> {
 }
 
 impl <T: PartialEq> Node<T> {
+
+    /// Remove a node from its parent.
+    /// This method will mutate the parent if it exists.
     pub fn remove_from_parent(&self) {
         if let Some(ref mut parent) = self.get_parent() {
             let children = parent.get_mut_children();
@@ -79,6 +84,7 @@ impl <T: PartialEq> Node<T> {
         }
     }
 
+    /// Removes a child from self
     pub fn remove_child(&mut self, other: &Node<T>) -> Option<Node<T>> {
         if let Some(index) = self.children.iter().position(|c| c == other) {
             Some(self.children.remove(index))
@@ -97,16 +103,41 @@ impl <T: PartialEq> Node<T> {
 
 impl<T> Drop for Node<T> {
     fn drop(&mut self) {
-        trace!("Dropping a node!!!!");
+        println!("Dropping a node.");
         self.parent = ptr::null_mut();
+        for child in &mut self.children {
+            println!("> Unlinking a child");
+            child.parent = ptr::null_mut();
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Node;
+    use log::LogLevelFilter;
+    use env_logger::LogBuilder;
 
+    /// Nodes can have children added to them
+    #[test]
     fn test_add_child() {
+        let mut root = Node::new(0);
+        root.new_child(1);
+        root.new_child(2); // This is okay
+        {
+            let mut third_child = root.new_child(3);
+            //root.new_child(4); // Have to wait for 3rd child to drop
+        }
+        root.new_child(4); // Now this works yay standard borrowing
+        assert_eq!(root.children.len(), 4);
+        println!("Done with the test now.");
+    }
+
+    /// These operations will for example operate on the parent
+    /// under an if let. `remove_from_parent` will not panic if the node
+    /// already is parentless, for example.
+    #[test]
+    fn optional_operations() {
         
     }
 }
