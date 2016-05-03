@@ -60,7 +60,9 @@ impl<T> Node<T> {
 
     /// Remove a child at the given index
     pub fn remove_child_at(&mut self, index: usize) -> Node<T> {
-        self.children.remove(index)
+        let child = self.children.remove(index);
+        child.parent = ptr::null_mut();
+        child
     }
 
     /// Whether this node is a parent of another node
@@ -98,7 +100,6 @@ impl <T: PartialEq> Node<T> {
 impl<T> Drop for Node<T> {
     fn drop(&mut self) {
         trace!("Dropping a node!!!!");
-        self.parent = ptr::null_mut();
     }
 }
 
