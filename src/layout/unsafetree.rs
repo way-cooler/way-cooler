@@ -41,7 +41,7 @@ impl<T> Node<T> {
     }
 
     /// Gets the parent of this node (if it exists)
-    pub fn get_parent<'a>(&'a self) -> Option<&'a mut Node<T>> {
+    pub fn get_parent(&self) -> Option<&mut Node<T>> {
         if self.parent.is_null() {
             return None;
         }
@@ -106,7 +106,6 @@ impl <T: PartialEq> Node<T> {
 impl<T> Drop for Node<T> {
     fn drop(&mut self) {
         println!("Dropping a node.");
-        self.parent = ptr::null_mut();
         let children: &mut Vec<Node<T>> = &mut self.children;
         for mut child in children {
             println!("> Unlinking a child");
