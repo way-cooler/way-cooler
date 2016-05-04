@@ -40,22 +40,43 @@ pub enum Layout {
 /// Represents an item in the container tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Container {
+    /// Root node of the container
     Root,
+    /// Output
     Output {
+        /// Handle to the wlc
         handle: WlcOutput
     },
+    /// Workspace
     Workspace {
+        /// Name of the workspace
         name: String,
+        /// Whether the workspace is focused
+        ///
+        /// Multiple workspaces can be focused
         focused: bool
     },
+    /// Container
     Container {
+        /// How the container is layed out
         layout: Layout,
+        /// Whether the container is visible
         visible: bool,
+        /// If the container is focused
         focused: bool,
+        /// If the container is floating
         floating: bool,
     },
+    /// View or window
     View {
-        handle: WlcView
+        /// The wlc handle to the view
+        handle: WlcView,
+        /// Whether this view is visible
+        visible: bool,
+        /// Whether this view is focused
+        focused: bool,
+        /// Whether this view is floating
+        floating: bool,
     }
 }
 
