@@ -51,12 +51,12 @@ impl<T> Node<T> {
     }
 
     /// Borrow the children of this node.
-    pub fn get_children<'a>(&'a self) -> &Vec<Node<T>> {
+    pub fn get_children(&self) -> &[Node<T>] {
         &self.children
     }
 
     /// Mutably borrow the children of this mutable node
-    pub fn get_mut_children(&mut self) -> &mut Vec<Node<T>> {
+    pub fn get_mut_children(&mut self) -> &mut[Node<T>] {
         &mut self.children
     }
 
@@ -68,8 +68,8 @@ impl<T> Node<T> {
     }
 
     /// Whether this node is a parent of another node
-    pub fn is_parent_of(&self, other: Node<T>) -> bool {
-        self.parent == other.parent
+    pub fn is_parent_of(&self, other: &Node<T>) -> bool {
+        self.parent == other.parent as *mut Node<T>
     }
 }
 
@@ -77,19 +77,22 @@ impl <T: PartialEq> Node<T> {
 
     /// Remove a node from its parent.
     /// This method will mutate the parent if it exists.
-    pub fn remove_from_parent(&self) {
-        if let Some(ref mut parent) = self.get_parent() {
-            let children = parent.get_mut_children();
-            if let Some(index) = children.iter().position(|c| c == self) {
-                children.remove(index);
-            }
+    pub fn remove_from_parent(&mut self) {
+        if self.get_parent().is_none() {
+            return;
+        }
+        if let Some(index) = self.children.iter().position(|c| c == self) {
+            self.parent = ptr::null_mut();
+            self.children.remove(index);
         }
     }
 
     /// Removes a child from self
     pub fn remove_child(&mut self, other: &Node<T>) -> Option<Node<T>> {
         if let Some(index) = self.children.iter().position(|c| c == other) {
-            Some(self.children.remove(index))
+            let mut child = self.children.remove(index);
+            child.parent = ptr::null_mut();
+            Some(child)
         }
         else {
             None
@@ -108,7 +111,6 @@ impl<T> Drop for Node<T> {
         println!("Dropping a node.");
         let children: &mut Vec<Node<T>> = &mut self.children;
         for mut child in children {
-            println!("> Unlinking a child");
             child.parent = ptr::null_mut();
         }
     }
