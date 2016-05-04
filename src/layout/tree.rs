@@ -93,6 +93,17 @@ impl Node {
         child
     }
 
+    /// Moves another node to be a sibling of this node.
+    pub fn add_sibling(&self, node: Node) -> Result<(), ()> {
+        if let Some(parent) = self.get_parent() {
+            node.move_to(parent);
+            Ok(())
+        }
+        else {
+            Err(())
+        }
+    }
+
     /// Whether this node is a parent of another node
     pub fn is_parent_of(&self, other: &Node) -> bool {
         self.parent == other.parent as *mut Node
