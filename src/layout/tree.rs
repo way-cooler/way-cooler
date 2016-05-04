@@ -50,8 +50,8 @@ impl Node {
     }
 
     /// Tries to get an ancestor of the requested type
-    pub fn get_ancestor_of_type<'a>(&'a self, container_type: ContainerType)
-                                -> Option<&'a mut Node> {
+    pub fn get_ancestor_of_type(&self, container_type: ContainerType)
+                                -> Option<&Node> {
         let mut maybe_parent = self.get_parent();
         loop {
             if let Some(parent) = maybe_parent {
@@ -112,14 +112,14 @@ impl Node {
     /// Remove a node from its parent.
     /// This method will mutate the parent if it exists.
     pub fn remove_from_parent(&mut self) -> Option<Node> {
-        if self.get_parent().is_none() {
-            return None;
+        let mut result: Option<Node> = None;
+        if let Some(mut parent) = self.get_parent() {
+            if let Some(index) = parent.children.iter().position(|c| c == self) {
+                result = Some(parent.children.remove(index));
+            }
         }
-        if let Some(index) = self.children.iter().position(|c| c == self) {
-            self.parent = ptr::null_mut();
-            self.children.remove(index);
-        }
-        return None;
+        self.parent = ptr::null_mut();
+        result
     }
 
     /// Removes a child from self
