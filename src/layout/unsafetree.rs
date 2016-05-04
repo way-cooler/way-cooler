@@ -1,8 +1,63 @@
 //! It's a tree!
 
-use std::ptr;
-use std::ops::{Deref, DerefMut};
 use std::fmt::Debug;
+use std::ops::{Deref, DerefMut};
+use std::ptr;
+
+use rustwlc::handle::{WlcView, WlcOutput};
+
+/// A handle to either a view or output
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Handle {
+    View(WlcView),
+    Output(WlcOutput)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContainerType {
+    /// Root container, only one exists
+    Root,
+    /// WlcOutput/Monitor
+    Output,
+    /// A workspace
+    Workspace,
+    /// A Container, houses views and other containers
+    Container,
+    /// A view (window)
+    View
+}
+
+/// Layout mode for a container
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Layout {
+    Horizontal,
+    Vertical,
+    Stacked,
+    Tabbed,
+    Floating
+}
+
+/// Represents an item in the container tree.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Container {
+    Root,
+    Output {
+        handle: WlcOutput
+    },
+    Workspace {
+        name: String,
+        focused: bool
+    },
+    Container {
+        layout: Layout,
+        visible: bool,
+        focused: bool,
+        floating: bool,
+    },
+    View {
+        handle: WlcView
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct Node<T> {
@@ -77,14 +132,15 @@ impl <T: PartialEq> Node<T> {
 
     /// Remove a node from its parent.
     /// This method will mutate the parent if it exists.
-    pub fn remove_from_parent(&mut self) {
+    pub fn remove_from_parent(&mut self) -> Option<Node<T>> {
         if self.get_parent().is_none() {
-            return;
+            return None;
         }
         if let Some(index) = self.children.iter().position(|c| c == self) {
             self.parent = ptr::null_mut();
             self.children.remove(index);
         }
+        return None;
     }
 
     /// Removes a child from self
