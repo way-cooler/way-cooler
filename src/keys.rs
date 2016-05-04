@@ -5,6 +5,8 @@ use std::sync::{Arc, RwLock};
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 use std::hash::{Hash, Hasher};
+use super::layout::layout::layout;
+
 
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
@@ -27,8 +29,36 @@ lazy_static! {
                                                  vec!["Escape"]).unwrap();
         map.insert(press_esc, Arc::new(Box::new(key_esc)));
 
+        /* Workspace functions*/
+        let terminal = KeyPress::from_key_names(vec!["Ctrl"], vec!["Return"]).unwrap();
+        map.insert(terminal, Arc::new(Box::new(terminal_fn)));
+
+        let switch_1 = KeyPress::from_key_names(vec!["Ctrl"], vec!["ampersand"]).unwrap();
+        map.insert(switch_1, Arc::new(Box::new(switch_1_fn)));
+
+        let switch_2 = KeyPress::from_key_names(vec!["Ctrl"], vec!["bracketleft"]).unwrap();
+        map.insert(switch_2, Arc::new(Box::new(switch_2_fn)));
+
         RwLock::new(map)
     };
+}
+
+fn switch_2_fn() {
+    trace!("Switching to workspace 2");
+    layout::switch_workspace(1);
+}
+
+fn switch_1_fn() {
+    trace!("Switching to workspace 1");
+    layout::switch_workspace(0);
+}
+
+fn terminal_fn() {
+    use std::process::Command;
+    Command::new("sh")
+        .arg("-c")
+        .arg("weston-terminal")
+        .spawn().unwrap();
 }
 
 fn key_sleep() {

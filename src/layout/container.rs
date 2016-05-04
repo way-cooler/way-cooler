@@ -145,6 +145,15 @@ impl Container {
             Container::View { .. } => ContainerType::View
         }
     }
+
+    /// Gets the view handle of the view container, if this is a view container
+    pub fn get_handle(&self) -> Option<Handle> {
+        match *self {
+            Container::View { handle: ref handle, ..} => Some(Handle::View(handle.clone())),
+            Container::Output { handle: ref handle } => Some(Handle::Output(handle.clone())),
+            _ => None
+        }
+    }
 }
 
 #[cfg(test)]

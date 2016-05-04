@@ -82,7 +82,7 @@ impl Node {
     }
 
     /// Mutably borrow the children of this mutable node
-    pub fn get_mut_children(&mut self) -> &mut[Node] {
+    pub fn get_children_mut(&mut self) -> &mut[Node] {
         &mut self.children
     }
 
@@ -139,6 +139,10 @@ impl Node {
         self.parent = new_parent as *mut Node;
         new_parent.children.push(self);
     }
+
+    pub fn get_val(&self) -> &Container {
+        &self.val
+    }
 }
 
 impl Drop for Node {
@@ -150,6 +154,9 @@ impl Drop for Node {
         }
     }
 }
+
+unsafe impl Sync for Node {}
+unsafe impl Send for Node {}
 
 #[cfg(test)]
 mod tests {

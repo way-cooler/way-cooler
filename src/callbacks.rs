@@ -8,6 +8,8 @@ use super::keys;
 use super::lua;
 use super::keys::{KeyEvent, KeyPress};
 
+use super::layout::layout::layout;
+
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
 
@@ -18,6 +20,7 @@ const EVENT_PASS_THROUGH: bool = false;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
+    layout::add_output(output);
     return true;
 }
 
@@ -45,6 +48,7 @@ pub extern fn output_render_post(output: WlcOutput) {
 */
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
+    layout::add_view(view.clone());
     let output = view.get_output();
     view.set_mask(output.get_mask());
     view.bring_to_front();
