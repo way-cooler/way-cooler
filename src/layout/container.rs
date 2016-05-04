@@ -23,6 +23,25 @@ pub enum ContainerType {
     View
 }
 
+impl ContainerType {
+    /// Whether this container can be used as the parent of another
+    pub fn can_have_child(self, other: ContainerType) -> bool {
+        use self::ContainerType::*;
+        match self {
+            Root => other == Output,
+            Output => other == Workspace,
+            Workspace => other == Container,
+            Container => other == Container || other == View,
+            View => false
+        }
+    }
+
+    /// Whether this container can have a parent of type other
+    pub fn can_have_parent(self, other: ContainerType) -> bool {
+        other.can_have_child(self)
+    }
+}
+
 /// Layout mode for a container
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
@@ -125,5 +144,50 @@ impl Container {
             Container::Container { .. } => ContainerType::Container,
             Container::View { .. } => ContainerType::View
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_have_child() {
+        let root = ContainerType::Root;
+        let output = ContainerType::Output;
+        let workspace = ContainerType::Workspace;
+        let container = ContainerType::Container;
+        let view = ContainerType::View;
+
+        assert!(root.can_have_child(output),         "Root      > output");
+        assert!(output.can_have_child(workspace),    "Output    > workspace");
+        assert!(workspace.can_have_child(container), "Workspace > container");
+        assert!(container.can_have_child(container), "Container > container");
+        assert!(container.can_have_child(view),      "Container > view");
+
+        assert!(!root.can_have_child(root),      "! Root > root");
+        assert!(!root.can_have_child(workspace), "! Root > workspace");
+        assert!(!root.can_have_child(container), "! Root > container");
+        assert!(!root.can_have_child(view),      "! Root > view");
+
+        assert!(!output.can_have_child(root),      "! Output > root");
+        assert!(!output.can_have_child(output),    "! Output > output");
+        assert!(!output.can_have_child(container), "! Output > container");
+        assert!(!output.can_have_child(view),      "! Output > view");
+
+        assert!(!workspace.can_have_child(root),      "! Workspace > root");
+        assert!(!workspace.can_have_child(output),    "! Workspace > output");
+        assert!(!workspace.can_have_child(workspace), "! Workspace > worksp");
+        assert!(!workspace.can_have_child(view),      "! Workspace > view");
+
+        assert!(!container.can_have_child(root),      "! Container > root");
+        assert!(!container.can_have_child(workspace), "! Container > worksp");
+        assert!(!container.can_have_child(output),    "! Container > contanr");
+
+        assert!(!view.can_have_child(root),      "! View > root");
+        assert!(!view.can_have_child(output),    "! View > output");
+        assert!(!view.can_have_child(workspace), "! View > workspace");
+        assert!(!view.can_have_child(container), "! View > container");
+        assert!(!view.can_have_child(view),      "! View > view");
     }
 }
