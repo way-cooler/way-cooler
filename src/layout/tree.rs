@@ -121,7 +121,8 @@ impl Node {
 
     /// Whether this node is a parent of another node
     pub fn is_parent_of(&self, other: &Node) -> bool {
-        self.parent == other.parent as *mut Node
+        // Fun fact, other.parent == self as *const Node won't compile
+        self as *const Node == other.parent
     }
 
     /// Remove a node from its parent.
