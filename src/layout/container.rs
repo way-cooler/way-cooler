@@ -60,7 +60,9 @@ pub enum Container {
     /// Output
     Output {
         /// Handle to the wlc
-        handle: WlcOutput
+        handle: WlcOutput,
+        /// Whether the output is focused
+        focused: bool
     },
     /// Workspace
     Workspace {
@@ -104,7 +106,8 @@ impl Container {
     /// Creates a new output container with the given output
     pub fn new_output(handle: WlcOutput) -> Container {
         Container::Output {
-            handle: handle
+            handle: handle,
+            focused: false
         }
     }
 
@@ -150,8 +153,18 @@ impl Container {
     pub fn get_handle(&self) -> Option<Handle> {
         match *self {
             Container::View { handle: ref handle, ..} => Some(Handle::View(handle.clone())),
-            Container::Output { handle: ref handle } => Some(Handle::Output(handle.clone())),
+            Container::Output { handle: ref handle, .. } => Some(Handle::Output(handle.clone())),
             _ => None
+        }
+    }
+
+    /// Determines if the container is focused or not
+    pub fn is_focused(&self) -> bool {
+        match *self {
+            Container::Output { focused: ref focused, .. } => focused.clone(),
+            Container::Workspace { focused: ref focused, .. } => focused.clone(),
+            Container::View { focused: ref focused, .. } => focused.clone(),
+            _ => false
         }
     }
 }

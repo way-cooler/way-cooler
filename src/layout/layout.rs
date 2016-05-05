@@ -21,14 +21,12 @@
         ROOT.lock().unwrap().new_child(output);
         add_workspace();
         add_workspace();
-        trace!("Len of output: {}", ROOT.lock().unwrap().get_children()[0].get_children().len());
     }
 
-    pub fn add_workspace() {
-        let current_workspace = CURRENT_WORKSPACE.lock().unwrap();
-        let workspace = Container::new_workspace((*current_workspace + 1).to_string());
-
-        (*ROOT.lock().unwrap()).get_children_mut()[0].new_child(workspace);
+     pub fn add_workspace() {
+         let workspace_count = (*ROOT.lock().unwrap()).get_children().len();
+         let workspace = Container::new_workspace((workspace_count + 1).to_string());
+         (*ROOT.lock().unwrap()).get_children_mut()[0].new_child(workspace);
     }
 
     pub fn add_view(wlc_view: WlcView) {
@@ -37,6 +35,14 @@
         let mut workspace = (*root).get_children_mut()[0].get_children_mut().get_mut(*current_workspace as usize).unwrap();
         workspace.new_child(Container::new_view(wlc_view));
     }
+
+     pub fn remove_view(wlc_view: &WlcView) {
+         let mut root = ROOT.lock().unwrap();
+         if let Some(view) = root.find_view_by_handle(&wlc_view) {
+             let parent = view.get_parent().unwrap();
+             parent.remove_child(view);
+         }
+     }
 
      pub fn switch_workspace(index: u32) {
          let mut current_workspace = CURRENT_WORKSPACE.lock().unwrap();
@@ -64,4 +70,19 @@
          }
          *current_workspace = index;
      }
-}
+
+     fn get_focused_workspace(root: &Node) -> Option<&Node> {
+         for output in root.get_children() {
+             if output.get_val().is_focused() {
+                 for workspace in output.get_children() {
+                     if workspace.get_val().is_focused() {
+                         return Some(workspace);
+                     }
+                 }
+             }
+         }
+         None
+
+     }
+ }
+

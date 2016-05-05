@@ -58,6 +58,7 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
+    layout::remove_view(&view);
 }
 
 pub extern fn view_focus(current: WlcView, focused: bool) {

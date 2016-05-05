@@ -66,6 +66,21 @@ impl Node {
         }
     }
 
+    /// Gets a node by handle
+    pub fn find_view_by_handle(&self, handle: &WlcView) -> Option<&Node>{
+        match self.get_val() {
+            &Container::View { .. } => Some(self),
+            _ => {
+                for child in self.get_children() {
+                    if let Some(view) = child.find_view_by_handle(handle) {
+                        return Some(view);
+                    }
+                }
+                return None;
+            }
+        }
+    }
+
     /// Gets the parent of this node (if it exists)
     pub fn get_parent(&self) -> Option<&mut Node> {
         if self.parent.is_null() {
