@@ -26,6 +26,7 @@ mod keys;
 mod callbacks;
 mod lua;
 mod layout;
+mod compositor;
 
 
 /// Callback to route wlc logs into env_logger
