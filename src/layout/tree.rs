@@ -67,12 +67,18 @@ impl Node {
     }
 
     /// Gets a node by handle
-    pub fn find_view_by_handle(&self, handle: &WlcView) -> Option<&Node>{
+    pub fn find_view_by_handle(&self, view_handle: &WlcView) -> Option<&Node>{
         match self.get_val() {
-            &Container::View { .. } => Some(self),
+            &Container::View { ref handle, .. } => {
+                if view_handle == handle {
+                    Some(self)
+                } else {
+                    None
+                }
+            },
             _ => {
                 for child in self.get_children() {
-                    if let Some(view) = child.find_view_by_handle(handle) {
+                    if let Some(view) = child.find_view_by_handle(view_handle) {
                         return Some(view);
                     }
                 }
