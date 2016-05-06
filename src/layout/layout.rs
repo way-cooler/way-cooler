@@ -74,7 +74,6 @@ pub mod layout {
     pub fn switch_workspace(name: &str) {
         trace!("Switching to workspace {}", name);
         let mut root = ROOT.lock().unwrap();
-        // Assume we are already on a workspace
         if let Some(old_workspace) = get_current_workspace(&root) {
             // Make all the views in the original workspace to be invisible
             for view in old_workspace.get_children_mut() {

@@ -88,16 +88,6 @@ lazy_static! {
     };
 }
 
-fn switch_2_fn() {
-    trace!("Switching to workspace 2");
-    layout::switch_workspace(&1.to_string());
-}
-
-fn switch_1_fn() {
-    trace!("Switching to workspace 1");
-    layout::switch_workspace(&0.to_string());
-}
-
 fn terminal_fn() {
     use std::process::Command;
     Command::new("sh")
