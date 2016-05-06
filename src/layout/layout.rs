@@ -103,6 +103,16 @@ pub mod layout {
                     _ => {},
                 }
             }
+            // Set the first view to be focused, so that the view is updated to this new workspace
+            if new_current_workspace.get_children().len() > 0 {
+                trace!("Focusing view");
+                match new_current_workspace.get_children_mut()[0].get_val().get_handle().unwrap() {
+                    Handle::View(view) => view.focus(),
+                    _ => {},
+                }
+            } else {
+                WlcView::root().focus();
+            }
             current_workspace = new_current_workspace as *const Node;
         }
         root.active_container = current_workspace;
