@@ -7,6 +7,27 @@ use rustwlc::types::*; // Need * for bitflags...
 use std::hash::{Hash, Hasher};
 use super::layout::layout::layout;
 
+macro_rules! gen_switch_workspace {
+    ($($b:ident, $n:expr);+) => {
+        $(fn $b() {
+            trace!("Switching to workspace {}", $n);
+            layout::switch_workspace(&$n.to_string());
+        })+
+    };
+}
+
+gen_switch_workspace!(switch_workspace_1, 1;
+                      switch_workspace_2, 2;
+                      switch_workspace_3, 3;
+                      switch_workspace_4, 4;
+                      switch_workspace_5, 5;
+                      switch_workspace_6, 6;
+                      switch_workspace_7, 7;
+                      switch_workspace_8, 8;
+                      switch_workspace_9, 9;
+                      switch_workspace_0, 0);
+
+
 
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
@@ -33,11 +54,35 @@ lazy_static! {
         let terminal = KeyPress::from_key_names(vec!["Ctrl"], vec!["Return"]).unwrap();
         map.insert(terminal, Arc::new(Box::new(terminal_fn)));
 
-        let switch_1 = KeyPress::from_key_names(vec!["Ctrl"], vec!["ampersand"]).unwrap();
-        map.insert(switch_1, Arc::new(Box::new(switch_1_fn)));
+        let switch_1 = KeyPress::from_key_names(vec!["Ctrl"], vec!["1"]).unwrap();
+        map.insert(switch_1, Arc::new(Box::new(switch_workspace_1)));
 
-        let switch_2 = KeyPress::from_key_names(vec!["Ctrl"], vec!["bracketleft"]).unwrap();
-        map.insert(switch_2, Arc::new(Box::new(switch_2_fn)));
+        let switch_2 = KeyPress::from_key_names(vec!["Ctrl"], vec!["2"]).unwrap();
+        map.insert(switch_2, Arc::new(Box::new(switch_workspace_2)));
+
+        let switch_3 = KeyPress::from_key_names(vec!["Ctrl"], vec!["3"]).unwrap();
+        map.insert(switch_3, Arc::new(Box::new(switch_workspace_3)));
+
+        let switch_4 = KeyPress::from_key_names(vec!["Ctrl"], vec!["4"]).unwrap();
+        map.insert(switch_4, Arc::new(Box::new(switch_workspace_4)));
+
+        let switch_5 = KeyPress::from_key_names(vec!["Ctrl"], vec!["5"]).unwrap();
+        map.insert(switch_5, Arc::new(Box::new(switch_workspace_5)));
+
+        let switch_6 = KeyPress::from_key_names(vec!["Ctrl"], vec!["6"]).unwrap();
+        map.insert(switch_6, Arc::new(Box::new(switch_workspace_6)));
+
+        let switch_7 = KeyPress::from_key_names(vec!["Ctrl"], vec!["7"]).unwrap();
+        map.insert(switch_7, Arc::new(Box::new(switch_workspace_7)));
+
+        let switch_8 = KeyPress::from_key_names(vec!["Ctrl"], vec!["8"]).unwrap();
+        map.insert(switch_8, Arc::new(Box::new(switch_workspace_8)));
+
+        let switch_9 = KeyPress::from_key_names(vec!["Ctrl"], vec!["9"]).unwrap();
+        map.insert(switch_9, Arc::new(Box::new(switch_workspace_9)));
+
+        let switch_0 = KeyPress::from_key_names(vec!["Ctrl"], vec!["0"]).unwrap();
+        map.insert(switch_0, Arc::new(Box::new(switch_workspace_0)));
 
         RwLock::new(map)
     };
@@ -45,12 +90,12 @@ lazy_static! {
 
 fn switch_2_fn() {
     trace!("Switching to workspace 2");
-    layout::switch_workspace(1);
+    layout::switch_workspace(&1.to_string());
 }
 
 fn switch_1_fn() {
     trace!("Switching to workspace 1");
-    layout::switch_workspace(0);
+    layout::switch_workspace(&0.to_string());
 }
 
 fn terminal_fn() {

@@ -158,6 +158,14 @@ impl Container {
         }
     }
 
+    /// Gets the name of the workspace, if this container is a workspace.
+    pub fn get_name(&self) -> Option<&str> {
+        match *self {
+            Container::Workspace { name: ref name, ..} => Some(name),
+            _ => None
+        }
+    }
+
     /// Determines if the container is focused or not
     pub fn is_focused(&self) -> bool {
         match *self {

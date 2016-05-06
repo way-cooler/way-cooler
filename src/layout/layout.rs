@@ -8,41 +8,59 @@ pub mod layout {
 
     use std::sync::Mutex;
 
+    use std::ptr;
 
-    struct RootNode<'a> {
+    struct RootNode {
         root: Node,
-        active_container: Option<&'a Node>
+        active_container: *const Node,
     }
 
+    impl RootNode {
+        fn get_active_container(&self) -> Option<&Node> {
+            if self.active_container.is_null() {
+                None
+            } else {
+                unsafe {
+                    Some(&*self.active_container)
+                }
+            }
+        }
+    }
+
+    unsafe impl Send for RootNode {}
+
     lazy_static! {
-        static ref ROOT: Mutex<RootNode<'static>> = {
+        static ref ROOT: Mutex<RootNode> = {
             Mutex::new(RootNode{
                 root: Node::new(Container::new_root()),
-                active_container: None,
+                active_container: ptr::null(),
             })
         };
-
-        static ref CURRENT_WORKSPACE: Mutex<u32> = Mutex::new(0);
     }
 
     pub fn add_output(wlc_output: WlcOutput) {
+        let mut root = ROOT.lock().unwrap();
         let output = Container::new_output(wlc_output);
-        ROOT.lock().unwrap().root.new_child(output);
-        add_workspace();
-        add_workspace();
+        root.root.new_child(output);
+        drop(root);
+        add_workspace(&"1");
+        switch_workspace(&"1");
     }
 
-     pub fn add_workspace() {
-         let workspace_count = (*ROOT.lock().unwrap()).root.get_children().len();
-         let workspace = Container::new_workspace((workspace_count + 1).to_string());
-         (*ROOT.lock().unwrap()).root.get_children_mut()[0].new_child(workspace);
+    pub fn add_workspace(name: &str) {
+        trace!("Adding new workspace to root");
+        let mut root = ROOT.lock().unwrap();
+        let workspace = Container::new_workspace(name.to_string());
+        // NOTE handle multiple outputs
+        root.root.get_children_mut()[0].new_child(workspace);
     }
 
     pub fn add_view(wlc_view: WlcView) {
-        let current_workspace = CURRENT_WORKSPACE.lock().unwrap();
         let mut root = ROOT.lock().unwrap();
-        let mut workspace = (*root).root.get_children_mut()[0].get_children_mut().get_mut(*current_workspace as usize).unwrap();
-        workspace.new_child(Container::new_view(wlc_view));
+        if let Some(current_workspace) = get_current_workspace(&root) {
+            trace!("Adding view {:?} to {:?}", wlc_view, current_workspace);
+            current_workspace.new_child(Container::new_view(wlc_view));
+        }
     }
 
     pub fn remove_view(wlc_view: &WlcView) {
@@ -53,31 +71,42 @@ pub mod layout {
         }
     }
 
-    pub fn switch_workspace(index: u32) {
-        let mut current_workspace = CURRENT_WORKSPACE.lock().unwrap();
+    pub fn switch_workspace(name: &str) {
+        trace!("Switching to workspace {}", name);
         let mut root = ROOT.lock().unwrap();
-        let output = &mut (*root).root.get_children_mut()[0];
-        let workspace_children = output.get_children_mut();
-        {
-            let old_workspace = workspace_children.get_mut(*current_workspace as usize).unwrap();
+        // Assume we are already on a workspace
+        if let Some(old_workspace) = get_current_workspace(&root) {
+            // Make all the views in the original workspace to be invisible
             for view in old_workspace.get_children_mut() {
+                trace!("Setting {:?} invisible", view);
                 match view.get_val().get_handle().unwrap() {
                     Handle::View(view) => view.set_mask(0),
                     _ => {},
                 }
             }
         }
-        // Assume that the other workspace already exits
-        trace!("here");
-        let new_workspace = workspace_children.get_mut(index as usize).unwrap();
-        trace!("here");
-        for view in new_workspace.get_children_mut() {
-            match view.get_val().get_handle().unwrap() {
-                Handle::View(view) => view.set_mask(1),
-                _ => {},
+        let current_workspace: *const Node;
+        {
+            let new_current_workspace: &mut Node;
+            if let Some(_) = get_workspace_by_name(&root, name) {
+                trace!("Found workspace {}", name);
+                new_current_workspace = get_workspace_by_name_mut(&mut root, name).unwrap();
+            } else {
+                drop(root);
+                add_workspace(name);
+                root = ROOT.lock().unwrap();
+                new_current_workspace = get_workspace_by_name_mut(&mut root, name).unwrap();
             }
+            for view in new_current_workspace.get_children_mut() {
+                trace!("Setting {:?} visible", view);
+                match view.get_val().get_handle().unwrap() {
+                    Handle::View(view) => view.set_mask(1),
+                    _ => {},
+                }
+            }
+            current_workspace = new_current_workspace as *const Node;
         }
-        *current_workspace = index;
+        root.active_container = current_workspace;
     }
 
     fn get_focused_workspace<'a>(root: &'a RootNode) -> Option<&'a Node> {
@@ -92,6 +121,43 @@ pub mod layout {
         }
         None
 
+    }
+
+    fn get_current_workspace<'a>(root: &'a RootNode) -> Option<&'a mut Node> {
+        if let Some(container) = root.get_active_container() {
+            //if let Some(child) = container.get_ancestor_of_type(ContainerType::Workspace) {
+                //return child.get_children()[0].get_parent()
+
+            //}
+            // NOTE hack here, remove commented code above to make this work properly
+            let parent = container.get_parent().unwrap();
+            for child in parent.get_children_mut() {
+                if child == container {
+                    return Some(child);
+                }
+            }
+        }
+        return None
+    }
+
+    fn get_workspace_by_name<'a, 'b>(root: &'a RootNode, name: &'b str) -> Option<&'a Node> {
+        for child in root.root.get_children()[0].get_children() {
+            if child.get_val().get_name().unwrap() != name {
+                continue
+            }
+            return Some(child);
+        }
+        return None
+    }
+
+    fn get_workspace_by_name_mut<'a, 'b>(root: &'a mut RootNode, name: &'b str) -> Option<&'a mut Node> {
+        for child in root.root.get_children_mut()[0].get_children_mut() {
+            if child.get_val().get_name().unwrap() != name {
+                continue
+            }
+            return Some(child);
+        }
+        return None
     }
  }
 
