@@ -10,7 +10,7 @@ use super::keys;
 use super::lua;
 use super::keys::{KeyEvent, KeyPress};
 
-use super::layout::layout::layout;
+use super::layout::tree;
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -22,7 +22,7 @@ const EVENT_PASS_THROUGH: bool = false;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
-    match layout::add_output(output) {
+    match tree::add_output(output) {
         Ok(_) => true,
         Err(_) => false
     }
@@ -53,7 +53,7 @@ pub extern fn output_render_post(output: WlcOutput) {
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
-    match layout::add_view(view.clone()) {
+    match tree::add_view(view.clone()) {
         Ok(_) => {},
         Err(_) => {
             // This causes view_destroyed to be called, might cause an issue
@@ -69,7 +69,7 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    match layout::remove_view(&view) {
+    match tree::remove_view(&view) {
         Ok(_) => {},
         Err(_) => {},
     }

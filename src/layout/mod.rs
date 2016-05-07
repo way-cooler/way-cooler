@@ -1,7 +1,5 @@
-mod container;
-mod tree;
-pub mod layout;
+pub mod container;
+pub mod node;
+pub mod tree;
 
 pub use self::container::{Container, ContainerType, Handle, Layout};
-
-pub use self::tree::Node;

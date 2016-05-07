@@ -7,8 +7,9 @@ use rustwlc;
 use rustwlc::*;
 use rustwlc::handle::{WlcView, WlcOutput};
 
-use super::layout::{Node, Container};
-use super::layout::layout::layout;
+use super::layout::node::Node;
+use super::layout::container::Container;
+use super::layout::tree;
 
 lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
@@ -83,7 +84,7 @@ pub fn set_focused_window_maximized(wlc_view: &WlcView) {
     {
         let mut comp = COMPOSITOR.write().unwrap();
         if let Some(ref mut view) = comp.view {
-            if let Some(output) = layout::get_output_of_view(view) {
+            if let Some(output) = tree::get_output_of_view(view) {
                 trace!("Output size of the view: {:?}", output.get_resolution());
                 let output_size = output.get_resolution();
                 let geometry = Geometry { origin: Point { x: 0, y: 0},
