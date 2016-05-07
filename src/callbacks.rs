@@ -4,6 +4,8 @@ use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 use rustwlc::xkb::Keysym;
 
+use compositor;
+
 use super::keys;
 use super::lua;
 use super::keys::{KeyEvent, KeyPress};
@@ -85,11 +87,13 @@ pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool)
 pub extern fn view_request_move(view: WlcView, dest: &Point) {
     // Called by views when they have a dang resize mouse thing, we should only
     // let it happen in view floating mode
+    compositor::start_interactive_move(&view, dest);
     trace!("view_request_move: to {}, start interactive mode.", *dest);
 }
 
 pub extern fn view_request_resize(view: WlcView,
                               edge: ResizeEdge, location: &Point) {
+    compositor::start_interactive_resize(&view, edge, location);
     trace!("view_request_resize: edge {:?}, to {}, start interactive mode.",
              edge, location);
 }
@@ -101,7 +105,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
-        let mut keys = vec![sym];
+        let keys = vec![sym];
 
         let press = KeyPress::new(mods.mods, keys);
         trace!("keypress: {:?}", press);
@@ -121,24 +125,8 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
                          mods: &KeyboardModifiers, button: u32,
-                         state: ButtonState, point: &Point) -> bool {
-    if state == ButtonState::Pressed {
-        trace!("button: 0x{:x}, point {}", &button, point);
-
-        if !view.is_root() {
-            view.focus();
-        }
-
-        if button == 0xfee9 {
-            trace!("Found left click?");
-        }
-
-        //let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
-        let sym = Keysym::from(button);
-        let press = KeyPress::new(mods.mods, vec![sym.clone()]);
-        trace!("sym: {} {:?}", &sym.get_name().unwrap(), press);
-    }
-    false
+                             state: ButtonState, point: &Point) -> bool {
+    compositor::on_pointer_button(view, _time, mods, button, state, point)
 }
 
 pub extern fn pointer_scroll(_view: WlcView, button: u32,
@@ -150,7 +138,7 @@ pub extern fn pointer_scroll(_view: WlcView, button: u32,
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     pointer::set_position(point);
-    false
+    compositor::on_pointer_motion(_view, _time, point)
 }
 
 /*
