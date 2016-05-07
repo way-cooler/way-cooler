@@ -54,6 +54,9 @@ lazy_static! {
         let terminal = KeyPress::from_key_names(vec!["Ctrl"], vec!["Return"]).unwrap();
         map.insert(terminal, Arc::new(Box::new(terminal_fn)));
 
+        let dmenu = KeyPress::from_key_names(vec!["Alt"], vec!["d"]).unwrap();
+        map.insert(dmenu, Arc::new(Box::new(dmenu_fn)));
+
         let switch_1 = KeyPress::from_key_names(vec!["Ctrl"], vec!["1"]).unwrap();
         map.insert(switch_1, Arc::new(Box::new(switch_workspace_1)));
 
@@ -93,6 +96,14 @@ fn terminal_fn() {
     Command::new("sh")
         .arg("-c")
         .arg("weston-terminal")
+        .spawn().unwrap();
+}
+
+fn dmenu_fn() {
+    use std::process::Command;
+    Command::new("sh")
+        .arg("-c")
+        .arg("dmenu_run")
         .spawn().unwrap();
 }
 

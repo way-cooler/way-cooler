@@ -153,7 +153,7 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
 pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, button: u32,
                          state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed {
-        if !view.is_root() && mods.mods.contains(MOD_CTRL) {
+        if !view.is_root() {
             view.focus();
             if mods.mods.contains(MOD_CTRL) {
                 // Button left, we need to include linux/input.h somehow
