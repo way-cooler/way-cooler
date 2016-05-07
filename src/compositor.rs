@@ -74,48 +74,42 @@ enum ClickAction {
 
 /// Maximizes the view to the size of the output it sits in
 pub fn set_focused_window_maximized(wlc_view: &WlcView) {
-    {
-        let maybe_geometry = wlc_view.get_geometry();
-        if maybe_geometry.is_none() {
-            return;
-        }
-        let geometry = maybe_geometry.unwrap();
-        start_interactive_action(wlc_view, &geometry.origin);
+    let maybe_geometry = wlc_view.get_geometry();
+    if maybe_geometry.is_none() {
+        return;
     }
+    let geometry = maybe_geometry.unwrap();
+    start_interactive_action(wlc_view, &geometry.origin);
     {
         let mut comp = COMPOSITOR.write().unwrap();
         if let Some(ref mut view) = comp.view {
             if let Some(output) = layout::get_output_of_view(view) {
                 trace!("Output size of the view: {:?}", output.get_resolution());
                 let output_size = output.get_resolution();
-                let geometry = Geometry { origin: Point { x: 0, y: 0}, 
+                let geometry = Geometry { origin: Point { x: 0, y: 0},
                                           size: output_size.clone() };
                 view.set_geometry(EDGE_NONE, &geometry);
-            } else {
-                trace!("Could not get output of view");
             }
-        } else {
-            trace!("No view focused");
         }
     }
     stop_interactive_action();
 }
 
 pub fn stop_interactive_action() {
-    let mut comp = COMPOSITOR.write().unwrap();
+    if let Ok(mut comp) = COMPOSITOR.write() {
+        match comp.view {
+            None => return,
+            Some(ref view) => view.set_state(VIEW_RESIZING, false)
+        }
 
-    match comp.view {
-        None => return,
-        Some(ref view) => view.set_state(VIEW_RESIZING, false)
+        comp.view = None;
+        comp.edges = ResizeEdge::empty();
     }
-
-    (*comp).view = None;
-    comp.edges = ResizeEdge::empty();
 }
 
 pub fn start_interactive_resize(view: &WlcView, edges: ResizeEdge, origin: &Point) {
-        let geometry = match view.get_geometry() {
-            None => { return; }
+    let geometry = match view.get_geometry() {
+        None => { return; }
         Some(g) => g,
     };
 
@@ -125,8 +119,7 @@ pub fn start_interactive_resize(view: &WlcView, edges: ResizeEdge, origin: &Poin
     let halfw = geometry.origin.x + geometry.size.w as i32 / 2;
     let halfh = geometry.origin.y + geometry.size.h as i32 / 2;
 
-    {
-        let mut comp = COMPOSITOR.write().unwrap();
+    if let Ok(mut comp) = COMPOSITOR.write() {
         comp.edges = edges.clone();
         if comp.edges.bits() == 0 {
             let flag_x = if origin.x < halfw {
@@ -152,17 +145,17 @@ pub fn start_interactive_resize(view: &WlcView, edges: ResizeEdge, origin: &Poin
 }
 
 pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
-    {
-        let mut comp = COMPOSITOR.write().unwrap();
+    if let Ok(mut comp) = COMPOSITOR.write() {
         if comp.view != None {
             return false;
         }
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
+        true
+    } else {
+        false
     }
 
-    view.bring_to_front();
-    return true;
 }
 
 pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, button: u32,
@@ -196,8 +189,7 @@ pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, bu
 
 pub fn on_pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     rustwlc::input::pointer::set_position(point);
-    {
-        let comp = COMPOSITOR.read().unwrap();
+    if let Ok(comp) = COMPOSITOR.read() {
         if let Some(ref view) = comp.view {
             let dx = point.x - comp.grab.x;
             let dy = point.y - comp.grab.y;
@@ -257,16 +249,16 @@ pub fn on_pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
             }
         }
     }
-    {
-        let mut comp = COMPOSITOR.write().unwrap();
+    if let Ok(mut comp) = COMPOSITOR.write() {
         comp.grab = point.clone();
-        return comp.view.is_some()
+        comp.view.is_some()
+    } else {
+        false
     }
 }
 
 fn start_interactive_action(view: &WlcView, origin: &Point) -> bool {
-    {
-        let mut comp = COMPOSITOR.write().unwrap();
+    if let Ok(mut comp) = COMPOSITOR.write() {
         if comp.view != None {
             return false;
         }

@@ -6,11 +6,13 @@ pub mod layout {
     use super::super::tree::Node;
     use super::super::super::rustwlc::handle::{WlcView, WlcOutput};
 
-    use std::sync::Mutex;
+    use std::sync::*;//{Mutex, MutexGuard, TryLockError};
 
     use std::ptr;
 
-    struct Tree {
+    pub type TreeResult = Result<(), TryLockError<MutexGuard<'static, Tree>>>;
+
+    pub struct Tree {
         root: Node,
         active_container: *const Node,
     }
@@ -38,42 +40,47 @@ pub mod layout {
         };
     }
 
-    pub fn add_output(wlc_output: WlcOutput) {
-        let mut root = TREE.lock().unwrap();
-        let output = Container::new_output(wlc_output);
-        root.root.new_child(output);
-        drop(root);
-        add_workspace(&"1");
-        switch_workspace(&"1");
+    pub fn add_output(wlc_output: WlcOutput) -> TreeResult {
+        {
+            let mut root = try!(TREE.try_lock());
+            let output = Container::new_output(wlc_output);
+            root.root.new_child(output);
+        }
+        try!(add_workspace(&"1"));
+        try!(switch_workspace(&"1"));
+        Ok(())
     }
 
-    pub fn add_workspace(name: &str) {
+    pub fn add_workspace(name: &str) -> TreeResult {
         trace!("Adding new workspace to root");
-        let mut root = TREE.lock().unwrap();
+        let mut root = try!(TREE.lock());
         let workspace = Container::new_workspace(name.to_string());
         // NOTE handle multiple outputs
         root.root.get_children_mut()[0].new_child(workspace);
+        Ok(())
     }
 
-    pub fn add_view(wlc_view: WlcView) {
-        let mut root = TREE.lock().unwrap();
+    pub fn add_view(wlc_view: WlcView) -> TreeResult {
+        let root = try!(TREE.lock());
         if let Some(current_workspace) = get_current_workspace(&root) {
             trace!("Adding view {:?} to {:?}", wlc_view, current_workspace);
             current_workspace.new_child(Container::new_view(wlc_view));
         }
+        Ok(())
     }
 
-    pub fn remove_view(wlc_view: &WlcView) {
-        let mut root = TREE.lock().unwrap();
+    pub fn remove_view(wlc_view: &WlcView) -> TreeResult {
+        let root = try!(TREE.lock());
         if let Some(view) = root.root.find_view_by_handle(&wlc_view) {
             let parent = view.get_parent().unwrap();
             parent.remove_child(view);
         }
+        Ok(())
     }
 
-    pub fn switch_workspace(name: &str) {
+    pub fn switch_workspace(name: &str) -> TreeResult {
         trace!("Switching to workspace {}", name);
-        let mut root = TREE.lock().unwrap();
+        let mut root = try!(TREE.lock());
         if let Some(old_workspace) = get_current_workspace(&root) {
             // Make all the views in the original workspace to be invisible
             for view in old_workspace.get_children_mut() {
@@ -92,8 +99,8 @@ pub mod layout {
                 new_current_workspace = get_workspace_by_name_mut(&mut root, name).unwrap();
             } else {
                 drop(root);
-                add_workspace(name);
-                root = TREE.lock().unwrap();
+                try!(add_workspace(name));
+                root = try!(TREE.lock());
                 new_current_workspace = get_workspace_by_name_mut(&mut root, name).unwrap();
             }
             for view in new_current_workspace.get_children_mut() {
@@ -116,6 +123,7 @@ pub mod layout {
             current_workspace = new_current_workspace as *const Node;
         }
         root.active_container = current_workspace;
+        Ok(())
     }
 
     /// Finds the WlcOutput associated with the WlcView from the tree
