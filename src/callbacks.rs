@@ -22,8 +22,10 @@ const EVENT_PASS_THROUGH: bool = false;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
-    layout::add_output(output);
-    return true;
+    match layout::add_output(output) {
+        Ok(_) => true,
+        Err(_) => false
+    }
 }
 
 pub extern fn output_destroyed(output: WlcOutput) {
@@ -50,8 +52,15 @@ pub extern fn output_render_post(output: WlcOutput) {
 */
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
-    layout::add_view(view.clone());
     let output = view.get_output();
+    match layout::add_view(view.clone()) {
+        Ok(_) => {},
+        Err(_) => {
+            // This causes view_destroyed to be called, might cause an issue
+            view.close();
+            return false
+        }
+    }
     view.set_mask(output.get_mask());
     view.bring_to_front();
     view.focus();
@@ -60,7 +69,10 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    layout::remove_view(&view);
+    match layout::remove_view(&view) {
+        Ok(_) => {},
+        Err(_) => {},
+    }
 }
 
 pub extern fn view_focus(current: WlcView, focused: bool) {

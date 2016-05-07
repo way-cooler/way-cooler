@@ -6,7 +6,7 @@ pub mod layout {
     use super::super::tree::Node;
     use super::super::super::rustwlc::handle::{WlcView, WlcOutput};
 
-    use std::sync::*;//{Mutex, MutexGuard, TryLockError};
+    use std::sync::{Mutex, MutexGuard, TryLockError};
 
     use std::ptr;
 
