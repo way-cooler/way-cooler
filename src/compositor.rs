@@ -151,20 +151,6 @@ pub fn start_interactive_resize(view: &WlcView, edges: ResizeEdge, origin: &Poin
     view.set_state(VIEW_RESIZING, true);
 }
 
-fn start_interactive_action(view: &WlcView, origin: &Point) -> bool {
-    {
-        let mut comp = COMPOSITOR.write().unwrap();
-        if comp.view != None {
-            return false;
-        }
-        comp.grab = origin.clone();
-        comp.view = Some(view.clone());
-    }
-
-    view.bring_to_front();
-    return true;
-}
-
 pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
     {
         let mut comp = COMPOSITOR.write().unwrap();
@@ -277,3 +263,18 @@ pub fn on_pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
         return comp.view.is_some()
     }
 }
+
+fn start_interactive_action(view: &WlcView, origin: &Point) -> bool {
+    {
+        let mut comp = COMPOSITOR.write().unwrap();
+        if comp.view != None {
+            return false;
+        }
+        comp.grab = origin.clone();
+        comp.view = Some(view.clone());
+    }
+
+    view.bring_to_front();
+    return true;
+}
+
