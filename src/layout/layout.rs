@@ -118,6 +118,22 @@ pub mod layout {
         root.active_container = current_workspace;
     }
 
+    /// Finds the WlcOutput associated with the WlcView from the tree
+    pub fn get_output_of_view(wlc_view: &WlcView) -> Option<WlcOutput> {
+        let root = TREE.lock().unwrap();
+        if let Some(view_node) = root.root.find_view_by_handle(wlc_view) {
+            if let Some(output_node) = view_node.get_ancestor_of_type(ContainerType::Output) {
+                if let Some(handle) =  output_node.get_val().get_handle() {
+                    return match handle {
+                        Handle::Output(output) => Some(output),
+                        _ => None
+                    }
+                }
+            }
+        }
+        return None;
+    }
+
     fn get_focused_workspace<'a>(root: &'a Tree) -> Option<&'a Node> {
         for output in root.root.get_children() {
             if output.get_val().is_focused() {

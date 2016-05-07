@@ -8,6 +8,7 @@ use rustwlc::*;
 use rustwlc::handle::{WlcView, WlcOutput};
 
 use super::layout::{Node, Container};
+use super::layout::layout::layout;
 
 lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
@@ -71,13 +72,41 @@ enum ClickAction {
 
 }
 
+/// Maximizes the view to the size of the output it sits in
+pub fn set_focused_window_maximized(wlc_view: &WlcView) {
+    {
+        let maybe_geometry = wlc_view.get_geometry();
+        if maybe_geometry.is_none() {
+            return;
+        }
+        let geometry = maybe_geometry.unwrap();
+        start_interactive_action(wlc_view, &geometry.origin);
+    }
+    {
+        let mut comp = COMPOSITOR.write().unwrap();
+        if let Some(ref mut view) = comp.view {
+            if let Some(output) = layout::get_output_of_view(view) {
+                trace!("Output size of the view: {:?}", output.get_resolution());
+                let output_size = output.get_resolution();
+                let geometry = Geometry { origin: Point { x: 0, y: 0}, 
+                                          size: output_size.clone() };
+                view.set_geometry(EDGE_NONE, &geometry);
+            } else {
+                trace!("Could not get output of view");
+            }
+        } else {
+            trace!("No view focused");
+        }
+    }
+    stop_interactive_action();
+}
+
 pub fn stop_interactive_action() {
     let mut comp = COMPOSITOR.write().unwrap();
 
     match comp.view {
         None => return,
-    Some(ref view) =>
-    view.set_state(VIEW_RESIZING, false)
+        Some(ref view) => view.set_state(VIEW_RESIZING, false)
     }
 
     (*comp).view = None;
@@ -162,6 +191,9 @@ pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, bu
                 }
                 if button == 0x111 {
                     start_interactive_resize(&view, ResizeEdge::empty(), point);
+                }
+                if mods.mods.contains(MOD_SHIFT) {
+                    set_focused_window_maximized(&view);
                 }
             }
         }

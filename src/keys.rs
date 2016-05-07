@@ -6,6 +6,7 @@ use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 use std::hash::{Hash, Hasher};
 use super::layout::layout::layout;
+use super::compositor;
 
 macro_rules! gen_switch_workspace {
     ($($b:ident, $n:expr);+) => {
