@@ -4,9 +4,13 @@ use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 use rustwlc::xkb::Keysym;
 
+use compositor;
+
 use super::keys;
 use super::lua;
 use super::keys::{KeyEvent, KeyPress};
+
+use super::layout::tree;
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -18,7 +22,10 @@ const EVENT_PASS_THROUGH: bool = false;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
-    return true;
+    match tree::add_output(output) {
+        Ok(_) => true,
+        Err(_) => false
+    }
 }
 
 pub extern fn output_destroyed(output: WlcOutput) {
@@ -46,6 +53,14 @@ pub extern fn output_render_post(output: WlcOutput) {
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
+    match tree::add_view(view.clone()) {
+        Ok(_) => {},
+        Err(_) => {
+            // This causes view_destroyed to be called, might cause an issue
+            view.close();
+            return false
+        }
+    }
     view.set_mask(output.get_mask());
     view.bring_to_front();
     view.focus();
@@ -54,6 +69,10 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
+    match tree::remove_view(&view) {
+        Ok(_) => {},
+        Err(_) => {},
+    }
 }
 
 pub extern fn view_focus(current: WlcView, focused: bool) {
@@ -80,11 +99,13 @@ pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool)
 pub extern fn view_request_move(view: WlcView, dest: &Point) {
     // Called by views when they have a dang resize mouse thing, we should only
     // let it happen in view floating mode
+    compositor::start_interactive_move(&view, dest);
     trace!("view_request_move: to {}, start interactive mode.", *dest);
 }
 
 pub extern fn view_request_resize(view: WlcView,
                               edge: ResizeEdge, location: &Point) {
+    compositor::start_interactive_resize(&view, edge, location);
     trace!("view_request_resize: edge {:?}, to {}, start interactive mode.",
              edge, location);
 }
@@ -96,7 +117,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
-        let mut keys = vec![sym];
+        let keys = vec![sym];
 
         let press = KeyPress::new(mods.mods, keys);
         trace!("keypress: {:?}", press);
@@ -116,24 +137,8 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
                          mods: &KeyboardModifiers, button: u32,
-                         state: ButtonState, point: &Point) -> bool {
-    if state == ButtonState::Pressed {
-        trace!("button: 0x{:x}, point {}", &button, point);
-
-        if !view.is_root() {
-            view.focus();
-        }
-
-        if button == 0xfee9 {
-            trace!("Found left click?");
-        }
-
-        //let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
-        let sym = Keysym::from(button);
-        let press = KeyPress::new(mods.mods, vec![sym.clone()]);
-        trace!("sym: {} {:?}", &sym.get_name().unwrap(), press);
-    }
-    false
+                             state: ButtonState, point: &Point) -> bool {
+    compositor::on_pointer_button(view, _time, mods, button, state, point)
 }
 
 pub extern fn pointer_scroll(_view: WlcView, button: u32,
@@ -145,7 +150,7 @@ pub extern fn pointer_scroll(_view: WlcView, button: u32,
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     pointer::set_position(point);
-    false
+    compositor::on_pointer_motion(_view, _time, point)
 }
 
 /*

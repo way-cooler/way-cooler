@@ -26,6 +26,9 @@ mod keys;
 mod callbacks;
 mod convert;
 mod lua;
+mod layout;
+mod compositor;
+
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
