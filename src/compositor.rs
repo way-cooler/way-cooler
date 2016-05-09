@@ -55,6 +55,7 @@ pub enum ViewAction {
 
 impl ViewAction {
     /// Is this ViewAction set
+    #[allow(dead_code)]
     pub fn is_some(&self) -> bool {
         *self != ViewAction::None
     }

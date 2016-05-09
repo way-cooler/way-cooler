@@ -37,6 +37,7 @@ impl ContainerType {
     }
 
     /// Whether this container can have a parent of type other
+    #[allow(dead_code)]
     pub fn can_have_parent(self, other: ContainerType) -> bool {
         other.can_have_child(self)
     }
@@ -119,6 +120,7 @@ impl Container {
     }
 
     /// Creates a new container
+    #[allow(dead_code)]
     pub fn new_container() -> Container {
         Container::Container {
             layout: Layout::Horizontal, // default layout?
@@ -167,6 +169,7 @@ impl Container {
     }
 
     /// Determines if the container is focused or not
+    #[allow(dead_code)]
     pub fn is_focused(&self) -> bool {
         match *self {
             Container::Output { focused: ref focused, .. } => focused.clone(),

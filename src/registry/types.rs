@@ -22,6 +22,7 @@ pub struct RegistryValue {
 
 impl RegistryValue {
     /// Creates a new RegistryValue
+    #[allow(dead_code)]
     pub fn new<T>(flags: AccessFlags, data: T) -> RegistryValue
         where T: ToTable  {
         RegistryValue {

@@ -80,6 +80,7 @@ impl LuaDecoder {
         }
     }
 
+    #[allow(dead_code)]
     pub fn read_field<T>(self, name: String) -> ConvertResult<(Self, T)>
         where T: FromTable {
         match self.val {
