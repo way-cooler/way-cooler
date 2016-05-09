@@ -154,8 +154,8 @@ impl Container {
     /// Gets the view handle of the view container, if this is a view container
     pub fn get_handle(&self) -> Option<Handle> {
         match *self {
-            Container::View { handle: ref handle, ..} => Some(Handle::View(handle.clone())),
-            Container::Output { handle: ref handle, .. } => Some(Handle::Output(handle.clone())),
+            Container::View { ref handle, ..} => Some(Handle::View(handle.clone())),
+            Container::Output { ref handle, .. } => Some(Handle::Output(handle.clone())),
             _ => None
         }
     }
@@ -163,7 +163,7 @@ impl Container {
     /// Gets the name of the workspace, if this container is a workspace.
     pub fn get_name(&self) -> Option<&str> {
         match *self {
-            Container::Workspace { name: ref name, ..} => Some(name),
+            Container::Workspace { ref name, ..} => Some(name),
             _ => None
         }
     }
@@ -172,9 +172,9 @@ impl Container {
     #[allow(dead_code)]
     pub fn is_focused(&self) -> bool {
         match *self {
-            Container::Output { focused: ref focused, .. } => focused.clone(),
-            Container::Workspace { focused: ref focused, .. } => focused.clone(),
-            Container::View { focused: ref focused, .. } => focused.clone(),
+            Container::Output { ref focused, .. } => focused.clone(),
+            Container::Workspace { ref focused, .. } => focused.clone(),
+            Container::View { ref focused, .. } => focused.clone(),
             _ => false
         }
     }
