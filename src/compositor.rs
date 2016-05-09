@@ -5,10 +5,8 @@ use std::sync::RwLock;
 
 use rustwlc;
 use rustwlc::*;
-use rustwlc::handle::{WlcView, WlcOutput};
+use rustwlc::handle::WlcView;
 
-use super::layout::node::Node;
-use super::layout::container::Container;
 use super::layout::tree;
 
 lazy_static! {
@@ -49,6 +47,7 @@ impl Default for ClientState {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[allow(dead_code)]
 pub enum ViewAction {
     None,
     Resize,
@@ -57,6 +56,7 @@ pub enum ViewAction {
 
 impl ViewAction {
     /// Is this ViewAction set
+    #[allow(dead_code)]
     pub fn is_some(&self) -> bool {
         *self != ViewAction::None
     }
@@ -64,6 +64,7 @@ impl ViewAction {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// Actions that the user may set before clicking on a window
+#[allow(dead_code)]
 enum ClickAction {
     None,
     CloseWindow,

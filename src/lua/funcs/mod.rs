@@ -1,7 +1,7 @@
 //! Rust functions for lua libraries
 
 use hlua;
-use hlua::{Lua, LuaTable, Function};
+use hlua::{Lua, LuaTable};
 
 // Prevent functions declared here from not being registered
 #[forbid(dead_code)]
@@ -28,7 +28,7 @@ pub fn register_libraries(lua: &mut Lua) {
 
 #[inline] // It's called once
 fn init_registry(lua: &mut Lua) {
-    let mut reg_table: LuaTable<_> = lua.get("registry").unwrap();
+    let reg_table: LuaTable<_> = lua.get("registry").unwrap();
     let mut meta_reg = reg_table.get_or_create_metatable();
     meta_reg.set("__metatable", "Turtles all the way down");
     meta_reg.set("__tostring", hlua::function1(lua_registry::to_string));

@@ -141,6 +141,7 @@ pub fn get_output_of_view(wlc_view: &WlcView) -> Option<WlcOutput> {
     return None;
 }
 
+#[allow(dead_code)]
 fn get_focused_workspace<'a>(tree: &'a Tree) -> Option<&'a Node> {
     for output in tree.root.get_children() {
         if output.get_val().is_focused() {

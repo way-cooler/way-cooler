@@ -7,7 +7,7 @@ use std::hash::Hash;
 use std::borrow::Borrow;
 
 use hlua::any::AnyLuaValue;
-use convert::{ToTable, FromTable, LuaDecoder, ConverterError};
+use convert::{ToTable, FromTable, ConverterError};
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -55,6 +55,7 @@ where String: Borrow<K>, K: Hash + Eq + Display {
 
 /// Gets an object from the registry, decoding its internal Lua
 /// representation.
+#[allow(dead_code)]
 pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
     where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
     if let Some(lua_pair) = get_lua(name) {
@@ -71,6 +72,7 @@ pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
 }
 
 /// Set a key in the registry to a particular value
+#[allow(dead_code)]
 pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
     trace!("set: {:?} {}", flags, key);
     let regvalue = RegistryValue::new(flags, val);
@@ -79,6 +81,7 @@ pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
 }
 
 /// Whether this map contains a key
+#[allow(dead_code)]
 pub fn contains_key<K>(key: &K) -> bool
 where String: Borrow<K>, K: Hash + Eq + Display {
     trace!("contains_key: {}", *key);

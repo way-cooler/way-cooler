@@ -1,10 +1,8 @@
 //! It's a tree!
 
-use std::fmt::Debug;
-use std::ops::{Deref, DerefMut};
 use std::ptr;
 
-use rustwlc::handle::{WlcView, WlcOutput};
+use rustwlc::handle::WlcView;
 
 use super::container::*;
 
@@ -40,6 +38,7 @@ impl Node {
     }
 
     /// Whether this node has a (currently-reachable) parent
+    #[allow(dead_code)]
     pub fn has_parent(&self) -> bool {
         self.parent.is_null()
     }
@@ -108,6 +107,7 @@ impl Node {
     }
 
     /// Remove a child at the given index
+    #[allow(dead_code)]
     pub fn remove_child_at(&mut self, index: usize) -> Node {
         let mut child = self.children.remove(index);
         child.parent = ptr::null_mut();
@@ -115,6 +115,7 @@ impl Node {
     }
 
     /// Moves another node to be a sibling of this node.
+    #[allow(dead_code)]
     pub fn add_sibling(&self, node: Node) -> Result<(), ()> {
         if let Some(parent) = self.get_parent() {
             node.move_to(parent);
@@ -126,6 +127,7 @@ impl Node {
     }
 
     /// Whether this node is a parent of another node
+    #[allow(dead_code)]
     pub fn is_parent_of(&self, other: &Node) -> bool {
         // Fun fact, other.parent == self as *const Node won't compile
         self as *const Node == other.parent

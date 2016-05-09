@@ -1,15 +1,13 @@
 //! Metamethods for accesssing the registry values!
 
-use super::super::super::convert::{ToTable, FromTable};
 use super::super::super::registry;
-use registry::*;
 
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
 
 use std::ops::Deref;
 
-pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
+pub fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
     if let LuaString(key) = lua_key {
         if let Some(lua_pair) = registry::get_lua(&key) {
             let (access, lua_arc) = lua_pair;
@@ -22,7 +20,7 @@ pub fn index(table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
 }
 
 // Prevent lua from changing the registry?
-pub fn new_index(table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue)
+pub fn new_index(_table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue)
                  -> Result<(), &'static str> {
     if let LuaString(key) = lua_key {
         let mut reg = registry::write_lock();
@@ -35,6 +33,7 @@ pub fn new_index(table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue)
     Err("Invalid key!")
 }
 
-pub fn to_string(table: AnyLuaValue) -> &'static str {
+/// Method called on Lua code like `print(registry)`
+pub fn to_string(_table: AnyLuaValue) -> &'static str {
     "A table used to share data with way-cooler"
 }

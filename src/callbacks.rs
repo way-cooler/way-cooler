@@ -2,13 +2,12 @@
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
-use rustwlc::xkb::Keysym;
 
 use compositor;
 
 use super::keys;
 use super::lua;
-use super::keys::{KeyEvent, KeyPress};
+use super::keys::KeyPress;
 
 use super::layout::tree;
 
