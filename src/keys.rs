@@ -10,12 +10,25 @@ use rustwlc::types::*; // Need * for bitflags...
 use super::layout::tree;
 use super::lua;
 
-macro_rules! keypress {
-    ($modifier:expr, $key:expr) => {
-        KeyPress::from_key_names(vec![$modifier],
-                                 vec![$key])
-            .expect(concat!("Unable to create keypress from macro with ",
-                            $modifier, " and ", $key))
+/// Register default keypresses to a map
+macro_rules! register_defaults {
+    ( $map:expr; $($func:expr, $press:expr);+ ) => {
+        $(
+            let _ = $map.insert($press, Arc::new(Box::new($func)));
+            )+
+    }
+}
+
+/// Generate switch_workspace methods and register them in $map
+macro_rules! gen_switch_workspace {
+    ($map:expr; $($b:ident, $n:expr);+) => {
+        $(fn $b() {
+            trace!("Switching to workspace {}", $n);
+            tree::switch_workspace(&$n.to_string())
+                .expect("Could not switch to a work-space");
+                }
+          register_defaults!( $map; $b, keypress!("Alt", $n) );
+          )+
     };
 }
 
@@ -23,24 +36,6 @@ lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
         let mut map = HashMap::<KeyPress, KeyEvent>::new();
 
-        macro_rules! register_defaults {
-            ( $map:expr; $($func:expr, $press:expr);+ ) => {
-                $(
-                    let _ = $map.insert($press, Arc::new(Box::new($func)));
-                 )+
-            }
-        }
-        macro_rules! gen_switch_workspace {
-            ($map:expr; $($b:ident, $n:expr);+) => {
-                $(fn $b() {
-                    trace!("Switching to workspace {}", $n);
-                    tree::switch_workspace(&$n.to_string())
-                        .expect("Could not switch to a work-space");
-                }
-                register_defaults!( $map; $b, keypress!("Alt", $n) );
-                )+
-            };
-        }
 
         gen_switch_workspace!(map; switch_workspace_1, "1";
                               switch_workspace_2, "2";

@@ -48,6 +48,17 @@ macro_rules! lua_convertible {
     }
 }
 
+/// Create a keypress using fewer keystrokes. Provides a custom panic method.
+#[macro_export]
+macro_rules! keypress {
+    ($modifier:expr, $key:expr) => {
+        KeyPress::from_key_names(vec![$modifier],
+                                 vec![$key])
+            .expect(concat!("Unable to create keypress from macro with ",
+                            $modifier, " and ", $key))
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::convert::{ToTable, FromTable, LuaDecoder};
