@@ -2,9 +2,11 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
+use std::hash::{Hash, Hasher};
+
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
-use std::hash::{Hash, Hasher};
+
 use super::layout::tree;
 use super::compositor;
 
@@ -176,33 +178,33 @@ pub fn keymod_from_names(keys: Vec<&str>) -> Result<KeyMod, String> {
 impl KeyPress {
     /// Creates a new KeyPress struct from a list of modifier and key names
     pub fn from_key_names(mods: Vec<&str>, keys: Vec<&str>) -> Result<KeyPress, String> {
-        match keymod_from_names(mods) {
-            Err(message) => Err(message),
-            Ok(mods) => {
-                let mut syms: Vec<Keysym> = Vec::with_capacity(keys.len());
-                for name in keys {
-                    if let Some(sym) = Keysym::from_name(name.to_string(),
-                                                         NameFlags::None) {
-                            syms.push(sym);
-                    }
-                    // Else if could not parse
-                    else if let Some(sym) = Keysym::from_name(name.to_string(),
-                                                        NameFlags::CaseInsensitive) {
-                        syms.push(sym);
-                    }
-                    else {
-                        return Err(format!("Invalid key: {}", name));
-                    }
+        keymod_from_names(mods).and_then(|mods| {
+            let mut syms: Vec<Keysym> = Vec::with_capacity(keys.len());
+            for name in keys {
+                // Parse a keysym for each given key
+                if let Some(sym) = Keysym::from_name(name.to_string(),
+                                                     NameFlags::None) {
+                    syms.push(sym);
                 }
-                syms.sort_by_key(|s| s.get_code());
-                syms.dedup();
-                return Ok(KeyPress { modifiers: mods, keys: syms });
+                // If lowercase cannot be parsed, try case insensitive
+                else if let Some(sym) = Keysym::from_name(name.to_string(),
+                                                          NameFlags::CaseInsensitive) {
+                    syms.push(sym);
+                }
+                else {
+                    return Err(format!("Invalid key: {}", name));
+                }
             }
-        }
+            // Sort and dedup to make sure hashes are the same
+            syms.sort_by_key(|s| s.get_code());
+            syms.dedup();
+            return Ok(KeyPress { modifiers: mods, keys: syms });
+        })
     }
 
     /// Creates a KeyPress from keys that are pressed at the moment
     pub fn new(mods: KeyMod, mut keys: Vec<Keysym>) -> KeyPress {
+        // Sort and dedup to make sure hashes are the same
         keys.sort_by_key(|k| k.get_code());
         keys.dedup();
 
@@ -231,7 +233,7 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     }
 }
 
-/// Register a new key mapping
+/// Register a new set of key mappings
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
     let mut bindings = BINDINGS.write().unwrap();
     for value in values {
