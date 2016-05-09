@@ -28,6 +28,8 @@ lazy_static! {
     pub static ref RUNNING: RwLock<bool> = RwLock::new(false);
 }
 
+const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
+const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
 
 /// Struct sent to the Lua query
 struct LuaMessage {
@@ -48,7 +50,7 @@ impl Debug for LuaMessage {
 // Reexported in lua/mod.rs:11
 /// Whether the Lua thread is currently available.
 pub fn thread_running() -> bool {
-    *RUNNING.read().unwrap()
+    *RUNNING.read().expect(ERR_LOCK_RUNNING)
 }
 
 // Reexported in lua/mod.rs:11
@@ -73,7 +75,7 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     }
     let thread_sender: Sender<LuaMessage>;
     {
-        let maybe_sender = SENDER.lock().unwrap();
+        let maybe_sender = SENDER.lock().expect(ERR_LOCK_SENDER);
         match *maybe_sender {
             Some(ref real_sender) => {
                 // Senders are designed to be cloneable
@@ -98,7 +100,7 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 pub fn init() {
     trace!("Initializing...");
     let (tx, receiver) = channel();
-    *SENDER.lock().expect("Lua thread locking sender during init") = Some(tx);
+    *SENDER.lock().expect(ERR_LOCK_SENDER) = Some(tx);
     let mut lua = Lua::new();
     debug!("Loading Lua libraries...");
     lua.openlibs();
@@ -108,13 +110,13 @@ pub fn init() {
     lua.execute_from_reader::<(), File>(
         File::open("lib/lua/init.lua")
             .expect("Lua thread unable to find init file")
-    ).expect("Lua thread unable to execute init file");
+    ).expect("Lua thread: unable to execute init file");
     trace!("Loading way-cooler libraries...");
     funcs::register_libraries(&mut lua);
     // Only ready after loading libs
-    *RUNNING.write().unwrap() = true;
+    *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
     debug!("Entering main loop...");
-    let builder = thread::Builder::new()
+    let handle = thread::Builder::new()
         .name("Lua thread".to_string())
         .spawn(move || { main_loop(receiver, &mut lua) });
 }
@@ -133,7 +135,7 @@ fn main_loop(receiver: Receiver<LuaMessage>, lua: &mut Lua) {
             Err(e) => {
                 error!("Lua thread: unable to receive message: {}", e);
                 error!("Lua thread: now panicking!");
-                *RUNNING.write().unwrap() = false;
+                *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
 
                 panic!("Lua thread: lost contact with host, exiting!");
             }
@@ -150,7 +152,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
-            *RUNNING.write().unwrap() = false;
+            *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
 
             info!("Lua thread terminating!");
             thread_send(request.reply, LuaResponse::Pong);
@@ -161,7 +163,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
             trace!("Received restart signal!");
             error!("Lua thread restart not supported!");
 
-            *RUNNING.write().unwrap() = false;
+            *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
             thread_send(request.reply, LuaResponse::Pong);
 
             panic!("Lua thread: Restart not supported!");
@@ -201,7 +203,7 @@ fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
                 }
             }
             else { // Could not open file
-                // Unwrap_err is used because we're in the else of let
+                // Unwrap_err is used because we're in the else of let Ok
                 let read_error =
                     LuaError::ReadError(try_file.unwrap_err());
 

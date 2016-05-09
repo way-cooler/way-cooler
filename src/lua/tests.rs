@@ -32,14 +32,18 @@ fn thread_exec_okay() {
     wait_for_thread();
 
     let hello_receiver = send(LuaQuery::Execute(
-        "hello = 'hello world'".to_string())).unwrap();
-    let hello_result = hello_receiver.recv().unwrap();
+        "hello = 'hello world'".to_string()))
+        .expect("Unable to send hello world");
+    let hello_result = hello_receiver.recv()
+        .expect("Unable to receive hello world");
     assert!(hello_result.is_ok());
     assert_eq!(hello_result, LuaResponse::Pong);
 
     let assert_receiver = send(LuaQuery::Execute(
-        "assert(hello == 'hello world')".to_string())).unwrap();
-    let assert_result = assert_receiver.recv().unwrap();
+        "assert(hello == 'hello world')".to_string()))
+        .expect("Unble to send hello assertion");
+    let assert_result = assert_receiver.recv()
+        .expect("Unabel to receive hello assertion");
     assert!(hello_result.is_ok());
     assert_eq!(assert_result, LuaResponse::Pong);
 }
@@ -117,8 +121,10 @@ fn thread_exec_file_err() {
     wait_for_thread();
 
     let run_receiver = send(LuaQuery::ExecFile(
-        "lib/test/lua-bad-assert.lua".to_string())).unwrap();
-    let run_result = run_receiver.recv().unwrap();
+        "lib/test/lua-bad-assert.lua".to_string()))
+        .expect("Unable to request lua-bad-assert.lua");
+    let run_result = run_receiver.recv()
+        .expect("Unable to receive lua-bad-assert.lua");
     assert!(run_result.is_err());
     match run_result {
         LuaResponse::Error(err) => {
@@ -133,8 +139,10 @@ fn thread_exec_file_err() {
     }
 
     let syntax_receiver = send(LuaQuery::ExecFile(
-        "lib/test/lua-syntax-err.txt".to_string())).unwrap();
-    let syntax_result = syntax_receiver.recv().unwrap();
+        "lib/test/lua-syntax-err.txt".to_string()))
+        .expect("Unable to request lua-syntax-err.txt");
+    let syntax_result = syntax_receiver.recv()
+        .expect("Unable to receive lua-syntax-err.txt");
     assert!(syntax_result.is_err());
     match syntax_result {
         LuaResponse::Error(err) => {
@@ -152,8 +160,10 @@ fn thread_exec_file_err() {
 #[test]
 fn test_rust_exec() {
     wait_for_thread();
-    let rust_receiver = send(LuaQuery::ExecRust(rust_lua_fn)).unwrap();
-    let rust_result = rust_receiver.recv().unwrap();
+    let rust_receiver = send(LuaQuery::ExecRust(rust_lua_fn))
+        .expect("Unable to request rust func exec");
+    let rust_result = rust_receiver.recv()
+        .expect("Unable to receive rust func exec");
     assert!(rust_result.is_ok());
 
     match rust_result {
@@ -178,7 +188,8 @@ fn rust_lua_fn(lua: &mut Lua) -> AnyLuaValue {
     }
     let mut maybe_foo = lua.get::<LuaTable<_>, _>("foo");
     assert!(maybe_foo.is_some());
-    let mut foo = maybe_foo.unwrap();
+    let mut foo = maybe_foo
+        .expect("asserted maybe_foo.is_some()");
     assert!(foo.get::<f64, _>("bar").is_some());
     AnyLuaValue::LuaBoolean(true)
 }
