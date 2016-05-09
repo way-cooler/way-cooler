@@ -12,7 +12,7 @@ macro_rules! gen_switch_workspace {
     ($($b:ident, $n:expr);+) => {
         $(fn $b() {
             trace!("Switching to workspace {}", $n);
-            tree::switch_workspace(&$n.to_string());
+            tree::switch_workspace(&$n.to_string()).expect("Could not switch to a work-space");
         })+
     };
 }
