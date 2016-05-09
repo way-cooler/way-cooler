@@ -110,7 +110,7 @@ impl LuaDecoder {
 
     pub fn get_unordered_array<T: FromTable>(self) -> ConvertResult<Vec<T>> {
         match self.val {
-            LuaArray(mut arr) => {
+            LuaArray(arr) => {
                 let mut turn = Vec::with_capacity(arr.len());
                 // Completely ignore the keys, push values of type T
                 for (_, lua_val) in arr.into_iter() {
