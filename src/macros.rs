@@ -14,6 +14,7 @@
 ///     }
 /// }
 /// ```
+#[macro_export]
 macro_rules! lua_convertible {
     (  $(#[$attr:meta])*
        struct $name:ident { $($fname:ident : $ftype:ty),+  }  ) => {

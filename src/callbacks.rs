@@ -170,3 +170,28 @@ pub extern fn compositor_terminating() {
     info!("Compositor terminating!");
     lua::send(lua::LuaQuery::Terminate).ok();
 }
+
+
+pub fn init() {
+    use rustwlc::callback;
+
+    callback::output_created(output_created);
+    callback::output_destroyed(output_destroyed);
+    callback::output_focus(output_focus);
+    callback::output_resolution(output_resolution);
+    callback::view_created(view_created);
+    callback::view_destroyed(view_destroyed);
+    callback::view_focus(view_focus);
+    callback::view_move_to_output(view_move_to_output);
+    callback::view_request_geometry(view_request_geometry);
+    callback::view_request_state(view_request_state);
+    callback::view_request_move(view_request_move);
+    callback::view_request_resize(view_request_resize);
+    callback::keyboard_key(keyboard_key);
+    callback::pointer_button(pointer_button);
+    callback::pointer_scroll(pointer_scroll);
+    callback::pointer_motion(pointer_motion);
+    callback::compositor_ready(compositor_ready);
+    callback::compositor_terminate(compositor_terminating);
+    trace!("Registered wlc callbacks");
+}

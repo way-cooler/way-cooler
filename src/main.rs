@@ -1,4 +1,4 @@
-//! Main module in way-cooler
+//! Main module of way-cooler
 
 #[macro_use]
 extern crate lazy_static;
@@ -14,21 +14,23 @@ extern crate env_logger;
 #[macro_use]
 extern crate hlua;
 
+use std::env;
+
 use rustwlc::callback;
 use rustwlc::types::LogType;
 
-use std::env;
-
-#[macro_use]
+#[macro_use] // As it happens, it's important to declare the macros first.
 mod macros;
-mod registry;
-mod keys;
+
 mod callbacks;
-mod convert;
+mod keys;
+
 mod lua;
+mod registry;
+mod convert;
+
 mod layout;
 mod compositor;
-
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
@@ -47,30 +49,12 @@ fn log_format(record: &log::LogRecord) -> String {
 }
 
 fn main() {
-    callback::output_created(callbacks::output_created);
-    callback::output_destroyed(callbacks::output_destroyed);
-    callback::output_focus(callbacks::output_focus);
-    callback::output_resolution(callbacks::output_resolution);
-        //.output_render_pre(callbacks::output_render_pre)
-        //.output_render_post(callbacks::output_render_post)
-    callback::view_created(callbacks::view_created);
-    callback::view_destroyed(callbacks::view_destroyed);
-    callback::view_focus(callbacks::view_focus);
-    callback::view_move_to_output(callbacks::view_move_to_output);
-    callback::view_request_geometry(callbacks::view_request_geometry);
-    callback::view_request_state(callbacks::view_request_state);
-    callback::view_request_move(callbacks::view_request_move);
-    callback::view_request_resize(callbacks::view_request_resize);
-    callback::keyboard_key(callbacks::keyboard_key);
-    callback::pointer_button(callbacks::pointer_button);
-    callback::pointer_scroll(callbacks::pointer_scroll);
-    callback::pointer_motion(callbacks::pointer_motion);
-        //.touch_touch(callbacks::touch)
-    callback::compositor_ready(callbacks::compositor_ready);
-    callback::compositor_terminate(callbacks::compositor_terminating);
-        //.input_created(input_created)
-        //.input_destroyed(input_destroyed);
+    debug!("Launching way-cooler...");
 
+    // Initialize callbacks
+    callbacks::init();
+
+    // Prepare log builder
     let mut builder = env_logger::LogBuilder::new();
     builder.format(log_format);
     builder.filter(None, log::LogLevelFilter::Trace);
@@ -79,11 +63,13 @@ fn main() {
     }
     builder.init().unwrap();
     info!("Logger initialized, setting wlc handler.");
+
+    // Handle wlc logs
     rustwlc::log_set_rust_handler(log_handler);
 
+    // Prepare to launch wlc
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
 
-    info!("Started logger");
-
+    // Hand control over to wlc's event loop
     run_wlc();
 }
