@@ -52,7 +52,7 @@ macro_rules! lua_convertible {
 #[macro_export]
 macro_rules! keypress {
     ($modifier:expr, $key:expr) => {
-        KeyPress::from_key_names(vec![$modifier],
+        $crate::keys::KeyPress::from_key_names(vec![$modifier],
                                  vec![$key])
             .expect(concat!("Unable to create keypress from macro with ",
                             $modifier, " and ", $key))
@@ -72,12 +72,26 @@ mod tests {
     }
 
     #[test]
-    fn test_lua_convertible() {
+    fn lua_convertible() {
         let point = Point { x: 0f32, y: 0f32 };
         let lua_point = point.clone().to_table();
         let maybe_point = Point::from_table(LuaDecoder::new(lua_point));
         assert!(maybe_point.is_ok());
         let parsed_point = maybe_point.unwrap();
         assert_eq!(parsed_point, point);
+    }
+
+    #[test]
+    fn keypress() {
+        use super::super::keys::KeyPress;
+        use std::hash::{SipHasher, Hash};
+
+        let press = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"])
+            .expect("Unable to construct regular keypress");
+        let press_macro = keypress!("Ctrl", "p");
+        let mut hasher = SipHasher::new();
+        assert!(press.hash(&mut hasher) == press_macro.hash(&mut hasher),
+                "Hashes do not match");
+        assert_eq!(press, press_macro);
     }
 }
