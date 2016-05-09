@@ -1,10 +1,8 @@
 //! It's a tree!
 
-use std::fmt::Debug;
-use std::ops::{Deref, DerefMut};
 use std::ptr;
 
-use rustwlc::handle::{WlcView, WlcOutput};
+use rustwlc::handle::WlcView;
 
 use super::container::*;
 

@@ -1,10 +1,6 @@
 //! Lua functionality
 
-use hlua;
-use hlua::{Lua, LuaError, LuaTable, PushGuard};
-use hlua::any::AnyLuaValue;
-
-use std::collections::BTreeMap;
+use hlua::{Lua, LuaError};
 
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
@@ -13,8 +9,6 @@ use std::thread;
 use std::fs::{File};
 use std::path::Path;
 use std::io::Write;
-
-use std::borrow::Borrow;
 
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};

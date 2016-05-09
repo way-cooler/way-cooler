@@ -1,8 +1,6 @@
 //! Metamethods for accesssing the registry values!
 
-use super::super::super::convert::{ToTable, FromTable};
 use super::super::super::registry;
-use registry::*;
 
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;

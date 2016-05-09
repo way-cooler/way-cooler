@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 use hlua::any::AnyLuaValue;
-use super::super::convert::{FromTable, ToTable, LuaDecoder};
+use super::super::convert::ToTable;
 
 bitflags! {
     /// Access permissions for items in the registry

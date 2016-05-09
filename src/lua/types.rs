@@ -1,7 +1,7 @@
 //! Types defined by Lua thread
 
 use hlua;
-use hlua::{Lua, LuaError};
+use hlua::Lua;
 use hlua::any::AnyLuaValue;
 
 use std::fmt::{Debug, Formatter};

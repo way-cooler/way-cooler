@@ -7,7 +7,7 @@ use std::hash::Hash;
 use std::borrow::Borrow;
 
 use hlua::any::AnyLuaValue;
-use convert::{ToTable, FromTable, LuaDecoder, ConverterError};
+use convert::{ToTable, FromTable, ConverterError};
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};

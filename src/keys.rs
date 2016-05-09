@@ -1,12 +1,12 @@
 //! Contains information for keybindings.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 use std::hash::{Hash, Hasher};
 use super::layout::tree;
-use super::compositor;
+use super::lua;
 
 macro_rules! gen_switch_workspace {
     ($($b:ident, $n:expr);+) => {
@@ -109,10 +109,6 @@ fn dmenu_fn() {
 }
 
 fn key_sleep() {
-    use std::thread;
-    use std::time::Duration;
-
-    use super::lua;
     use lua::LuaQuery;
 
     info!("keyhandler: Beginning thread::sleep keypress!");
@@ -124,7 +120,6 @@ fn key_sleep() {
 }
 
 fn key_pointer_pos() {
-    use super::lua;
     use lua::LuaQuery;
     let code = "if wm == nil then print('wm table does not exist')\n\
                 elseif wm.pointer == nil then print('wm.pointer table does not exist')\n\

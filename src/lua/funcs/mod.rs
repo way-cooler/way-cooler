@@ -1,7 +1,7 @@
 //! Rust functions for lua libraries
 
 use hlua;
-use hlua::{Lua, LuaTable, Function};
+use hlua::{Lua, LuaTable};
 
 // Prevent functions declared here from not being registered
 #[forbid(dead_code)]

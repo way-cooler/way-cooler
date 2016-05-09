@@ -5,10 +5,8 @@ use std::sync::RwLock;
 
 use rustwlc;
 use rustwlc::*;
-use rustwlc::handle::{WlcView, WlcOutput};
+use rustwlc::handle::WlcView;
 
-use super::layout::node::Node;
-use super::layout::container::Container;
 use super::layout::tree;
 
 lazy_static! {

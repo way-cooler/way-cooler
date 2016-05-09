@@ -16,7 +16,6 @@ extern crate hlua;
 
 use std::env;
 
-use rustwlc::callback;
 use rustwlc::types::LogType;
 
 #[macro_use] // As it happens, it's important to declare the macros first.
