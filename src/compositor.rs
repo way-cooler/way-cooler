@@ -47,6 +47,7 @@ impl Default for ClientState {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[allow(dead_code)]
 pub enum ViewAction {
     None,
     Resize,
@@ -63,6 +64,7 @@ impl ViewAction {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// Actions that the user may set before clicking on a window
+#[allow(dead_code)]
 enum ClickAction {
     None,
     CloseWindow,

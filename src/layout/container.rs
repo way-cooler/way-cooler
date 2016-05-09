@@ -45,6 +45,7 @@ impl ContainerType {
 
 /// Layout mode for a container
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Layout {
     Horizontal,
     Vertical,
