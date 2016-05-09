@@ -49,10 +49,11 @@ fn thread_exec_err() {
     wait_for_thread();
 
     let assert_receiver = send(LuaQuery::Execute(
-        "assert(true == false, 'Logic works')".to_string())).unwrap();
-    let assert_result = assert_receiver.recv().unwrap();
-    assert!(assert_result.is_err());
-    assert!(!assert_result.is_ok());
+        "assert(true == false, 'Logic works')".to_string()))
+        .expect("send assertion error");
+    let assert_result = assert_receiver.recv()
+        .expect("receive assertion error result");
+    assert!(assert_result.is_err(), "expected error from syntax error");
     if let LuaResponse::Error(err) = assert_result {
         if let LuaError::ExecutionError(lua_err) = err {
             assert!(lua_err.contains("Logic works"));
@@ -64,6 +65,24 @@ fn thread_exec_err() {
     }
     else {
         panic!("thread_exec_err result was not an error: {:?}", assert_result);
+    }
+
+    let syn_err_rx = send(LuaQuery::Execute(
+        "local variable_err = 'sequence\\y'".to_string()))
+        .expect("send syntax error");
+    let syn_err_result = syn_err_rx.recv()
+        .expect("receive assertion error result");
+    assert!(syn_err_result.is_err(), "expected error from syntax error");
+    if let LuaResponse::Error(lua_err) = syn_err_result {
+        if let LuaError::SyntaxError(s_err) = lua_err {
+            assert!(s_err.contains("escape sequence"), "Got wrong error type");
+        }
+        else {
+            panic!("Wrong type of lua error!");
+        }
+    }
+    else {
+        panic!("Got the wrong LuaResponse type!");
     }
 }
 
