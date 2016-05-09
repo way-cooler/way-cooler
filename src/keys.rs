@@ -227,6 +227,7 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
 }
 
 /// Register a new key mapping
+#[allow(dead_code)]
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
     let mut bindings = BINDINGS.write().unwrap();
     for value in values {
