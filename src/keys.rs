@@ -10,85 +10,56 @@ use rustwlc::types::*; // Need * for bitflags...
 use super::layout::tree;
 use super::lua;
 
-macro_rules! gen_switch_workspace {
-    ($($b:ident, $n:expr);+) => {
-        $(fn $b() {
-            trace!("Switching to workspace {}", $n);
-            tree::switch_workspace(&$n.to_string()).expect("Could not switch to a work-space");
-        })+
+macro_rules! keypress {
+    ($modifier:expr, $key:expr) => {
+        KeyPress::from_key_names(vec![$modifier],
+                                 vec![$key])
+            .expect(concat!("Unable to create keypress from macro with ",
+                            $modifier, " and ", $key))
     };
 }
-
-gen_switch_workspace!(switch_workspace_1, 1;
-                      switch_workspace_2, 2;
-                      switch_workspace_3, 3;
-                      switch_workspace_4, 4;
-                      switch_workspace_5, 5;
-                      switch_workspace_6, 6;
-                      switch_workspace_7, 7;
-                      switch_workspace_8, 8;
-                      switch_workspace_9, 9;
-                      switch_workspace_0, 0);
-
-
 
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
         let mut map = HashMap::<KeyPress, KeyEvent>::new();
 
-        let press_s = KeyPress::from_key_names(vec!["Mod4"], vec!["s"]).unwrap();
-        map.insert(press_s, Arc::new(Box::new(key_s)));
+        macro_rules! register_defaults {
+            ( $map:expr; $($func:expr, $press:expr);+ ) => {
+                $(
+                    let _ = $map.insert($press, Arc::new(Box::new($func)));
+                 )+
+            }
+        }
+        macro_rules! gen_switch_workspace {
+            ($map:expr; $($b:ident, $n:expr);+) => {
+                $(fn $b() {
+                    trace!("Switching to workspace {}", $n);
+                    tree::switch_workspace(&$n.to_string())
+                        .expect("Could not switch to a work-space");
+                }
+                register_defaults!( $map; $b, keypress!("Alt", $n) );
+                )+
+            };
+        }
 
-        let press_f4 = KeyPress::from_key_names(vec!["Alt"],vec!["F4"]).unwrap();
-        map.insert(press_f4, Arc::new(Box::new(key_f4)));
+        gen_switch_workspace!(map; switch_workspace_1, "1";
+                              switch_workspace_2, "2";
+                              switch_workspace_3, "3";
+                              switch_workspace_4, "4";
+                              switch_workspace_5, "5";
+                              switch_workspace_6, "6";
+                              switch_workspace_7, "7";
+                              switch_workspace_8, "8";
+                              switch_workspace_9, "9";
+                              switch_workspace_0, "0");
 
-        let press_k = KeyPress::from_key_names(
-            vec!["Ctrl"], vec!["k"]).unwrap();
-        map.insert(press_k, Arc::new(Box::new(key_sleep)));
-
-        let press_p = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"]).unwrap();
-        map.insert(press_p, Arc::new(Box::new(key_pointer_pos)));
-
-        let press_esc = KeyPress::from_key_names(vec!["Ctrl"],
-                                                 vec!["Escape"]).unwrap();
-        map.insert(press_esc, Arc::new(Box::new(key_esc)));
-
-        /* Workspace functions*/
-        let terminal = KeyPress::from_key_names(vec!["Ctrl"], vec!["Return"]).unwrap();
-        map.insert(terminal, Arc::new(Box::new(terminal_fn)));
-
-        let dmenu = KeyPress::from_key_names(vec!["Alt"], vec!["d"]).unwrap();
-        map.insert(dmenu, Arc::new(Box::new(dmenu_fn)));
-
-        let switch_1 = KeyPress::from_key_names(vec!["Ctrl"], vec!["1"]).unwrap();
-        map.insert(switch_1, Arc::new(Box::new(switch_workspace_1)));
-
-        let switch_2 = KeyPress::from_key_names(vec!["Ctrl"], vec!["2"]).unwrap();
-        map.insert(switch_2, Arc::new(Box::new(switch_workspace_2)));
-
-        let switch_3 = KeyPress::from_key_names(vec!["Ctrl"], vec!["3"]).unwrap();
-        map.insert(switch_3, Arc::new(Box::new(switch_workspace_3)));
-
-        let switch_4 = KeyPress::from_key_names(vec!["Ctrl"], vec!["4"]).unwrap();
-        map.insert(switch_4, Arc::new(Box::new(switch_workspace_4)));
-
-        let switch_5 = KeyPress::from_key_names(vec!["Ctrl"], vec!["5"]).unwrap();
-        map.insert(switch_5, Arc::new(Box::new(switch_workspace_5)));
-
-        let switch_6 = KeyPress::from_key_names(vec!["Ctrl"], vec!["6"]).unwrap();
-        map.insert(switch_6, Arc::new(Box::new(switch_workspace_6)));
-
-        let switch_7 = KeyPress::from_key_names(vec!["Ctrl"], vec!["7"]).unwrap();
-        map.insert(switch_7, Arc::new(Box::new(switch_workspace_7)));
-
-        let switch_8 = KeyPress::from_key_names(vec!["Ctrl"], vec!["8"]).unwrap();
-        map.insert(switch_8, Arc::new(Box::new(switch_workspace_8)));
-
-        let switch_9 = KeyPress::from_key_names(vec!["Ctrl"], vec!["9"]).unwrap();
-        map.insert(switch_9, Arc::new(Box::new(switch_workspace_9)));
-
-        let switch_0 = KeyPress::from_key_names(vec!["Ctrl"], vec!["0"]).unwrap();
-        map.insert(switch_0, Arc::new(Box::new(switch_workspace_0)));
+        register_defaults! {
+            map;
+            quit_fn, keypress!("Alt", "Escape");
+            terminal_fn, keypress!("Alt", "Return");
+            dmenu_fn, keypress!("Alt", "d");
+            pointer_fn, keypress!("Alt", "p")
+        }
 
         RwLock::new(map)
     };
@@ -110,18 +81,7 @@ fn dmenu_fn() {
         .spawn().unwrap();
 }
 
-fn key_sleep() {
-    use lua::LuaQuery;
-
-    info!("keyhandler: Beginning thread::sleep keypress!");
-    lua::send(LuaQuery::Execute("print('>entering sleep')\
-                                 os.execute('sleep 5')\
-                                 print('>leaving sleep')".to_string()))
-                  .unwrap();
-    info!("keyhandler: Finished thread::sleep keypress!");
-}
-
-fn key_pointer_pos() {
+fn pointer_fn() {
     use lua::LuaQuery;
     let code = "if wm == nil then print('wm table does not exist')\n\
                 elseif wm.pointer == nil then print('wm.pointer table does not exist')\n\
@@ -133,15 +93,7 @@ fn key_pointer_pos() {
     lua::send(LuaQuery::Execute(code)).unwrap();
 }
 
-fn key_s() {
-    info!("[Key handler] S keypress!");
-}
-
-fn key_f4() {
-    info!("[Key handler] F4 keypress!");
-}
-
-fn key_esc() {
+fn quit_fn() {
     info!("handler: Esc keypress!");
     ::rustwlc::terminate();
 }
