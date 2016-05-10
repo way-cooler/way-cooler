@@ -184,8 +184,6 @@ unsafe impl Send for Node {}
 
 #[cfg(test)]
 mod tests {
-    use log::LogLevelFilter;
-    use env_logger::LogBuilder;
 
     use super::Node;
     use super::super::container::*;
