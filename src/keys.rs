@@ -65,7 +65,7 @@ fn terminal_fn() {
     Command::new("sh")
         .arg("-c")
         .arg("weston-terminal")
-        .spawn().unwrap();
+        .spawn().expect("Error launching terminal");
 }
 
 fn dmenu_fn() {
@@ -73,7 +73,7 @@ fn dmenu_fn() {
     Command::new("sh")
         .arg("-c")
         .arg("dmenu_run")
-        .spawn().unwrap();
+        .spawn().expect("Error launching terminal");
 }
 
 fn pointer_fn() {
@@ -85,7 +85,8 @@ fn pointer_fn() {
                 local x, y = wm.pointer.get_position()\n\
                 print('The cursor is at ' .. x .. ', ' .. y)\n\
                 end".to_string();
-    lua::send(LuaQuery::Execute(code)).unwrap();
+    lua::send(LuaQuery::Execute(code))
+        .expect("Error telling Lua to get pointer coords");
 }
 
 fn quit_fn() {
@@ -168,7 +169,8 @@ pub type KeyEvent = Arc<Box<Fn() + Send + Sync>>;
 
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
-    let bindings = BINDINGS.read().unwrap();
+    let bindings = BINDINGS.read()
+        .expect("Keybindings/get: unable to lock keybindings");
     match bindings.get(key) {
         None => None,
         Some(val) => Some(val.clone())
@@ -178,7 +180,8 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
 /// Register a new set of key mappings
 #[allow(dead_code)]
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
-    let mut bindings = BINDINGS.write().unwrap();
+    let mut bindings = BINDINGS.write()
+        .expect("Keybindings/register: unable to lock keybindings");
     for value in values {
         bindings.insert(value.0, value.1);
     }
