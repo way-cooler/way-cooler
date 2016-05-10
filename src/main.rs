@@ -60,7 +60,7 @@ fn main() {
     if env::var("WAY_COOLER_LOG").is_ok() {
         builder.parse(&env::var("WAY_COOLER_LOG").unwrap());
     }
-    builder.init().unwrap();
+    builder.init().expect("Unable to initialize logging!");
     info!("Logger initialized, setting wlc handler.");
 
     // Handle wlc logs
