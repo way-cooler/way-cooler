@@ -7,15 +7,11 @@ use std::io::Write;
 
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
-use std::borrow::Borrow;
-use std::collections::BTreeMap;
 
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 
-use hlua;
-use hlua::{Lua, LuaError, LuaTable, PushGuard};
-use hlua::any::AnyLuaValue;
+use hlua::{Lua, LuaError};
 
 use super::types::*;
 use super::funcs;
@@ -49,7 +45,7 @@ impl Debug for LuaMessage {
 
 // Reexported in lua/mod.rs:11
 /// Whether the Lua thread is currently available.
-pub fn thread_running() -> bool {
+pub fn running() -> bool {
     *RUNNING.read().expect(ERR_LOCK_RUNNING)
 }
 
@@ -70,7 +66,7 @@ pub enum LuaSendError {
 // Reexported in lua/mod.rs:11
 /// Attemps to send a LuaQuery to the Lua thread.
 pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
-    if !thread_running() {
+    if !running() {
         return Err(LuaSendError::ThreadClosed);
     }
     let thread_sender: Sender<LuaMessage>;
@@ -116,7 +112,7 @@ pub fn init() {
     // Only ready after loading libs
     *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
     debug!("Entering main loop...");
-    let handle = thread::Builder::new()
+    let _lua_handle = thread::Builder::new()
         .name("Lua thread".to_string())
         .spawn(move || { main_loop(receiver, &mut lua) });
 }
@@ -141,14 +137,14 @@ fn main_loop(receiver: Receiver<LuaMessage>, lua: &mut Lua) {
             }
             Ok(message) => {
                 trace!("Handling a request");
-                thread_handle_message(message, lua);
+                handle_message(message, lua);
             }
         }
     }
 }
 
 /// Handle each LuaQuery option sent to the thread
-fn thread_handle_message(request: LuaMessage, lua: &mut Lua) {
+fn handle_message(request: LuaMessage, lua: &mut Lua) {
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");

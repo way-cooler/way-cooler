@@ -3,19 +3,16 @@
 
 use std::time::Duration;
 use std::thread;
-use std::collections::BTreeMap;
 
 use hlua::any::AnyLuaValue;
-use hlua::any::AnyLuaValue::*;
-use hlua::lua_tables::LuaTable;
-use hlua::{Lua, LuaError};
+use hlua::{Lua, LuaError, LuaTable};
 
 use super::*;
 
 fn wait_for_thread() {
-    for i in 0..20 {
-        if !thread_running() {
-            thread::sleep_ms(200);
+    for _ in 0..20 {
+        if !running() {
+            thread::sleep(Duration::from_millis(200));
         }
         else { return; }
     }
@@ -186,7 +183,7 @@ fn rust_lua_fn(lua: &mut Lua) -> AnyLuaValue {
         let mut foo = lua.empty_array("foo");
         foo.set("bar", 12.0);
     }
-    let mut maybe_foo = lua.get::<LuaTable<_>, _>("foo");
+    let maybe_foo = lua.get::<LuaTable<_>, _>("foo");
     assert!(maybe_foo.is_some());
     let mut foo = maybe_foo
         .expect("asserted maybe_foo.is_some()");
