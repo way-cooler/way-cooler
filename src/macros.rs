@@ -59,6 +59,16 @@ macro_rules! keypress {
     };
 }
 
+/// Return from a test method if DUMMY_RUSTWLC is defined.
+#[cfg(test)]
+macro_rules! require_rustwlc {
+    () => {
+        if option_env!("DUMMY_RUSTWLC").is_some() {
+            return;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::convert::{ToTable, FromTable, LuaDecoder};
@@ -69,6 +79,14 @@ mod tests {
             x: f32,
             y: f32
         }
+    }
+
+    #[test]
+    fn require_rustwlc() {
+        require_rustwlc!();
+        // If we're here we can use rustwlc.
+        // If we tried to get a view or something it'd fail though.
+        let _ = keypress!("Ctrl", "p");
     }
 
     #[test]
@@ -83,6 +101,7 @@ mod tests {
 
     #[test]
     fn keypress() {
+        require_rustwlc!();
         use super::super::keys::KeyPress;
         use std::hash::{SipHasher, Hash};
 
