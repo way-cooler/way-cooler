@@ -58,7 +58,7 @@ fn main() {
     builder.format(log_format);
     builder.filter(None, log::LogLevelFilter::Trace);
     if env::var("WAY_COOLER_LOG").is_ok() {
-        builder.parse(&env::var("WAY_COOLER_LOG").unwrap());
+        builder.parse(&env::var("WAY_COOLER_LOG").expect("Asserted unwrap!"));
     }
     builder.init().expect("Unable to initialize logging!");
     info!("Logger initialized, setting wlc handler.");

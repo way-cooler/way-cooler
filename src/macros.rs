@@ -77,7 +77,7 @@ mod tests {
         let lua_point = point.clone().to_table();
         let maybe_point = Point::from_table(LuaDecoder::new(lua_point));
         assert!(maybe_point.is_ok());
-        let parsed_point = maybe_point.unwrap();
+        let parsed_point = maybe_point.expect("Unable to parse point!");
         assert_eq!(parsed_point, point);
     }
 
