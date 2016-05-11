@@ -7,6 +7,7 @@ matrix:
   allow_failures:
     - rust: nightly
 notifications:
+  slack: way-cooler:W2vOSvJvgxGi7EiGkZCtvlB6
   email: false
 after_failure:
   - ls -R
