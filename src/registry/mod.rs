@@ -5,12 +5,12 @@ use std::cmp::Eq;
 use std::fmt::Display;
 use std::hash::Hash;
 use std::borrow::Borrow;
-
-use hlua::any::AnyLuaValue;
-use convert::{ToTable, FromTable, ConverterError};
-
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+use hlua::any::AnyLuaValue;
+
+use convert::{ToTable, FromTable, ConverterError};
 
 mod types;
 pub use self::types::*; // Export constants too

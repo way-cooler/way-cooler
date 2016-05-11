@@ -1,13 +1,13 @@
 //! Types defined by Lua thread
 
+use std::fmt::{Debug, Formatter};
+use std::fmt::Result as FmtResult;
+use std::cmp::{PartialEq, Eq};
+
 use hlua;
 use hlua::Lua;
 use hlua::any::AnyLuaValue;
 
-use std::fmt::{Debug, Formatter};
-use std::fmt::Result as FmtResult;
-
-use std::cmp::{PartialEq, Eq};
 
 /// Methods that the Lua thread can execute.
 pub type LuaFunc = fn(&mut Lua) -> AnyLuaValue;

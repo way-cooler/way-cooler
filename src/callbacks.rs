@@ -3,12 +3,11 @@ use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 
-use compositor;
 
+use compositor;
 use super::keys;
 use super::lua;
 use super::keys::KeyPress;
-
 use super::layout::tree;
 
 /// If the event is handled by way-cooler

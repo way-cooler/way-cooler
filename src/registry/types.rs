@@ -1,7 +1,9 @@
 //! Types used in the registry.
 
 use std::sync::Arc;
+
 use hlua::any::AnyLuaValue;
+
 use super::super::convert::ToTable;
 
 bitflags! {

@@ -4,10 +4,8 @@ use std::thread;
 use std::fs::{File};
 use std::path::Path;
 use std::io::Write;
-
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
-
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 

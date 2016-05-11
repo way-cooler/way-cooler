@@ -1,13 +1,13 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
+use std::sync::{Mutex, MutexGuard, TryLockError};
+use std::ptr;
+
 use super::container::{Container, Handle, ContainerType};
 use super::node::{Node};
 use super::super::rustwlc::handle::{WlcView, WlcOutput};
 
-use std::sync::{Mutex, MutexGuard, TryLockError};
-
-use std::ptr;
 
 pub type TreeResult = Result<(), TryLockError<MutexGuard<'static, Tree>>>;
 

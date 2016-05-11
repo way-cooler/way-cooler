@@ -1,11 +1,12 @@
 //! Module for implementing convert's FromTable
 
-use hlua::any::AnyLuaValue;
-use hlua::any::AnyLuaValue::*;
-
 use std::hash::Hash;
 use std::cmp::Eq;
 use std::collections::HashMap;
+
+use hlua::any::AnyLuaValue;
+use hlua::any::AnyLuaValue::*;
+
 
 /// Represents types which can be serialized from a Lua table (AnyLuaValue).
 ///

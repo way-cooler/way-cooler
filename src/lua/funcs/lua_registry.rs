@@ -1,11 +1,11 @@
 //! Metamethods for accesssing the registry values!
 
-use super::super::super::registry;
+use std::ops::Deref;
 
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
 
-use std::ops::Deref;
+use super::super::super::registry;
 
 pub fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
     if let LuaString(key) = lua_key {
