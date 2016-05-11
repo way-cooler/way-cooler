@@ -40,7 +40,7 @@ impl Node {
     /// Whether this node has a (currently-reachable) parent
     #[allow(dead_code)]
     pub fn has_parent(&self) -> bool {
-        self.parent.is_null()
+        !self.parent.is_null()
     }
 
     /// Gets the type of container this node holds
@@ -184,29 +184,35 @@ unsafe impl Send for Node {}
 
 #[cfg(test)]
 mod tests {
-
     use super::Node;
     use super::super::container::*;
 
     /// Nodes can have children added to them
     #[test]
-    fn test_add_child() {
+    fn add_child() {
         let mut root = Node::new(Container::Root);
         root.new_child(Container::Root);
         root.new_child(Container::Root); // This is okay
         {
             let mut third_child = root.new_child(Container::Root);
+            third_child.new_child(Container::Root);
             //root.new_child(Root); // Have to wait for 3rd child to drop
         }
         root.new_child(Container::Root); // Now this works
         assert_eq!(root.children.len(), 4);
     }
 
-    /// These operations will for example operate on the parent
-    /// under an if let. `remove_from_parent` will not panic if the node
-    /// already is parentless, for example.
     #[test]
-    fn optional_operations() {
-        
+    fn has_get_parent() {
+        let mut root = Node::new(Container::Root);
+        //assert!(!root.has_parent(), "Root has a parent");
+        assert_eq!(root.get_parent(), None);
+
+        let child = root.new_child(Container::Root);
+        //assert!(child.has_parent(), "Child does not have parent");
+        assert!(child.get_parent().is_some(), "Child does not have parent");
+        let parent = child.get_parent().expect("Asserted child has parent");
+        assert_eq!(parent.get_container_type(), ContainerType::Root);
+
     }
 }
