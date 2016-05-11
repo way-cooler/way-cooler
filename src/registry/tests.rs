@@ -3,6 +3,7 @@
 use std::sync::mpsc;
 use std::thread;
 
+use super::*;
 use super::super::convert::{ToTable, FromTable};
 
 use hlua;
