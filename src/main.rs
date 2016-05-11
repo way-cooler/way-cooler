@@ -47,12 +47,9 @@ fn log_format(record: &log::LogRecord) -> String {
             record.args())
 }
 
-fn main() {
-    debug!("Launching way-cooler...");
-
-    // Initialize callbacks
-    callbacks::init();
-
+/// Initializes the logging system.
+/// Can be called from within test methods.
+pub fn init_logs() {
     // Prepare log builder
     let mut builder = env_logger::LogBuilder::new();
     builder.format(log_format);
@@ -61,7 +58,17 @@ fn main() {
         builder.parse(&env::var("WAY_COOLER_LOG").expect("Asserted unwrap!"));
     }
     builder.init().expect("Unable to initialize logging!");
-    info!("Logger initialized, setting wlc handler.");
+    info!("Logger initialized, setting wlc handlers.");
+}
+
+fn main() {
+    println!("Launching way-cooler...");
+
+    // Start logging first
+    init_logs();
+
+    // Initialize callbacks
+    callbacks::init();
 
     // Handle wlc logs
     rustwlc::log_set_rust_handler(log_handler);
@@ -70,5 +77,6 @@ fn main() {
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
 
     // Hand control over to wlc's event loop
+    info!("Running wlc...");
     run_wlc();
 }
