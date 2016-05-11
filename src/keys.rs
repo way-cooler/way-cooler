@@ -186,3 +186,23 @@ pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
         bindings.insert(value.0, value.1);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn test_cmd() {
+        assert!(true);
+    }
+
+    fn keypress() -> KeyPress {
+        keypress!("Ctrl", "t")
+    }
+
+    #[test]
+    fn add_key() {
+        register(vec![(keypress(), Arc::new(Box::new(test_cmd)))]);
+        assert!(get(&keypress()).is_some(), "Key not registered");
+    }
+}
