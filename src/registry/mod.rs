@@ -37,12 +37,12 @@ pub enum RegistryError {
 
 /// Acquires a read lock on the registry.
 pub fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
-    REGISTRY.read().unwrap()
+    REGISTRY.read().expect("Unable to read from registry!")
 }
 
 /// Acquires a write lock on the registry.
 pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
-    REGISTRY.write().unwrap()
+    REGISTRY.write().expect("Unable to write to registry!")
 }
 
 /// Gets a Lua object from a registry key
