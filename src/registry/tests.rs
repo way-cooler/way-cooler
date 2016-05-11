@@ -5,10 +5,9 @@ use std::thread;
 
 use super::*;
 
-use super::super::convert::{ToTable, FromTable, LuaDecoder};
+use super::super::convert::{ToTable, FromTable};
 
 use hlua;
-use hlua::any::AnyLuaValue;
 
 lua_convertible! {
     #[derive(Debug, Clone, Eq, PartialEq)]
@@ -70,7 +69,7 @@ fn registry_tests() {
 
     let mut result = true;
 
-    for i in 0..5 {
+    for _ in 0..5 {
         result = result && rx.recv().unwrap();
     }
     assert!(result);
