@@ -11,6 +11,8 @@ use std::ptr;
 
 pub type TreeResult = Result<(), TryLockError<MutexGuard<'static, Tree>>>;
 
+const ERR_BAD_TREE: &'static str = "Layout tree was in an invalid configuration";
+
 pub struct Tree {
     root: Node,
     active_container: *const Node,
@@ -71,7 +73,7 @@ pub fn add_view(wlc_view: WlcView) -> TreeResult {
 pub fn remove_view(wlc_view: &WlcView) -> TreeResult {
     let tree = try!(TREE.lock());
     if let Some(view) = tree.root.find_view_by_handle(&wlc_view) {
-        let parent = view.get_parent().unwrap();
+        let parent = view.get_parent().expect(ERR_BAD_TREE);
         parent.remove_child(view);
     }
     Ok(())
@@ -84,7 +86,7 @@ pub fn switch_workspace(name: &str) -> TreeResult {
         // Make all the views in the original workspace to be invisible
         for view in old_workspace.get_children_mut() {
             trace!("Setting {:?} invisible", view);
-            match view.get_val().get_handle().unwrap() {
+            match view.get_val().get_handle().expect(ERR_BAD_TREE) {
                 Handle::View(view) => view.set_mask(0),
                 _ => {},
             }
@@ -95,16 +97,18 @@ pub fn switch_workspace(name: &str) -> TreeResult {
         let new_current_workspace: &mut Node;
         if let Some(_) = get_workspace_by_name(&tree, name) {
             trace!("Found workspace {}", name);
-            new_current_workspace = get_workspace_by_name_mut(&mut tree, name).unwrap();
+            new_current_workspace = get_workspace_by_name_mut(&mut tree, name)
+                .expect(ERR_BAD_TREE);
         } else {
             drop(tree);
             try!(add_workspace(name));
             tree = try!(TREE.lock());
-            new_current_workspace = get_workspace_by_name_mut(&mut tree, name).unwrap();
+            new_current_workspace = get_workspace_by_name_mut(&mut tree, name)
+                .expect(ERR_BAD_TREE);
         }
         for view in new_current_workspace.get_children_mut() {
             trace!("Setting {:?} visible", view);
-            match view.get_val().get_handle().unwrap() {
+            match view.get_val().get_handle().expect(ERR_BAD_TREE) {
                 Handle::View(view) => view.set_mask(1),
                 _ => {},
             }
@@ -112,7 +116,8 @@ pub fn switch_workspace(name: &str) -> TreeResult {
         // Set the first view to be focused, so that the view is updated to this new workspace
         if new_current_workspace.get_children().len() > 0 {
             trace!("Focusing view");
-            match new_current_workspace.get_children_mut()[0].get_val().get_handle().unwrap() {
+            match new_current_workspace.get_children_mut()[0]
+                .get_val().get_handle().expect(ERR_BAD_TREE) {
                 Handle::View(view) => view.focus(),
                 _ => {},
             }
@@ -127,7 +132,7 @@ pub fn switch_workspace(name: &str) -> TreeResult {
 
 /// Finds the WlcOutput associated with the WlcView from the tree
 pub fn get_output_of_view(wlc_view: &WlcView) -> Option<WlcOutput> {
-    let tree = TREE.lock().unwrap();
+    let tree = TREE.lock().expect("Unable to lock layout tree!");
     if let Some(view_node) = tree.root.find_view_by_handle(wlc_view) {
         if let Some(output_node) = view_node.get_ancestor_of_type(ContainerType::Output) {
             if let Some(handle) =  output_node.get_val().get_handle() {
@@ -163,7 +168,7 @@ fn get_current_workspace<'a>(tree: &'a Tree) -> Option<&'a mut Node> {
 
         //}
         // NOTE hack here, remove commented code above to make this work properly
-        let parent = container.get_parent().unwrap();
+        let parent = container.get_parent().expect(ERR_BAD_TREE);
         for child in parent.get_children_mut() {
             if child == container {
                 return Some(child);
@@ -175,7 +180,7 @@ fn get_current_workspace<'a>(tree: &'a Tree) -> Option<&'a mut Node> {
 
 fn get_workspace_by_name<'a, 'b>(tree: &'a Tree, name: &'b str) -> Option<&'a Node> {
     for child in tree.root.get_children()[0].get_children() {
-        if child.get_val().get_name().unwrap() != name {
+        if child.get_val().get_name().expect(ERR_BAD_TREE) != name {
             continue
         }
         return Some(child);
@@ -185,7 +190,7 @@ fn get_workspace_by_name<'a, 'b>(tree: &'a Tree, name: &'b str) -> Option<&'a No
 
 fn get_workspace_by_name_mut<'a, 'b>(tree: &'a mut Tree, name: &'b str) -> Option<&'a mut Node> {
     for child in tree.root.get_children_mut()[0].get_children_mut() {
-        if child.get_val().get_name().unwrap() != name {
+        if child.get_val().get_name().expect(ERR_BAD_TREE) != name {
             continue
         }
         return Some(child);
