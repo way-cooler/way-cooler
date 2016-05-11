@@ -14,7 +14,7 @@ use super::lua;
 macro_rules! register_defaults {
     ( $map:expr; $($func:expr, $press:expr);+ ) => {
         $(
-            let _ = $map.insert($press, Arc::new(Box::new($func)));
+            let _ = $map.insert($press, Arc::new($func));
             )+
     }
 }
@@ -165,7 +165,7 @@ impl Hash for KeyPress {
 }
 
 /// The type of function a key press handler is.
-pub type KeyEvent = Arc<Box<Fn() + Send + Sync>>;
+pub type KeyEvent = Arc<Fn() + Send + Sync>;
 
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn add_key() {
-        register(vec![(keypress(), Arc::new(Box::new(test_cmd)))]);
+        register(vec![(keypress(), Arc::new(test_cmd))]);
         assert!(get(&keypress()).is_some(), "Key not registered");
     }
 }
