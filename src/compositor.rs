@@ -13,6 +13,9 @@ lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
 }
 
+const ERR_LOCK: &'static str = "Unable to lock compositor!";
+const ERR_GEO: &'static str = "Unable to access view geometry!";
+
 #[derive(Debug, PartialEq)]
 pub struct Compositor {
     pub view: Option<WlcView>,
@@ -80,10 +83,10 @@ pub fn set_focused_window_maximized(wlc_view: &WlcView) {
     if maybe_geometry.is_none() {
         return;
     }
-    let geometry = maybe_geometry.unwrap();
+    let geometry = maybe_geometry.expect(ERR_GEO);
     start_interactive_action(wlc_view, &geometry.origin);
     {
-        let mut comp = COMPOSITOR.write().unwrap();
+        let mut comp = COMPOSITOR.write().expect(ERR_LOCK);
         if let Some(ref mut view) = comp.view {
             if let Some(output) = tree::get_output_of_view(view) {
                 trace!("Output size of the view: {:?}", output.get_resolution());
@@ -184,7 +187,7 @@ pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, bu
     }
 
     {
-        let comp = COMPOSITOR.read().unwrap();
+        let comp = COMPOSITOR.read().expect(ERR_LOCK);
         return comp.view.is_some();
     }
 }
@@ -195,7 +198,7 @@ pub fn on_pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
         if let Some(ref view) = comp.view {
             let dx = point.x - comp.grab.x;
             let dy = point.y - comp.grab.y;
-            let mut geo = view.get_geometry().unwrap().clone();
+            let mut geo = view.get_geometry().expect(ERR_GEO).clone();
             if comp.edges.bits() != 0 {
                 let min = Size { w: 80u32, h: 40u32};
                 let mut new_geo = geo.clone();
