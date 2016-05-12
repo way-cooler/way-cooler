@@ -141,6 +141,32 @@ impl Container {
         }
     }
 
+    /// Sets the visibility of this container
+    pub fn set_visibility(&mut self, visibility: bool) {
+        match *self {
+            Container::View { ref mut visible, .. } => *visible = visibility,
+            Container::Container { ref mut visible, .. } => *visible = visibility,
+            _ => {},
+        }
+        let mask = if visibility { 1 } else { 0 };
+        if let Some(handle) = self.get_handle() {
+            match handle {
+                Handle::View(view) => view.set_mask(mask),
+                _ => {},
+            }
+        }
+    }
+
+    /// Gets the visibility flag of this container
+    #[allow(dead_code)]
+    pub fn get_visibility(&mut self) -> Option<bool> {
+        match *self {
+            Container::View { visible, .. } => Some(visible),
+            Container::Container { visible, .. } => Some(visible),
+            _ => None
+        }
+    }
+
     /// Gets the type of this container
     pub fn get_type(&self) -> ContainerType {
         match *self {

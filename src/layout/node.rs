@@ -170,6 +170,14 @@ impl Node {
     pub fn get_val(&self) -> &Container {
         &self.val
     }
+
+    /// Sets the visibility of the container and its children
+    pub fn set_visibility(&mut self, visibility: bool) {
+        self.val.set_visibility(visibility);
+        for child in self.get_children_mut() {
+            child.set_visibility(visibility);
+        }
+    }
 }
 
 impl Drop for Node {

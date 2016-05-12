@@ -152,14 +152,7 @@ pub fn switch_workspace(name: &str) -> TreeResult {
     trace!("Switching to workspace {}", name);
     let mut tree = try!(TREE.lock());
     if let Some(old_workspace) = tree.get_current_workspace() {
-        // Make all the views in the original workspace to be invisible
-        for view in old_workspace.get_children_mut() {
-            trace!("Setting {:?} invisible", view);
-            match view.get_val().get_handle().expect(ERR_BAD_TREE) {
-                Handle::View(view) => view.set_mask(0),
-                _ => {},
-            }
-        }
+        old_workspace.set_visibility(false);
     }
     let current_workspace: *const Node;
     {
@@ -170,13 +163,7 @@ pub fn switch_workspace(name: &str) -> TreeResult {
             tree.add_workspace(name.to_string());
         }
         let new_current_workspace = tree.get_workspace_by_name_mut(name).expect(ERR_BAD_TREE);
-        for view in new_current_workspace.get_children_mut() {
-            trace!("Setting {:?} visible", view);
-            match view.get_val().get_handle().expect(ERR_BAD_TREE) {
-                Handle::View(view) => view.set_mask(1),
-                _ => {},
-            }
-        }
+        new_current_workspace.set_visibility(true);
         // Set the first view to be focused, so that the view is updated to this new workspace
         if new_current_workspace.get_children().len() > 0 {
             trace!("Focusing view");
