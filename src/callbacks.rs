@@ -117,21 +117,11 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
         let keys = vec![sym];
 
-        // Don't spam the console if a key isn't being pressed.
-        if mods.mods.is_empty() || keys.len() == 1 {
-            return EVENT_PASS_THROUGH;
-        }
-
         let press = KeyPress::new(mods.mods, keys);
-        trace!("keypress: {:?}", press);
-
         if let Some(action) = keys::get(&press) {
-            info!("[key] Found a key!");
+            info!("[key] Found an action for {:?}", press);
             action();
             return EVENT_HANDLED;
-        }
-        else {
-            trace!("keypress: No callback");
         }
     }
 
