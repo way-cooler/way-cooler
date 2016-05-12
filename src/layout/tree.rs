@@ -54,20 +54,6 @@ impl Tree {
         return None
     }
 
-    fn get_output_of_view(&self, wlc_view: &WlcView) -> Option<WlcOutput> {
-        if let Some(view_node) = self.root.find_view_by_handle(wlc_view) {
-            if let Some(output_node) = view_node.get_ancestor_of_type(ContainerType::Output) {
-                if let Some(handle) =  output_node.get_val().get_handle() {
-                    return match handle {
-                        Handle::Output(output) => Some(output),
-                        _ => None
-                    }
-                }
-            }
-        }
-        return None;
-    }
-
     fn get_workspace_by_name(&self, name: &str) -> Option<&Node> {
         for child in self.root.get_children()[0].get_children() {
             if child.get_val().get_name().expect(ERR_BAD_TREE) != name {
@@ -207,10 +193,3 @@ pub fn switch_workspace(name: &str) -> TreeResult {
     tree.active_container = current_workspace;
     Ok(())
 }
-
-/// Finds the WlcOutput associated with the WlcView from the tree
-pub fn get_output_of_view(wlc_view: &WlcView) -> Option<WlcOutput> {
-    let tree = TREE.lock().expect("Unable to lock layout tree!");
-    tree.get_output_of_view(wlc_view)
-}
-
