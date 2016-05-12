@@ -54,20 +54,6 @@ impl Tree {
         return None
     }
 
-    fn get_output_of_view(&self, wlc_view: &WlcView) -> Option<WlcOutput> {
-        if let Some(view_node) = self.root.find_view_by_handle(wlc_view) {
-            if let Some(output_node) = view_node.get_ancestor_of_type(ContainerType::Output) {
-                if let Some(handle) =  output_node.get_val().get_handle() {
-                    return match handle {
-                        Handle::Output(output) => Some(output),
-                        _ => None
-                    }
-                }
-            }
-        }
-        return None;
-    }
-
     fn get_workspace_by_name(&self, name: &str) -> Option<&Node> {
         for child in self.root.get_children()[0].get_children() {
             if child.get_val().get_name().expect(ERR_BAD_TREE) != name {
@@ -93,7 +79,7 @@ impl Tree {
         self.root.new_child(Container::new_output(wlc_output));
     }
 
-    fn add_workspace(&mut self, name: &str) {
+    fn add_workspace(&mut self, name: String) {
         let workspace = Container::new_workspace(name.to_string());
         let mut index = 0;
         if let Some(output) = self.get_active_output() {
@@ -138,12 +124,12 @@ pub fn add_output(wlc_output: WlcOutput) -> TreeResult {
         let mut tree = try!(TREE.try_lock());
         tree.add_output(wlc_output);
     }
-    try!(add_workspace(&"1"));
+    try!(add_workspace("1".to_string()));
     try!(switch_workspace(&"1"));
     Ok(())
 }
 
-pub fn add_workspace(name: &str) -> TreeResult {
+pub fn add_workspace(name: String) -> TreeResult {
     trace!("Adding new workspace to root");
     let mut tree = try!(TREE.lock());
     tree.add_workspace(name);
@@ -181,7 +167,7 @@ pub fn switch_workspace(name: &str) -> TreeResult {
             trace!("Found workspace {}", name);
         } else {
             trace!("Adding workspace {}", name);
-            try!(add_workspace(name));
+            try!(add_workspace(name.to_string()));
         }
         let new_current_workspace = tree.get_workspace_by_name_mut(name).expect(ERR_BAD_TREE);
         for view in new_current_workspace.get_children_mut() {
@@ -207,10 +193,3 @@ pub fn switch_workspace(name: &str) -> TreeResult {
     tree.active_container = current_workspace;
     Ok(())
 }
-
-/// Finds the WlcOutput associated with the WlcView from the tree
-pub fn get_output_of_view(wlc_view: &WlcView) -> Option<WlcOutput> {
-    let tree = TREE.lock().expect("Unable to lock layout tree!");
-    tree.get_output_of_view(wlc_view)
-}
-
