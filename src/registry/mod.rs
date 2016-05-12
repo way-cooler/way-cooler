@@ -22,8 +22,7 @@ pub type RegMap = HashMap<String, RegistryValue>;
 
 lazy_static! {
     /// Registry variable for the registry
-    static ref REGISTRY: RwLock<RegMap> =
-        RwLock::new(HashMap::new());
+    static ref REGISTRY: RwLock<RegMap> = RwLock::new(HashMap::new());
 }
 
 /// Error types that can happen
