@@ -165,6 +165,7 @@ pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, bu
     if state == ButtonState::Pressed {
         if !view.is_root() {
             view.focus();
+            view.bring_to_front();
             if mods.mods.contains(MOD_CTRL) {
                 // Button left, we need to include linux/input.h somehow
                 if button == 0x110 {
