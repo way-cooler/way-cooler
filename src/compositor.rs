@@ -5,7 +5,6 @@ use std::sync::RwLock;
 
 use rustwlc;
 use rustwlc::*;
-use rustwlc::handle::WlcView;
 
 lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
