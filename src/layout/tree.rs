@@ -177,18 +177,13 @@ pub fn switch_workspace(name: &str) -> TreeResult {
     }
     let current_workspace: *const Node;
     {
-        let new_current_workspace: &mut Node;
         if let Some(_) = tree.get_workspace_by_name(name) {
             trace!("Found workspace {}", name);
-            new_current_workspace = tree.get_workspace_by_name_mut(name)
-                .expect(ERR_BAD_TREE);
         } else {
-            drop(tree);
+            trace!("Adding workspace {}", name);
             try!(add_workspace(name));
-            tree = try!(TREE.lock());
-            new_current_workspace = tree.get_workspace_by_name_mut(name)
-                .expect(ERR_BAD_TREE);
         }
+        let new_current_workspace = tree.get_workspace_by_name_mut(name).expect(ERR_BAD_TREE);
         for view in new_current_workspace.get_children_mut() {
             trace!("Setting {:?} visible", view);
             match view.get_val().get_handle().expect(ERR_BAD_TREE) {
