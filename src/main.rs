@@ -16,6 +16,8 @@ extern crate hlua;
 
 use std::env;
 
+use log::LogLevel;
+
 use rustwlc::types::LogType;
 
 #[macro_use] // As it happens, it's important to declare the macros first.
@@ -43,8 +45,19 @@ fn log_handler(level: LogType, message: &str) {
 
 /// Formats the log strings properly
 fn log_format(record: &log::LogRecord) -> String {
-    format!("{} [{}] {}", record.level(), record.location().module_path(),
-            record.args())
+    let color = match record.level() {
+        LogLevel::Info => "",
+        LogLevel::Trace => "\x1B[37m",
+        LogLevel::Debug => "\x1B[37m",
+        LogLevel::Warn =>  "\x1B[33m",
+        LogLevel::Error => "\x1B[31m",
+    };
+    let mut location = record.location().module_path();
+    if let Some(index) = location.find("way_cooler::") {
+        let index = index + "way_cooler::".len();
+        location = &location[index..];
+    }
+    format!("{} {} [{}] {} \x1B[0m", color, record.level(), location, record.args())
 }
 
 /// Initializes the logging system.
