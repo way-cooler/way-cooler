@@ -13,6 +13,16 @@ pub type TreeResult = Result<(), TryLockError<MutexGuard<'static, Tree>>>;
 
 const ERR_BAD_TREE: &'static str = "Layout tree was in an invalid configuration";
 
+lazy_static! {
+    static ref TREE: Mutex<Tree> = {
+        Mutex::new(Tree{
+            root: Node::new(Container::new_root()),
+            active_container: ptr::null(),
+        })
+    };
+}
+
+
 pub struct Tree {
     root: Node,
     active_container: *const Node,
@@ -109,15 +119,6 @@ impl Tree {
 }
 
 unsafe impl Send for Tree {}
-
-lazy_static! {
-    static ref TREE: Mutex<Tree> = {
-        Mutex::new(Tree{
-            root: Node::new(Container::new_root()),
-            active_container: ptr::null(),
-        })
-    };
-}
 
 pub fn add_output(wlc_output: WlcOutput) -> TreeResult {
     {
