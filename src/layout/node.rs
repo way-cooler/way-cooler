@@ -161,12 +161,15 @@ impl Node {
         }
     }
 
+    /// Removes this node from its current parent and adds it to the given node
+    /// as a child
     pub fn move_to(mut self, new_parent: &mut Node) {
         self.remove_from_parent();
         self.parent = new_parent as *mut Node;
         new_parent.children.push(self);
     }
 
+    /// Gets the container that this node has
     pub fn get_val(&self) -> &Container {
         &self.val
     }
