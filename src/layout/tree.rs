@@ -31,6 +31,8 @@ pub struct Tree {
 unsafe impl Send for Tree {}
 
 impl Tree {
+    /// Returns the currently viewed container.
+    /// If multiple views are selected, the parent container they share is returned
     fn get_active_container(&self) -> Option<&Node> {
         if self.active_container.is_null() {
             None
@@ -41,6 +43,7 @@ impl Tree {
         }
     }
 
+    /// Get the monitor (output) that the active container is located on
     fn get_active_output(&self) -> Option<&Node> {
         if let Some(node) = self.get_active_container() {
             node.get_ancestor_of_type(ContainerType::Output)
@@ -49,6 +52,7 @@ impl Tree {
         }
     }
 
+    /// Get the workspace that the active container is located on
     fn get_current_workspace(&self) -> Option<&mut Node> {
         if let Some(container) = self.get_active_container() {
             //if let Some(child) = container.get_ancestor_of_type(ContainerType::Workspace) {
@@ -66,6 +70,7 @@ impl Tree {
         return None
     }
 
+    /// Find the workspace node that has the given name
     fn get_workspace_by_name(&self, name: &str) -> Option<&Node> {
         for child in self.root.get_children()[0].get_children() {
             if child.get_val().get_name().expect(ERR_BAD_TREE) != name {
@@ -76,6 +81,7 @@ impl Tree {
         return None
     }
 
+    /// Find the workspace node that has the given name, with a mutable reference
     fn get_workspace_by_name_mut(&mut self, name: &str) -> Option<&mut Node> {
         for child in self.root.get_children_mut()[0].get_children_mut() {
             if child.get_val().get_name().expect(ERR_BAD_TREE) != name {
@@ -86,11 +92,13 @@ impl Tree {
         return None
     }
 
-
+    /// Make a new output container with the given WlcOutput.
+    /// This is done when a new monitor is added
     fn add_output(&mut self, wlc_output: WlcOutput) {
         self.root.new_child(Container::new_output(wlc_output));
     }
 
+    /// Make a new workspace container with the given name.
     fn add_workspace(&mut self, name: String) {
         let workspace = Container::new_workspace(name.to_string());
         let mut index = 0;
@@ -105,6 +113,8 @@ impl Tree {
         self.root.get_children_mut()[index].new_child(workspace);
     }
 
+    /// Make a new view container with the given WlcView, and adds it to
+    /// the active workspace.
     fn add_view(&self, wlc_view: WlcView) {
         if let Some(current_workspace) = self.get_current_workspace() {
             trace!("Adding view {:?} to {:?}", wlc_view, current_workspace);
@@ -112,6 +122,7 @@ impl Tree {
         }
     }
 
+    /// Remove the view container with the given view
     fn remove_view(&self, wlc_view: &WlcView) {
         if let Some(view) = self.root.find_view_by_handle(&wlc_view) {
             let parent = view.get_parent().expect(ERR_BAD_TREE);
