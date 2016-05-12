@@ -167,7 +167,7 @@ pub fn switch_workspace(name: &str) -> TreeResult {
             trace!("Found workspace {}", name);
         } else {
             trace!("Adding workspace {}", name);
-            try!(add_workspace(name.to_string()));
+            tree.add_workspace(name.to_string());
         }
         let new_current_workspace = tree.get_workspace_by_name_mut(name).expect(ERR_BAD_TREE);
         for view in new_current_workspace.get_children_mut() {
