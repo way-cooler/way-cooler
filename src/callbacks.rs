@@ -56,7 +56,7 @@ pub extern fn view_created(view: WlcView) -> bool {
         Err(_) => {
             // This causes view_destroyed to be called, might cause an issue
             view.close();
-            return false
+            return false;
         }
     }
     view.set_mask(output.get_mask());
@@ -98,13 +98,13 @@ pub extern fn view_request_move(view: WlcView, dest: &Point) {
     // Called by views when they have a dang resize mouse thing, we should only
     // let it happen in view floating mode
     compositor::start_interactive_move(&view, dest);
-    trace!("view_request_move: to {}, start interactive mode.", *dest);
+    trace!("view_request_move: to {}", *dest);
 }
 
 pub extern fn view_request_resize(view: WlcView,
                               edge: ResizeEdge, location: &Point) {
     compositor::start_interactive_resize(&view, edge, location);
-    trace!("view_request_resize: edge {:?}, to {}, start interactive mode.",
+    trace!("view_request_resize: edge {:?}, to {}",
              edge, location);
 }
 
@@ -116,6 +116,11 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         //      .map(|&k| Keysym::from(k)).collect();
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
         let keys = vec![sym];
+
+        // Don't spam the console if a key isn't being pressed.
+        if mods.mods.is_empty() || keys.len() == 1 {
+            return EVENT_PASS_THROUGH;
+        }
 
         let press = KeyPress::new(mods.mods, keys);
         trace!("keypress: {:?}", press);
@@ -139,10 +144,11 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
     compositor::on_pointer_button(view, _time, mods, button, state, point)
 }
 
-pub extern fn pointer_scroll(_view: WlcView, button: u32,
+pub extern fn pointer_scroll(_view: WlcView, _time: u32,
                          _mods_ptr: &KeyboardModifiers, axis: ScrollAxis,
                          heights: [f64; 2]) -> bool {
-    trace!("pointer_scroll: press {}, {:?} to {:?}", button, axis, heights);
+    trace!("pointer_scroll: {:?} {:?}", axis,
+           heights.iter().map(|f| f.clone().round()).collect::<Vec<f64>>());
     false
 }
 
@@ -160,7 +166,7 @@ pub extern fn touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
 
 pub extern fn compositor_ready() {
     info!("Preparing compositor!");
-    info!("Initializing lua...");
+    info!("Initializing Lua...");
     lua::init();
 }
 
