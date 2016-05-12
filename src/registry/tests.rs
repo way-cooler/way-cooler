@@ -48,7 +48,7 @@ fn add_keys() {
 }
 
 #[test]
-fn perms() {
+fn lua_perms() {
     set("perm_none".to_string(), LUA_PRIVATE, 0);
     set("perm_read".to_string(), LUA_READ, 1);
     set("perm_write".to_string(), LUA_WRITE, 2);
@@ -60,8 +60,9 @@ fn perms() {
 
 #[test]
 fn multithreaded() {
+    use std::time::Duration;
     let (tx, rx) = mpsc::channel();
-
+    thread::sleep(Duration::from_millis(240));
     let num = 1i32;
     let double = -392f64;
     let string = "Hello world".to_string();
