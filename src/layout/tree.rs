@@ -53,7 +53,7 @@ impl Tree {
     }
 
     /// Get the workspace that the active container is located on
-    fn get_current_workspace(&self) -> Option<&mut Node> {
+    fn get_active_workspace(&self) -> Option<&mut Node> {
         if let Some(container) = self.get_active_container() {
             //if let Some(child) = container.get_ancestor_of_type(ContainerType::Workspace) {
             //return child.get_children()[0].get_parent()
@@ -116,7 +116,7 @@ impl Tree {
     /// Make a new view container with the given WlcView, and adds it to
     /// the active workspace.
     fn add_view(&self, wlc_view: WlcView) {
-        if let Some(current_workspace) = self.get_current_workspace() {
+        if let Some(current_workspace) = self.get_active_workspace() {
             trace!("Adding view {:?} to {:?}", wlc_view, current_workspace);
             current_workspace.new_child(Container::new_view(wlc_view));
         }
@@ -163,7 +163,7 @@ pub fn remove_view(wlc_view: &WlcView) -> TreeResult {
 pub fn switch_workspace(name: &str) -> TreeResult {
     trace!("Switching to workspace {}", name);
     let mut tree = try!(TREE.lock());
-    if let Some(old_workspace) = tree.get_current_workspace() {
+    if let Some(old_workspace) = tree.get_active_workspace() {
         old_workspace.set_visibility(false);
     }
     let current_workspace: *const Node;
