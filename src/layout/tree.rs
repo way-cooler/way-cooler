@@ -28,6 +28,8 @@ pub struct Tree {
     active_container: *const Node,
 }
 
+unsafe impl Send for Tree {}
+
 impl Tree {
     fn get_active_container(&self) -> Option<&Node> {
         if self.active_container.is_null() {
@@ -117,8 +119,6 @@ impl Tree {
         }
     }
 }
-
-unsafe impl Send for Tree {}
 
 pub fn add_output(wlc_output: WlcOutput) -> TreeResult {
     {
