@@ -62,9 +62,14 @@ lazy_static! {
 
 fn terminal_fn() {
     use std::process::Command;
+    use std::env;
+
+    let term = env::var("WAYLAND_TERMINAL")
+        .unwrap_or("weston-terminal".to_string());
+
     Command::new("sh")
         .arg("-c")
-        .arg("weston-terminal")
+        .arg(term)
         .spawn().expect("Error launching terminal");
 }
 
