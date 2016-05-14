@@ -147,20 +147,29 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
+            thread_send(request.reply, LuaResponse::Pong);
 
             info!("Lua thread terminating!");
-            thread_send(request.reply, LuaResponse::Pong);
-            return;
+            panic!("Lua thread received termination request.");
         },
 
         LuaQuery::Restart => {
+            use std::time::Duration;
             trace!("Received restart signal!");
             error!("Lua thread restart not supported!");
 
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
             thread_send(request.reply, LuaResponse::Pong);
 
-            panic!("Lua thread: Restart not supported!");
+            // The only real way to restart
+            let _new_handle = thread::Builder::new()
+                .name("Lua re-init".to_string())
+                .spawn(move || {
+                    thread::sleep(Duration::from_secs(4));
+                    init();
+                });
+
+            panic!("Lua thread: Restarting!");
         },
 
         LuaQuery::Execute(code) => {
