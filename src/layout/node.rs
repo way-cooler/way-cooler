@@ -185,7 +185,6 @@ impl Node {
 
 impl Drop for Node {
     fn drop(&mut self) {
-        println!("Dropping a node.");
         let children: &mut Vec<Node> = &mut self.children;
         for mut child in children {
             child.parent = ptr::null_mut();
