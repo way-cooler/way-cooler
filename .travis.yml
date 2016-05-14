@@ -1,0 +1,17 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+notifications:
+  slack: way-cooler:W2vOSvJvgxGi7EiGkZCtvlB6
+  email: false
+after_failure:
+  - ls -R
+script:
+  - sed 's/rustwlc = .*/rustwlc = { git = "https:\/\/github.com\/SnirkImmington\/dummy-rustwlc.git" }/g' Cargo.toml -i
+  - cargo build --verbose
+  - cargo test --verbose
