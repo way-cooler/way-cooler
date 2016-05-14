@@ -5,12 +5,12 @@ use std::cmp::Eq;
 use std::fmt::Display;
 use std::hash::Hash;
 use std::borrow::Borrow;
-
-use hlua::any::AnyLuaValue;
-use convert::{ToTable, FromTable, LuaDecoder, ConverterError};
-
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+use hlua::any::AnyLuaValue;
+
+use convert::{ToTable, FromTable, ConverterError};
 
 mod types;
 pub use self::types::*; // Export constants too
@@ -22,8 +22,7 @@ pub type RegMap = HashMap<String, RegistryValue>;
 
 lazy_static! {
     /// Registry variable for the registry
-    static ref REGISTRY: RwLock<RegMap> =
-        RwLock::new(HashMap::new());
+    static ref REGISTRY: RwLock<RegMap> = RwLock::new(HashMap::new());
 }
 
 /// Error types that can happen
@@ -37,12 +36,12 @@ pub enum RegistryError {
 
 /// Acquires a read lock on the registry.
 pub fn read_lock<'a>() -> RwLockReadGuard<'a, RegMap> {
-    REGISTRY.read().unwrap()
+    REGISTRY.read().expect("Unable to read from registry!")
 }
 
 /// Acquires a write lock on the registry.
 pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
-    REGISTRY.write().unwrap()
+    REGISTRY.write().expect("Unable to write to registry!")
 }
 
 /// Gets a Lua object from a registry key
@@ -55,6 +54,7 @@ where String: Borrow<K>, K: Hash + Eq + Display {
 
 /// Gets an object from the registry, decoding its internal Lua
 /// representation.
+#[allow(dead_code)]
 pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
     where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
     if let Some(lua_pair) = get_lua(name) {
@@ -71,6 +71,7 @@ pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
 }
 
 /// Set a key in the registry to a particular value
+#[allow(dead_code)]
 pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
     trace!("set: {:?} {}", flags, key);
     let regvalue = RegistryValue::new(flags, val);
@@ -79,6 +80,7 @@ pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
 }
 
 /// Whether this map contains a key
+#[allow(dead_code)]
 pub fn contains_key<K>(key: &K) -> bool
 where String: Borrow<K>, K: Hash + Eq + Display {
     trace!("contains_key: {}", *key);

@@ -1,14 +1,18 @@
 //! Types used in the registry.
 
 use std::sync::Arc;
+
 use hlua::any::AnyLuaValue;
-use super::super::convert::{FromTable, ToTable, LuaDecoder};
+
+use super::super::convert::ToTable;
 
 bitflags! {
     /// Access permissions for items in the registry
     pub flags AccessFlags: u8 {
+        #[allow(dead_code)]
         const LUA_PRIVATE = 0b00000000,
         const LUA_READ    = 0b00000001,
+        #[allow(dead_code)]
         const LUA_WRITE   = 0b00000010,
     }
 }
@@ -22,6 +26,7 @@ pub struct RegistryValue {
 
 impl RegistryValue {
     /// Creates a new RegistryValue
+    #[allow(dead_code)]
     pub fn new<T>(flags: AccessFlags, data: T) -> RegistryValue
         where T: ToTable  {
         RegistryValue {

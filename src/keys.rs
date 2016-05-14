@@ -1,92 +1,60 @@
 //! Contains information for keybindings.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use std::hash::{Hash, Hasher};
+
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
-use std::hash::{Hash, Hasher};
-use super::layout::tree;
-use super::compositor;
 
-macro_rules! gen_switch_workspace {
-    ($($b:ident, $n:expr);+) => {
-        $(fn $b() {
-            trace!("Switching to workspace {}", $n);
-            tree::switch_workspace(&$n.to_string());
-        })+
-    };
+use super::layout::tree;
+use super::lua;
+
+/// Register default keypresses to a map
+macro_rules! register_defaults {
+    ( $map:expr; $($func:expr, $press:expr);+ ) => {
+        $(
+            let _ = $map.insert($press, Arc::new($func));
+            )+
+    }
 }
 
-gen_switch_workspace!(switch_workspace_1, 1;
-                      switch_workspace_2, 2;
-                      switch_workspace_3, 3;
-                      switch_workspace_4, 4;
-                      switch_workspace_5, 5;
-                      switch_workspace_6, 6;
-                      switch_workspace_7, 7;
-                      switch_workspace_8, 8;
-                      switch_workspace_9, 9;
-                      switch_workspace_0, 0);
-
-
+/// Generate switch_workspace methods and register them in $map
+macro_rules! gen_switch_workspace {
+    ($map:expr; $($b:ident, $n:expr);+) => {
+        $(fn $b() {
+            trace!("Switching to workspace {}", $n);
+            tree::switch_workspace(&$n.to_string())
+                .expect("Could not switch to a work-space");
+                }
+          register_defaults!( $map; $b, keypress!("Alt", $n) );
+          )+
+    };
+}
 
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
         let mut map = HashMap::<KeyPress, KeyEvent>::new();
 
-        let press_s = KeyPress::from_key_names(vec!["Mod4"], vec!["s"]).unwrap();
-        map.insert(press_s, Arc::new(Box::new(key_s)));
 
-        let press_f4 = KeyPress::from_key_names(vec!["Alt"],vec!["F4"]).unwrap();
-        map.insert(press_f4, Arc::new(Box::new(key_f4)));
+        gen_switch_workspace!(map; switch_workspace_1, "1";
+                              switch_workspace_2, "2";
+                              switch_workspace_3, "3";
+                              switch_workspace_4, "4";
+                              switch_workspace_5, "5";
+                              switch_workspace_6, "6";
+                              switch_workspace_7, "7";
+                              switch_workspace_8, "8";
+                              switch_workspace_9, "9";
+                              switch_workspace_0, "0");
 
-        let press_k = KeyPress::from_key_names(
-            vec!["Ctrl"], vec!["k"]).unwrap();
-        map.insert(press_k, Arc::new(Box::new(key_sleep)));
-
-        let press_p = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"]).unwrap();
-        map.insert(press_p, Arc::new(Box::new(key_pointer_pos)));
-
-        let press_esc = KeyPress::from_key_names(vec!["Ctrl"],
-                                                 vec!["Escape"]).unwrap();
-        map.insert(press_esc, Arc::new(Box::new(key_esc)));
-
-        /* Workspace functions*/
-        let terminal = KeyPress::from_key_names(vec!["Ctrl"], vec!["Return"]).unwrap();
-        map.insert(terminal, Arc::new(Box::new(terminal_fn)));
-
-        let dmenu = KeyPress::from_key_names(vec!["Alt"], vec!["d"]).unwrap();
-        map.insert(dmenu, Arc::new(Box::new(dmenu_fn)));
-
-        let switch_1 = KeyPress::from_key_names(vec!["Ctrl"], vec!["1"]).unwrap();
-        map.insert(switch_1, Arc::new(Box::new(switch_workspace_1)));
-
-        let switch_2 = KeyPress::from_key_names(vec!["Ctrl"], vec!["2"]).unwrap();
-        map.insert(switch_2, Arc::new(Box::new(switch_workspace_2)));
-
-        let switch_3 = KeyPress::from_key_names(vec!["Ctrl"], vec!["3"]).unwrap();
-        map.insert(switch_3, Arc::new(Box::new(switch_workspace_3)));
-
-        let switch_4 = KeyPress::from_key_names(vec!["Ctrl"], vec!["4"]).unwrap();
-        map.insert(switch_4, Arc::new(Box::new(switch_workspace_4)));
-
-        let switch_5 = KeyPress::from_key_names(vec!["Ctrl"], vec!["5"]).unwrap();
-        map.insert(switch_5, Arc::new(Box::new(switch_workspace_5)));
-
-        let switch_6 = KeyPress::from_key_names(vec!["Ctrl"], vec!["6"]).unwrap();
-        map.insert(switch_6, Arc::new(Box::new(switch_workspace_6)));
-
-        let switch_7 = KeyPress::from_key_names(vec!["Ctrl"], vec!["7"]).unwrap();
-        map.insert(switch_7, Arc::new(Box::new(switch_workspace_7)));
-
-        let switch_8 = KeyPress::from_key_names(vec!["Ctrl"], vec!["8"]).unwrap();
-        map.insert(switch_8, Arc::new(Box::new(switch_workspace_8)));
-
-        let switch_9 = KeyPress::from_key_names(vec!["Ctrl"], vec!["9"]).unwrap();
-        map.insert(switch_9, Arc::new(Box::new(switch_workspace_9)));
-
-        let switch_0 = KeyPress::from_key_names(vec!["Ctrl"], vec!["0"]).unwrap();
-        map.insert(switch_0, Arc::new(Box::new(switch_workspace_0)));
+        register_defaults! {
+            map;
+            quit_fn, keypress!("Alt", "Escape");
+            terminal_fn, keypress!("Alt", "Return");
+            dmenu_fn, keypress!("Alt", "d");
+            pointer_fn, keypress!("Alt", "p")
+        }
 
         RwLock::new(map)
     };
@@ -97,7 +65,7 @@ fn terminal_fn() {
     Command::new("sh")
         .arg("-c")
         .arg("weston-terminal")
-        .spawn().unwrap();
+        .spawn().expect("Error launching terminal");
 }
 
 fn dmenu_fn() {
@@ -105,26 +73,10 @@ fn dmenu_fn() {
     Command::new("sh")
         .arg("-c")
         .arg("dmenu_run")
-        .spawn().unwrap();
+        .spawn().expect("Error launching terminal");
 }
 
-fn key_sleep() {
-    use std::thread;
-    use std::time::Duration;
-
-    use super::lua;
-    use lua::LuaQuery;
-
-    info!("keyhandler: Beginning thread::sleep keypress!");
-    lua::send(LuaQuery::Execute("print('>entering sleep')\
-                                 os.execute('sleep 5')\
-                                 print('>leaving sleep')".to_string()))
-                  .unwrap();
-    info!("keyhandler: Finished thread::sleep keypress!");
-}
-
-fn key_pointer_pos() {
-    use super::lua;
+fn pointer_fn() {
     use lua::LuaQuery;
     let code = "if wm == nil then print('wm table does not exist')\n\
                 elseif wm.pointer == nil then print('wm.pointer table does not exist')\n\
@@ -133,18 +85,11 @@ fn key_pointer_pos() {
                 local x, y = wm.pointer.get_position()\n\
                 print('The cursor is at ' .. x .. ', ' .. y)\n\
                 end".to_string();
-    lua::send(LuaQuery::Execute(code)).unwrap();
+    lua::send(LuaQuery::Execute(code))
+        .expect("Error telling Lua to get pointer coords");
 }
 
-fn key_s() {
-    info!("[Key handler] S keypress!");
-}
-
-fn key_f4() {
-    info!("[Key handler] F4 keypress!");
-}
-
-fn key_esc() {
+fn quit_fn() {
     info!("handler: Esc keypress!");
     ::rustwlc::terminate();
 }
@@ -176,33 +121,33 @@ pub fn keymod_from_names(keys: Vec<&str>) -> Result<KeyMod, String> {
 impl KeyPress {
     /// Creates a new KeyPress struct from a list of modifier and key names
     pub fn from_key_names(mods: Vec<&str>, keys: Vec<&str>) -> Result<KeyPress, String> {
-        match keymod_from_names(mods) {
-            Err(message) => Err(message),
-            Ok(mods) => {
-                let mut syms: Vec<Keysym> = Vec::with_capacity(keys.len());
-                for name in keys {
-                    if let Some(sym) = Keysym::from_name(name.to_string(),
-                                                         NameFlags::None) {
-                            syms.push(sym);
-                    }
-                    // Else if could not parse
-                    else if let Some(sym) = Keysym::from_name(name.to_string(),
-                                                        NameFlags::CaseInsensitive) {
-                        syms.push(sym);
-                    }
-                    else {
-                        return Err(format!("Invalid key: {}", name));
-                    }
+        keymod_from_names(mods).and_then(|mods| {
+            let mut syms: Vec<Keysym> = Vec::with_capacity(keys.len());
+            for name in keys {
+                // Parse a keysym for each given key
+                if let Some(sym) = Keysym::from_name(name.to_string(),
+                                                     NameFlags::None) {
+                    syms.push(sym);
                 }
-                syms.sort_by_key(|s| s.get_code());
-                syms.dedup();
-                return Ok(KeyPress { modifiers: mods, keys: syms });
+                // If lowercase cannot be parsed, try case insensitive
+                else if let Some(sym) = Keysym::from_name(name.to_string(),
+                                                          NameFlags::CaseInsensitive) {
+                    syms.push(sym);
+                }
+                else {
+                    return Err(format!("Invalid key: {}", name));
+                }
             }
-        }
+            // Sort and dedup to make sure hashes are the same
+            syms.sort_by_key(|s| s.get_code());
+            syms.dedup();
+            return Ok(KeyPress { modifiers: mods, keys: syms });
+        })
     }
 
     /// Creates a KeyPress from keys that are pressed at the moment
     pub fn new(mods: KeyMod, mut keys: Vec<Keysym>) -> KeyPress {
+        // Sort and dedup to make sure hashes are the same
         keys.sort_by_key(|k| k.get_code());
         keys.dedup();
 
@@ -220,21 +165,45 @@ impl Hash for KeyPress {
 }
 
 /// The type of function a key press handler is.
-pub type KeyEvent = Arc<Box<Fn() + Send + Sync>>;
+pub type KeyEvent = Arc<Fn() + Send + Sync>;
 
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
-    let bindings = BINDINGS.read().unwrap();
+    let bindings = BINDINGS.read()
+        .expect("Keybindings/get: unable to lock keybindings");
     match bindings.get(key) {
         None => None,
         Some(val) => Some(val.clone())
     }
 }
 
-/// Register a new key mapping
+/// Register a new set of key mappings
+#[allow(dead_code)]
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
-    let mut bindings = BINDINGS.write().unwrap();
+    let mut bindings = BINDINGS.write()
+        .expect("Keybindings/register: unable to lock keybindings");
     for value in values {
         bindings.insert(value.0, value.1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn test_cmd() {
+        assert!(true);
+    }
+
+    fn keypress() -> KeyPress {
+        keypress!("Ctrl", "t")
+    }
+
+    #[test]
+    fn add_key() {
+        require_rustwlc!();
+        register(vec![(keypress(), Arc::new(test_cmd))]);
+        assert!(get(&keypress()).is_some(), "Key not registered");
     }
 }

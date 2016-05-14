@@ -4,11 +4,9 @@ use std::sync::mpsc;
 use std::thread;
 
 use super::*;
-
-use super::super::convert::{ToTable, FromTable, LuaDecoder};
+use super::super::convert::{ToTable, FromTable};
 
 use hlua;
-use hlua::any::AnyLuaValue;
 
 lua_convertible! {
     #[derive(Debug, Clone, Eq, PartialEq)]
@@ -18,8 +16,10 @@ lua_convertible! {
     }
 }
 
+const ERR: &'static str = "Key which was added no longer exists!";
+
 #[test]
-fn registry_tests() {
+fn add_keys() {
     let num = 1i32;
     let double = -392f64;
     let string = "Hello world".to_string();
@@ -38,14 +38,36 @@ fn registry_tests() {
     assert!(contains_key(&String::from("test_numbers")));
     assert!(contains_key(&String::from("test_point")));
 
-    assert_eq!(get::<_, i32>(&String::from("test_num")).unwrap().1, num);
-    assert_eq!(get::<_, f64>(&String::from("test_double")).unwrap().1, double);
-    assert_eq!(get::<_,String>(&String::from("test_string")).unwrap().1, string);
-    assert_eq!(get::<_, Vec<i32>>(&String::from("test_numbers")).unwrap().1,
+    assert_eq!(get::<_, i32>(&String::from("test_num")).expect(ERR).1, num);
+    assert_eq!(get::<_, f64>(&String::from("test_double")).expect(ERR).1, double);
+    assert_eq!(get::<_,String>(&String::from("test_string")).expect(ERR).1, string);
+    assert_eq!(get::<_, Vec<i32>>(&String::from("test_numbers")).expect(ERR).1,
                numbers);
-    assert_eq!(get::<_, Point>(&String::from("test_point")).unwrap().1, point);
+    assert_eq!(get::<_, Point>(&String::from("test_point")).expect(ERR).1, point);
 
+}
+
+#[test]
+fn lua_perms() {
+    set("perm_none".to_string(), LUA_PRIVATE, 0);
+    set("perm_read".to_string(), LUA_READ, 1);
+    set("perm_write".to_string(), LUA_WRITE, 2);
+
+    assert_eq!(get::<_, i32>(&"perm_none".to_string()).expect(ERR).0, LUA_PRIVATE);
+    assert_eq!(get::<_, i32>(&"perm_read".to_string()).expect(ERR).0, LUA_READ);
+    assert_eq!(get::<_, i32>(&"perm_write".to_string()).expect(ERR).0, LUA_WRITE);
+}
+
+#[test]
+fn multithreaded() {
+    use std::time::Duration;
     let (tx, rx) = mpsc::channel();
+    thread::sleep(Duration::from_millis(240));
+    let num = 1i32;
+    let double = -392f64;
+    let string = "Hello world".to_string();
+    let numbers = vec![1, 2, 3, 4, 5];
+    let point = Point { x: -11, y: 12 };
 
     let tx1 = tx.clone();
     thread::spawn(move || {
@@ -70,8 +92,8 @@ fn registry_tests() {
 
     let mut result = true;
 
-    for i in 0..5 {
-        result = result && rx.recv().unwrap();
+    for _ in 0..5 {
+        result = result && rx.recv().expect("Unable to connect to read thread");
     }
     assert!(result);
 }
@@ -85,8 +107,8 @@ where T: ::std::fmt::Debug + FromTable + PartialEq {
             assert_eq!(val, in_val);
         }
         else {
-            sender.send(false).unwrap();
+            sender.send(false).expect("Unable to reply to test thread");
         }
     }
-    sender.send(true).unwrap();
+    sender.send(true).expect("Unable to reply to test thread");
 }

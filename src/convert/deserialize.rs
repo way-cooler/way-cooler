@@ -1,11 +1,12 @@
 //! Module for implementing convert's FromTable
 
-use hlua::any::AnyLuaValue;
-use hlua::any::AnyLuaValue::*;
-
 use std::hash::Hash;
 use std::cmp::Eq;
 use std::collections::HashMap;
+
+use hlua::any::AnyLuaValue;
+use hlua::any::AnyLuaValue::*;
+
 
 /// Represents types which can be serialized from a Lua table (AnyLuaValue).
 ///
@@ -80,6 +81,7 @@ impl LuaDecoder {
         }
     }
 
+    #[allow(dead_code)]
     pub fn read_field<T>(self, name: String) -> ConvertResult<(Self, T)>
         where T: FromTable {
         match self.val {
@@ -109,7 +111,7 @@ impl LuaDecoder {
 
     pub fn get_unordered_array<T: FromTable>(self) -> ConvertResult<Vec<T>> {
         match self.val {
-            LuaArray(mut arr) => {
+            LuaArray(arr) => {
                 let mut turn = Vec::with_capacity(arr.len());
                 // Completely ignore the keys, push values of type T
                 for (_, lua_val) in arr.into_iter() {

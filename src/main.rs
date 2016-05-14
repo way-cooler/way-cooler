@@ -1,4 +1,4 @@
-//! Main module in way-cooler
+//! Main module of way-cooler
 
 #[macro_use]
 extern crate lazy_static;
@@ -14,21 +14,24 @@ extern crate env_logger;
 #[macro_use]
 extern crate hlua;
 
-use rustwlc::callback;
-use rustwlc::types::LogType;
-
 use std::env;
 
-#[macro_use]
+use log::LogLevel;
+
+use rustwlc::types::LogType;
+
+#[macro_use] // As it happens, it's important to declare the macros first.
 mod macros;
-mod registry;
-mod keys;
+
 mod callbacks;
-mod convert;
+mod keys;
+
 mod lua;
+mod registry;
+mod convert;
+
 mod layout;
 mod compositor;
-
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
@@ -42,48 +45,51 @@ fn log_handler(level: LogType, message: &str) {
 
 /// Formats the log strings properly
 fn log_format(record: &log::LogRecord) -> String {
-    format!("{} [{}] {}", record.level(), record.location().module_path(),
-            record.args())
+    let color = match record.level() {
+        LogLevel::Info => "",
+        LogLevel::Trace => "\x1B[37m",
+        LogLevel::Debug => "\x1B[37m",
+        LogLevel::Warn =>  "\x1B[33m",
+        LogLevel::Error => "\x1B[31m",
+    };
+    let mut location = record.location().module_path();
+    if let Some(index) = location.find("way_cooler::") {
+        let index = index + "way_cooler::".len();
+        location = &location[index..];
+    }
+    format!("{} {} [{}] {} \x1B[0m", color, record.level(), location, record.args())
 }
 
-fn main() {
-    callback::output_created(callbacks::output_created);
-    callback::output_destroyed(callbacks::output_destroyed);
-    callback::output_focus(callbacks::output_focus);
-    callback::output_resolution(callbacks::output_resolution);
-        //.output_render_pre(callbacks::output_render_pre)
-        //.output_render_post(callbacks::output_render_post)
-    callback::view_created(callbacks::view_created);
-    callback::view_destroyed(callbacks::view_destroyed);
-    callback::view_focus(callbacks::view_focus);
-    callback::view_move_to_output(callbacks::view_move_to_output);
-    callback::view_request_geometry(callbacks::view_request_geometry);
-    callback::view_request_state(callbacks::view_request_state);
-    callback::view_request_move(callbacks::view_request_move);
-    callback::view_request_resize(callbacks::view_request_resize);
-    callback::keyboard_key(callbacks::keyboard_key);
-    callback::pointer_button(callbacks::pointer_button);
-    callback::pointer_scroll(callbacks::pointer_scroll);
-    callback::pointer_motion(callbacks::pointer_motion);
-        //.touch_touch(callbacks::touch)
-    callback::compositor_ready(callbacks::compositor_ready);
-    callback::compositor_terminate(callbacks::compositor_terminating);
-        //.input_created(input_created)
-        //.input_destroyed(input_destroyed);
-
+/// Initializes the logging system.
+/// Can be called from within test methods.
+pub fn init_logs() {
+    // Prepare log builder
     let mut builder = env_logger::LogBuilder::new();
     builder.format(log_format);
     builder.filter(None, log::LogLevelFilter::Trace);
     if env::var("WAY_COOLER_LOG").is_ok() {
-        builder.parse(&env::var("WAY_COOLER_LOG").unwrap());
+        builder.parse(&env::var("WAY_COOLER_LOG").expect("Asserted unwrap!"));
     }
-    builder.init().unwrap();
-    info!("Logger initialized, setting wlc handler.");
+    builder.init().expect("Unable to initialize logging!");
+    info!("Logger initialized, setting wlc handlers.");
+}
+
+fn main() {
+    println!("Launching way-cooler...");
+
+    // Start logging first
+    init_logs();
+
+    // Initialize callbacks
+    callbacks::init();
+
+    // Handle wlc logs
     rustwlc::log_set_rust_handler(log_handler);
 
+    // Prepare to launch wlc
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
 
-    info!("Started logger");
-
+    // Hand control over to wlc's event loop
+    info!("Running wlc...");
     run_wlc();
 }

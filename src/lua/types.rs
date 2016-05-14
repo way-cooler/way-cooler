@@ -1,18 +1,19 @@
 //! Types defined by Lua thread
 
-use hlua;
-use hlua::{Lua, LuaError};
-use hlua::any::AnyLuaValue;
-
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
-
 use std::cmp::{PartialEq, Eq};
+
+use hlua;
+use hlua::Lua;
+use hlua::any::AnyLuaValue;
+
 
 /// Methods that the Lua thread can execute.
 pub type LuaFunc = fn(&mut Lua) -> AnyLuaValue;
 
 /// Messages sent to the lua thread
+#[allow(dead_code)]
 pub enum LuaQuery {
     /// Pings the lua thread
     Ping,
@@ -71,6 +72,7 @@ impl PartialEq for LuaQuery {
 impl Eq for LuaQuery { }
 
 /// Messages received from lua thread
+#[allow(dead_code)]
 pub enum LuaResponse {
     /// If the identifier had length 0
     InvalidName,
@@ -84,6 +86,7 @@ pub enum LuaResponse {
     Pong,
 }
 
+#[allow(dead_code)]
 impl LuaResponse {
     /// Whether this response is an InvalidName or Error
     pub fn is_err(&self) -> bool {

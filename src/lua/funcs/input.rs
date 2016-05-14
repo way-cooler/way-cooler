@@ -2,12 +2,9 @@
 //!
 //! Should be registered under `wm.pointer` and `wm.keyboard`
 
-use hlua::any::AnyLuaValue;
-use hlua::any::AnyLuaValue::*;
 
 use rustwlc::types::{Point};
-use rustwlc::input::{pointer, keyboard};
-use rustwlc::handle::WlcOutput;
+use rustwlc::input::pointer;
 
 /// Gets the position of the mouse
 pub fn pointer_get_position() -> (f64, f64) {
