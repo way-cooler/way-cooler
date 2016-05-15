@@ -20,9 +20,15 @@ const EVENT_PASS_THROUGH: bool = false;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
-    match tree::add_output(output) {
-        Ok(_) => true,
-        Err(_) => false
+    {
+        if let Ok(mut tree) = tree::try_lock_tree() {
+            tree.add_output(output.clone());
+            tree.add_workspace("1".to_string());
+            tree.switch_workspace(&"1");
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -51,25 +57,23 @@ pub extern fn output_render_post(output: WlcOutput) {
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
-    match tree::add_view(view.clone()) {
-        Ok(_) => {},
-        Err(_) => {
-            // This causes view_destroyed to be called, might cause an issue
-            view.close();
-            return false;
-        }
+    if let Ok(tree) = tree::try_lock_tree() {
+        tree.add_view(view.clone());
+        view.set_mask(output.get_mask());
+        view.bring_to_front();
+        view.focus();
+        true
+    } else {
+        false
     }
-    view.set_mask(output.get_mask());
-    view.bring_to_front();
-    view.focus();
-    return true;
 }
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    match tree::remove_view(&view) {
-        Ok(_) => {},
-        Err(_) => {},
+    if let Ok(tree) = tree::try_lock_tree() {
+        tree.remove_view(&view);
+    } else {
+        warn!("Could not delete view {:?}", view);
     }
 }
 

@@ -24,9 +24,10 @@ macro_rules! gen_switch_workspace {
     ($map:expr; $($b:ident, $n:expr);+) => {
         $(fn $b() {
             trace!("Switching to workspace {}", $n);
-            tree::switch_workspace(&$n.to_string())
-                .expect("Could not switch to a work-space");
-                }
+            if let Ok(mut tree)  = tree::try_lock_tree() {
+                tree.switch_workspace(&$n.to_string());
+            }
+        }
           register_defaults!( $map; $b, keypress!("Alt", $n) );
           )+
     };
