@@ -13,6 +13,7 @@ extern crate env_logger;
 
 #[macro_use]
 extern crate hlua;
+extern crate rustc_serialize;
 
 use std::env;
 
