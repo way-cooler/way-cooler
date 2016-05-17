@@ -1,109 +1,58 @@
 //! Contains information for keybindings.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 use std::hash::{Hash, Hasher};
 
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 
-use super::layout::tree;
-use super::lua;
-
-/// Register default keypresses to a map
-macro_rules! register_defaults {
-    ( $map:expr; $($func:expr, $press:expr);+ ) => {
-        $(
-            let _ = $map.insert($press, Arc::new($func));
-            )+
-    }
-}
-
-/// Generate switch_workspace methods and register them in $map
-macro_rules! gen_switch_workspace {
-    ($map:expr; $($b:ident, $n:expr);+) => {
-        $(fn $b() {
-            trace!("Switching to workspace {}", $n);
-            if let Ok(mut tree)  = tree::try_lock_tree() {
-                tree.switch_workspace(&$n.to_string());
-            }
-        }
-          register_defaults!( $map; $b, keypress!("Alt", $n) );
-          )+
-    };
-}
+use registry::get_command;
+use registry::CommandFn;
 
 lazy_static! {
-    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
-        let mut map = HashMap::<KeyPress, KeyEvent>::new();
-
-
-        gen_switch_workspace!(map; switch_workspace_1, "1";
-                              switch_workspace_2, "2";
-                              switch_workspace_3, "3";
-                              switch_workspace_4, "4";
-                              switch_workspace_5, "5";
-                              switch_workspace_6, "6";
-                              switch_workspace_7, "7";
-                              switch_workspace_8, "8";
-                              switch_workspace_9, "9";
-                              switch_workspace_0, "0");
-
-        register_defaults! {
-            map;
-            quit_fn, keypress!("Alt", "Escape");
-            terminal_fn, keypress!("Alt", "Return");
-            dmenu_fn, keypress!("Alt", "d");
-            pointer_fn, keypress!("Alt", "p")
-        }
-
-        RwLock::new(map)
+    static ref BINDINGS: RwLock<HashMap<KeyPress, CommandFn>> = {
+        RwLock::new(HashMap::new())
     };
 }
 
-fn terminal_fn() {
-    use std::process::Command;
-    use std::env;
-
-    let term = env::var("WAYLAND_TERMINAL")
-        .unwrap_or("weston-terminal".to_string());
-
-    Command::new("sh")
-        .arg("-c")
-        .arg(term)
-        .spawn().expect("Error launching terminal");
-}
-
-fn dmenu_fn() {
-    use std::process::Command;
-    Command::new("sh")
-        .arg("-c")
-        .arg("dmenu_run")
-        .spawn().expect("Error launching terminal");
-}
-
-fn pointer_fn() {
-    use lua::LuaQuery;
-    let code = "if wm == nil then print('wm table does not exist')\n\
-                elseif wm.pointer == nil then print('wm.pointer table does not exist')\n\
-                else\n\
-                print('get_position is a func, preparing execution')
-                local x, y = wm.pointer.get_position()\n\
-                print('The cursor is at ' .. x .. ', ' .. y)\n\
-                end".to_string();
-    lua::send(LuaQuery::Execute(code))
-        .expect("Error telling Lua to get pointer coords");
-}
-
-fn quit_fn() {
-    info!("handler: Esc keypress!");
-    ::rustwlc::terminate();
-}
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct KeyPress {
     modifiers: KeyMod,
     keys: Vec<Keysym>
+}
+
+pub fn init() {
+    macro_rules! insert_all {
+        ( $($press:expr => $name:expr);+ ) => {
+            register(vec![
+                $( ($press, get_command(&$name.to_string())
+                  .expect("Unable to register default command!")) ),+
+                ]);
+        }
+    }
+
+    insert_all! {
+        keypress!("Alt", "Escape") => "quit";
+        keypress!("Alt", "Return") => "launch_terminal";
+        keypress!("Alt", "d") => "launch_dmenu";
+        //keypress!("Alt", "l") => "dmenu_eval";
+        /*KeyPress::from_key_names(vec!["Alt", "Shift"], vec!["l"])
+            .expect("Unable to create default keypress")
+            => "dmenu_lua_dofile";*/
+
+        keypress!("Alt", "1") => "switch_workspace_1";
+        keypress!("Alt", "2") => "switch_workspace_2";
+        keypress!("Alt", "3") => "switch_workspace_3";
+        keypress!("Alt", "4") => "switch_workspace_4";
+        keypress!("Alt", "5") => "switch_workspace_5";
+        keypress!("Alt", "6") => "switch_workspace_6";
+        keypress!("Alt", "7") => "switch_workspace_7";
+        keypress!("Alt", "8") => "switch_workspace_8";
+        keypress!("Alt", "9") => "switch_workspace_9";
+        keypress!("Alt", "0") => "switch_workspace_0"
+    }
 }
 
 /// Parses a KeyMod from key names.
@@ -126,7 +75,8 @@ pub fn keymod_from_names(keys: Vec<&str>) -> Result<KeyMod, String> {
 
 impl KeyPress {
     /// Creates a new KeyPress struct from a list of modifier and key names
-    pub fn from_key_names(mods: Vec<&str>, keys: Vec<&str>) -> Result<KeyPress, String> {
+    pub fn from_key_names(mods: Vec<&str>, keys: Vec<&str>)
+                          -> Result<KeyPress, String> {
         keymod_from_names(mods).and_then(|mods| {
             let mut syms: Vec<Keysym> = Vec::with_capacity(keys.len());
             for name in keys {
@@ -170,11 +120,8 @@ impl Hash for KeyPress {
     }
 }
 
-/// The type of function a key press handler is.
-pub type KeyEvent = Arc<Fn() + Send + Sync>;
-
 /// Get a key mapping from the list.
-pub fn get(key: &KeyPress) -> Option<KeyEvent> {
+pub fn get(key: &KeyPress) -> Option<CommandFn> {
     let bindings = BINDINGS.read()
         .expect("Keybindings/get: unable to lock keybindings");
     match bindings.get(key) {
@@ -184,8 +131,7 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
 }
 
 /// Register a new set of key mappings
-#[allow(dead_code)]
-pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
+pub fn register(values: Vec<(KeyPress, CommandFn)>) {
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
     for value in values {

@@ -11,6 +11,7 @@ use rustc_serialize::Decodable;
 use rustc_serialize::json::{Json, ToJson, Decoder, DecoderError};
 
 mod types;
+mod commands;
 pub use self::types::*; // Export constants too
 
 #[cfg(test)]
@@ -32,6 +33,10 @@ pub enum RegistryError {
     KeyNotFound,
     /// The registry key was of the wrong type
     WrongKeyType,
+}
+
+pub fn init() {
+    commands::register_defaults();
 }
 
 /// Acquires a read lock on the registry.

@@ -82,6 +82,7 @@ impl RegistryValue {
     }
 
     /// Attempts to access the RegistryValue as a command
+    #[allow(dead_code)]
     pub fn get_command(self) -> Option<CommandFn> {
         match self {
             RegistryValue::Command(com) => Some(com),
