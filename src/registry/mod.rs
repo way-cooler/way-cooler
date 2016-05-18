@@ -1,6 +1,5 @@
 //! way-cooler registry.
 
-use std::ops::Deref;
 use std::cmp::Eq;
 use std::fmt::Display;
 use std::hash::Hash;
@@ -8,11 +7,11 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use hlua::any::AnyLuaValue;
-
-use convert::{ToTable, FromTable, ConverterError};
+use rustc_serialize::Decodable;
+use rustc_serialize::json::{Json, ToJson, Decoder, DecoderError};
 
 mod types;
+mod commands;
 pub use self::types::*; // Export constants too
 
 #[cfg(test)]
@@ -26,12 +25,18 @@ lazy_static! {
 }
 
 /// Error types that can happen
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum RegistryError {
     /// The value in the registry could not be parsed
-    InvalidLua(ConverterError),
+    InvalidJson(DecoderError),
     /// The registry key was not found
-    KeyNotFound
+    KeyNotFound,
+    /// The registry key was of the wrong type
+    WrongKeyType,
+}
+
+pub fn init() {
+    commands::register_defaults();
 }
 
 /// Acquires a read lock on the registry.
@@ -44,42 +49,80 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
     REGISTRY.write().expect("Unable to write to registry!")
 }
 
-/// Gets a Lua object from a registry key
-pub fn get_lua<K>(name: &K) -> Option<(AccessFlags, Arc<AnyLuaValue>)>
-where String: Borrow<K>, K: Hash + Eq + Display {
-    trace!("get_lua: {}", *name);
-    let reg = read_lock();
-    reg.get(name).map(|val| (val.flags(), val.get_lua()))
+
+/// Gets a RegistryValue enum with the specified name
+pub fn get_value<K>(name: &K) -> Option<RegistryValue>
+    where String: Borrow<K>, K: Hash + Eq + Display {
+    trace!("> get_value: {}", name);
+    // clone() will either clone an Arc or an Arc+AccessFlags
+    read_lock().get(name).map(|v| v.clone())
 }
 
-/// Gets an object from the registry, decoding its internal Lua
+/// Attempts to get a command from the registry.
+pub fn get_command<K>(name: &K) -> Result<CommandFn, RegistryError>
+    where String: Borrow<K>, K: Hash + Eq + Display {
+    trace!("< get_command: {}", name);
+    get_value(name).ok_or(RegistryError::KeyNotFound)
+        .and_then(|val| match val {
+        RegistryValue::Command(com) => Ok(com),
+        _ => Err(RegistryError::WrongKeyType)
+    })
+}
+
+/// Gets a Json object from a registry key
+pub fn get_json<K>(name: &K) -> Result<(AccessFlags, Arc<Json>), RegistryError>
+where String: Borrow<K>, K: Hash + Eq + Display {
+    trace!("< get_json: {}", name);
+    get_value(name).ok_or(RegistryError::KeyNotFound)
+        .and_then(|val| match val {
+            RegistryValue::Object { flags, data } =>
+                Ok((flags, data)),
+            _ => Err(RegistryError::WrongKeyType)
+        })
+}
+
+/// Gets an object from the registry, decoding its internal Json
 /// representation.
 #[allow(dead_code)]
-pub fn get<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
-    where T: FromTable, String: Borrow<K>, K: Hash + Eq + Display {
-    if let Some(lua_pair) = get_lua(name) {
-        let (access, lua_arc) = lua_pair;
-        // Ultimately, values must be cloned out of the registry as well
-        match T::from_lua_table(lua_arc.deref().clone()) {
-            Ok(val) => Ok((access, val)),
-            Err(e) => Err(RegistryError::InvalidLua(e))
+pub fn get_data<K, T>(name: &K) -> Result<(AccessFlags, T), RegistryError>
+    where T: Decodable, String: Borrow<K>, K: Hash + Eq + Display {
+    trace!("< < get_data: {}", name);
+    get_json(name).and_then(|(flags, obj)| {
+        match T::decode(&mut Decoder::new((*obj).clone())) {
+            Ok(val) => Ok((flags, val)),
+            Err(e) => Err(RegistryError::InvalidJson(e))
         }
-    }
-    else {
-        Err(RegistryError::KeyNotFound)
-    }
+    })
 }
 
-/// Set a key in the registry to a particular value
+/// Set a value to the given RegistryValue
 #[allow(dead_code)]
-pub fn set<T: ToTable>(key: String, flags: AccessFlags, val: T) {
-    trace!("set: {:?} {}", flags, key);
-    let regvalue = RegistryValue::new(flags, val);
-    let mut write_reg = write_lock();
-    write_reg.insert(key, regvalue);
+pub fn set(key: String, value: RegistryValue) {
+    trace!("> set: {} to {:?}", key, &value);
+    write_lock().insert(key, value);
 }
 
-/// Whether this map contains a key
+/// Set a command to the given Command
+#[allow(dead_code)]
+pub fn set_command(key: String, command: CommandFn) {
+    trace!("< set_command: {}", key);
+    set(key, RegistryValue::Command(command))
+}
+
+/// Set a value to the given JSON value.
+pub fn set_json(key: String, flags: AccessFlags, json: Json) {
+    trace!("< set_json: {}", key);
+    set(key, RegistryValue::new_json(flags, json))
+}
+
+/// Sets a value to the given data, to be encoded into JSON
+#[allow(dead_code)]
+pub fn set_data<T: ToJson>(key: String, access: AccessFlags, val: T) {
+    trace!("< < set_data: {}", key);
+    set_json(key, access, val.to_json())
+}
+
+/// Whether this map contains a key of any type
 #[allow(dead_code)]
 pub fn contains_key<K>(key: &K) -> bool
 where String: Borrow<K>, K: Hash + Eq + Display {

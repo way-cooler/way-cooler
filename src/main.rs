@@ -13,6 +13,7 @@ extern crate env_logger;
 
 #[macro_use]
 extern crate hlua;
+extern crate rustc_serialize;
 
 use std::env;
 
@@ -88,6 +89,13 @@ fn main() {
 
     // Prepare to launch wlc
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
+
+    // (Future config initialization goes here)
+
+    // Add commands to registry
+    registry::init();
+    // And bind the defaults
+    keys::init();
 
     // Hand control over to wlc's event loop
     info!("Running wlc...");
