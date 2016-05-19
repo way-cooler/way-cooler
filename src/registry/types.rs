@@ -19,8 +19,6 @@ bitflags! {
     }
 }
 
-/// Result type of gets/sets to the registry
-pub type RegistryResult<T> = Result<T, RegistryError>;
 
 /// Command type for Rust function
 pub type CommandFn = Arc<Fn() + Send + Sync>;
@@ -83,18 +81,18 @@ impl Debug for RegistryField {
 impl Debug for RegistryGetData {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            &RegistryGetData::Object { ref flags, ref data } =>
+            &RegistryGetData::Object(ref flags, ref data) =>
                 f.debug_struct("RegistryGetData::Object")
                 .field("flags", flags as &Debug)
                 .field("data", data as &Debug).finish(),
-            &RegistryField::Property { .. } =>
+            &RegistryGetData::Property(_) =>
                 write!(f, "RegistryGetData::Property(...)")
         }
     }
 }
 
 impl FieldType {
-    pub fn can_set_to(self, other: FieldType) -> bool {
+    pub fn can_set_from(self, other: FieldType) -> bool {
         match self {
             FieldType::Command => other == FieldType::Command,
             FieldType::Property =>
@@ -128,7 +126,7 @@ impl RegistryField {
     pub fn get_data(&self) -> Option<RegistryGetData> {
         match *self {
             RegistryField::Object { ref flags, ref data } =>
-                Some(RegistryGetData::Object(flags,clone(), data.clone())),
+                Some(RegistryGetData::Object(flags.clone(), data.clone())),
             RegistryField::Property { ref get, .. } =>
                 Some(RegistryGetData::Property(get.clone())),
             _ => None
@@ -145,14 +143,14 @@ impl RegistryField {
 
     pub fn as_object(self) -> Option<(AccessFlags, Arc<Json>)> {
         match self {
-            RegistryField::Object { flags, json } => Some(flags, json),
+            RegistryField::Object { flags, data } => Some((flags, data)),
             _ => None
         }
     }
 
     pub fn as_property(self) -> Option<(GetFn, SetFn)> {
         match self {
-            RegistryField::Property { get, set } => Some(get, set),
+            RegistryField::Property { get, set } => Some((get, set)),
             _ => None
         }
     }
@@ -173,6 +171,13 @@ impl RegistryGetData {
             RegistryGetData::Object(flags, data) => (flags, data),
             RegistryGetData::Property(get) =>
                 (AccessFlags::all(), Arc::new(get()))
+        }
+    }
+
+    pub fn get_type(&self) -> FieldType {
+        match self {
+            &RegistryGetData::Property(_) => FieldType::Property,
+            &RegistryGetData::Object(_, _) => FieldType::Object
         }
     }
 }

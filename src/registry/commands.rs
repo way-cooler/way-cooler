@@ -6,7 +6,7 @@ use std::thread;
 use std::env;
 use std::io::prelude::*;
 
-use registry::{self, RegistryValue, CommandFn};
+use registry::{self, RegistryField, CommandFn};
 use layout::tree::try_lock_tree;
 use lua::{self, LuaQuery};
 
@@ -18,7 +18,7 @@ pub fn register_defaults() {
     let mut reg = registry::write_lock();
 
     let mut register = |name: &'static str, val: CommandFn| {
-        reg.insert(name.to_string(), RegistryValue::new_command(val));
+        reg.insert(name.to_string(), RegistryField::Command(val));
     };
 
     // Workspace
