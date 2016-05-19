@@ -32,6 +32,8 @@ pub enum RegistryError {
     KeyNotFound,
     /// The registry key was of the wrong type
     WrongKeyType,
+    /// Attempting to set a readonly value
+    InvalidOperation,
     /// The object couldn't be converted to/from Json
     DecoderError(DecoderError)
 }
@@ -57,9 +59,10 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
 /// Gets a RegistryField enum with the specified name
 pub fn get_field<K>(name: &K) -> Option<RegistryField>
     where String: Borrow<K>, K: Hash + Eq + Display {
-    trace!("get_field: {}", name);
     // clone() will either clone an Arc or an Arc+AccessFlags
-    read_lock().get(name).map(|v| v.clone())
+    let result = read_lock().get(name).map(|v| v.clone());
+    trace!("get: {} => {:?}", name, &result);
+    return result;
 }
 
 /// Attempts to get a command from the registry.
@@ -80,8 +83,11 @@ where String: Borrow<K>, K: Hash + Eq + Display {
         .and_then(|val| match val {
             RegistryField::Object { flags, data } =>
                 Ok(RegistryGetData::Object(flags, data)),
-            RegistryField::Property { get, .. } =>
-                Ok(RegistryGetData::Property(get)),
+            RegistryField::Property { get: maybe_get, .. } =>
+                match maybe_get {
+                    Some(get) => Ok(RegistryGetData::Property(get)),
+                    None => Err(RegistryError::InvalidOperation)
+                },
             _ => Err(RegistryError::WrongKeyType)
         })
 }
@@ -152,8 +158,10 @@ pub fn set_json(key: String, flags: AccessFlags, json: Json)
                     }).as_object());
                 }
                 else if first_type == FieldType::Property {
-                    func = entry.get().clone().as_property()
-                        .expect("set_json: Checked existing type").1;
+                    match entry.get().clone().as_property_set() {
+                        Some(fun) => func = fun,
+                        None => return Err(RegistryError::InvalidOperation)
+                    }
                 }
                 else {
                     return Err(RegistryError::WrongKeyType);
@@ -190,8 +198,8 @@ pub fn set_with_property(key: String, flags: AccessFlags, json: Json)
                 Ok(None)
             }
             else if first_type == FieldType::Property {
-                Ok(Some((json, entry.get().clone().as_property()
-                   .expect("set_json_property: checked value of field type").1)))
+                Ok(Some((json, entry.get().clone().as_property_set()
+                   .expect("set_json_property: checked value of field type"))))
             }
             else {
                 Err(RegistryError::WrongKeyType)
@@ -201,7 +209,7 @@ pub fn set_with_property(key: String, flags: AccessFlags, json: Json)
 }
 
 /// Binds properties to a field of the registry
-pub fn set_property_field(key: String, get_fn: GetFn, set_fn: SetFn)
+pub fn set_property_field(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>)
                           -> RegistryResult<Option<RegistryField>> {
     set_field(key, RegistryField::Property { get: get_fn, set: set_fn })
 }

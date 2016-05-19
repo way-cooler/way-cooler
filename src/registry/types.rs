@@ -46,9 +46,9 @@ pub enum RegistryField {
     /// A registry value whose get and set maps to other Rust code
     Property {
         /// Method called to set a property
-        get: GetFn,
+        get: Option<GetFn>,
         /// Method called to set a property
-        set: SetFn
+        set: Option<SetFn>
     },
     /// A command
     Command(CommandFn)
@@ -70,8 +70,14 @@ impl Debug for RegistryField {
                 f.debug_struct("RegistryField::Object")
                 .field("flags", flags as &Debug)
                 .field("data", data as &Debug).finish(),
-            &RegistryField::Property { .. } =>
-                write!(f, "RegistryField::Property(...)"),
+            &RegistryField::Property { ref get, ref set } => {
+                let new_get = match get { &Some(_) => Some(true), &None => None };
+                let new_set = match set { &Some(_) => Some(true), &None => None };
+                f.debug_struct("RegistryField::Property")
+                    .field("get", &new_get)
+                    .field("set", &new_set)
+                    .finish()
+            }
             &RegistryField::Command(_) =>
                 write!(f, "RegistryField::Command(...)")
         }
@@ -86,7 +92,7 @@ impl Debug for RegistryGetData {
                 .field("flags", flags as &Debug)
                 .field("data", data as &Debug).finish(),
             &RegistryGetData::Property(_) =>
-                write!(f, "RegistryGetData::Property(...)")
+                write!(f, "RegistryGetData::Property")
         }
     }
 }
@@ -109,7 +115,12 @@ impl RegistryField {
     pub fn get_flags(&self) -> Option<AccessFlags> {
         match self {
             &RegistryField::Object { ref flags, .. } => Some(flags.clone()),
-            &RegistryField::Property { .. } => Some(AccessFlags::all()),
+            &RegistryField::Property { ref get, ref set } => {
+                let mut flags = AccessFlags::empty();
+                if get.is_some() { flags.insert(LUA_READ); }
+                if set.is_some() { flags.insert(LUA_WRITE); }
+                Some(flags)
+            },
             _ => None
         }
     }
@@ -128,7 +139,7 @@ impl RegistryField {
             RegistryField::Object { ref flags, ref data } =>
                 Some(RegistryGetData::Object(flags.clone(), data.clone())),
             RegistryField::Property { ref get, .. } =>
-                Some(RegistryGetData::Property(get.clone())),
+                get.clone().and_then(|g| Some(RegistryGetData::Property(g))),
             _ => None
         }
     }
@@ -148,11 +159,19 @@ impl RegistryField {
         }
     }
 
-    pub fn as_property(self) -> Option<(GetFn, SetFn)> {
+    pub fn as_property(self) -> Option<(Option<GetFn>, Option<SetFn>)> {
         match self {
             RegistryField::Property { get, set } => Some((get, set)),
             _ => None
         }
+    }
+
+    pub fn as_property_get(self) -> Option<GetFn> {
+        self.as_property().and_then(|(maybe_get, _)| maybe_get)
+    }
+
+    pub fn as_property_set(self) -> Option<SetFn> {
+        self.as_property().and_then(|(_, maybe_set)| maybe_set)
     }
 
     /// Gets the type of this registry field
