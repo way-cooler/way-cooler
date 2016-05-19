@@ -1,5 +1,6 @@
 //! way-cooler registry.
 
+use std::ops::Deref;
 use std::cmp::Eq;
 use std::fmt::Display;
 use std::hash::Hash;
@@ -7,7 +8,8 @@ use std::borrow::Borrow;
 use std::collections::hash_map::{HashMap, Entry};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use rustc_serialize::json::Json;
+use rustc_serialize::Decodable;
+use rustc_serialize::json::{Json, ToJson, Decoder, DecoderError};
 
 mod types;
 mod commands;
@@ -30,6 +32,8 @@ pub enum RegistryError {
     KeyNotFound,
     /// The registry key was of the wrong type
     WrongKeyType,
+    /// The object couldn't be converted to/from Json
+    DecoderError(DecoderError)
 }
 
 /// Result type of gets/sets to the registry
@@ -82,6 +86,16 @@ where String: Borrow<K>, K: Hash + Eq + Display {
         })
 }
 
+/// Get a Rust structure from the registry
+pub fn get_struct<K, T>(name: &K) -> RegistryResult<(AccessFlags, T)>
+where String: Borrow <K>, K: Hash + Eq + Display, T: Decodable {
+    get_json(name).and_then(|(flags, json)|
+        T::decode(&mut Decoder::new(json.deref().clone()))
+                            .map_err(|e| RegistryError::DecoderError(e))
+                            .map(|data| (flags, data)))
+}
+
+/// Get Json data from the registry, evaluating if a property was found.
 pub fn get_json<K>(name: &K) -> RegistryResult<(AccessFlags, Arc<Json>)>
 where String: Borrow<K>, K: Hash + Eq + Display {
     get_data(name).map(|val| val.resolve())
@@ -149,6 +163,11 @@ pub fn set_json(key: String, flags: AccessFlags, json: Json)
     }
     func(json);
     return Ok(None);
+}
+
+pub fn set_struct<T: ToJson>(key: String, flags: AccessFlags, value: T)
+                             -> RegistryResult<Option<(AccessFlags, Arc<Json>)>> {
+    set_json(key, flags, value.to_json())
 }
 
 /// Sets a value for a given Json value, optionally returning the associated property.
