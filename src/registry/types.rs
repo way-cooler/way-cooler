@@ -19,6 +19,9 @@ bitflags! {
     }
 }
 
+/// Result type of gets/sets to the registry
+pub type RegistryResult<T> = Result<T, RegistryError>;
+
 /// Command type for Rust function
 pub type CommandFn = Arc<Fn() + Send + Sync>;
 
@@ -91,7 +94,7 @@ impl Debug for RegistryGetData {
 }
 
 impl FieldType {
-    pub fn can_set_from(self, other: FieldType) -> bool {
+    pub fn can_set_to(self, other: FieldType) -> bool {
         match self {
             FieldType::Command => other == FieldType::Command,
             FieldType::Property =>
@@ -103,35 +106,6 @@ impl FieldType {
 }
 
 impl RegistryField {
-    /// Creates a new registry object with the specified flags
-    /// and Rust data to be converted.
-    #[allow(dead_code)]
-    pub fn new_value<T: ToJson>(flags: AccessFlags, data: T) -> RegistryField {
-        RegistryField::Object {
-            flags: flags,
-            data: Arc::new(data.to_json())
-        }
-    }
-
-    /// Creates a new RegistryFile with the specified Lua data.
-    pub fn new_json(flags: AccessFlags, data: Json) -> RegistryField {
-        RegistryField::Object {
-            flags: flags, data: Arc::new(data)
-        }
-    }
-
-    /// Creates a new RegistryCommand with the specified callback.
-    pub fn new_command(com: CommandFn) -> RegistryField {
-        RegistryField::Command(com)
-    }
-
-    /// Creates a new registry property with the specified getter and setter
-    pub fn new_property(get: GetFn, set: SetFn) -> RegistryField {
-        RegistryField::Property {
-            get: get, set: set
-        }
-    }
-
     /// What access the module has to it
     #[allow(dead_code)]
     pub fn get_flags(&self) -> Option<AccessFlags> {
@@ -143,10 +117,9 @@ impl RegistryField {
     }
 
     /// Attempts to access the RegistryField as a command
-    #[allow(dead_code)]
-    pub fn get_command(self) -> Option<CommandFn> {
-        match self {
-            RegistryField::Command(com) => Some(com),
+    pub fn get_command(&self) -> Option<CommandFn> {
+        match *self {
+            RegistryField::Command(ref com) => Some(com.clone()),
             _ => None
         }
     }
@@ -158,6 +131,28 @@ impl RegistryField {
                 Some(RegistryGetData::Object(flags,clone(), data.clone())),
             RegistryField::Property { ref get, .. } =>
                 Some(RegistryGetData::Property(get.clone())),
+            _ => None
+        }
+    }
+
+    /// Converts this RegistryField to maybe a command
+    pub fn as_command(self) -> Option<CommandFn> {
+        match self {
+            RegistryField::Command(com) => Some(com),
+            _ => None
+        }
+    }
+
+    pub fn as_object(self) -> Option<(AccessFlags, Arc<Json>)> {
+        match self {
+            RegistryField::Object { flags, json } => Some(flags, json),
+            _ => None
+        }
+    }
+
+    pub fn as_property(self) -> Option<(GetFn, SetFn)> {
+        match self {
+            RegistryField::Property { get, set } => Some(get, set),
             _ => None
         }
     }
