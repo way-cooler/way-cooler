@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
-use rustc_serialize::json::{Json, ToJson};
+use rustc_serialize::json::Json;
 
 bitflags! {
     /// Access permissions for items in the registry
@@ -134,6 +134,7 @@ impl RegistryField {
     }
 
     /// Attempts to access the RegistryField as a file
+    #[allow(dead_code)]
     pub fn get_data(&self) -> Option<RegistryGetData> {
         match *self {
             RegistryField::Object { ref flags, ref data } =>
@@ -145,6 +146,7 @@ impl RegistryField {
     }
 
     /// Converts this RegistryField to maybe a command
+    #[allow(dead_code)]
     pub fn as_command(self) -> Option<CommandFn> {
         match self {
             RegistryField::Command(com) => Some(com),
@@ -166,6 +168,7 @@ impl RegistryField {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_property_get(self) -> Option<GetFn> {
         self.as_property().and_then(|(maybe_get, _)| maybe_get)
     }
@@ -193,6 +196,7 @@ impl RegistryGetData {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_type(&self) -> FieldType {
         match self {
             &RegistryGetData::Property(_) => FieldType::Property,

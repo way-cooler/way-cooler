@@ -3,7 +3,6 @@
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
 use std::thread;
-use std::ops::Deref;
 
 use rustc_serialize::Decodable;
 use rustc_serialize::json::{Json, ToJson};
@@ -39,12 +38,12 @@ fn add_keys() {
     let numbers = vec![1, 2, 3, 4, 5];
     let point = Point::new(-11, 12);
 
-    registry::set_struct("test_num".to_string(), LUA_READ, num.to_json());
-    registry::set_struct("test_double".to_string(), LUA_READ, double);
-    registry::set_struct("test_string".to_string(), LUA_READ, string.clone());
-    registry::set_struct("test_numbers".to_string(), LUA_READ, numbers.clone());
-    registry::set_struct("test_point".to_string(), LUA_READ, point.clone());
-    registry::set_property_field("test_func".to_string(), Some(Arc::new(prop_get)), None);
+    registry::set_struct("test_num".to_string(), LUA_READ, num.to_json()).expect(ERR);
+    registry::set_struct("test_double".to_string(), LUA_READ, double).expect(ERR);
+    registry::set_struct("test_string".to_string(), LUA_READ, string.clone()).expect(ERR);
+    registry::set_struct("test_numbers".to_string(), LUA_READ, numbers.clone()).expect(ERR);
+    registry::set_struct("test_point".to_string(), LUA_READ, point.clone()).expect(ERR);
+    registry::set_property_field("test_func".to_string(), Some(Arc::new(prop_get)), None).expect(ERR);
 }
 
 #[test]
@@ -79,9 +78,9 @@ fn keys_equal() {
 #[test]
 fn key_perms() {
     thread::sleep(Duration::from_millis(240));
-    registry::set_struct("perm_none".to_string(), LUA_PRIVATE, 0);
-    registry::set_struct("perm_read".to_string(), LUA_READ, 1);
-    registry::set_struct("perm_write".to_string(), LUA_WRITE, 2);
+    registry::set_struct("perm_none".to_string(), LUA_PRIVATE, 0).expect(ERR);
+    registry::set_struct("perm_read".to_string(), LUA_READ, 1).expect(ERR);
+    registry::set_struct("perm_write".to_string(), LUA_WRITE, 2).expect(ERR);
 
     assert_eq!(get_struct::<_, i32>(&"perm_none".to_string()).expect(ERR).0, LUA_PRIVATE);
     assert_eq!(get_struct::<_, i32>(&"perm_read".to_string()).expect(ERR).0, LUA_READ);

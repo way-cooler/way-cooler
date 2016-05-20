@@ -129,6 +129,7 @@ pub fn set_field(key: String, value: RegistryField)
 }
 
 /// Set a command to the given Command
+#[allow(dead_code)]
 pub fn set_command(key: String, command: CommandFn)
                    -> RegistryResult<Option<CommandFn>> {
     set_field(key, RegistryField::Command(command))
@@ -179,6 +180,7 @@ pub fn set_struct<T: ToJson>(key: String, flags: AccessFlags, value: T)
 }
 
 /// Sets a value for a given Json value, optionally returning the associated property.
+#[allow(dead_code)]
 pub fn set_with_property(key: String, flags: AccessFlags, json: Json)
                          -> RegistryResult<Option<(Json, SetFn)>> {
     let mut reg = write_lock();
