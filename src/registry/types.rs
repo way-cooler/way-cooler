@@ -9,14 +9,23 @@ use rustc_serialize::json::Json;
 bitflags! {
     /// Access permissions for items in the registry
     pub flags AccessFlags: u8 {
-        #[allow(dead_code)]
-        /// Default flags
-        const LUA_PRIVATE = 0,
-        /// Lua thread can read the data
-        const LUA_READ    = 1 << 0,
-        /// Lua thread can write to the data
-        const LUA_WRITE   = 1 << 1,
+        /// Clients can read/get the data
+        const READ    = 1 << 0,
+        /// Clients can write/set the data
+        const WRITE   = 1 << 1,
     }
+}
+
+impl AccessFlags {
+    /// Read permissions
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn READ() -> AccessFlags { READ }
+
+    /// Write permissions
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn WRITE() -> AccessFlags { WRITE }
 }
 
 
@@ -118,8 +127,8 @@ impl RegistryField {
             &RegistryField::Object { ref flags, .. } => Some(flags.clone()),
             &RegistryField::Property { ref get, ref set } => {
                 let mut flags = AccessFlags::empty();
-                if get.is_some() { flags.insert(LUA_READ); }
-                if set.is_some() { flags.insert(LUA_WRITE); }
+                if get.is_some() { flags.insert(AccessFlags::READ()); }
+                if set.is_some() { flags.insert(AccessFlags::WRITE()); }
                 Some(flags)
             },
             _ => None

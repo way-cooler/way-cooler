@@ -7,14 +7,14 @@ use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::LuaString;
 
 use registry;
-use registry::{RegistryField, AccessFlags, LUA_WRITE};
+use registry::{RegistryField, AccessFlags};
 use convert::ToTable;
 use convert::json::lua_to_json;
 
 pub fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
     if let LuaString(key) = lua_key {
         if let Ok((access, json_arc)) = registry::get_json(&key) {
-            if access.contains(registry::LUA_READ) {
+            if access.contains(AccessFlags::READ()) {
                 return json_arc.deref().clone().to_table();
             }
         }
@@ -32,7 +32,7 @@ pub fn new_index(_table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue)
         let flags: AccessFlags;
         if let Some(reg_field) = reg.get(&key) {
             if let Some((access, _old_arc)) = reg_field.clone().as_object() {
-                if !access.contains(LUA_WRITE) {
+                if !access.contains(AccessFlags::WRITE()) {
                     return Err("Unable to modify that key!");
                 }
                 flags = access;

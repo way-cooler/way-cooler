@@ -8,7 +8,7 @@ use rustc_serialize::Decodable;
 use rustc_serialize::json::{Json, ToJson};
 
 use registry;
-use registry::{AccessFlags, LUA_READ, LUA_WRITE, LUA_PRIVATE, get_struct};
+use registry::{AccessFlags, get_struct};
 
 json_convertible! {
     #[derive(Debug, Clone, Eq, PartialEq)]
@@ -38,11 +38,11 @@ fn add_keys() {
     let numbers = vec![1, 2, 3, 4, 5];
     let point = Point::new(-11, 12);
 
-    registry::set_struct("test_num".to_string(), LUA_READ, num.to_json()).expect(ERR);
-    registry::set_struct("test_double".to_string(), LUA_READ, double).expect(ERR);
-    registry::set_struct("test_string".to_string(), LUA_READ, string.clone()).expect(ERR);
-    registry::set_struct("test_numbers".to_string(), LUA_READ, numbers.clone()).expect(ERR);
-    registry::set_struct("test_point".to_string(), LUA_READ, point.clone()).expect(ERR);
+    registry::set_struct("test_num".to_string(), AccessFlags::READ(), num.to_json()).expect(ERR);
+    registry::set_struct("test_double".to_string(), AccessFlags::READ(), double).expect(ERR);
+    registry::set_struct("test_string".to_string(), AccessFlags::READ(), string.clone()).expect(ERR);
+    registry::set_struct("test_numbers".to_string(), AccessFlags::READ(), numbers.clone()).expect(ERR);
+    registry::set_struct("test_point".to_string(), AccessFlags::READ(), point.clone()).expect(ERR);
     registry::set_property_field("test_func".to_string(), Some(Arc::new(prop_get)), None).expect(ERR);
 }
 
@@ -78,13 +78,13 @@ fn keys_equal() {
 #[test]
 fn key_perms() {
     thread::sleep(Duration::from_millis(240));
-    registry::set_struct("perm_none".to_string(), LUA_PRIVATE, 0).expect(ERR);
-    registry::set_struct("perm_read".to_string(), LUA_READ, 1).expect(ERR);
-    registry::set_struct("perm_write".to_string(), LUA_WRITE, 2).expect(ERR);
+    registry::set_struct("perm_none".to_string(), AccessFlags::empty(), 0).expect(ERR);
+    registry::set_struct("perm_read".to_string(), AccessFlags::READ(), 1).expect(ERR);
+    registry::set_struct("perm_write".to_string(), AccessFlags::WRITE(), 2).expect(ERR);
 
-    assert_eq!(get_struct::<_, i32>(&"perm_none".to_string()).expect(ERR).0, LUA_PRIVATE);
-    assert_eq!(get_struct::<_, i32>(&"perm_read".to_string()).expect(ERR).0, LUA_READ);
-    assert_eq!(get_struct::<_, i32>(&"perm_write".to_string()).expect(ERR).0, LUA_WRITE);
+    assert_eq!(get_struct::<_, i32>(&"perm_none".to_string()).expect(ERR).0, AccessFlags::empty());
+    assert_eq!(get_struct::<_, i32>(&"perm_read".to_string()).expect(ERR).0, AccessFlags::READ());
+    assert_eq!(get_struct::<_, i32>(&"perm_write".to_string()).expect(ERR).0, AccessFlags::WRITE());
     assert_eq!(registry::get_json(&"test_func".to_string()).expect(ERR).0, AccessFlags::all());
 }
 
@@ -132,7 +132,7 @@ where T: ::std::fmt::Debug + Decodable + PartialEq {
     for _ in 1 .. 50 {
         if let Ok(acc_val) = get_struct::<_, T>(&name) {
             let (acc, val) = acc_val;
-            assert!(acc.contains(LUA_READ));
+            assert!(acc.contains(AccessFlags::READ()));
             assert_eq!(val, in_val);
         }
         else {
