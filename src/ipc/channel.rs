@@ -3,8 +3,10 @@
 use std::io::Error as IOError;
 use std::io::prelude::*;
 
-use rustc_serialize::Decodable;
-use rustc_serialize::json::{Json, ToJson, Decoder, ParserError, EncoderError};
+use std::mem::transmute;
+
+use rustc_serialize::Encodable;
+use rustc_serialize::json::{Json, ToJson, Encoder, encode, ParserError, EncoderError};
 
 use unix_socket::UnixStream;
 
@@ -18,7 +20,9 @@ enum ResponseError {
     /// There were IO issues
     IO(IOError),
     /// Json was invalid
-    InvalidJson(ParserError)
+    InvalidJson(ParserError),
+    /// Couldn't format Json server-side
+    UnableToFormat(EncoderError)
 }
 
 /// Receives a packet from the given stream.
@@ -30,6 +34,17 @@ fn receive_packet(stream: &mut Read) -> Result<Json, ResponseError> {
     trace!("Listening for packet of length {}", len);
     return Json::from_reader(&mut stream.take(len as u64))
         .map_err(ResponseError::InvalidJson);
+}
+
+fn write_packet(stream: &mut Write, packet: &Json) -> Result<(), ResponseError> {
+    let json_string = try!(encode(packet).map_err(ResponseError::UnableToFormat));
+    trace!("Writing packet of length {}: {}", json_string.len(), json_string);
+    if json_string.len() as u32 > ::std::u32::MAX {
+        panic!("Attempted to send reply too big for the channel!");
+    }
+    let len_bytes = unsafe { transmute::<_, [u8; 4]>(json_string.len()) };
+    stream.write_all(&len_bytes);
+    stream.write_all(json_string.as_bytes()).map_err(ResponseError::IO)
 }
 
 pub fn handle_client(mut stream: UnixStream) {
