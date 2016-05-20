@@ -98,6 +98,7 @@ impl Debug for RegistryGetData {
 }
 
 impl FieldType {
+    /// Whether a field of this type can be changed by a field of type other.
     pub fn can_set_from(self, other: FieldType) -> bool {
         match self {
             FieldType::Command => other == FieldType::Command,
@@ -154,6 +155,7 @@ impl RegistryField {
         }
     }
 
+    /// Converts this RegistryField to maybe an object. Does not call property methods.
     pub fn as_object(self) -> Option<(AccessFlags, Arc<Json>)> {
         match self {
             RegistryField::Object { flags, data } => Some((flags, data)),
@@ -161,6 +163,7 @@ impl RegistryField {
         }
     }
 
+    /// Gets this field as maybe a property with maybe a getter and setter.
     pub fn as_property(self) -> Option<(Option<GetFn>, Option<SetFn>)> {
         match self {
             RegistryField::Property { get, set } => Some((get, set)),
@@ -168,11 +171,13 @@ impl RegistryField {
         }
     }
 
+    /// Returns the getter, if this field is a property with a getter.
     #[allow(dead_code)]
     pub fn as_property_get(self) -> Option<GetFn> {
         self.as_property().and_then(|(maybe_get, _)| maybe_get)
     }
 
+    /// Returns a setter if this field is a property with a setter.
     pub fn as_property_set(self) -> Option<SetFn> {
         self.as_property().and_then(|(_, maybe_set)| maybe_set)
     }
@@ -188,6 +193,10 @@ impl RegistryField {
 }
 
 impl RegistryGetData {
+    /// Collapses the waveform.
+    ///
+    /// If this is a Json, returns the Json data. If this is a property, runs the
+    /// method and returns the output.
     pub fn resolve(self) -> (AccessFlags, Arc<Json>) {
         match self {
             RegistryGetData::Object(flags, data) => (flags, data),
@@ -196,6 +205,7 @@ impl RegistryGetData {
         }
     }
 
+    /// Gets the FieldType of this GetData (property or object)
     #[allow(dead_code)]
     pub fn get_type(&self) -> FieldType {
         match self {
