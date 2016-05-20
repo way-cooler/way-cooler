@@ -30,6 +30,7 @@ use rustwlc::types::LogType;
 
 #[macro_use] // As it happens, it's important to declare the macros first.
 mod macros;
+mod convert;
 
 mod callbacks;
 mod keys;
@@ -37,7 +38,7 @@ mod keys;
 mod lua;
 mod registry;
 mod commands;
-mod convert;
+mod ipc;
 
 mod layout;
 mod compositor;
@@ -103,8 +104,11 @@ fn main() {
     commands::init();
     // Add API to registry
     registry::init();
+    // Start listening for clients
+    ipc::init();
     // And bind the defaults
     keys::init();
+    //
 
     // Hand control over to wlc's event loop
     info!("Running wlc...");
