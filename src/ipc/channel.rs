@@ -30,7 +30,7 @@ fn receive_packet(stream: &mut Read) -> Result<Json, ResponseError> {
     let mut buffer = [0u8; 4];
     try!(stream.read_exact(&mut buffer).map_err(ResponseError::IO));
     // This is what the byteorder crate does (needs testing)
-    let len = u32::from_be(unsafe { buffer.as_ptr() as *const u32 } as u32);
+    let len = u32::from_be(buffer.as_ptr() as *const u32 as u32);
     trace!("Listening for packet of length {}", len);
     return Json::from_reader(&mut stream.take(len as u64))
         .map_err(ResponseError::InvalidJson);
