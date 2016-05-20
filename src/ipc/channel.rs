@@ -39,10 +39,11 @@ fn receive_packet(stream: &mut Read) -> Result<Json, ResponseError> {
 fn write_packet(stream: &mut Write, packet: &Json) -> Result<(), ResponseError> {
     let json_string = try!(encode(packet).map_err(ResponseError::UnableToFormat));
     trace!("Writing packet of length {}: {}", json_string.len(), json_string);
-    if json_string.len() as u32 > ::std::u32::MAX {
+    if json_string.len() > ::std::u32::MAX as usize {
         panic!("Attempted to send reply too big for the channel!");
     }
-    let len_bytes = unsafe { transmute::<_, [u8; 4]>(json_string.len()) };
+    let _len = json_string.len() as u32;
+    let len_bytes = unsafe { transmute::<_, [u8; 4]>(_len) };
     stream.write_all(&len_bytes);
     stream.write_all(json_string.as_bytes()).map_err(ResponseError::IO)
 }
