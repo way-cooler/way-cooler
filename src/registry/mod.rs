@@ -151,7 +151,6 @@ pub fn insert_property(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>
 /// Gets access flags and field type of the given key.
 ///
 /// Returns `None` if the key does not exist.
-#[allow(dead_code)]
 pub fn key_info(key: &str) -> Option<(FieldType, AccessFlags)> {
     trace!("key_info: {}", key);
     let read_reg = read_lock();
