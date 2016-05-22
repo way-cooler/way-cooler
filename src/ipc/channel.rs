@@ -8,7 +8,6 @@ use std::mem::drop;
 
 use std::collections::BTreeMap;
 
-use rustc_serialize::Encodable;
 use rustc_serialize::json::{Json, encode, ParserError, EncoderError};
 
 use registry;
@@ -18,6 +17,7 @@ use registry::{RegistryError, AccessFlags};
 #[derive(Debug)]
 pub enum ResponseError {
     /// Connection was closed
+    #[allow(dead_code)]
     ConnectionClosed,
     /// There were IO issues
     IO(IOError),
@@ -46,7 +46,7 @@ pub fn write_packet(stream: &mut Write, packet: &Json) -> Result<(), ResponseErr
     }
     let len = (json_string.len() as u32).to_be();
     let len_bytes: [u8; 4] = unsafe { transmute(len) }; drop(len);
-    stream.write_all(&len_bytes);
+    try!(stream.write_all(&len_bytes).map_err(ResponseError::IO));
     stream.write_all(json_string.as_bytes()).map_err(ResponseError::IO)
 }
 
@@ -100,7 +100,7 @@ pub fn handle_command<S: Read + Write>(mut stream: S) {
                                     responses)
                         .expect("Unable to reply!");
                 }
-                QueryReply::DropConnection => { return; }
+                QueryReply::DropConnection => { return; },
             }
         }
     }
@@ -264,6 +264,7 @@ fn command_response(input: Result<Json, ResponseError>)
 
 #[allow(dead_code)]
 #[allow(unused_mut)]
+#[allow(unused_variables)]
 pub fn handle_event<S: Read + Write>(mut stream: S) {
     
 }
