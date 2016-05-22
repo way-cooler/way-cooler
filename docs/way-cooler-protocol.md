@@ -1,68 +1,44 @@
-# Structure
-IPC with way-cooler consists of messages sent over a socket. This socket is
-typically located at `/tmp/way-cooler/socket`. 
+# Sockets
+IPC with way-cooler taks place over two Unix sockets:
 
-After connecting to this socket, two types of channels may be created: interaction
-and event listening.
+`/tmp/way-cooler/server` and `/tmp/way-cooler/events`.
+
+Requests in the `server` socket allow clients to send commands to the server and fetch specific data.
+
+The `events` socket allows clients to subscribe to events (key presses, workspace switches, etc.) from way-cooler. 
 
 Communication in both pipes done by exchanging a series of "packets" back and forth
 between the client and server.
 
 # Packets
-
 A packet will consist of a length followed by JSON payload.
-The length shall be an unsigned 32-bit number (uint32) encoded in big-endian.
+The length shall be an unsigned 32-bit number (`uint32`) encoded in big-endian.
 Following this will be a UTF-8 encoded string representing a valid JSON object.
 
 Replies from the server will follow the same protocol.
 
-# Basic communication
+# Command Channel Packets
+These are the packets used in `/tmp/way-cooler/server`. 
+Each is a JSON table, with a `type` field specifying what kind of packet it is.
 
-# Greeting Packet
-
-Upon connecting to the server, a client must send a greeting packet which includes a
-unique identifier, and specifies whether the client wants to send commands or listen
-for events.
-
-## Identifier
-
-The identifier may be any string encoded in the `id` field of the request. If another
-client has already registered with that ID, an error reply with a reason of 
-`id taken` will be issued. If the ID is not a JSON string the error `invalid id` will be returned.
-
-## Purpose
-
-The `purpose` field shall be a string consisting of either `control` or `event`. This
-determines the nature of the replies to the client.
-If another client identified with the same name requesting events an error shall be
-issued, `already registered`.
-## Examples
+## Errors
+In the event of an error - a malformed packet or an invalid user action, an error response will be sent.
+This has the key `type` set to `error` and a short description in `reason`.
 
 ```json
-{ "id": "my-client", "purpose": "control" }
-
-{ "id": "someon's client", "purpose": "event" }
+SEND { "type": "some-invalid-type" }
+RECV { "type": "error", "reason": "invalid message type" }
 ```
 
 # Communication
+The client starts communication by sending a packet, and the server will send responses.
+Replies either have `"type": "success"` or `"type": "error"`.
 
-## Terminate
-Sending a `quit` message will close the connection.
+## get
+Gets data from way-cooler. See the <registry docs> for a list of keys.
 ```json
-{ "type": "quit" }
-```
-
-A `reason` can also be provided: 
-```json
-{ "type": "quit", "reason": "Got bored" }
-```
-
-At the moment, nothing will be done with the reason. In the future it may be emitted as an event.
-
-## registry/get
-Gets data from the registry.
-```json
-{ "type": "registry/get", "key": "foo" }
+{ "type": "get", "key": "views.current" }
+{ "type": "get", "key": "mouse.coords" }
 ```
 
 ### Reply
@@ -77,80 +53,115 @@ key cannot be accessed (if it is not an object or if it has restricted flags),
 or if the value is write-only.
 
 ```json
-{ "type": "registry/get", "key": "some-invalid-key-heeeeerrrreeee" }
-{ "type": "error", "reason": "key not found" }
+SEND { "type": "get", "key": "some-invalid-key-heeeeerrrreeee" }
+RECV { "type": "error", "reason": "key not found" }
 
-{ "type": "registry/get", "key": "workspace-right" }
-{ "type": "error", "reason": "invalid key" }
+SEND { "type": "get", "key": "workspace-right" }
+RECV { "type": "error", "reason": "invalid key" }
 
-{ "type": "registry/get", "key": "notify" }
-{ "type": "error", "reason": "no write access"}
+SEND { "type": "get", "key": "notify" }
+RECV { "type": "error", "reason": "no write access"}
 ```
 
-## registry.set
-Set values from the registry.
+## set
+Sets data in way-cooler. See <the registry docs> for a list of keys.
 ```json
-{ "type": "registry.set", "key": "foo", "value": "bar" }
+{ "type": "set", "key": "mouse.coords", "value": { "x": 12, "y": 22 } }
 ```
 
 ### Reply
 The reply will either be an empty `success` with the serialized value, or an access
 error.
 ```json
-{ "type": "registry.set", "key": "mouse.coords", "value": { "x": "12", "y": 22 } }
+SEND { "type": "set", "key": "mouse.coords", "value": { "x": 12, "y": 22 } }
+RECV { "type": "success" }
 ```
 
 ### Errors
 Errors will be returned if the registry key cannot be accessed
 (if it is not an object or if it has restricted flags).
 ```json
-{ "type": "registry.set", "key": "private_key", "value": "secret" }
-{ "type": "error", "reason": "invalid key" }
+SEND { "type": "set", "key": "private_key", "value": "secret" }
+RECV { "type": "error", "reason": "invalid key" }
 ```
 
-## registry.contains\_key
-Checks if a registry key exists.
+## exists
+Checks if a key with that name exists
 ```json
-{ "type": "registry.contains_key", "key": "some_key" }
+{ "type": "exists", "key": "some_key" }
 ```
 
 ### Reply
-The reply will either be `"contains": "true", "type": <key-type>` or 
-`"contains": "false"`. The `key_type` field is one of `object`, `property`, and `command`.
+The reply will either be `"contains": "true"` with fields `key_type` and `flags` or 
+`"contains": "false"`. 
+The `flags` field is a list possibly containing `"read"` and/or `"write"`, if `key_type` is not `command`.
+The `key_type` field is one of `object`, `property`, and `command`.
 
 ```json
-{ "type": "registry.contains_key", "key": "some_key" }
-{ "type": "success", "contains": "true", "key_type": "object"}
+SEND { "type": "exists", "key": "some_key" }
+RECV { "type": "success", "contains": "true", "key_type": "object", "flags": [ "read", "write" ] }
 
-{ "type": "registry.contains_key", "key": "quit" }
-{ "type": "success", "contains": "true", "key_type": "command" }
+SEND { "type": "exists", "key": "quit" }
+RECV { "type": "success", "contains": "true", "key_type": "command" }
 
-{ "type": "registry.contains_key", "key": "wm.pointer" }
-{ "type": "success", "contains": "true", "key_type": "property" }
+SEND { "type": "exists", "key": "pointer.coords" }
+RECV { "type": "success", "contains": "true", "key_type": "property", "flags": [ "read", "write" ] }
 
-{ "type": "registry.contains_key", "key": "foobar" }
-{ "type": "success", "contains": "false" }
-
+SEND { "type": "exists", "key": "foobar" }
+RECV { "type": "success", "contains": "false" }
 ```
 ### Errors
 This command will not return errors.
 
-## command.run
-Run a command.
+## run
+Run a command. Comamdns are considered different than data: they are actions which take and return no data.
 ```json
-{ "type": "command.run", "key": "workspace_left" }
+{ "type": "run", "key": "workspace_move_left" }
 ```
 
 ### Reply
 The reply will either be `success` or an error.
-```lua
-{ "type": "command.run", "key": "workspace_right" }
-{ "type": "success" }
+```json
+SEND { "type": "run", "key": "workspace_send_right" }
+RECV { "type": "success" }
 ```
 
 ### Errors
 An error will be returned if the command does not exist.
-```lua
-{ "type": "command.run", "key": "bogus_command" }
-{ "type": "error", "reason": "key not found" }
+```json
+SEND { "type": "run", "key": "bogus_command" }
+RECV { "type": "error", "reason": "key not found" }
+```
+
+### version
+Gets the version of the API. Currently version 0, will hit version 1 on release,
+and any changes in the API result in a version increment. Consult these docs to see
+what changes between versions.
+
+```json
+SEND { "type": "version" }
+RECV { "type": "success", "value": 1 }
+```
+
+# Events
+By connecting to an event channel, clients can recieve envents from way-cooler. 
+
+## Requesting
+The first pakcet set across the event pipe should be a list of events requested.
+```json
+{ "type": "request", "events": [  { "type": "key.pressed", "keys": [ "ctrl", "alt", "delete" ] }, "workspace.switched" ] }
+```
+If the request packet is formatted properly, the server wil send a `{ "type": "success" }` packet.
+
+### Errors
+The reply will be an error if the JSON was invalid or an event was requested which does not exist.
+The client may re-attempt to register events after receiving an error.
+
+## Event loop
+After the server sends the success packet, it will send events. The server will not listen for inputs and only send more packets.
+
+### Event packets
+Event packets are described in the <event docs>. The general format:
+```json
+{ "type": "event", "name": "event_name", "field1": "value",  }
 ```
