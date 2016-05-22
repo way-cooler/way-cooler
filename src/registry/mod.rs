@@ -93,6 +93,7 @@ where String: Borrow<K>, K: Hash + Eq + Display {
 }
 
 /// Get a Rust structure from the registry
+#[allow(dead_code)]
 pub fn get_struct<K, T>(name: &K) -> RegistryResult<(AccessFlags, T)>
 where String: Borrow <K>, K: Hash + Eq + Display, T: Decodable {
     get_json(name).and_then(|(flags, json)|
@@ -139,6 +140,7 @@ pub fn set_command(key: String, command: CommandFn)
 }
 
 /// Set a value to the given JSON value.
+#[allow(dead_code)]
 pub fn set_json(key: String, flags: AccessFlags, json: Json)
                 -> RegistryResult<Option<(AccessFlags, Arc<Json>)>> {
     let func: SetFn;
@@ -174,6 +176,8 @@ pub fn set_json(key: String, flags: AccessFlags, json: Json)
     return Ok(None);
 }
 
+/// Set an object/property in the registry to a value using a ToJson.
+#[allow(dead_code)]
 pub fn set_struct<T: ToJson>(key: String, flags: AccessFlags, value: T)
                              -> RegistryResult<Option<(AccessFlags, Arc<Json>)>> {
     set_json(key, flags, value.to_json())
@@ -211,6 +215,7 @@ pub fn set_with_property(key: String, flags: AccessFlags, json: Json)
 }
 
 /// Binds properties to a field of the registry
+#[allow(dead_code)]
 pub fn set_property_field(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>)
                           -> RegistryResult<Option<RegistryField>> {
     set_field(key, RegistryField::Property { get: get_fn, set: set_fn })
