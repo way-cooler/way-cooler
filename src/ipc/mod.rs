@@ -5,7 +5,7 @@ use std::thread;
 use std::path::Path;
 use std::fs;
 
-use unix_socket::{UnixStream, UnixListener};
+use unix_socket::UnixListener;
 
 mod channel;
 
