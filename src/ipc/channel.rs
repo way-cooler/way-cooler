@@ -9,17 +9,14 @@ use std::mem::drop;
 use std::collections::BTreeMap;
 
 use rustc_serialize::Encodable;
-use rustc_serialize::json::{Json, ToJson, Encoder,
-                            encode, ParserError, EncoderError};
-
-use unix_socket::UnixStream;
+use rustc_serialize::json::{Json, encode, ParserError, EncoderError};
 
 use registry;
-use registry::RegistryError;
+use registry::{RegistryError, AccessFlags};
 
 /// Reasons a client message might be erroneous
 #[derive(Debug)]
-enum ResponseError {
+pub enum ResponseError {
     /// Connection was closed
     ConnectionClosed,
     /// There were IO issues
@@ -55,11 +52,20 @@ pub fn write_packet(stream: &mut Write, packet: &Json) -> Result<(), ResponseErr
 
 /// Send an error message across the given stream
 pub fn send_error(stream: &mut Write, reason: String) -> Result<(), ResponseError> {
-    let response_tree = BTreeMap::new();
-    response_tree.insert("type".to_string(), Json::String("error".to_string()));
-    response_tree.insert("reason".to_string(), Json::String(reason));
+    let mut responses = BTreeMap::new();
+    responses.insert("type".to_string(), Json::String("error".to_string()));
+    responses.insert("reason".to_string(), Json::String(reason));
 
-    write_packet(stream, &Json::Object(response_tree))
+    write_packet(stream, &Json::Object(responses))
+}
+
+/// Send an error message with additional fields
+pub fn send_error_with(stream: &mut Write, reason: String,
+                  mut responses: BTreeMap<String, Json>) -> Result<(), ResponseError> {
+    responses.insert("type".to_string(), Json::String("error".to_string()));
+    responses.insert("reason".to_string(), Json::String(reason));
+
+    write_packet(stream, &Json::Object(responses))
 }
 
 pub fn handle_command<S: Read + Write>(mut stream: S) {
@@ -67,13 +73,32 @@ pub fn handle_command<S: Read + Write>(mut stream: S) {
         let maybe_packet = read_packet(&mut stream);
         let response = command_response(maybe_packet);
         match response {
-            Ok(json) => { write_packet(&mut stream, &json).expect("Unable to reply!"); },
+            Ok(json) => {
+                write_packet(&mut stream, &json)
+                    .expect("Unable to reply!");
+            },
             Err(action) => match action {
                 QueryReply::SendError(err) => {
-                    send_error(err.to_string()).expect("Unable to reply!");
+                    send_error(&mut stream, err.to_string())
+                        .expect("Unable to reply!");
                 },
                 QueryReply::MissingKey(key) => {
-                    
+                    let mut responses = BTreeMap::new();
+                    responses.insert("key".to_string(),
+                                     Json::String(key.to_string()));
+                    send_error_with(&mut stream, "missing key".to_string(),
+                                    responses)
+                        .expect("Unable to reply!");
+                },
+                QueryReply::WrongKeyType(key, key_type) => {
+                    let mut responses = BTreeMap::new();
+                    responses.insert("key".to_string(),
+                                     Json::String(key.to_string()));
+                    responses.insert("expected".to_string(),
+                                     Json::String(key_type.to_string()));
+                    send_error_with(&mut stream, "invalid key type".to_string(),
+                                    responses)
+                        .expect("Unable to reply!");
                 }
                 QueryReply::DropConnection => { return; }
             }
@@ -83,34 +108,34 @@ pub fn handle_command<S: Read + Write>(mut stream: S) {
 
 /// A Json representing a success packet
 pub fn success_json() -> Json {
-    let response_tree = BTreeMap::new();
-    response_tree.insert("type".to_string(), Json::String("success".to_string()));
-    Json::Object(response_tree)
+    let mut responses = BTreeMap::new();
+    responses.insert("type".to_string(), Json::String("success".to_string()));
+    Json::Object(responses)
 }
 
 // A Json representing a value packet
-pub fn value_json(value: Json) -> Json {
-    let response_tree = success_json().as_object()
-        .expect("success_json didn't return object");
-
-    response_tree.insert("value".to_string(), value);
-    Json::Object(response_tree)
+fn value_json(value: Json) -> Json {
+    if let Json::Object(mut responses) = success_json() {
+        responses.insert("value".to_string(), value);
+        return Json::Object(responses);
+    }
+    unimplemented!()
 }
 
 /// Attempts to get a String key off of a Json
-pub fn expect_key(source: &BTreeMap<String, Json>, name: &'static str)
+fn expect_key(source: &BTreeMap<String, Json>, name: &'static str)
                   -> Result<String, QueryReply> {
     let key = try!(source.get(name)
                    .ok_or(QueryReply::MissingKey(name)));
     let value = try!(key.as_string()
                      .ok_or(QueryReply::WrongKeyType(name, "string")));
-    return Ok(value);
+    return Ok(value.to_string());
 }
 
 /// Reply messages
 #[derive(Debug, Clone, PartialEq)]
 enum QueryReply {
-    SendError(String),
+    SendError(&'static str),
     MissingKey(&'static str),
     WrongKeyType(&'static str, &'static str),
     DropConnection
@@ -120,7 +145,6 @@ enum QueryReply {
 fn command_response(input: Result<Json, ResponseError>)
                     -> Result<Json, QueryReply> {
     use self::QueryReply::*;
-    use registry::RegistryError::*;
 
     let json = try!(input.map_err(|e| match e {
         ResponseError::IO(err) => {
@@ -128,63 +152,91 @@ fn command_response(input: Result<Json, ResponseError>)
             DropConnection
         },
         ResponseError::ConnectionClosed => DropConnection,
-        ResponseError::InvalidJson => SendError("invalid json"),
-        ResponseError::UnableToFormat => unimplemented!()
+        ResponseError::InvalidJson(_) => SendError("invalid json"),
+        ResponseError::UnableToFormat(_) => unimplemented!()
     }));
-    let object = try!(json.as_object().ok_or(SendError("invalid request")));
-    let request_type = try!(object.get("type").ok_or(SendError("invalid request")));
+    let mut object: BTreeMap<String, Json>;
+    if let Json::Object(obj) = json {
+        object = obj;
+    }
+    else {
+        return Err(SendError("invalid json, table expected"));
+    }
+    let request_type = try!(expect_key(&object, "type"));
 
     // Converts the string to a str in the most Rustic way possible
-    match &**request_type {
+    match &*request_type {
         // Registry
         "get" => {
-            let key = try!(expect_key());
+            use std::ops::Deref;
+            let key = try!(expect_key(&object, "key"));
 
-            let data = try!(registry::get_data(key).map_err(|e| match e {
-                KeyNotFound => SendError("key not found"),
-                InvalidOperation => SendError("invalid operation"),
-                WrongKeyType => SendError("invalid operation; use 'run'"),
+            let (_flags, data) = try!(registry::get_data(&key).map_err(|e| match e {
+                RegistryError::KeyNotFound =>
+                    SendError("key not found"),
+                RegistryError::InvalidOperation =>
+                    SendError("invalid operation"),
+                RegistryError::WrongKeyType =>
+                    SendError("invalid operation; use 'run'"),
                 _ => unimplemented!()
             })).resolve();
-            Ok(value_json(data))
+
+            Ok(value_json(data.deref().clone()))
         },
         "set" => {
-            let key = try!(object.get("key")
-                           .ok_or(MISSING_KEY).as_string().ok_or(WRONG_TYPE_KEY));
-            let value = try!(object.get("value")
-                             .ok_or(SendError("missing field 'value'")));
+            let key = try!(expect_key(&object, "key"));
+            let value = try!({
+                BTreeMap::remove(&mut object, "value").ok_or(MissingKey("value"))
+            });
+
             // TODO FIXME properly implement flags
             let mut applied_flags = AccessFlags::all();
             if let Some(json_flags) = object.get("flags") {
                 // Parse custom flags
-                return SendError("flags is unimplemented!");
+                let flag_list = try!(json_flags.as_array()
+                                     .ok_or(WrongKeyType("flags", "string array")));
+                let mut flags = AccessFlags::empty();
+                for flag in flag_list {
+                    let flag_str = try!(flag.as_string()
+                                        .ok_or(WrongKeyType("flags", "string array")));
+                    match flag_str {
+                        "read"|"r" => flags.insert(AccessFlags::READ()),
+                        "write"|"w" => flags.insert(AccessFlags::WRITE()),
+                        _ => return Err(SendError("Flags can either be 'read' or 'write'"))
+                    }
+                }
+                applied_flags = flags;
             }
             try!(registry::set_json(key, applied_flags, value)
                  .map_err(|e| match e {
-                     InvalidOperation => SendError("invalid operation"),
-                     WrongKeyType => SendError("invalid operation; use 'run'"),
+                     RegistryError::InvalidOperation =>
+                         SendError("invalid operation"),
+                     RegistryError::WrongKeyType =>
+                         SendError("invalid operation; use 'run'"),
                      _ => unimplemented!()
                  }));
+
             Ok(success_json())
         },
         "exists" => {
-            let key = try!(object.get("key")
-                           .ok_or(SendError("missing field 'key'")));
+            let key = try!(expect_key(&object, "key"));
 
-            let reg_key = registry::contains_key(key);
+            let reg_key = registry::contains_key(&key);
 
             Ok(value_json(Json::Boolean(reg_key)))
         },
 
         // Commands
         "run" => {
-            let key = try!(obkect.get("key")
-                           .ok_or(SendError("missing field 'key'")));
+            let key = try!(expect_key(&object, "key"));
 
-            let command = try!(registry::get_command(key).map_err(|e| match e {
-                KeyNotFound => SendError("key not found"),
-                WrongKeyType => SendError("invalid operation; use 'get'/'set'"),
-                InvalidOperation => SendError("invalid operation"),
+            let command = try!(registry::get_command(&key).map_err(|e| match e {
+                RegistryError::KeyNotFound =>
+                    SendError("key not found"),
+                RegistryError::WrongKeyType =>
+                    SendError("invalid operation; use 'get'/'set'"),
+                RegistryError::InvalidOperation =>
+                    SendError("invalid operation"),
                 _ => unimplemented!()
             }));
 
@@ -195,7 +247,7 @@ fn command_response(input: Result<Json, ResponseError>)
 
         // Meta/API commands
         "version" => {
-            Ok(value_json(Json::String(ipc::VERSION)))
+            Ok(value_json(Json::U64(super::VERSION)))
         },
         "commands" => {
             Ok(value_json(Json::Array(vec![
@@ -210,6 +262,8 @@ fn command_response(input: Result<Json, ResponseError>)
     }
 }
 
+#[allow(dead_code)]
+#[allow(unused_mut)]
 pub fn handle_event<S: Read + Write>(mut stream: S) {
     
 }
