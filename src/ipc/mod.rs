@@ -12,7 +12,7 @@ mod channel;
 const SERVER_SOCKET_PATH_NAME: &'static str = "/tmp/way-cooler/server";
 const  EVENT_SOCKET_PATH_NAME: &'static str = "/tmp/way-cooler/events";
 /// Versions are incremented.
-pub const VERSION: usize = 0usize; // Increment to 1 on release.
+pub const VERSION: u64 = 0u64; // Increment to 1 on release.
 
 /// Initialize the Lua server.
 pub fn init() {
