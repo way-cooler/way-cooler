@@ -9,44 +9,70 @@ use unix_socket::{UnixStream, UnixListener};
 
 mod channel;
 
-const SOCKET_PATH_NAME: &'static str = "/tmp/way-cooler/socket";
+const SERVER_SOCKET_PATH_NAME: &'static str = "/tmp/way-cooler/server";
+const  EVENT_SOCKET_PATH_NAME: &'static str = "/tmp/way-cooler/events";
+/// Versions are incremented.
+pub const VERSION: usize = 0usize; // Increment to 1 on release.
 
 /// Initialize the Lua server.
 pub fn init() {
     trace!("Initializing way-cooler IPC...");
-    let _handle = thread::Builder::new()
-        .name("Lua socket listener".to_string())
-        .spawn(move || { thread_init() });
 
-    trace!("IPC thread created.");
-}
-
-fn thread_init() {
-    debug!("Creating socket {}", SOCKET_PATH_NAME);
-
-    let socket_path = Path::new(SOCKET_PATH_NAME);
+    debug!("Creating server socket...");
+    let server_socket_path = Path::new(SERVER_SOCKET_PATH_NAME);
+    let event_socket_path  = Path::new(EVENT_SOCKET_PATH_NAME);
     // Ensure /tmp folder exists - should we do this elsewhere?
     // What else are we going to put in /tmp/way-cooler?
     fs::DirBuilder::new().create("/tmp/way-cooler").ok();
     // Remove the socket if it already exists
-    fs::remove_file(socket_path).ok();
+    fs::remove_file(server_socket_path).ok();
+    fs::remove_file(event_socket_path).ok();
 
-    let server_socket = UnixListener::bind(socket_path)
-        .expect("Unable to bind to IPC socket!");
+    let server_socket = UnixListener::bind(server_socket_path)
+        .expect("Unable to open server socket!");
+
+    let event_socket = UnixListener::bind(event_socket_path)
+        .expect("Unable to open event socket!");
 
     debug!("IPC initialized, now listening for clients.");
-    thread_main_loop(server_socket);
+
+    let _server_handle = thread::Builder::new()
+        .name("Server socket listener".to_string())
+        .spawn(move || { server_thread(server_socket) });
+
+    let _event_handle = thread::Builder::new()
+        .name("Event socket listener".to_string())
+        .spawn(move || { event_thread(event_socket) });
+
+    trace!("IPC initialized.");
 }
 
-fn thread_main_loop(socket: UnixListener) {
+fn server_thread(socket: UnixListener) {
     for stream in socket.incoming() {
-        trace!("New connection: {:?}", stream);
+        trace!("Sever: new connection: {:?}", stream);
         match stream {
             Ok(stream) => {
-                info!("Connected to {:?}", stream);
+                info!("Server: connected to {:?}", stream);
                 let _handle = thread::Builder::new()
-                    .name("IPC_helper".to_string())
-                    .spawn(move || channel::handle_client(stream));
+                    .name("IPC server helper".to_string())
+                    .spawn(move || channel::handle_command(stream));
+            },
+            Err(err) => {
+                info!("Error receiving a stream: {}", err);
+            }
+        }
+    }
+}
+
+fn event_thread(socket: UnixListener) {
+    for stream in socket.incoming() {
+        trace!("Event: new connection: {:?}", stream);
+        match stream {
+            Ok(stream) => {
+                info!("Event: connected to {:?}", stream);
+                let _handle = thread::Builder::new()
+                    .name("IPC evemt helper".to_string())
+                    .spawn(move || channel::handle_event(stream));
             },
             Err(err) => {
                 info!("Error receiving a stream: {}", err);
