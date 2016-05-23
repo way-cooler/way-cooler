@@ -162,7 +162,7 @@ pub fn set_json(key: String, flags: AccessFlags, json: Json)
                 match entry.get().clone().as_property_set() {
                     Some(func) => {
                         func(json);
-                        return;
+                        return Ok(None);
                     }
                     None => return Err(RegistryError::InvalidOperation)
                 }
