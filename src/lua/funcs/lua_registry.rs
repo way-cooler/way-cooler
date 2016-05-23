@@ -1,19 +1,20 @@
 //! Metamethods for accesssing the registry values!
 
 use std::ops::Deref;
+use std::sync::Arc;
 
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::LuaString;
 
 use registry;
-use registry::{RegistryValue, AccessFlags, LUA_WRITE};
+use registry::{RegistryField, AccessFlags};
 use convert::ToTable;
 use convert::json::lua_to_json;
 
 pub fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
     if let LuaString(key) = lua_key {
         if let Ok((access, json_arc)) = registry::get_json(&key) {
-            if access.contains(registry::LUA_READ) {
+            if access.contains(AccessFlags::READ()) {
                 return json_arc.deref().clone().to_table();
             }
         }
@@ -29,9 +30,9 @@ pub fn new_index(_table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue)
             |_| "Unable to convert value to JSON!"));
         let mut reg = registry::write_lock();
         let flags: AccessFlags;
-        if let Some(reg_val) = reg.get(&key) {
-            if let Some((access, _old_arc)) = reg_val.get_data() {
-                if !access.contains(LUA_WRITE) {
+        if let Some(reg_field) = reg.get(&key) {
+            if let Some((access, _old_arc)) = reg_field.clone().as_object() {
+                if !access.contains(AccessFlags::WRITE()) {
                     return Err("Unable to modify that key!");
                 }
                 flags = access;
@@ -43,7 +44,7 @@ pub fn new_index(_table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue)
         else {
             return Err("Cannot create a new key! Use config.set instead.");
         }
-        let new_val = RegistryValue::new_json(flags, json);
+        let new_val = RegistryField::Object {flags: flags, data: Arc::new(json) };
         reg.insert(key, new_val);
         return Err("That value does not yet exist!");
         // Putting an else here would mean allowing Lua code to create new keys

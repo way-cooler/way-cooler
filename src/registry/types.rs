@@ -4,27 +4,47 @@ use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
-use rustc_serialize::json::{Json, ToJson};
+use rustc_serialize::json::Json;
 
 bitflags! {
     /// Access permissions for items in the registry
     pub flags AccessFlags: u8 {
-        #[allow(dead_code)]
-        /// Default flags
-        const LUA_PRIVATE = 0,
-        /// Lua thread can read the data
-        const LUA_READ    = 1 << 0,
-        /// Lua thread can write to the data
-        const LUA_WRITE   = 1 << 1,
+        /// Clients can read/get the data
+        const READ    = 1 << 0,
+        /// Clients can write/set the data
+        const WRITE   = 1 << 1,
     }
 }
+
+impl AccessFlags {
+    /// Read permissions
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn READ() -> AccessFlags { READ }
+
+    /// Write permissions
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn WRITE() -> AccessFlags { WRITE }
+}
+
 
 /// Command type for Rust function
 pub type CommandFn = Arc<Fn() + Send + Sync>;
 
+/// Function which will yield an object
+pub type GetFn = Arc<Fn() -> Json + Send + Sync>;
+
+/// Function which will set an object
+pub type SetFn = Arc<Fn(Json) + Send + Sync>;
+
+/// Enum of types of registry fields
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum FieldType { Object, Property, Command }
+
 /// Data which can be stored in the registry
 #[derive(Clone)]
-pub enum RegistryValue {
+pub enum RegistryField {
     /// An object with permission flags
     Object {
         /// Permission flags for Lua get/setting the value
@@ -32,70 +52,174 @@ pub enum RegistryValue {
         /// Data associated with this value
         data: Arc<Json>
     },
+    /// A registry value whose get and set maps to other Rust code
+    Property {
+        /// Method called to set a property
+        get: Option<GetFn>,
+        /// Method called to set a property
+        set: Option<SetFn>
+    },
     /// A command
     Command(CommandFn)
 }
 
-impl Debug for RegistryValue {
+/// Result of what can be accessed from a registry value.
+#[derive(Clone)]
+pub enum RegistryGetData {
+    /// An object in the registry
+    Object(AccessFlags, Arc<Json>),
+    /// Get field of a property in the registry
+    Property(GetFn)
+}
+
+impl Debug for RegistryField {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            &RegistryValue::Object { ref flags, ref data } =>
-                f.debug_struct("RegistryValue::Object")
+            &RegistryField::Object { ref flags, ref data } =>
+                f.debug_struct("RegistryField::Object")
                 .field("flags", flags as &Debug)
                 .field("data", data as &Debug).finish(),
-            &RegistryValue::Command(_) =>
-                write!(f, "RegistryValue::Command(...)")
+            &RegistryField::Property { ref get, ref set } => {
+                let new_get = match get { &Some(_) => Some(true), &None => None };
+                let new_set = match set { &Some(_) => Some(true), &None => None };
+                f.debug_struct("RegistryField::Property")
+                    .field("get", &new_get)
+                    .field("set", &new_set)
+                    .finish()
+            }
+            &RegistryField::Command(_) =>
+                write!(f, "RegistryField::Command(...)")
         }
     }
 }
 
-impl RegistryValue {
-    /// Creates a new registry object with the specified flags
-    /// and Rust data to be converted.
-    #[allow(dead_code)]
-    pub fn new_value<T: ToJson>(flags: AccessFlags, data: T) -> RegistryValue {
-        RegistryValue::Object {
-            flags: flags,
-            data: Arc::new(data.to_json())
+impl Debug for RegistryGetData {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            &RegistryGetData::Object(ref flags, ref data) =>
+                f.debug_struct("RegistryGetData::Object")
+                .field("flags", flags as &Debug)
+                .field("data", data as &Debug).finish(),
+            &RegistryGetData::Property(_) =>
+                write!(f, "RegistryGetData::Property")
         }
     }
+}
 
-    /// Creates a new RegistryFile with the specified Lua data.
-    pub fn new_json(flags: AccessFlags, data: Json) -> RegistryValue {
-        RegistryValue::Object {
-            flags: flags, data: Arc::new(data)
+impl FieldType {
+    /// Whether a field of this type can be changed by a field of type other.
+    pub fn can_set_from(self, other: FieldType) -> bool {
+        match self {
+            FieldType::Command => other == FieldType::Command,
+            FieldType::Property =>
+                other == FieldType::Object ||
+                other == FieldType::Property,
+            FieldType::Object => other == FieldType::Object
         }
     }
+}
 
-    /// Creates a new RegistryCommand with the specified callback.
-    pub fn new_command(com: CommandFn) -> RegistryValue {
-        RegistryValue::Command(com)
-    }
-
+impl RegistryField {
     /// What access the module has to it
     #[allow(dead_code)]
     pub fn get_flags(&self) -> Option<AccessFlags> {
         match self {
-            &RegistryValue::Object { ref flags, .. } => Some(flags.clone()),
+            &RegistryField::Object { ref flags, .. } => Some(flags.clone()),
+            &RegistryField::Property { ref get, ref set } => {
+                let mut flags = AccessFlags::empty();
+                if get.is_some() { flags.insert(AccessFlags::READ()); }
+                if set.is_some() { flags.insert(AccessFlags::WRITE()); }
+                Some(flags)
+            },
             _ => None
         }
     }
 
-    /// Attempts to access the RegistryValue as a command
-    #[allow(dead_code)]
-    pub fn get_command(self) -> Option<CommandFn> {
-        match self {
-            RegistryValue::Command(com) => Some(com),
-            _ => None
-        }
-    }
-
-    /// Attempts to access the RegistryValue as a file
-    pub fn get_data(&self) -> Option<(AccessFlags, Arc<Json>)> {
+    /// Attempts to access the RegistryField as a command
+    pub fn get_command(&self) -> Option<CommandFn> {
         match *self {
-            RegistryValue::Object { ref flags, ref data } =>
-                Some((flags.clone(), data.clone())),
+            RegistryField::Command(ref com) => Some(com.clone()),
             _ => None
+        }
+    }
+
+    /// Attempts to access the RegistryField as a file
+    #[allow(dead_code)]
+    pub fn get_data(&self) -> Option<RegistryGetData> {
+        match *self {
+            RegistryField::Object { ref flags, ref data } =>
+                Some(RegistryGetData::Object(flags.clone(), data.clone())),
+            RegistryField::Property { ref get, .. } =>
+                get.clone().and_then(|g| Some(RegistryGetData::Property(g))),
+            _ => None
+        }
+    }
+
+    /// Converts this RegistryField to maybe a command
+    #[allow(dead_code)]
+    pub fn as_command(self) -> Option<CommandFn> {
+        match self {
+            RegistryField::Command(com) => Some(com),
+            _ => None
+        }
+    }
+
+    /// Converts this RegistryField to maybe an object. Does not call property methods.
+    pub fn as_object(self) -> Option<(AccessFlags, Arc<Json>)> {
+        match self {
+            RegistryField::Object { flags, data } => Some((flags, data)),
+            _ => None
+        }
+    }
+
+    /// Gets this field as maybe a property with maybe a getter and setter.
+    pub fn as_property(self) -> Option<(Option<GetFn>, Option<SetFn>)> {
+        match self {
+            RegistryField::Property { get, set } => Some((get, set)),
+            _ => None
+        }
+    }
+
+    /// Returns the getter, if this field is a property with a getter.
+    #[allow(dead_code)]
+    pub fn as_property_get(self) -> Option<GetFn> {
+        self.as_property().and_then(|(maybe_get, _)| maybe_get)
+    }
+
+    /// Returns a setter if this field is a property with a setter.
+    pub fn as_property_set(self) -> Option<SetFn> {
+        self.as_property().and_then(|(_, maybe_set)| maybe_set)
+    }
+
+    /// Gets the type of this registry field
+    pub fn get_type(&self) -> FieldType {
+        match self {
+            &RegistryField::Object { .. }   => FieldType::Object,
+            &RegistryField::Property { .. } => FieldType::Property,
+            &RegistryField::Command(_)      => FieldType::Command
+        }
+    }
+}
+
+impl RegistryGetData {
+    /// Collapses the waveform.
+    ///
+    /// If this is a Json, returns the Json data. If this is a property, runs the
+    /// method and returns the output.
+    pub fn resolve(self) -> (AccessFlags, Arc<Json>) {
+        match self {
+            RegistryGetData::Object(flags, data) => (flags, data),
+            RegistryGetData::Property(get) =>
+                (AccessFlags::all(), Arc::new(get()))
+        }
+    }
+
+    /// Gets the FieldType of this GetData (property or object)
+    #[allow(dead_code)]
+    pub fn get_type(&self) -> FieldType {
+        match self {
+            &RegistryGetData::Property(_) => FieldType::Property,
+            &RegistryGetData::Object(_, _) => FieldType::Object
         }
     }
 }

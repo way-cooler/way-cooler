@@ -1,13 +1,14 @@
 //! Tests for the registry
 
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
+use std::time::Duration;
 use std::thread;
 
 use rustc_serialize::Decodable;
-use rustc_serialize::json::ToJson;
+use rustc_serialize::json::{Json, ToJson};
 
 use registry;
-use registry::{LUA_READ, LUA_WRITE, LUA_PRIVATE, get_data};
+use registry::{AccessFlags, get_struct};
 
 json_convertible! {
     #[derive(Debug, Clone, Eq, PartialEq)]
@@ -17,7 +18,17 @@ json_convertible! {
     }
 }
 
+impl Point {
+    fn new(x: i32, y: i32) -> Point {
+        Point { x: x, y: y }
+    }
+}
+
 const ERR: &'static str = "Key which was added no longer exists!";
+
+fn prop_get() -> Json {
+    Point::new(0, 0).to_json()
+}
 
 #[test]
 fn add_keys() {
@@ -25,43 +36,60 @@ fn add_keys() {
     let double = -392f64;
     let string = "Hello world".to_string();
     let numbers = vec![1, 2, 3, 4, 5];
-    let point = Point { x: -11, y: 12 };
+    let point = Point::new(-11, 12);
 
-    registry::set_data("test_num".to_string(), LUA_READ, num);
-    registry::set_data("test_double".to_string(), LUA_READ, double);
-    registry::set_data("test_string".to_string(), LUA_READ, string.clone());
-    registry::set_data("test_numbers".to_string(), LUA_READ, numbers.clone());
-    registry::set_data("test_point".to_string(), LUA_READ, point.clone());
-
-    assert!(registry::contains_key(&"test_num".to_string()));
-    assert!(registry::contains_key(&"test_double".to_string()));
-    assert!(registry::contains_key(&"test_string".to_string()));
-    assert!(registry::contains_key(&"test_numbers".to_string()));
-    assert!(registry::contains_key(&"test_point".to_string()));
-
-    assert_eq!(get_data::<_, i32>(&"test_num".to_string()).expect(ERR).1, num);
-    assert_eq!(get_data::<_, f64>(&"test_double".to_string()).expect(ERR).1, double);
-    assert_eq!(get_data::<_,String>(&"test_string".to_string()).expect(ERR).1, string);
-    assert_eq!(get_data::<_, Vec<i32>>(&"test_numbers".to_string()).expect(ERR).1,
-               numbers);
-    assert_eq!(get_data::<_, Point>(&"test_point".to_string()).expect(ERR).1, point);
-
+    registry::set_struct("test_num".to_string(), AccessFlags::READ(), num.to_json()).expect(ERR);
+    registry::set_struct("test_double".to_string(), AccessFlags::READ(), double).expect(ERR);
+    registry::set_struct("test_string".to_string(), AccessFlags::READ(), string.clone()).expect(ERR);
+    registry::set_struct("test_numbers".to_string(), AccessFlags::READ(), numbers.clone()).expect(ERR);
+    registry::set_struct("test_point".to_string(), AccessFlags::READ(), point.clone()).expect(ERR);
+    registry::set_property_field("test_func".to_string(), Some(Arc::new(prop_get)), None).expect(ERR);
 }
 
 #[test]
-fn lua_perms() {
-    registry::set_data("perm_none".to_string(), LUA_PRIVATE, 0);
-    registry::set_data("perm_read".to_string(), LUA_READ, 1);
-    registry::set_data("perm_write".to_string(), LUA_WRITE, 2);
+fn contains_keys() {
+    thread::sleep(Duration::from_millis(240));
+    assert!(registry::contains_key(&"test_num".to_string()), "num");
+    assert!(registry::contains_key(&"test_double".to_string()), "double");
+    assert!(registry::contains_key(&"test_string".to_string()), "string");
+    assert!(registry::contains_key(&"test_numbers".to_string()), "numbers");
+    assert!(registry::contains_key(&"test_point".to_string()), "point");
+    assert!(registry::contains_key(&"test_func".to_string()), "func");
+}
 
-    assert_eq!(get_data::<_, i32>(&"perm_none".to_string()).expect(ERR).0, LUA_PRIVATE);
-    assert_eq!(get_data::<_, i32>(&"perm_read".to_string()).expect(ERR).0, LUA_READ);
-    assert_eq!(get_data::<_, i32>(&"perm_write".to_string()).expect(ERR).0, LUA_WRITE);
+#[test]
+fn keys_equal() {
+    let num = 1i32;
+    let double = -392f64;
+    let string = "Hello world".to_string();
+    let numbers = vec![1, 2, 3, 4, 5];
+    let point = Point::new(-11, 12);
+    thread::sleep(Duration::from_millis(240));
+    assert_eq!(get_struct::<_, i32>(&"test_num".to_string()).expect(ERR).1, num);
+    assert_eq!(get_struct::<_, f64>(&"test_double".to_string()).expect(ERR).1, double);
+    assert_eq!(get_struct::<_,String>(&"test_string".to_string()).expect(ERR).1, string);
+    assert_eq!(get_struct::<_, Vec<i32>>(&"test_numbers".to_string()).expect(ERR).1,
+               numbers);
+    assert_eq!(get_struct::<_, Point>(&"test_point".to_string()).expect(ERR).1, point);
+    assert_eq!(get_struct::<_, Point>(&"test_func".to_string()).expect(ERR).1,
+               Point::new(0, 0));
+}
+
+#[test]
+fn key_perms() {
+    thread::sleep(Duration::from_millis(240));
+    registry::set_struct("perm_none".to_string(), AccessFlags::empty(), 0).expect(ERR);
+    registry::set_struct("perm_read".to_string(), AccessFlags::READ(), 1).expect(ERR);
+    registry::set_struct("perm_write".to_string(), AccessFlags::WRITE(), 2).expect(ERR);
+
+    assert_eq!(get_struct::<_, i32>(&"perm_none".to_string()).expect(ERR).0, AccessFlags::empty());
+    assert_eq!(get_struct::<_, i32>(&"perm_read".to_string()).expect(ERR).0, AccessFlags::READ());
+    assert_eq!(get_struct::<_, i32>(&"perm_write".to_string()).expect(ERR).0, AccessFlags::WRITE());
+    assert_eq!(registry::get_json(&"test_func".to_string()).expect(ERR).0, AccessFlags::all());
 }
 
 #[test]
 fn multithreaded() {
-    use std::time::Duration;
     let (tx, rx) = mpsc::channel();
     thread::sleep(Duration::from_millis(240));
     let num = 1i32;
@@ -102,9 +130,9 @@ fn multithreaded() {
 fn read_thread<T>(name: String, in_val: T, sender: mpsc::Sender<bool>)
 where T: ::std::fmt::Debug + Decodable + PartialEq {
     for _ in 1 .. 50 {
-        if let Ok(acc_val) = get_data::<_, T>(&name) {
+        if let Ok(acc_val) = get_struct::<_, T>(&name) {
             let (acc, val) = acc_val;
-            assert!(acc.contains(LUA_READ));
+            assert!(acc.contains(AccessFlags::READ()));
             assert_eq!(val, in_val);
         }
         else {
