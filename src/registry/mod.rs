@@ -143,36 +143,35 @@ pub fn set_command(key: String, command: CommandFn)
 #[allow(dead_code)]
 pub fn set_json(key: String, flags: AccessFlags, json: Json)
                 -> RegistryResult<Option<(AccessFlags, Arc<Json>)>> {
-    let func: SetFn;
-    {
-        let mut reg = write_lock();
-        match reg.entry(key) {
-            Entry::Vacant(vacancy) => {
-                vacancy.insert(RegistryField::Object {
+    let mut reg = write_lock();
+    match reg.entry(key) {
+        Entry::Vacant(vacancy) => {
+            vacancy.insert(RegistryField::Object {
+                flags: flags, data: Arc::new(json)
+            });
+            return Ok(None);
+        },
+        Entry::Occupied(mut entry) => {
+            let first_type = entry.get().get_type();
+            if first_type == FieldType::Object {
+                return Ok(entry.insert(RegistryField::Object {
                     flags: flags, data: Arc::new(json)
-                });
-                return Ok(None);
-            },
-            Entry::Occupied(mut entry) => {
-                let first_type = entry.get().get_type();
-                if first_type == FieldType::Object {
-                    return Ok(entry.insert(RegistryField::Object {
-                        flags: flags, data: Arc::new(json)
-                    }).as_object());
-                }
-                else if first_type == FieldType::Property {
-                    match entry.get().clone().as_property_set() {
-                        Some(fun) => func = fun,
-                        None => return Err(RegistryError::InvalidOperation)
+                }).as_object());
+            }
+            else if first_type == FieldType::Property {
+                match entry.get().clone().as_property_set() {
+                    Some(func) => {
+                        func(json);
+                        return;
                     }
+                    None => return Err(RegistryError::InvalidOperation)
                 }
-                else {
-                    return Err(RegistryError::WrongKeyType);
-                }
+            }
+            else {
+                return Err(RegistryError::WrongKeyType);
             }
         }
     }
-    func(json);
     return Ok(None);
 }
 
