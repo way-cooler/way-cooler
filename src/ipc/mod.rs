@@ -1,7 +1,7 @@
-//! Lua socket: IPC for way-cooler
+//! IPC for way-cooler
 
 use std::thread;
-
+use std::env;
 use std::path::Path;
 use std::fs;
 
@@ -9,16 +9,42 @@ use unix_socket::UnixListener;
 
 mod channel;
 
-const SERVER_SOCKET_PATH_NAME: &'static str = "/tmp/way-cooler/server";
-const  EVENT_SOCKET_PATH_NAME: &'static str = "/tmp/way-cooler/events";
 /// Versions are incremented.
 pub const VERSION: u64 = 0u64; // Increment to 1 on release.
+
+/// Very much not cross-platform!
+/// Submit an issue when Wayland is ported to Windoze.
+pub const TEMP_FOLDER: &'static str = "/tmp/way-cooler";
+/// Socket over which synchronous communication is made with clients.
+pub const COMMAND_SOCKET: &'static str = "command";
+/// Socket over which events are sent to clients.
+pub const EVENT_SOCKET: &'static str = "event";
+
+/// We need random folder names to place sockets in, but they don't need
+/// to be _that_ random.
+pub fn unique_ish_id() -> u32 {
+    use std::hash::{Hash, Hasher, SipHasher};
+    use std::time::Instant;
+
+    // If you shift a u64 hash right by this you get a "checksum",
+    // a number which retains some of the entropy of the hash but
+    // is small enough to fit a more comfortable file name.
+    const MAGIC_SHIFT_NUMBER: u64 = 0b110000;
+
+    // Instant doesn't implement hash, and it's supposed to be an opaque
+    // struct, but it does implement debug...
+    let now = Instant::now();
+    let mut hasher = SipHasher::new();
+    format!("{:?}", now).hash(&mut hasher);
+    hasher.finish();
+}
 
 /// Initialize the Lua server.
 pub fn init() {
     trace!("Initializing way-cooler IPC...");
+    let id = unique_ish_id();
+    info!("Starting IPC with unique ID {}", id);
 
-    debug!("Creating server socket...");
     let server_socket_path = Path::new(SERVER_SOCKET_PATH_NAME);
     let event_socket_path  = Path::new(EVENT_SOCKET_PATH_NAME);
     // Ensure /tmp folder exists - should we do this elsewhere?
