@@ -15,6 +15,8 @@ extern crate env_logger;
 extern crate hlua;
 extern crate rustc_serialize;
 
+extern crate petgraph;
+
 use std::env;
 
 use log::LogLevel;
