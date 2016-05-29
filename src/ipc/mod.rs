@@ -9,6 +9,9 @@ use unix_socket::UnixListener;
 
 mod channel;
 
+#[cfg(test)]
+mod tests;
+
 /// Versions are incremented.
 pub const VERSION: u64 = 0u64; // Increment to 1 on release.
 
@@ -37,7 +40,7 @@ pub fn unique_ish_id() -> u32 {
     let now = Instant::now();
     let mut hasher = SipHasher::new();
     format!("{:?}", now).hash(&mut hasher);
-    (hasher.finish() << MAGIC_SHIFT_NUMBER) as u32
+    (hasher.finish() >> MAGIC_SHIFT_NUMBER) as u32
 }
 
 /// Initialize the Lua server.
