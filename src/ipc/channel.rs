@@ -4,7 +4,6 @@ use std::io::Error as IOError;
 use std::io::prelude::*;
 
 use std::mem::transmute;
-use std::mem::drop;
 
 use std::collections::BTreeMap;
 
@@ -31,7 +30,7 @@ pub enum ResponseError {
 pub fn read_packet(stream: &mut Read) -> Result<Json, ResponseError> {
     let mut buffer = [0u8; 4];
     try!(stream.read_exact(&mut buffer).map_err(ResponseError::IO));
-    let len: u32 = u32::from_be(unsafe { transmute(buffer) }); drop(buffer);
+    let len: u32 = u32::from_be(unsafe { transmute(buffer) });
     trace!("Listening for packet of length {}", len);
     return Json::from_reader(&mut stream.take(len as u64))
         .map_err(ResponseError::InvalidJson);
@@ -45,7 +44,7 @@ pub fn write_packet(stream: &mut Write, packet: &Json) -> Result<(), ResponseErr
         panic!("Attempted to send reply too big for the channel!");
     }
     let len = (json_string.len() as u32).to_be();
-    let len_bytes: [u8; 4] = unsafe { transmute(len) }; drop(len);
+    let len_bytes: [u8; 4] = unsafe { transmute(len) };
     try!(stream.write_all(&len_bytes).map_err(ResponseError::IO));
     stream.write_all(json_string.as_bytes()).map_err(ResponseError::IO)
 }
