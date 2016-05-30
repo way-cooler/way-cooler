@@ -14,6 +14,7 @@ const COMPLEX_JSON: &'static str =
 { "foo": "bar", "baz": 22.4 } }"#;
 
 const BAD_JSON_DELIMITER: &'static str = r#"{ "foo": "bar" "#;
+const SUCCESS_JSON: &'static str = r#"{ "type": "success" }"#;
 
 #[test]
 fn u32_coversion() {
@@ -127,4 +128,10 @@ fn read_write_packet() {
     write_packet(&mut packet, &packet_json).expect("Could not write");
     let read_json = read_packet(&mut &*packet).expect("Could not read");
     assert_eq!(read_json, packet_json);
+}
+
+#[test]
+fn success_json_is_successful() {
+    assert_eq!(success_json(),
+               Json::from_str(SUCCESS_JSON).expect("Can't get success Json"));
 }
