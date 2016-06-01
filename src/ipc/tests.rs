@@ -59,7 +59,7 @@ fn read_packet_bad_json() {
     match read_packet(&mut &*packet) {
         Ok(json) => panic!("Got some Json somehow: {:?}", json),
         Err(response) => match response {
-            ResponseError::InvalidJson(err) => match err {
+            ReceiveError::InvalidJson(err) => match err {
                 ParserError::SyntaxError(code, start, end) => {
                     assert_eq!(code, ErrorCode::EOFWhileParsingObject);
                     assert_eq!(start, 1);
@@ -98,7 +98,7 @@ fn read_packet_short_length() {
     match read_packet(&mut &*packet) {
         Ok(json) => panic!("Got a json {:?}, read too much?", json),
         Err(response) => match response {
-            ResponseError::InvalidJson(json_err) => match json_err {
+            ReceiveError::InvalidJson(json_err) => match json_err {
                 ParserError::SyntaxError(code, start, end) => {
                     assert_eq!(code, ErrorCode::EOFWhileParsingString);
                     assert_eq!(start, 1); assert_eq!(end, 6);
