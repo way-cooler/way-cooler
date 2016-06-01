@@ -8,6 +8,8 @@ use std::fs;
 use unix_socket::UnixListener;
 
 mod channel;
+mod command;
+mod event;
 
 #[cfg(test)]
 mod tests;
@@ -86,11 +88,11 @@ fn command_thread(socket: UnixListener) {
     for stream in socket.incoming() {
         trace!("Sever: new connection: {:?}", stream);
         match stream {
-            Ok(stream) => {
+            Ok(mut stream) => {
                 info!("Command: connected to {:?}", stream);
                 let _handle = thread::Builder::new()
                     .name("IPC server helper".to_string())
-                    .spawn(move || channel::handle_command(stream));
+                    .spawn(move || command::thread(&mut stream));
             },
             Err(err) => {
                 info!("Error receiving a stream: {}", err);
@@ -103,11 +105,11 @@ fn event_thread(socket: UnixListener) {
     for stream in socket.incoming() {
         trace!("Event: new connection: {:?}", stream);
         match stream {
-            Ok(stream) => {
+            Ok(mut stream) => {
                 info!("Event: connected to {:?}", stream);
                 let _handle = thread::Builder::new()
                     .name("IPC evemt helper".to_string())
-                    .spawn(move || channel::handle_event(stream));
+                    .spawn(move || event::thread(&mut stream));
             },
             Err(err) => {
                 info!("Error receiving a stream: {}", err);
