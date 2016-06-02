@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use rustc_serialize::json::{Json, ParserError, ErrorCode};
 
 use ipc::unique_ish_id;
-use super::channel::*;
+use super::super::channel::*;
 
 const COMPLEX_JSON: &'static str =
     r#"{ "foo": "bar", "baz": 1, "bar": [ "a", "b", "c", 22], "obj":
