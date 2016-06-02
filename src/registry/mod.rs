@@ -34,8 +34,6 @@ pub enum RegistryError {
     WrongKeyType,
     /// Attempting to set a readonly value
     InvalidOperation,
-    /// The object couldn't be converted to/from Json
-    DecoderError(DecoderError)
 }
 
 /// Result type of gets/sets to the registry
@@ -94,12 +92,11 @@ where String: Borrow<K>, K: Hash + Eq + Display {
 
 /// Get a Rust structure from the registry
 #[allow(dead_code)]
-pub fn get_struct<K, T>(name: &K) -> RegistryResult<(AccessFlags, T)>
+    pub fn get_struct<K, T>(name: &K)
+                        -> RegistryResult<(AccessFlags, Result<T, DecoderError>)>
 where String: Borrow <K>, K: Hash + Eq + Display, T: Decodable {
-    get_json(name).and_then(|(flags, json)|
-        T::decode(&mut Decoder::new(json.deref().clone()))
-                            .map_err(|e| RegistryError::DecoderError(e))
-                            .map(|data| (flags, data)))
+    get_json(name).map(|(flags, json)|
+        (flags, T::decode(&mut Decoder::new(json.deref().clone()))))
 }
 
 /// Get Json data from the registry, evaluating if a property was found.
