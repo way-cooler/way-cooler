@@ -66,6 +66,13 @@ pub fn write_packet(stream: &mut Write, packet: &Json) -> SendResult {
     stream.write_all(json_string.as_bytes()).map_err(SendError::IO)
 }
 
+/// A Json message formatted with `"reason": reason`.
+///
+/// # Example
+/// A call to `channel::error_json("foo".to_string())` yields
+/// ```json
+/// { "type": "error", "reason": "foo" }
+/// ```
 pub fn error_json(reason: String) -> Json {
     let mut json = BTreeMap::new();
     json.insert("type".to_string(), Json::String("error".to_string()));
@@ -73,7 +80,14 @@ pub fn error_json(reason: String) -> Json {
     Json::Object(json)
 }
 
-/// Send an error message with additional fields
+/// Create a Json error message with additional fields.
+///
+/// # Example
+/// Creating `foo = { "foo": "bar", "baz": 42 }` and calling
+/// `channel::error_json("2foo2me".to_string(), foo)` yields
+/// ```json
+/// { "type": "error", "reason": "foo", "bar", "baz": 42 }
+/// ```
 pub fn error_json_with(reason: String,
                        others: BTreeMap<String, Json>) -> Json {
     if let Json::Object(mut json) = error_json(reason) {
@@ -85,14 +99,28 @@ pub fn error_json_with(reason: String,
     unreachable!()
 }
 
+/// Create a Json error messgae for expecting a `key` of some `type`.
+///
+/// # Example
+/// A call to `channel::error_expecting_key("foo", "string")` yields
+/// ```json
+/// { "type": "error", "reason": "message field not found",
+///   "missing": "foo", "expected": "string" }
+/// ```
 pub fn error_expecting_key(key: &'static str, type_: &'static str) -> Json {
     let mut others = BTreeMap::new();
     others.insert("missing".to_string(), Json::String(key.to_string()));
     others.insert("expected".to_string(), Json::String(type_.to_string()));
-    error_json_with("message field not found".to_string(), others)
+    error_json_with("missing message field".to_string(), others)
 }
 
-/// A Json representing a success packet
+/// A Json representing a success packet.
+///
+/// # Example
+/// `channel::success_json()` yields
+/// ```json
+/// { "type": "success" }
+/// ```
 pub fn success_json() -> Json {
     let mut responses = BTreeMap::new();
     responses.insert("type".to_string(), Json::String("success".to_string()));
@@ -100,6 +128,12 @@ pub fn success_json() -> Json {
 }
 
 /// Send an error message with additional fields
+///
+/// # Example
+/// `channel::success_json_with(foo)` with foo such as `{ "foo": "bar" }` yields
+/// ```json
+/// { "type": "success", "foo": "bar" }
+/// ```
 pub fn success_json_with(others: BTreeMap<String, Json>) -> Json {
     if let Json::Object(mut json) = success_json() {
         for (key, value) in others.into_iter() {
@@ -110,7 +144,13 @@ pub fn success_json_with(others: BTreeMap<String, Json>) -> Json {
     unreachable!()
 }
 
-// A Json representing a value packet
+/// A Json representing a value packet
+///
+/// # Example
+/// `channel::value_json(foo)` with foo such as `{ "foo": 1, "bar": 2 }` yields
+/// ```json
+/// { "type": "success", "value": { "foo": 1, "bar": 2 } }
+/// ```
 pub fn value_json(value: Json) -> Json {
     if let Json::Object(mut responses) = success_json() {
         responses.insert("value".to_string(), value);
