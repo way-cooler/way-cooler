@@ -14,7 +14,18 @@ const COMPLEX_JSON: &'static str =
 { "foo": "bar", "baz": 22.4 } }"#;
 
 const BAD_JSON_DELIMITER: &'static str = r#"{ "foo": "bar" "#;
+
 const SUCCESS_JSON: &'static str = r#"{ "type": "success" }"#;
+const VALUE_JSON: &'static str = r#"{ "type": "success", "value": "foo" }"#;
+const SUCCESS_WITH_FOO: &'static str =
+    r#"{ "type": "success", "foo": "bar" }"#;
+const ERR_JSON_FOO: &'static str = r#"{ "type": "error", "reason": "foo" }"#;
+const ERR_JSON_WITH_FOO: &'static str =
+    r#"{ "type": "error", "reason": "foo", "foo": "bar" }"#;
+const ERR_EXPECTING_KEY: &'static str =
+    r#"{ "type": "error", "reason": "missing message field", "missing": "foo",
+         "expected": "string" }"#;
+
 
 #[test]
 fn u32_coversion() {
@@ -88,7 +99,7 @@ fn read_packet_json() {
 }
 
 #[test]
-fn read_packet_short_length() {
+fn read_packet_too_short() {
     let mut packet = Vec::new();
     packet.push(0); packet.push(0); packet.push(0);
     packet.push(5); // Len == 5
@@ -109,6 +120,9 @@ fn read_packet_short_length() {
         }
     }
 }
+
+// There is no packet_too_long test because it would result in the server
+// waiting on a call to read() and the client probably not sending more data.
 
 #[test]
 fn write_packet_integrity() {
@@ -134,4 +148,22 @@ fn read_write_packet() {
 fn success_json_is_successful() {
     assert_eq!(success_json(),
                Json::from_str(SUCCESS_JSON).expect("Can't get success Json"));
+    assert_eq!(value_json(Json::String("foo".to_string())),
+               Json::from_str(VALUE_JSON).expect("Can't get value Json"));
+    let mut json = BTreeMap::new();
+    json.insert("foo".to_string(), Json::String("bar".to_string()));
+    assert_eq!(success_json_with(json),
+               Json::from_str(SUCCESS_WITH_FOO).expect("Can't get foo Json"));
+}
+
+#[test]
+fn error_json_is_erroneous() {
+    assert_eq!(error_json("foo".to_string()),
+               Json::from_str(ERR_JSON_FOO).expect("Can't get err Json"));
+    assert_eq!(error_expecting_key("foo", "string"),
+               Json::from_str(ERR_EXPECTING_KEY).expect("Cant't get err key Json"));
+    let mut json = BTreeMap::new();
+    json.insert("foo".to_string(), Json::String("bar".to_string()));
+    assert_eq!(error_json_with("foo".to_string(), json),
+               Json::from_str(ERR_JSON_WITH_FOO).expect("Can't get foo err Json"));
 }
