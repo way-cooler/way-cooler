@@ -68,7 +68,7 @@ pub fn thread<S: Read + Write>(mut stream: S) {
 /// Generates the response needed to a given command
 /// If the request is invalid it returns an Err.
 /// If the request is valid but fails it returns an Ok.
-fn reply(json: Json) -> Result<Json, Json> {
+pub fn reply(json: Json) -> Result<Json, Json> {
     let mut object: BTreeMap<String, Json>;
     if let Json::Object(obj) = json {
         object = obj;
@@ -186,6 +186,7 @@ fn reply(json: Json) -> Result<Json, Json> {
         "version" => {
             Ok(channel::value_json(Json::U64(super::VERSION)))
         },
+
         "commands" => {
             Ok(channel::value_json(Json::Array(vec![
                 Json::String("get".to_string()),
@@ -193,8 +194,14 @@ fn reply(json: Json) -> Result<Json, Json> {
                 Json::String("exists".to_string()),
                 Json::String("run".to_string()),
                 Json::String("version".to_string()),
-                Json::String("commands".to_string()) ])))
+                Json::String("commands".to_string()),
+                Json::String("ping".to_string())  ])))
         },
+
+        "ping" => {
+            Ok(channel::success_json())
+        },
+
         _ => Err(channel::error_json("invalid request; see 'commands'".to_string()))
     }
 }
