@@ -55,8 +55,7 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
 }
 
 /// Gets a RegistryField enum with the specified name
-pub fn get_field<K>(name: &K) -> Option<RegistryField>
-    where String: Borrow<K>, K: Hash + Eq + Display {
+pub fn get_field(name: &str) -> Option<RegistryField> {
     // clone() will either clone an Arc or an Arc+AccessFlags
     let result = read_lock().get(name).map(|v| v.clone());
     trace!("get: {} => {:?}", name, &result);
@@ -64,8 +63,7 @@ pub fn get_field<K>(name: &K) -> Option<RegistryField>
 }
 
 /// Attempts to get a command from the registry.
-pub fn get_command<K>(name: &K) -> RegistryResult<CommandFn>
-    where String: Borrow<K>, K: Hash + Eq + Display {
+pub fn get_command(name: &str) -> RegistryResult<CommandFn> {
     get_field(name).ok_or(RegistryError::KeyNotFound)
         .and_then(|val| match val {
         RegistryField::Command(com) => Ok(com),
@@ -75,8 +73,7 @@ pub fn get_command<K>(name: &K) -> RegistryResult<CommandFn>
 
 /// Gets a data type from the registry, returning a reference to the property
 /// method if the field is a property.
-pub fn get_data<K>(name: &K) -> RegistryResult<RegistryGetData>
-where String: Borrow<K>, K: Hash + Eq + Display {
+pub fn get_data(name: &str) -> RegistryResult<RegistryGetData> {
     get_field(name).ok_or(RegistryError::KeyNotFound)
         .and_then(|val| match val {
             RegistryField::Object { flags, data } =>
@@ -92,16 +89,15 @@ where String: Borrow<K>, K: Hash + Eq + Display {
 
 /// Get a Rust structure from the registry
 #[allow(dead_code)]
-    pub fn get_struct<K, T>(name: &K)
-                        -> RegistryResult<(AccessFlags, Result<T, DecoderError>)>
-where String: Borrow <K>, K: Hash + Eq + Display, T: Decodable {
+pub fn get_struct<T>(name: &str)
+                     -> RegistryResult<(AccessFlags, Result<T, DecoderError>)>
+where T: Decodable {
     get_json(name).map(|(flags, json)|
         (flags, T::decode(&mut Decoder::new(json.deref().clone()))))
 }
 
 /// Get Json data from the registry, evaluating if a property was found.
-pub fn get_json<K>(name: &K) -> RegistryResult<(AccessFlags, Arc<Json>)>
-where String: Borrow<K>, K: Hash + Eq + Display {
+pub fn get_json(name: &str) -> RegistryResult<(AccessFlags, Arc<Json>)> {
     get_data(name).map(|val| val.resolve())
 }
 
