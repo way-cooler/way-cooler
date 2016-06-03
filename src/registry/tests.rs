@@ -1,14 +1,11 @@
 //! Tests for the registry
 
-use std::sync::{mpsc, Arc, Mutex, Condvar};
-use std::time::Duration;
-use std::thread;
+use std::sync::{Arc, Mutex, Condvar};
 
-use rustc_serialize::Decodable;
 use rustc_serialize::json::{Json, ToJson};
 
 use registry;
-use registry::{AccessFlags, get_struct};
+use registry::AccessFlags;
 
 lazy_static! {
     static ref ACCESS_PAIR: Arc<(Mutex<bool>, Condvar)>
@@ -70,20 +67,6 @@ json_convertible! {
 
 unsafe impl Sync for Point {}
 
-impl Point {
-    /// Creates a new point with the given coordinates
-    pub fn new(x: i32, y: i32) -> Point {
-        Point { x: x, y: y }
-    }
-
-    /// A point at 0, 0
-    pub fn origin() -> Point {
-        Point { x: 0, y: 0 }
-    }
-}
-
-const ERR: &'static str = "Generic registry test error!";
-
 #[test]
 fn add_keys() {
     let values = vec![
@@ -98,6 +81,7 @@ fn add_keys() {
 
         ("readonly", AccessFlags::READ(), READONLY.to_json()),
         ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
+        ("noperms", AccessFlags::empty(), NO_PERMS.to_json())
     ];
 
     for (name, flags, json) in values.into_iter() {
@@ -135,7 +119,7 @@ fn contains_keys() {
 
     let keys = [
         "bool", "u64", "i64", "f64", "null", "text", "point",
-        "u64s", "readonly", "writeonly", "prop",
+        "u64s", "readonly", "writeonly", "prop", "noperms",
         "prop_read", "prop_write", "command",
     ];
     for key in keys.into_iter() {
@@ -160,6 +144,7 @@ fn object_keys_equal() {
 
         ("readonly", AccessFlags::READ(), READONLY.to_json()),
         ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
+        ("noperms", AccessFlags::empty(), NO_PERMS.to_json())
     ];
 
     for (name, flags, json) in values.into_iter() {
