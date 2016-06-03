@@ -215,9 +215,8 @@ pub fn set_property_field(key: String, get_fn: Option<GetFn>, set_fn: Option<Set
 
 /// Whether this map contains a key of any type
 #[allow(dead_code)]
-pub fn contains_key<K>(key: &K) -> bool
-where String: Borrow<K>, K: Hash + Eq + Display {
-    trace!("contains_key: {}", *key);
+pub fn contains_key(key: &str) -> bool {
+    trace!("contains_key: {}", key);
     let read_reg = read_lock();
     read_reg.contains_key(key)
 }
