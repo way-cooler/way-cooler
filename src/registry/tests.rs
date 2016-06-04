@@ -207,5 +207,4 @@ fn property_set() {
     registry::set_json("set_prop".to_string(),
                        AccessFlags::empty(), Json::Null)
         .expect("Couldn't set data a second time");
-    assert!(1 == 2);
 }
