@@ -32,12 +32,13 @@ pub fn get_prop() -> Json {
     PROP_GET_RESULT.to_json()
 }
 
-pub fn set_prop(json: Json) {
-    println!("set_prop: got {:?}", json);
+pub fn set_prop(_json: Json) {
+    println!("set_prop being called!");
+    panic!("set_prop panic")
 }
 
 pub fn command() {
-    println!("command executed!");
+    panic!("command panic");
 }
 
 /// [0, 1, 2]
@@ -178,3 +179,33 @@ fn key_perms() {
     }
 }
 
+#[test]
+#[should_panic(expected = "command panic")]
+fn run_command() {
+    wait_for_registry();
+    let command = registry::get_command("command")
+        .expect("Command not found");
+    command();
+}
+
+#[test]
+fn property_get() {
+    wait_for_registry();
+    let prop_read = registry::get_data("prop_read")
+        .expect("Couldn't get prop_read");
+
+    assert_eq!(*prop_read.resolve().1, PROP_GET_RESULT.to_json());
+}
+
+#[test]
+//#[should_panic(expected = "set_prop panic")]
+fn property_set() {
+    wait_for_registry();
+    assert!(registry::set_json("set_prop".to_string(),
+                               AccessFlags::empty(), Json::Null)
+            .expect("Unable to set data").is_none());
+    registry::set_json("set_prop".to_string(),
+                       AccessFlags::empty(), Json::Null)
+        .expect("Couldn't set data a second time");
+    assert!(1 == 2);
+}
