@@ -69,7 +69,16 @@ pub enum RegistryGetData {
     /// An object in the registry
     Object(AccessFlags, Arc<Json>),
     /// Get field of a property in the registry
-    Property(GetFn)
+    Property(AccessFlags, GetFn)
+}
+
+/// Result of what can be set to a registry value.
+#[derive(Clone)]
+pub enum RegistrySetData {
+    /// Some data was displaced, here it is
+    Displaced(Arc<Json>),
+    /// A property was retrieved, you should run it
+    Property(SetFn)
 }
 
 impl Debug for RegistryField {
@@ -100,8 +109,20 @@ impl Debug for RegistryGetData {
                 f.debug_struct("RegistryGetData::Object")
                 .field("flags", flags as &Debug)
                 .field("data", data as &Debug).finish(),
-            &RegistryGetData::Property(_) =>
-                write!(f, "RegistryGetData::Property")
+            &RegistryGetData::Property(ref flags, _) =>
+                write!(f, "RegistryGetData::Property({:?})", flags)
+        }
+    }
+}
+
+impl Debug for RegistrySetData {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            &RegistrySetData::Displaced(ref data) =>
+                f.debug_struct("RegistrySetData::Displaced")
+                .field("data", data as &Debug).finish(),
+            &RegistrySetData::Property(_) =>
+                write!(f, "RegistrySetData::Property(...)")
         }
     }
 }
@@ -121,17 +142,16 @@ impl FieldType {
 
 impl RegistryField {
     /// What access the module has to it
-    #[allow(dead_code)]
     pub fn get_flags(&self) -> Option<AccessFlags> {
-        match self {
-            &RegistryField::Object { ref flags, .. } => Some(flags.clone()),
-            &RegistryField::Property { ref get, ref set } => {
+        match *self {
+            RegistryField::Object { ref flags, .. } => Some(flags.clone()),
+            RegistryField::Property { ref get, ref set } => {
                 let mut flags = AccessFlags::empty();
                 if get.is_some() { flags.insert(AccessFlags::READ()); }
                 if set.is_some() { flags.insert(AccessFlags::WRITE()); }
                 Some(flags)
             },
-            _ => None
+            RegistryField::Command(_) => None
         }
     }
 
@@ -149,8 +169,12 @@ impl RegistryField {
         match *self {
             RegistryField::Object { ref flags, ref data } =>
                 Some(RegistryGetData::Object(flags.clone(), data.clone())),
-            RegistryField::Property { ref get, .. } =>
-                get.clone().and_then(|g| Some(RegistryGetData::Property(g))),
+            RegistryField::Property { ref get, ref set } => {
+                let mut flags = AccessFlags::empty();
+                if get.is_some() { flags.insert(AccessFlags::READ()) }
+                if set.is_some() { flags.insert(AccessFlags::WRITE()) }
+                get.map(|g| RegistryGetData::Property(flags, g))
+            }
             _ => None
         }
     }
@@ -209,8 +233,8 @@ impl RegistryGetData {
     pub fn resolve(self) -> (AccessFlags, Arc<Json>) {
         match self {
             RegistryGetData::Object(flags, data) => (flags, data),
-            RegistryGetData::Property(get) =>
-                (AccessFlags::all(), Arc::new(get()))
+            RegistryGetData::Property(flags, get) =>
+                (flags, Arc::new(get()))
         }
     }
 
@@ -218,8 +242,27 @@ impl RegistryGetData {
     #[allow(dead_code)]
     pub fn get_type(&self) -> FieldType {
         match self {
-            &RegistryGetData::Property(_) => FieldType::Property,
+            &RegistryGetData::Property(_, _) => FieldType::Property,
             &RegistryGetData::Object(_, _) => FieldType::Object
+        }
+    }
+}
+
+impl RegistrySetData {
+    /// If this set data is a property, calls the property
+    pub fn call(self, json: Json) {
+        match self {
+            RegistrySetData::Displaced(_) => (),
+            RegistrySetData::Property(set) => set(json)
+        }
+    }
+
+    /// Gets the FieldType of this SetData (property or object)
+    #[allow(dead_code)]
+    pub fn get_type(&self) -> FieldType {
+        match *self {
+            RegistrySetData::Displaced(_) => FieldType::Object,
+            RegistrySetData::Property(_) => FieldType::Property
         }
     }
 }
