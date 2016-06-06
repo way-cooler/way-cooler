@@ -238,6 +238,15 @@ impl RegistryGetData {
         }
     }
 
+    /// Gets the set of AccessFlags needed for a registry field with said
+    /// options
+    pub fn flags_for(get: &Option<GetFn>, set: &Option<SetFn>) -> AccessFlags {
+        let mut flags = AccessFlags::empty();
+        if get.is_some() { flags.insert(AccessFlags::READ());  }
+        if set.is_some() { flags.insert(AccessFlags::WRITE()); }
+        flags
+    }
+
     /// Gets the FieldType of this GetData (property or object)
     #[allow(dead_code)]
     pub fn get_type(&self) -> FieldType {
