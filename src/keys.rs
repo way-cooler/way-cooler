@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 
-use registry::{CommandFn, get_command};
+use registry::get_command;
 use super::layout::tree;
 use super::lua;
 

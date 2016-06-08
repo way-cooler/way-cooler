@@ -39,7 +39,7 @@ pub fn register_defaults() {
             $(fn $b() {
                 trace!("Switching to workspace {}", $n);
                 if let Ok(mut tree) = try_lock_tree() {
-                    tree.switch_workspace(&$n.to_string());
+                    tree.switch_to_workspace(&$n.to_string());
                 }
             }
             register(stringify!($b), Arc::new($b)); )+
