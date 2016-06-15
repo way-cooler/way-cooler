@@ -5,8 +5,8 @@ use std::sync::{Mutex, MutexGuard, TryLockError};
 
 use petgraph::graph::NodeIndex;
 
-use layout::container::{Container, Handle, ContainerType};
-use rustwlc::{WlcView, WlcOutput, Geometry, Point};
+use layout::container::{Container, Handle, ContainerType, Layout};
+use rustwlc::{WlcView, WlcOutput, Geometry, Point, Size, ResizeEdge};
 
 use layout::graph_tree::Tree;
 
@@ -109,6 +109,11 @@ impl LayoutTree {
             return self.tree.ancestor_of_type(ix, ctype)
         }
         return None
+    }
+
+    /// Gets the root index of the tree
+    pub fn root_ix(&self) -> NodeIndex {
+        self.tree.root_ix()
     }
 
     #[allow(dead_code)]
@@ -329,6 +334,205 @@ impl LayoutTree {
         });
 
         self.validate();
+    }
+
+    /// Given the index of some container in the tree, lays out the children of
+    /// that container based on what type of container it is and how big of an
+    /// area is allocated for it and its children.
+    pub fn layout(&mut self, node_ix: NodeIndex) {
+        match self.tree[node_ix].get_type() {
+            ContainerType::Root => {
+                for output_ix in self.tree.children_of(node_ix) {
+                    self.layout(output_ix);
+                }
+            }
+            // NOTE Do we need to set the workspace to the size of the output...?
+            // We should do that here, right?
+            ContainerType::Output => {
+                // Workspace doesn't care about how big the output actually is
+                let handle = match self.tree[node_ix] {
+                    Container::Output { ref handle, .. } => handle.clone(),
+                    _ => unreachable!()
+                };
+                let size = handle.get_resolution().clone();
+                let geometry = Geometry {
+                    origin: Point { x: 0, y: 0 },
+                    size: size
+                };
+                for workspace_ix in self.tree.children_of(node_ix) {
+                    self.layout_helper(workspace_ix, geometry.clone());
+                }
+            }
+            ContainerType::Workspace => {
+                // Simply call layout_helper with the geometry from the parent output
+                let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
+                    .expect("Workspace had no output parent");
+                let handle = match self.tree[output_ix] {
+                    Container::Output{ ref handle, .. } => handle.clone(),
+                    _ => unreachable!()
+                };
+                let output_geometry = Geometry {
+                    origin: Point { x: 0, y: 0},
+                    size: handle.get_resolution().clone()
+                };
+                trace!("layout: Laying out workspace, using size of the screen output {:?}", handle);
+                self.layout_helper(node_ix, output_geometry);
+            }
+            /*ContainerType::Container => {
+                let geometry = match self.tree[node_ix] {
+                    Container::Container { ref geometry, .. } => geometry.clone(),
+                    _ => unreachable!()
+                };
+                for container_ix in self.tree.children_of(node_ix) {
+                    self.layout_helper(container_ix, geometry.clone());
+                }
+            }*/
+            _ => panic!("layout should not be called directly on a container, view")
+        }
+    }
+
+    fn layout_helper(&mut self, node_ix: NodeIndex, mut geometry: Geometry) {
+        trace!("layout_helper: Laying out node {:?} with geometry constraints {:?}",
+               node_ix, geometry);
+        match self.tree[node_ix].get_type() {
+            ContainerType::Workspace => {
+                // NOTE Here is where we deal with the gap for the panel
+                {
+                    let container_mut = self.tree.get_mut(node_ix).unwrap();
+                    trace!("layout_helper: Laying out workspace {:?}", container_mut);
+                    match *container_mut {
+                        Container::Workspace { ref mut size, .. } => {
+                            *size = geometry.size.clone();
+                        }
+                        _ => unreachable!()
+                    };
+                }
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.layout_helper(child_ix, geometry.clone());
+                }
+            },
+            ContainerType::Root | ContainerType::Output => {
+                trace!("layout_helper: Laying out entire tree");
+                warn!("Ignoring geometry constraint ({:?}), deferring to each output's constraints",
+                      geometry);
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.layout(child_ix);
+                }
+            }
+            ContainerType::Container => {
+                {
+                    let container_mut = self.tree.get_mut(node_ix).unwrap();
+                    trace!("layout_helper: Laying out container {:?}", container_mut);
+                    match *container_mut {
+                        Container::Container { geometry: ref mut c_geometry, .. } => {
+                            *c_geometry = geometry.clone();
+                        },
+                        _ => unreachable!()
+                    };
+                }
+                let layout = match self.tree[node_ix] {
+                    Container::Container { layout, .. } => layout,
+                    _ => unreachable!()
+                };
+                match layout {
+                    Layout::Horizontal => {
+                        trace!("Layout was horizontal, laying out the sub-containers horizontally");
+                        // calculate the scale
+                        let mut scale: f32 = 0.0;
+                        let children = self.tree.children_of(node_ix);
+                        for child_ix in &children {
+                            let mut child_width = self.tree[*child_ix].get_geometry()
+                                .expect("Child had no geometry").size.w;
+                            // correct
+                            if child_width <= 0 {
+                                child_width = if children.len() > 1 {
+                                    geometry.size.w / ((children.len() - 1) as u32)
+                                } else {
+                                    geometry.size.w
+                                }
+                            }
+                            scale += child_width as f32;
+                        }
+
+                        if scale > 0.1 {
+                            scale = geometry.size.w as f32 / scale;
+                            for (index, child_ix) in children.iter().enumerate() {
+                                let child_size: Size;
+                                {
+                                    let child = &self.tree[*child_ix];
+                                    child_size = child.get_geometry()
+                                        .expect("Child had no geometry").size;
+                                }
+                                // If last child, then just give it the remaining width
+                                if index == children.len() - 1 {
+                                    // do something
+                                    let cur_geometry = &self.tree[node_ix].get_geometry()
+                                        .expect("Current container had no geometry");
+                                    let cur_x = cur_geometry.origin.x as u32;
+                                    let remaining_width: u32 = cur_x + cur_geometry.size.w -
+                                        geometry.origin.x as u32;
+                                    geometry = Geometry {
+                                        origin: geometry.origin,
+                                        size: Size {
+                                            w: remaining_width,
+                                            h: geometry.size.h
+                                        }
+                                    };
+                                    self.layout_helper(*child_ix, geometry.clone());
+                                }
+                                self.layout_helper(*child_ix, geometry.clone());
+
+                                // NOTE Wish geometry/size/point was copyable and mutable...
+                                let new_size = Size {
+                                    w: ((child_size.w as f32) * scale) as u32,
+                                    h: child_size.h
+                                };
+
+                                geometry = Geometry {
+                                    origin: Point {
+                                        x: geometry.origin.x + new_size.w as i32,
+                                        y: geometry.origin.y
+                                    },
+                                    size: new_size
+                                };
+                            }
+                        }
+                    }
+                    Layout::Floating => {
+                        trace!("Layout was floating, throwing the views on the screen {}",
+                               "like I'm Jackson Pollock");
+                    }
+                    _ => unimplemented!()
+                }
+            }
+
+            ContainerType::View => {
+                let handle = match self.tree[node_ix] {
+                    Container::View { ref handle, .. } => handle,
+                    _ => unreachable!()
+                };
+                trace!("layout_helper: Laying out view {:?}", handle);
+                handle.set_geometry(ResizeEdge::empty(), &geometry);
+                // yeahhhh I think I need to do something else?
+                // Probably with geometry
+                //self.update_geometry(node_ix);
+                return;
+            }
+        }
+    }
+
+    /// node_ix must be a container or a view
+    /// Though it should only be a container if stacked or tabbed? So just assume view for now
+    fn update_geometry(&self, node_ix: NodeIndex) {
+        match self.tree[node_ix] {
+            Container::View { .. } => {
+                unimplemented!()
+            },
+            Container::Container { .. } => {
+                unimplemented!()
+            },
+            _ => error!("Called update_geometry on a container that was not a view or a container")
+        }
     }
 
     /// Switch to the specified workspace
