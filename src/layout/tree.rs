@@ -382,7 +382,7 @@ impl LayoutTree {
         }
     }
 
-    fn layout_helper(&mut self, node_ix: NodeIndex, mut geometry: Geometry) {
+    fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry) {
         trace!("layout_helper: Laying out node {:?} with geometry constraints {:?}",
                node_ix, geometry);
         match self.tree[node_ix].get_type() {
@@ -448,6 +448,7 @@ impl LayoutTree {
                         if scale > 0.1 {
                             scale = geometry.size.w as f32 / scale;
                             trace!("Scaling factor: {:?}", scale);
+                            let mut sub_geometry = geometry.clone();
                             for (index, child_ix) in children.iter().enumerate() {
                                 let child_size: Size;
                                 {
@@ -455,35 +456,39 @@ impl LayoutTree {
                                     child_size = child.get_geometry()
                                         .expect("Child had no geometry").size;
                                 }
+                                // update the size to be of he max height,
+                                // and proper width (it's width * scale)
+                                let new_size = Size {
+                                    w: ((child_size.w as f32) * scale) as u32,
+                                    h: sub_geometry.size.h
+                                };
+                                sub_geometry = Geometry {
+                                    origin: sub_geometry.origin.clone(),
+                                    size: new_size.clone()
+                                };
                                 // If last child, then just give it the remaining width
                                 if index == children.len() - 1 {
                                     trace!("Last child, giving it the remaining length");
-                                    // do something
                                     let cur_geometry = &self.tree[node_ix].get_geometry()
                                         .expect("Current container had no geometry");
-                                    let cur_x = cur_geometry.origin.x as u32;
-                                    let remaining_width: u32 = cur_x + cur_geometry.size.w -
-                                        geometry.origin.x as u32;
-                                    geometry = Geometry {
-                                        origin: geometry.origin,
+                                    let remaining_width =
+                                        cur_geometry.origin.x as u32 + cur_geometry.size.w -
+                                        sub_geometry.origin.x as u32;
+                                    sub_geometry = Geometry {
+                                        origin: sub_geometry.origin,
                                         size: Size {
                                             w: remaining_width,
-                                            h: geometry.size.h
+                                            h: sub_geometry.size.h
                                         }
                                     };
                                 }
-                                self.layout_helper(*child_ix, geometry.clone());
+                                self.layout_helper(*child_ix, sub_geometry.clone());
 
-                                // NOTE Wish geometry/size/point was copyable and mutable...
-                                let new_size = Size {
-                                    w: ((child_size.w as f32) * scale) as u32,
-                                    h: geometry.size.h
-                                };
-
-                                geometry = Geometry {
+                                // Next sub container needs to start where this one ends
+                                sub_geometry = Geometry {
                                     origin: Point {
-                                        x: geometry.origin.x + new_size.w as i32,
-                                        y: geometry.origin.y
+                                        x: sub_geometry.origin.x + new_size.w as i32,
+                                        y: sub_geometry.origin.y
                                     },
                                     size: new_size
                                 };
