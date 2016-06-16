@@ -42,7 +42,14 @@ pub extern fn output_focus(output: WlcOutput, focused: bool) {
 pub extern fn output_resolution(output: WlcOutput,
                             old_size_ptr: &Size, new_size_ptr: &Size) {
     trace!("output_resolution: {:?} from  {:?} to {:?}",
-             output, *old_size_ptr, *new_size_ptr);
+           output, *old_size_ptr, *new_size_ptr);
+    // Update the resolution of the output and it's children
+    output.set_resolution(new_size_ptr.clone());
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        let output_ix = tree.root_ix();
+        // recursively update the children's position
+        tree.layout(output_ix);
+    }
 }
 /*
 pub extern fn output_render_pre(output: WlcOutput) {
