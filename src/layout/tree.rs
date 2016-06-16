@@ -503,7 +503,7 @@ impl LayoutTree {
     }
 
     #[cfg(not(debug_assertions))]
-    fn validate_tree() {}
+    fn validate(&self) {}
 
 }
 
