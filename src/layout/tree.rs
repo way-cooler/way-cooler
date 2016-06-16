@@ -420,6 +420,7 @@ impl LayoutTree {
                         },
                         _ => unreachable!()
                     };
+                    trace!("layout_helper: new geometry: {:?}", geometry.clone());
                 }
                 let layout = match self.tree[node_ix] {
                     Container::Container { layout, .. } => layout,
@@ -432,20 +433,21 @@ impl LayoutTree {
                         let mut scale: f32 = 0.0;
                         let children = self.tree.children_of(node_ix);
                         for child_ix in &children {
-                            let mut child_width = self.tree[*child_ix].get_geometry()
-                                .expect("Child had no geometry").size.w;
-                            if child_width <= 0 {
+                            let mut child_width: f32 = self.tree[*child_ix].get_geometry()
+                                .expect("Child had no geometry").size.w as f32;
+                            if child_width <= 0.0 {
                                 child_width = if children.len() > 1 {
-                                    geometry.size.w / ((children.len() - 1) as u32)
+                                    geometry.size.w as f32 / ((children.len() - 1) as f32)
                                 } else {
-                                    geometry.size.w
+                                    geometry.size.w as f32
                                 }
                             }
-                            scale += child_width as f32;
+                            scale += child_width;
                         }
 
                         if scale > 0.1 {
                             scale = geometry.size.w as f32 / scale;
+                            trace!("Scaling factor: {:?}", scale);
                             for (index, child_ix) in children.iter().enumerate() {
                                 let child_size: Size;
                                 {
@@ -455,6 +457,7 @@ impl LayoutTree {
                                 }
                                 // If last child, then just give it the remaining width
                                 if index == children.len() - 1 {
+                                    trace!("Last child, giving it the remaining length");
                                     // do something
                                     let cur_geometry = &self.tree[node_ix].get_geometry()
                                         .expect("Current container had no geometry");
@@ -501,6 +504,7 @@ impl LayoutTree {
                     _ => unreachable!()
                 };
                 trace!("layout_helper: Laying out view {:?}", handle);
+                trace!("layout_helper: new geometry: {:?}", geometry.clone());
                 handle.set_geometry(ResizeEdge::empty(), &geometry);
                 // yeahhhh I think I need to do something else?
                 // Probably with geometry
