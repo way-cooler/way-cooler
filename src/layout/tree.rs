@@ -378,15 +378,6 @@ impl LayoutTree {
                 trace!("layout: Laying out workspace, using size of the screen output {:?}", handle);
                 self.layout_helper(node_ix, output_geometry);
             }
-            /*ContainerType::Container => {
-                let geometry = match self.tree[node_ix] {
-                    Container::Container { ref geometry, .. } => geometry.clone(),
-                    _ => unreachable!()
-                };
-                for container_ix in self.tree.children_of(node_ix) {
-                    self.layout_helper(container_ix, geometry.clone());
-                }
-            }*/
             _ => panic!("layout should not be called directly on a container, view")
         }
     }
@@ -443,7 +434,6 @@ impl LayoutTree {
                         for child_ix in &children {
                             let mut child_width = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry").size.w;
-                            // correct
                             if child_width <= 0 {
                                 child_width = if children.len() > 1 {
                                     geometry.size.w / ((children.len() - 1) as u32)
@@ -478,14 +468,13 @@ impl LayoutTree {
                                             h: geometry.size.h
                                         }
                                     };
-                                    self.layout_helper(*child_ix, geometry.clone());
                                 }
                                 self.layout_helper(*child_ix, geometry.clone());
 
                                 // NOTE Wish geometry/size/point was copyable and mutable...
                                 let new_size = Size {
                                     w: ((child_size.w as f32) * scale) as u32,
-                                    h: child_size.h
+                                    h: geometry.size.h
                                 };
 
                                 geometry = Geometry {
