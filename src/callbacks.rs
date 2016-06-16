@@ -97,7 +97,7 @@ pub extern fn view_move_to_output(current: WlcView,
 
 pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
     trace!("view_request_geometry: {:?} wants {:?}", view, geometry);
-    view.set_geometry(EDGE_NONE, geometry);
+    warn!("Denying request");
 }
 
 pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
