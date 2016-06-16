@@ -46,9 +46,7 @@ pub extern fn output_resolution(output: WlcOutput,
     // Update the resolution of the output and it's children
     output.set_resolution(new_size_ptr.clone());
     if let Ok(mut tree) = tree::try_lock_tree() {
-        let output_ix = tree.root_ix();
-        // recursively update the children's position
-        tree.layout(output_ix);
+        tree.update_layout();
     }
 }
 /*

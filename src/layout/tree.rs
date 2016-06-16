@@ -111,11 +111,6 @@ impl LayoutTree {
         return None
     }
 
-    /// Gets the root index of the tree
-    pub fn root_ix(&self) -> NodeIndex {
-        self.tree.root_ix()
-    }
-
     #[allow(dead_code)]
     fn active_of(&self, ctype: ContainerType) -> Option<&Container> {
         self.active_ix_of(ctype).and_then(|ix| self.tree.get(ix))
@@ -336,10 +331,16 @@ impl LayoutTree {
         self.validate();
     }
 
+    // Updates the tree's layout recursively starting from the root
+    pub fn update_layout(&mut self) {
+        let root_ix = self.tree.root_ix();
+        self.layout(root_ix);
+    }
+
     /// Given the index of some container in the tree, lays out the children of
     /// that container based on what type of container it is and how big of an
     /// area is allocated for it and its children.
-    pub fn layout(&mut self, node_ix: NodeIndex) {
+    fn layout(&mut self, node_ix: NodeIndex) {
         match self.tree[node_ix].get_type() {
             ContainerType::Root => {
                 for output_ix in self.tree.children_of(node_ix) {

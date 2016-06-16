@@ -93,8 +93,7 @@ lazy_static! {
 fn layout_test_fn() {
     use layout::tree;
     let mut tree = tree::try_lock_tree().unwrap();
-    let root_ix = tree.root_ix();
-    tree.layout(root_ix);
+    tree.update_layout();
 }
 
 fn terminal_fn() {
