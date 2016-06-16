@@ -2,6 +2,7 @@
 //! This is where the i3-specific code is.
 
 use std::sync::{Mutex, MutexGuard, TryLockError};
+use std::cmp;
 
 use petgraph::graph::NodeIndex;
 
@@ -204,6 +205,44 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Normalizes the geometry of a view to be the same size as it's siblings,
+    /// based on the parent container's layout, at the 0 point of the parent container.
+    /// Note this does not auto-tile, only modifies this one view.
+    ///
+    /// Useful if a container's children want to be evenly distributed, or a new view
+    /// is being added.
+    pub fn normalize_view(&mut self, view: WlcView) {
+        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
+            let parent_ix = self.tree.ancestor_of_type(view_ix,
+                                                       ContainerType::Container)
+                .expect("View had no container parent");
+            match self.tree[parent_ix] {
+                Container::Container { ref layout, .. } => {
+                    match *layout {
+                        Layout::Horizontal => {
+                            let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
+                                as u32;
+                            let parent_geometry = self.tree[parent_ix].get_geometry()
+                                .expect("Parent container had no geometry");
+                            let new_geometry = Geometry {
+                                origin: parent_geometry.origin.clone(),
+                                size: Size {
+                                    w: parent_geometry.size.w / num_siblings,
+                                    h: parent_geometry.size.h
+                                }
+                            };
+                            trace!("Setting view {:?} to geometry: {:?}",
+                                   view_ix, parent_geometry);
+                            view.set_geometry(ResizeEdge::empty(), &new_geometry);
+                        }
+                        _ => unimplemented!()
+                    }
+                },
+                _ => unreachable!()
+            };
+        }
+    }
+
     /// Add a new view container with the given WlcView to the active container
     pub fn add_view(&mut self, view: WlcView) {
         if let Some(mut active_ix) = self.active_container {
@@ -331,10 +370,37 @@ impl LayoutTree {
         self.validate();
     }
 
-    // Updates the tree's layout recursively starting from the root
+    // Updates the tree's layout recursively starting from the root.
+    // This is very expensive, since it traverses the entire tree.
     pub fn update_layout(&mut self) {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
+    }
+
+    // Updates the tree's layout recursively starting from the active container.
+    // If the active container is a view, it starts at the parent container.
+    pub fn update_active_of(&mut self, c_type: ContainerType) {
+        if let Some(container_ix) = self.active_ix_of(c_type) {
+            match self.tree[container_ix].clone() {
+                Container::Root { .. } |
+                Container::Output { .. } |
+                Container::Workspace { .. } => {
+                    self.layout(container_ix);
+                }
+                Container::Container { ref geometry, .. } => {
+                    self.layout_helper(container_ix, geometry.clone());
+                },
+                Container::View { .. } => {
+                    warn!("Cannot simply update a view's geometry without {}",
+                          "consulting container, updating it's parent");
+                    self.update_active_of(ContainerType::Container);
+                },
+
+            }
+        } else {
+            error!("{:?} did not have a parent of type {:?}, doing nothing!",
+                   self, c_type);
+        }
     }
 
     /// Given the index of some container in the tree, lays out the children of
