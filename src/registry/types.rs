@@ -28,10 +28,6 @@ impl AccessFlags {
     pub fn WRITE() -> AccessFlags { WRITE }
 }
 
-
-/// Command type for Rust function
-pub type CommandFn = Arc<Fn() + Send + Sync>;
-
 /// Function which will yield an object
 pub type GetFn = Arc<Fn() -> Json + Send + Sync>;
 
@@ -40,7 +36,7 @@ pub type SetFn = Arc<Fn(Json) + Send + Sync>;
 
 /// Enum of types of registry fields
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum FieldType { Object, Property, Command }
+pub enum FieldType { Object, Property }
 
 /// Data which can be stored in the registry
 #[derive(Clone)]
@@ -59,8 +55,6 @@ pub enum RegistryField {
         /// Method called to set a property
         set: Option<SetFn>
     },
-    /// A command
-    Command(CommandFn)
 }
 
 /// Result of what can be accessed from a registry value.
@@ -78,7 +72,7 @@ pub enum RegistrySetData {
     /// Some data was displaced, here it is
     Displaced(Arc<Json>),
     /// A property was retrieved, you should run it
-    Property(SetFn)
+    Property(AccessFlags, SetFn)
 }
 
 impl Debug for RegistryField {
@@ -96,8 +90,6 @@ impl Debug for RegistryField {
                     .field("set", &new_set)
                     .finish()
             }
-            &RegistryField::Command(_) =>
-                write!(f, "RegistryField::Command(...)")
         }
     }
 }
@@ -131,7 +123,6 @@ impl FieldType {
     /// Whether a field of this type can be changed by a field of type other.
     pub fn can_set_from(self, other: FieldType) -> bool {
         match self {
-            FieldType::Command => other == FieldType::Command,
             FieldType::Property =>
                 other == FieldType::Object ||
                 other == FieldType::Property,
@@ -141,28 +132,6 @@ impl FieldType {
 }
 
 impl RegistryField {
-    /// What access the module has to it
-    pub fn get_flags(&self) -> Option<AccessFlags> {
-        match *self {
-            RegistryField::Object { ref flags, .. } => Some(flags.clone()),
-            RegistryField::Property { ref get, ref set } => {
-                let mut flags = AccessFlags::empty();
-                if get.is_some() { flags.insert(AccessFlags::READ()); }
-                if set.is_some() { flags.insert(AccessFlags::WRITE()); }
-                Some(flags)
-            },
-            RegistryField::Command(_) => None
-        }
-    }
-
-    /// Attempts to access the RegistryField as a command
-    pub fn get_command(&self) -> Option<CommandFn> {
-        match *self {
-            RegistryField::Command(ref com) => Some(com.clone()),
-            _ => None
-        }
-    }
-
     /// Attempts to access the RegistryField as a file
     #[allow(dead_code)]
     pub fn get_data(&self) -> Option<RegistryGetData> {
@@ -175,15 +144,6 @@ impl RegistryField {
                 if set.is_some() { flags.insert(AccessFlags::WRITE()) }
                 get.map(|g| RegistryGetData::Property(flags, g))
             }
-            _ => None
-        }
-    }
-
-    /// Converts this RegistryField to maybe a command
-    #[allow(dead_code)]
-    pub fn as_command(self) -> Option<CommandFn> {
-        match self {
-            RegistryField::Command(com) => Some(com),
             _ => None
         }
     }
@@ -220,7 +180,20 @@ impl RegistryField {
         match self {
             &RegistryField::Object { .. }   => FieldType::Object,
             &RegistryField::Property { .. } => FieldType::Property,
-            &RegistryField::Command(_)      => FieldType::Command
+        }
+    }
+
+    /// Gets the set of AccessFlags needed for a registry field with said
+    /// options
+    pub fn get_flags(&self) -> AccessFlags {
+        match *self {
+            RegistryField::Object { flags, data } => flags,
+            RegistryField::Property { get, set } => {
+                let mut flags = AccessFlags::empty();
+                if get.is_some() { flags.insert(AccessFlags::READ()) }
+                if set.is_some() { flags.insert(AccessFlags::WRITE()) }
+                flags
+            }
         }
     }
 }
@@ -238,15 +211,6 @@ impl RegistryGetData {
         }
     }
 
-    /// Gets the set of AccessFlags needed for a registry field with said
-    /// options
-    pub fn flags_for(get: &Option<GetFn>, set: &Option<SetFn>) -> AccessFlags {
-        let mut flags = AccessFlags::empty();
-        if get.is_some() { flags.insert(AccessFlags::READ());  }
-        if set.is_some() { flags.insert(AccessFlags::WRITE()); }
-        flags
-    }
-
     /// Gets the FieldType of this GetData (property or object)
     #[allow(dead_code)]
     pub fn get_type(&self) -> FieldType {
@@ -262,7 +226,7 @@ impl RegistrySetData {
     pub fn call(self, json: Json) {
         match self {
             RegistrySetData::Displaced(_) => (),
-            RegistrySetData::Property(set) => set(json)
+            RegistrySetData::Property(flags, set) => set(json)
         }
     }
 
@@ -271,7 +235,7 @@ impl RegistrySetData {
     pub fn get_type(&self) -> FieldType {
         match *self {
             RegistrySetData::Displaced(_) => FieldType::Object,
-            RegistrySetData::Property(_) => FieldType::Property
+            RegistrySetData::Property(_, _) => FieldType::Property
         }
     }
 }
