@@ -113,7 +113,7 @@ impl Debug for RegistrySetData {
             &RegistrySetData::Displaced(ref data) =>
                 f.debug_struct("RegistrySetData::Displaced")
                 .field("data", data as &Debug).finish(),
-            &RegistrySetData::Property(_) =>
+            &RegistrySetData::Property(_, _) =>
                 write!(f, "RegistrySetData::Property(...)")
         }
     }
@@ -142,9 +142,8 @@ impl RegistryField {
                 let mut flags = AccessFlags::empty();
                 if get.is_some() { flags.insert(AccessFlags::READ()) }
                 if set.is_some() { flags.insert(AccessFlags::WRITE()) }
-                get.map(|g| RegistryGetData::Property(flags, g))
+                get.clone().map(|g| RegistryGetData::Property(flags, g.clone()))
             }
-            _ => None
         }
     }
 
@@ -187,8 +186,8 @@ impl RegistryField {
     /// options
     pub fn get_flags(&self) -> AccessFlags {
         match *self {
-            RegistryField::Object { flags, data } => flags,
-            RegistryField::Property { get, set } => {
+            RegistryField::Object { ref flags, .. } => flags.clone(),
+            RegistryField::Property { ref get, ref set } => {
                 let mut flags = AccessFlags::empty();
                 if get.is_some() { flags.insert(AccessFlags::READ()) }
                 if set.is_some() { flags.insert(AccessFlags::WRITE()) }
@@ -226,7 +225,7 @@ impl RegistrySetData {
     pub fn call(self, json: Json) {
         match self {
             RegistrySetData::Displaced(_) => (),
-            RegistrySetData::Property(flags, set) => set(json)
+            RegistrySetData::Property(_flags, set) => set(json)
         }
     }
 

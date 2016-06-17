@@ -1,10 +1,6 @@
 //! way-cooler registry.
 
 use std::ops::Deref;
-use std::cmp::Eq;
-use std::fmt::Display;
-use std::hash::Hash;
-use std::borrow::Borrow;
 use std::collections::hash_map::{HashMap, Entry};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -76,7 +72,6 @@ pub fn get_data(name: &str) -> RegistryResult<RegistryGetData> {
                     }
                     None => Err(RegistryError::InvalidOperation)
                 },
-            _ => Err(RegistryError::InvalidOperation)
         })
 }
 
@@ -96,11 +91,20 @@ pub fn insert_field(key: String, value: RegistryField) -> Option<RegistryField> 
     reg.insert(key, value)
 }
 
+pub fn insert_json(key: String, flags: AccessFlags, value: Json)
+                   -> Option<RegistryField> {
+    write_lock().insert(key,
+                        RegistryField::Object {
+                            flags: flags,
+                            data: Arc::new(value)
+                        })
+}
+
 /// Set a value to the given JSON value.
 pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
     let mut reg = write_lock();
     match reg.entry(key) {
-        Entry::Vacant(vacancy) => {
+        Entry::Vacant(_vacancy) => {
             return Err(RegistryError::KeyNotFound)
         },
         Entry::Occupied(mut entry) => {
@@ -138,7 +142,6 @@ pub fn insert_struct<T: ToJson>(key: String, flags: AccessFlags, value: T)
 
 
 /// Binds properties to a field of the registry
-#[allow(dead_code)]
 pub fn insert_property(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>)
                           -> Option<RegistryField> {
     insert_field(key, RegistryField::Property { get: get_fn, set: set_fn })

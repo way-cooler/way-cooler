@@ -44,13 +44,6 @@ pub fn set_panic_prop(_json: Json) {
     panic!("set_panic_prop panic")
 }
 
-pub fn command() {
-    println!("command being run!");
-}
-
-pub fn panic_command() {
-    panic!("panic_command panic")
-}
 
 /// [0, 1, 2]
 pub fn u64s() -> Vec<Json> {
@@ -97,43 +90,35 @@ fn add_keys() {
     ];
 
     for (name, flags, json) in values.into_iter() {
-        registry::set_json(name.to_string(), flags, json)
-            .expect("Unable to initialize objects in registry");
+        assert!(registry::insert_json(name.to_string(), flags, json).is_none(),
+            "Unable to initialize objects in registry");
     }
 
-    // Command
-    registry::set_command("command".to_string(), Arc::new(command))
-        .expect("Unable to initialize command in registry");
-
-    // Panicking command
-    registry::set_command("panic_command".to_string(), Arc::new(panic_command))
-        .expect("Unable to initialize command in registry");
-
     // Read/write property
-    registry::set_property_field("prop".to_string(),
-                                 Some(Arc::new(get_prop)),
-                                 Some(Arc::new(set_prop)))
-        .expect("Unable to initialize property in registry");
+    assert!(registry::insert_property("prop".to_string(),
+                              Some(Arc::new(get_prop)),
+                              Some(Arc::new(set_prop)))
+        .is_none(), "Unable to initialize property in registry");
 
     // Readonly/writeonly properties
-    registry::set_property_field("get_prop".to_string(),
-                                 Some(Arc::new(get_prop)),
-                                 None)
-        .expect("Unable to initialize property in registry");
-    registry::set_property_field("set_prop".to_string(),
-                                 None,
-                                 Some(Arc::new(set_prop)))
-        .expect("Unable to initialize property in registry");
+    assert!(registry::insert_property("get_prop".to_string(),
+                              Some(Arc::new(get_prop)),
+                              None)
+        .is_none(), "Unable to initialize property in registry");
+    assert!(registry::insert_property("set_prop".to_string(),
+                              None,
+                              Some(Arc::new(set_prop)))
+        .is_none(), "Unable to initialize property in registry");
 
     // Readonly/writeonly panicking properties
-    registry::set_property_field("get_panic_prop".to_string(),
-                                 Some(Arc::new(get_panic_prop)),
-                                 None)
-        .expect("Unable to initialize property in registry");
-    registry::set_property_field("set_panic_prop".to_string(),
-                                 None,
-                                 Some(Arc::new(set_panic_prop)))
-        .expect("Unable to initialize property in registry");
+    assert!(registry::insert_property("get_panic_prop".to_string(),
+                              Some(Arc::new(get_panic_prop)),
+                              None)
+        .is_none(), "Unable to initialize property in registry");
+    assert!(registry::insert_property("set_panic_prop".to_string(),
+                              None,
+                              Some(Arc::new(set_panic_prop)))
+        .is_none(), "Unable to initialize property in registry");
 
     // Allow waiting threads to continue
     let &(ref lock, ref cond) = &**ACCESS_PAIR;
@@ -149,8 +134,7 @@ fn contains_keys() {
     let keys = [
         "bool", "u64", "i64", "f64", "null", "text", "point",
         "u64s", "readonly", "writeonly", "prop", "noperms",
-        "get_prop", "set_prop", "command",
-        "get_panic_prop", "set_panic_prop", "panic_command",
+        "get_prop", "set_prop", "get_panic_prop", "set_panic_prop",
     ];
     for key in keys.into_iter() {
         assert!(registry::contains_key(key),
@@ -178,8 +162,9 @@ fn objects_and_keys_equal() {
     ];
 
     for (name, flags, json) in values.into_iter() {
-        let (found_flags, found) = registry::get_json(name)
-            .expect(&format!("Unable to get key {}", name));
+        let (found_flags, found) = registry::get_data(name)
+            .expect(&format!("Unable to get key {}", name))
+            .resolve();
         assert_eq!(found_flags, flags);
         assert_eq!(*found, json);
     }
@@ -209,23 +194,6 @@ fn key_perms() {
 }
 
 #[test]
-fn run_command() {
-    wait_for_registry();
-    let command = registry::get_command("command")
-        .expect("Command not found");
-    command();
-}
-
-#[test]
-#[should_panic(expected = "command panic")]
-fn run_panic_command() {
-    wait_for_registry();
-    let command = registry::get_command("panic_command")
-        .expect("Command not found");
-    command();
-}
-
-#[test]
 fn property_get() {
     wait_for_registry();
     let prop_read = registry::get_data("get_prop")
@@ -247,16 +215,14 @@ fn panicking_property_get() {
 #[test]
 fn property_set() {
     wait_for_registry();
-    assert!(registry::set_json("set_prop".to_string(),
-                               AccessFlags::empty(), Json::Null)
-            .expect("Unable to set data").is_none());
+    registry::set_json("set_prop".to_string(), Json::Null)
+            .expect("Unable to set data").call(Json::Null);
 }
 
 #[test]
 #[should_panic(expected="set_panic_prop panic")]
 fn panicking_property_set() {
     wait_for_registry();
-    assert!(registry::set_json("set_panic_prop".to_string(),
-                               AccessFlags::empty(), Json::Null)
-            .expect("Unable to set data").is_none());
+    registry::set_json("set_panic_prop".to_string(), Json::Null)
+            .expect("Unable to set data").call(Json::Null);
 }

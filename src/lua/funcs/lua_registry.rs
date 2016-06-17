@@ -6,14 +6,14 @@ use std::sync::Arc;
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::LuaString;
 
-use registry;
-use registry::{RegistryField, AccessFlags};
+use registry::{self, RegistryField, AccessFlags};
 use convert::ToTable;
 use convert::json::lua_to_json;
 
 pub fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
     if let LuaString(key) = lua_key {
-        if let Ok((access, json_arc)) = registry::get_json(&key) {
+        if let Ok((access, json_arc)) = registry::get_data(&key)
+            .map(|data| data.resolve()) {
             if access.contains(AccessFlags::READ()) {
                 return json_arc.deref().clone().to_table();
             }
