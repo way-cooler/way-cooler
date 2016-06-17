@@ -682,6 +682,36 @@ impl LayoutTree {
         }
     }
 
+    /// Gets the active container and toggles it based on the following rules:
+    /// * If horizontal, make it vertical
+    /// * else, make it horizontal
+    /// Updates the current active workspace's containers after toggling
+    pub fn toggle_active_horizontal(&mut self) {
+        if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
+            trace!("Toggling {:?} to be horizontal or vertical...", self.tree[active_ix]);
+            match self.tree[active_ix] {
+                Container::Container { ref mut layout, .. } => {
+                    match *layout {
+                        Layout::Horizontal => {
+                            trace!("Toggling to be vertical");
+                            *layout = Layout::Vertical
+                        }
+                        _ => {
+                            trace!("Toggling to be horizontal");
+                            *layout = Layout::Horizontal
+                        }
+                    }
+                },
+                _ => unreachable!()
+            }
+            if let Some(workspace_ix) = self.active_ix_of(ContainerType::Workspace) {
+                self.layout(workspace_ix);
+                return;
+            }
+        }
+        error!("No active container")
+    }
+
     /// Switch to the specified workspace
     pub fn switch_to_workspace(&mut self, name: &str) {
         if self.active_container.is_none() {
