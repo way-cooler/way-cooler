@@ -92,7 +92,8 @@ lazy_static! {
 
 fn horizontal_vertical_switch_fn() {
     if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.toggle_active_horizontal()
+        tree.toggle_active_horizontal();
+        tree.update_layout();
     } else {
         error!("Could not grab tree")
     }

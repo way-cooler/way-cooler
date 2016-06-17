@@ -122,6 +122,17 @@ impl LayoutTree {
         self.active_ix_of(ctype).and_then(move |ix| self.tree.get_mut(ix))
     }
 
+    /// Gets the parent of the active container
+    #[allow(dead_code)]
+    pub fn get_active_parent(&self) -> Option<&Container> {
+        if let Some(container_ix) = self.active_container {
+            if let Some(parent_ix) = self.tree.parent_of(container_ix) {
+                return Some(&self.tree[parent_ix]);
+            }
+        }
+        return None
+    }
+
     /// Gets the WlcOutput the active container is located on
     #[allow(dead_code)]
     pub fn get_active_output(&self) -> Option<&Container> {
@@ -671,7 +682,8 @@ impl LayoutTree {
     /// Gets the active container and toggles it based on the following rules:
     /// * If horizontal, make it vertical
     /// * else, make it horizontal
-    /// Updates the current active workspace's containers after toggling
+    /// This method does *NOT* update the actual views geometry, that needs to be
+    /// done separately by the caller
     pub fn toggle_active_horizontal(&mut self) {
         if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
             trace!("Toggling {:?} to be horizontal or vertical...", self.tree[active_ix]);
@@ -689,10 +701,6 @@ impl LayoutTree {
                     }
                 },
                 _ => unreachable!()
-            }
-            if let Some(workspace_ix) = self.active_ix_of(ContainerType::Workspace) {
-                self.layout(workspace_ix);
-                return;
             }
         }
         error!("No active container")
@@ -1078,5 +1086,39 @@ mod tests {
         assert_eq!(LayoutTree::calculate_scale(vec!(), 0.0), 0.0);
         assert_eq!(LayoutTree::calculate_scale(vec!(5.0, 5.0, 5.0, 5.0, 5.0, 5.0), 0.0), 30.0);
         assert_eq!(LayoutTree::calculate_scale(vec!(5.0, 5.0, 5.0, 5.0, -5.0, 0.0), 5.0), 22.0);
+    }
+
+    #[test]
+    /// Ensures that toggle horizontal key (<Leader> + e) does the same thing as it does in i3.
+    /// To reiterate: it should always make the active view's parent container( or the container
+    /// itself if the active container is a container, not a view) have the horizontal layout
+    /// _unless_ it's already horizontal, in which case the layout should be vertical
+    fn tiling_toggle_key() {
+        let mut tree = basic_tree();
+        // active container is the first view, so it should just change it's root.
+        match *tree.get_active_parent().unwrap() {
+            Container::Container { ref layout, .. } => {
+                // default is horizontal
+                assert_eq!(*layout, Layout::Horizontal)
+            },
+            _ => unreachable!()
+        }
+        tree.toggle_active_horizontal();
+        match *tree.get_active_parent().unwrap() {
+            Container::Container { ref layout, .. } => {
+                // default is horizontal
+                assert_eq!(*layout, Layout::Vertical)
+            },
+            _ => unreachable!()
+        }
+        // and back again
+        tree.toggle_active_horizontal();
+        match *tree.get_active_parent().unwrap() {
+            Container::Container { ref layout, .. } => {
+                // default is horizontal
+                assert_eq!(*layout, Layout::Horizontal)
+            },
+            _ => unreachable!()
+        }
     }
 }
