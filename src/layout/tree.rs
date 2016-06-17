@@ -511,21 +511,12 @@ impl LayoutTree {
                 match layout {
                     Layout::Horizontal => {
                         trace!("Layout was horizontal, laying out the sub-containers horizontally");
-                        // calculate the scale
-                        let mut scale: f32 = 0.0;
                         let children = self.tree.children_of(node_ix);
-                        for child_ix in &children {
-                            let mut child_width: f32 = self.tree[*child_ix].get_geometry()
-                                .expect("Child had no geometry").size.w as f32;
-                            if child_width <= 0.0 {
-                                child_width = if children.len() > 1 {
-                                    geometry.size.w as f32 / ((children.len() - 1) as f32)
-                                } else {
-                                    geometry.size.w as f32
-                                }
-                            }
-                            scale += child_width;
-                        }
+                        let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
+                            let c_geometry = self.tree[*child_ix].get_geometry()
+                                .expect("Child had no geometry");
+                            c_geometry.size.w as f32
+                        }).collect(), geometry.size.w as f32);
 
                         if scale > 0.1 {
                             scale = geometry.size.w as f32 / scale;
@@ -577,21 +568,12 @@ impl LayoutTree {
                     }
                     Layout::Vertical => {
                         trace!("Layout was vertical, laying out the sub-containers vertically");
-                        // calculate the scale
-                        let mut scale: f32 = 0.0;
                         let children = self.tree.children_of(node_ix);
-                        for child_ix in &children {
-                            let mut child_height: f32 = self.tree[*child_ix].get_geometry()
-                                .expect("Child had no geometry").size.h as f32;
-                            if child_height <= 0.0 {
-                                child_height = if children.len() > 1 {
-                                    geometry.size.h as f32 / ((children.len() - 1) as f32)
-                                } else {
-                                    geometry.size.h as f32
-                                }
-                            }
-                            scale += child_height;
-                        }
+                        let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
+                            let c_geometry = self.tree[*child_ix].get_geometry()
+                                .expect("Child had no geometry");
+                            c_geometry.size.h as f32
+                        }).collect(), geometry.size.h as f32);
 
                         if scale > 0.1 {
                             scale = geometry.size.h as f32 / scale;
@@ -677,6 +659,21 @@ impl LayoutTree {
             },
             _ => error!("Called update_geometry on a container that was not a view or a container")
         }
+    }
+
+    /// Calculates how much to scale on average for each value given.
+    /// If the value is 0 (i.e the width or height of the container is 0),
+    /// then it is calculated as max / children_values.len()
+    fn calculate_scale(children_values: Vec<f32>, max: f32) -> f32 {
+        let mut scale = 0.0;
+        let len = children_values.len();
+        for mut value in children_values {
+            if value <= 0.0 {
+                value = max / cmp::max(1, len - 1) as f32;
+            }
+            scale += value;
+        }
+        return scale;
     }
 
     /// Switch to the specified workspace
