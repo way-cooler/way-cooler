@@ -608,20 +608,6 @@ impl LayoutTree {
         }
     }
 
-    /// node_ix must be a container or a view
-    /// Though it should only be a container if stacked or tabbed? So just assume view for now
-    fn update_geometry(&self, node_ix: NodeIndex) {
-        match self.tree[node_ix] {
-            Container::View { .. } => {
-                unimplemented!()
-            },
-            Container::Container { .. } => {
-                unimplemented!()
-            },
-            _ => error!("Called update_geometry on a container that was not a view or a container")
-        }
-    }
-
     /// Calculates how much to scale on average for each value given.
     /// If the value is 0 (i.e the width or height of the container is 0),
     /// then it is calculated as max / children_values.len()
