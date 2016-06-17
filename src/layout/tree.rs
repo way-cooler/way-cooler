@@ -232,7 +232,7 @@ impl LayoutTree {
                                 }
                             };
                             trace!("Setting view {:?} to geometry: {:?}",
-                                   view_ix, parent_geometry);
+                                   self.tree[view_ix], parent_geometry);
                             view.set_geometry(ResizeEdge::empty(), &new_geometry);
                         }
                         _ => unimplemented!()
@@ -450,14 +450,13 @@ impl LayoutTree {
     }
 
     fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry) {
-        trace!("layout_helper: Laying out node {:?} with geometry constraints {:?}",
-               node_ix, geometry);
         match self.tree[node_ix].get_type() {
             ContainerType::Workspace => {
                 // NOTE Here is where we deal with the gap for the panel
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out workspace {:?}", container_mut);
+                    trace!("layout_helper: Laying out workspace {:?} with geometry constraints {:?}",
+                           container_mut, geometry);
                     match *container_mut {
                         Container::Workspace { ref mut size, .. } => {
                             *size = geometry.size.clone();
@@ -480,14 +479,14 @@ impl LayoutTree {
             ContainerType::Container => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out container {:?}", container_mut);
+                    trace!("layout_helper: Laying out container {:?} with geometry constraints {:?}",
+                           container_mut, geometry);
                     match *container_mut {
                         Container::Container { geometry: ref mut c_geometry, .. } => {
                             *c_geometry = geometry.clone();
                         },
                         _ => unreachable!()
                     };
-                    trace!("layout_helper: new geometry: {:?}", geometry.clone());
                 }
                 let layout = match self.tree[node_ix] {
                     Container::Container { layout, .. } => layout,
@@ -575,8 +574,8 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                trace!("layout_helper: Laying out view {:?}", handle);
-                trace!("layout_helper: new geometry: {:?}", geometry.clone());
+                trace!("layout_helper: Laying out view {:?} with geometry constraints {:?}",
+                       handle, geometry);
                 handle.set_geometry(ResizeEdge::empty(), &geometry);
                 // yeahhhh I think I need to do something else?
                 // Probably with geometry
