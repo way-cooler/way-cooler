@@ -82,18 +82,11 @@ lazy_static! {
             quit_fn, keypress!("Alt", "Escape");
             terminal_fn, keypress!("Alt", "Return");
             dmenu_fn, keypress!("Alt", "d");
-            pointer_fn, keypress!("Alt", "p");
-            layout_test_fn, keypress!("Alt", "l")
+            pointer_fn, keypress!("Alt", "p")
         }
 
         RwLock::new(map)
     };
-}
-
-fn layout_test_fn() {
-    use layout::tree;
-    let mut tree = tree::try_lock_tree().unwrap();
-    tree.update_layout();
 }
 
 fn terminal_fn() {

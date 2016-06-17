@@ -388,6 +388,7 @@ impl LayoutTree {
 
     // Updates the tree's layout recursively starting from the root.
     // This is very expensive, since it traverses the entire tree.
+    #[allow(dead_code)]
     pub fn update_layout(&mut self) {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
