@@ -520,50 +520,30 @@ impl LayoutTree {
 
                         if scale > 0.1 {
                             scale = geometry.size.w as f32 / scale;
-                            trace!("Scaling factor: {:?}", scale);
-                            let mut sub_geometry = geometry.clone();
-                            for (index, child_ix) in children.iter().enumerate() {
-                                let child_size: Size;
-                                {
-                                    let child = &self.tree[*child_ix];
-                                    child_size = child.get_geometry()
-                                        .expect("Child had no geometry").size;
-                                }
-                                let new_size = Size {
+                            let new_size_f = |child_size: Size, sub_geometry: Geometry| {
+                                Size {
                                     w: ((child_size.w as f32) * scale) as u32,
                                     h: sub_geometry.size.h
-                                };
-                                sub_geometry = Geometry {
-                                    origin: sub_geometry.origin.clone(),
-                                    size: new_size.clone()
-                                };
-                                // If last child, then just give it the remaining width
-                                if index == children.len() - 1 {
-                                    trace!("Last child, giving it the remaining length");
-                                    let cur_geometry = &self.tree[node_ix].get_geometry()
-                                        .expect("Current container had no geometry");
-                                    let remaining_width =
-                                        cur_geometry.origin.x as u32 + cur_geometry.size.w -
-                                        sub_geometry.origin.x as u32;
-                                    sub_geometry = Geometry {
-                                        origin: sub_geometry.origin,
-                                        size: Size {
-                                            w: remaining_width,
-                                            h: sub_geometry.size.h
-                                        }
-                                    };
                                 }
-                                self.layout_helper(*child_ix, sub_geometry.clone());
-
-                                // Next sub container needs to start where this one ends
-                                sub_geometry = Geometry {
-                                    origin: Point {
-                                        x: sub_geometry.origin.x + new_size.w as i32,
-                                        y: sub_geometry.origin.y
-                                    },
-                                    size: new_size
-                                };
-                            }
+                            };
+                            let remaining_size_f = |sub_geometry: Geometry,
+                                                    cur_geometry: Geometry| {
+                                let remaining_width =
+                                    cur_geometry.origin.x as u32 + cur_geometry.size.w -
+                                    sub_geometry.origin.x as u32;
+                                Size {
+                                    w: remaining_width,
+                                    h: sub_geometry.size.h
+                                }
+                            };
+                            let new_point_f = |new_size: Size, sub_geometry: Geometry| {
+                                Point {
+                                    x: sub_geometry.origin.x + new_size.w as i32,
+                                    y: sub_geometry.origin.y
+                                }
+                            };
+                            self.generic_tile(node_ix, geometry, scale, children,
+                                              new_size_f, remaining_size_f, new_point_f);
                         }
                     }
                     Layout::Vertical => {
@@ -577,50 +557,30 @@ impl LayoutTree {
 
                         if scale > 0.1 {
                             scale = geometry.size.h as f32 / scale;
-                            trace!("Scaling factor: {:?}", scale);
-                            let mut sub_geometry = geometry.clone();
-                            for (index, child_ix) in children.iter().enumerate() {
-                                let child_size: Size;
-                                {
-                                    let child = &self.tree[*child_ix];
-                                    child_size = child.get_geometry()
-                                        .expect("Child had no geometry").size;
-                                }
-                                let new_size = Size {
+                            let new_size_f = |child_size: Size, sub_geometry: Geometry| {
+                                Size {
                                     w: sub_geometry.size.w,
-                                    h: ((child_size.h as f32) * scale) as u32,
-                                };
-                                sub_geometry = Geometry {
-                                    origin: sub_geometry.origin.clone(),
-                                    size: new_size.clone()
-                                };
-                                // If last child, then just give it the remaining height
-                                if index == children.len() - 1 {
-                                    trace!("Last child, giving it the remaining length");
-                                    let cur_geometry = &self.tree[node_ix].get_geometry()
-                                        .expect("Current container had no geometry");
-                                    let remaining_height =
-                                        cur_geometry.origin.y as u32 + cur_geometry.size.h -
-                                        sub_geometry.origin.y as u32;
-                                    sub_geometry = Geometry {
-                                        origin: sub_geometry.origin,
-                                        size: Size {
-                                            w: sub_geometry.size.w,
-                                            h: remaining_height
-                                        }
-                                    };
+                                    h: ((child_size.h as f32) * scale) as u32
                                 }
-                                self.layout_helper(*child_ix, sub_geometry.clone());
-
-                                // Next sub container needs to start where this one ends
-                                sub_geometry = Geometry {
-                                    origin: Point {
-                                        x: sub_geometry.origin.x,
-                                        y: sub_geometry.origin.y + new_size.h as i32
-                                    },
-                                    size: new_size
-                                };
-                            }
+                            };
+                            let remaining_size_f = |sub_geometry: Geometry,
+                                                    cur_geometry: Geometry| {
+                                let remaining_height =
+                                    cur_geometry.origin.y as u32 + cur_geometry.size.h -
+                                    sub_geometry.origin.y as u32;
+                                Size {
+                                    w: sub_geometry.size.w,
+                                    h: remaining_height
+                                }
+                            };
+                            let new_point_f = |new_size: Size, sub_geometry: Geometry| {
+                                Point {
+                                    x: sub_geometry.origin.x,
+                                    y: sub_geometry.origin.y + new_size.h as i32
+                                }
+                            };
+                            self.generic_tile(node_ix, geometry, scale, children,
+                                              new_size_f, remaining_size_f, new_point_f);
                         }
                     }
                     Layout::Floating => {
@@ -674,6 +634,51 @@ impl LayoutTree {
             scale += value;
         }
         return scale;
+    }
+
+    fn generic_tile<SizeF, RemainF, PointF>
+        (&mut self,
+         node_ix: NodeIndex, geometry: Geometry, scale: f32, children: Vec<NodeIndex>,
+         new_size_f: SizeF, remaining_size_f: RemainF, new_point_f: PointF)
+        where SizeF:   Fn(Size, Geometry) -> Size,
+              RemainF: Fn(Geometry, Geometry) -> Size,
+              PointF:  Fn(Size, Geometry) -> Point
+    {
+        trace!("Scaling factor: {:?}", scale);
+        let mut sub_geometry = geometry.clone();
+        for (index, child_ix) in children.iter().enumerate() {
+            let child_size: Size;
+            {
+                let child = &self.tree[*child_ix];
+                child_size = child.get_geometry()
+                    .expect("Child had no geometry").size;
+            }
+            let new_size = new_size_f(child_size, sub_geometry.clone());
+            sub_geometry = Geometry {
+                origin: sub_geometry.origin.clone(),
+                size: new_size.clone()
+            };
+            // If last child, then just give it the remaining height
+            if index == children.len() - 1 {
+                let new_size = remaining_size_f(sub_geometry.clone(),
+                                                self.tree[node_ix].get_geometry()
+                                                .expect("Container had no geometry"));
+                sub_geometry = Geometry {
+                    origin: sub_geometry.origin,
+                    size: new_size
+                };
+            }
+            self.layout_helper(*child_ix, sub_geometry.clone());
+
+            // Next sub container needs to start where this one ends
+            let new_point = new_point_f(new_size.clone(), sub_geometry.clone());
+            sub_geometry = Geometry {
+                // lambda to calculate new point, given a new size
+                // which is calculated in the function
+                origin: new_point,
+                size: new_size
+            };
+        }
     }
 
     /// Switch to the specified workspace

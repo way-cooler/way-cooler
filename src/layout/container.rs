@@ -127,7 +127,7 @@ impl Container {
     /// Creates a new container
     pub fn new_container(geometry: Geometry) -> Container {
         Container::Container {
-            layout: Layout::Vertical,
+            layout: Layout::Horizontal,
             visible: false,
             focused: false,
             floating: false,
