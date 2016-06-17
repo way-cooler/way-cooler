@@ -235,6 +235,22 @@ impl LayoutTree {
                                    self.tree[view_ix], parent_geometry);
                             view.set_geometry(ResizeEdge::empty(), &new_geometry);
                         }
+                        Layout::Vertical => {
+                            let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
+                                as u32;
+                            let parent_geometry = self.tree[parent_ix].get_geometry()
+                                .expect("Parent container had no geometry");
+                            let new_geometry = Geometry {
+                                origin: parent_geometry.origin.clone(),
+                                size: Size {
+                                    w: parent_geometry.size.w,
+                                    h: parent_geometry.size.h / num_siblings
+                                }
+                            };
+                            trace!("Setting view {:?} to geometry: {:?}",
+                                   self.tree[view_ix], parent_geometry);
+                            view.set_geometry(ResizeEdge::empty(), &new_geometry);
+                        }
                         _ => unimplemented!()
                     }
                 },
@@ -522,8 +538,6 @@ impl LayoutTree {
                                     child_size = child.get_geometry()
                                         .expect("Child had no geometry").size;
                                 }
-                                // update the size to be of he max height,
-                                // and proper width (it's width * scale)
                                 let new_size = Size {
                                     w: ((child_size.w as f32) * scale) as u32,
                                     h: sub_geometry.size.h
@@ -555,6 +569,72 @@ impl LayoutTree {
                                     origin: Point {
                                         x: sub_geometry.origin.x + new_size.w as i32,
                                         y: sub_geometry.origin.y
+                                    },
+                                    size: new_size
+                                };
+                            }
+                        }
+                    }
+                    Layout::Vertical => {
+                        trace!("Layout was vertical, laying out the sub-containers vertically");
+                        // calculate the scale
+                        let mut scale: f32 = 0.0;
+                        let children = self.tree.children_of(node_ix);
+                        for child_ix in &children {
+                            let mut child_height: f32 = self.tree[*child_ix].get_geometry()
+                                .expect("Child had no geometry").size.h as f32;
+                            if child_height <= 0.0 {
+                                child_height = if children.len() > 1 {
+                                    geometry.size.h as f32 / ((children.len() - 1) as f32)
+                                } else {
+                                    geometry.size.h as f32
+                                }
+                            }
+                            scale += child_height;
+                        }
+
+                        if scale > 0.1 {
+                            scale = geometry.size.h as f32 / scale;
+                            trace!("Scaling factor: {:?}", scale);
+                            let mut sub_geometry = geometry.clone();
+                            for (index, child_ix) in children.iter().enumerate() {
+                                let child_size: Size;
+                                {
+                                    let child = &self.tree[*child_ix];
+                                    child_size = child.get_geometry()
+                                        .expect("Child had no geometry").size;
+                                }
+                                let new_size = Size {
+                                    w: sub_geometry.size.w,
+                                    h: ((child_size.h as f32) * scale) as u32,
+                                };
+                                sub_geometry = Geometry {
+                                    origin: sub_geometry.origin.clone(),
+                                    size: new_size.clone()
+                                };
+                                // If last child, then just give it the remaining height
+                                if index == children.len() - 1 {
+                                    trace!("Last child, giving it the remaining length");
+                                    let cur_geometry = &self.tree[node_ix].get_geometry()
+                                        .expect("Current container had no geometry");
+                                    let remaining_height =
+                                        cur_geometry.origin.y as u32 + cur_geometry.size.h -
+                                        sub_geometry.origin.y as u32;
+                                    sub_geometry = Geometry {
+                                        origin: sub_geometry.origin,
+                                        size: Size {
+                                            w: sub_geometry.size.w,
+                                            h: remaining_height
+                                        }
+                                    };
+                                }
+                                self.layout_helper(*child_ix, sub_geometry.clone());
+
+                                // Next sub container needs to start where this one ends
+                                sub_geometry = Geometry {
+                                    origin: Point {
+                                        x: sub_geometry.origin.x,
+                                        y: sub_geometry.origin.y + new_size.h as i32
                                     },
                                     size: new_size
                                 };
