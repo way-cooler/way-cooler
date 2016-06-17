@@ -19,13 +19,13 @@ pub const VERSION: u64 = 0u64; // Increment to 1 on release.
 
 /// Very much not cross-platform!
 /// Submit an issue when Wayland is ported to Windoze.
-pub const TEMP_FOLDER: &'static str = "/tmp/way-cooler/";
+pub const TEMP_FOLDER: &'static str = "/run/way-cooler/";
 /// Socket over which synchronous communication is made with clients.
 pub const COMMAND_SOCKET: &'static str = "command";
 /// Socket over which events are sent to clients.
 pub const EVENT_SOCKET: &'static str = "event";
 /// Folder in which sockets are created
-pub const PATH_VAR: &'static str = "WAY_COOLER_TEMPFOLDER";
+pub const PATH_VAR: &'static str = "WAY_COOLER_SOCKET_FOLDER";
 /// We need random folder names to place sockets in, but they don't need
 /// to be _that_ random.
 pub fn unique_ish_id() -> u32 {
@@ -54,8 +54,6 @@ pub fn init() {
     let mut path = PathBuf::from(TEMP_FOLDER);
     path.push(id.to_string());
 
-    env::set_var(PATH_VAR, path.clone());
-
     if let Err(ioerr) = fs::create_dir_all(path.clone()) {
         // How can we handle not having a socket?
         // In the future, we could log and continue.
@@ -69,6 +67,8 @@ pub fn init() {
 
         let event_socket = UnixListener::bind(path.join(EVENT_SOCKET))
             .expect("Unable to open event socket!");
+
+        env::set_var(PATH_VAR, path.clone());
 
         debug!("IPC initialized, now listening for clients.");
 
