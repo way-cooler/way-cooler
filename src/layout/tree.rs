@@ -332,6 +332,7 @@ impl LayoutTree {
             }
             _ => {},
         }
+        self.update_active_of(ContainerType::Workspace);
     }
 
     fn is_root_container(&self, node_ix: NodeIndex) -> bool {
