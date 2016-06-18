@@ -453,8 +453,6 @@ impl LayoutTree {
     /// will simply relocate the node to be destroyed and set it to be the active
     /// container.
     fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
-        warn!("node index: {:?}", parent_ix);
-        error!("tree: {:#?}", self);
         while self.tree.node_type(parent_ix)
             .expect("focus_next: unable to iterate") != ContainerType::Workspace {
             if let Some(view_ix) = self.tree.descendant_of_type(parent_ix,
@@ -798,8 +796,9 @@ impl LayoutTree {
                 },
                 _ => unreachable!()
             }
+        } else {
+            error!("No active container")
         }
-        error!("No active container")
     }
 
     /// Switch to the specified workspace
