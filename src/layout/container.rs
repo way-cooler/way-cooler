@@ -252,6 +252,16 @@ impl Container {
         };
         return Ok(())
     }
+
+    pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), String>{
+        match *self {
+            Container::Container { ref mut layout, .. } => *layout = new_layout,
+            ref other => return Err(
+                format!("Can only set the layout of a container, not {:?}",
+                        other))
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

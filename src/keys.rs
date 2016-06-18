@@ -83,11 +83,28 @@ lazy_static! {
             terminal_fn, keypress!("Alt", "Return");
             dmenu_fn, keypress!("Alt", "d");
             pointer_fn, keypress!("Alt", "p");
-            horizontal_vertical_switch_fn, keypress!("Alt", "e")
+            horizontal_vertical_switch_fn, keypress!("Alt", "e");
+            split_vertical, keypress!("Alt", "v");
+            split_horizontal, keypress!("Alt", "h");
+            debug_tree, keypress!("Alt", "q")
         }
 
         RwLock::new(map)
     };
+}
+
+fn split_vertical() {
+    trace!("Splitting vertically");
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        tree.active_split_vertical();
+    }
+}
+
+fn split_horizontal() {
+    trace!("Splitting horizontally");
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        tree.active_split_horizontal();
+    }
 }
 
 fn horizontal_vertical_switch_fn() {
@@ -136,6 +153,12 @@ fn pointer_fn() {
 fn quit_fn() {
     info!("handler: Esc keypress!");
     ::rustwlc::terminate();
+}
+
+fn debug_tree() {
+    if let Ok(tree) = tree::try_lock_tree() {
+        error!("The tree: {:#?}", *tree);
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]

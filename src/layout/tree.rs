@@ -298,6 +298,9 @@ impl LayoutTree {
     /// We have to ensure that we aren't invalidating the active container
     /// when we remove a view or container.
     fn remove_view_or_container(&mut self, node_ix: NodeIndex) {
+        // make sure this remains valid
+        let parent_ix = self.tree.parent_of(node_ix)
+            .expect("Container we are removing had no parent");
         if self.active_container.map(|c| c == node_ix).unwrap_or(false) {
             // Update the active container if needed
             if let Some(parent_index) = self.tree.ancestor_of_type(node_ix,
@@ -315,9 +318,87 @@ impl LayoutTree {
                 }
                 self.tree.remove(node_ix);
                 self.active_container = Some(active_ix);
-            } else {
-                self.tree.remove(node_ix);
             }
+        }
+        // Remove parent container if it is a non-root container and has no other children
+        match self.tree[parent_ix].get_type() {
+            ContainerType::Container => {
+                if self.is_root_container(parent_ix) {
+                    return;
+                }
+                if self.tree.children_of(parent_ix).len() == 0 {
+                    self.remove_view_or_container(parent_ix);
+                }
+            }
+            _ => {},
+        }
+    }
+
+    fn is_root_container(&self, node_ix: NodeIndex) -> bool {
+        self.tree[self.tree.parent_of(node_ix).unwrap_or(node_ix)].get_type() == ContainerType::Workspace
+    }
+
+    /// Splits the active container vertically
+    pub fn active_split_vertical(&mut self) {
+        if self.is_root_container(self.active_container.expect("No active container")) {
+            match self.tree[self.active_container.unwrap()] {
+                Container::Container { ref mut layout, .. } =>
+                    *layout = Layout::Vertical,
+                _ => unreachable!()
+            }
+            return;
+        }
+        let active_geometry = self.get_active_container()
+            .expect("Could not get the active container")
+            .get_geometry().expect("Active container had no geometry");
+
+        let mut new_container = Container::new_container(active_geometry);
+        new_container.set_layout(Layout::Vertical).ok();
+        let active_ix = self.active_container.unwrap();
+        self.add_container(new_container, active_ix);
+    }
+
+    /// Splits the active container horizontally
+    pub fn active_split_horizontal(&mut self) {
+        if self.is_root_container(self.active_container.expect("No active container")) {
+            match self.tree[self.active_container.unwrap()] {
+                Container::Container { ref mut layout, .. } =>
+                    *layout = Layout::Horizontal,
+                _ => unreachable!()
+            }
+            return;
+        }
+        let active_geometry = self.get_active_container()
+            .expect("Could not get the active container")
+            .get_geometry().expect("Active container had no geometry");
+        let mut new_container = Container::new_container(active_geometry);
+        new_container.set_layout(Layout::Horizontal).ok();
+        let active_ix = self.active_container.unwrap();
+        self.add_container(new_container, active_ix);
+    }
+
+    /// Adds the container with the node index as a child. This is how split horizontal
+    /// and split vertical is implemented. The node at the node index is removed and
+    /// made a child of the new container node.
+    fn add_container(&mut self, container: Container, child: NodeIndex) {
+        let parent_ix = self.tree.parent_of(child)
+            .expect("Node had no parent");
+        if self.is_root_container(parent_ix) {
+            if let Some(child_container) = self.tree.remove(child) {
+                match container {
+                    Container::Container { ref layout, .. } => {
+                        self.tree[parent_ix].set_layout(layout.clone()).ok()
+                    }
+                    _ => unreachable!()
+                };
+                let new_active_ix = self.tree.add_child(parent_ix, child_container);
+                self.active_container = Some(new_active_ix);
+            }
+        }
+        if let Some(child_container) = self.tree.remove(child) {
+            let new_container_ix = self.tree.add_child(parent_ix, container);
+            let new_active_ix = self.tree.add_child(new_container_ix, child_container);
+            self.active_container = Some(new_active_ix);
         }
     }
 
