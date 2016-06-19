@@ -227,46 +227,40 @@ impl LayoutTree {
             let parent_ix = self.tree.ancestor_of_type(view_ix,
                                                        ContainerType::Container)
                 .expect("View had no container parent");
+            let new_geometry: Geometry;
+            let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
+                as u32;
+            let parent_geometry = self.tree[parent_ix].get_geometry()
+                .expect("Parent container had no geometry");
             match self.tree[parent_ix] {
                 Container::Container { ref layout, .. } => {
                     match *layout {
                         Layout::Horizontal => {
-                            let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
-                                as u32;
-                            let parent_geometry = self.tree[parent_ix].get_geometry()
-                                .expect("Parent container had no geometry");
-                            let new_geometry = Geometry {
+                            new_geometry = Geometry {
                                 origin: parent_geometry.origin.clone(),
                                 size: Size {
                                     w: parent_geometry.size.w / num_siblings,
                                     h: parent_geometry.size.h
                                 }
                             };
-                            trace!("Setting view {:?} to geometry: {:?}",
-                                   self.tree[view_ix], parent_geometry);
-                            view.set_geometry(ResizeEdge::empty(), &new_geometry);
                         }
                         Layout::Vertical => {
-                            let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
-                                as u32;
-                            let parent_geometry = self.tree[parent_ix].get_geometry()
-                                .expect("Parent container had no geometry");
-                            let new_geometry = Geometry {
+                            new_geometry = Geometry {
                                 origin: parent_geometry.origin.clone(),
                                 size: Size {
                                     w: parent_geometry.size.w,
                                     h: parent_geometry.size.h / num_siblings
                                 }
                             };
-                            trace!("Setting view {:?} to geometry: {:?}",
-                                   self.tree[view_ix], parent_geometry);
-                            view.set_geometry(ResizeEdge::empty(), &new_geometry);
                         }
                         _ => unimplemented!()
                     }
                 },
                 _ => unreachable!()
             };
+            trace!("Setting view {:?} to geometry: {:?}",
+                   self.tree[view_ix], new_geometry);
+            view.set_geometry(ResizeEdge::empty(), &new_geometry);
         }
         self.validate();
     }
