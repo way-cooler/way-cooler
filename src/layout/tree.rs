@@ -132,13 +132,13 @@ impl LayoutTree {
         return None
     }
 
-    /// Gets the WlcOutput the active container is located on
+    /// Gets the active output. This contains the WlcOutput
     #[allow(dead_code)]
     pub fn get_active_output(&self) -> Option<&Container> {
         self.active_of(ContainerType::Output)
     }
 
-    /// Gets the WlcOutput the active container is located on
+    /// Gets the active output. This contains the WlcOutput
     #[allow(dead_code)]
     pub fn get_active_output_mut(&mut self) -> Option<&mut Container> {
         self.active_of_mut(ContainerType::Output)
@@ -157,8 +157,6 @@ impl LayoutTree {
     }
 
     /// Gets the index of the workspace of this name
-    ///
-    /// TODO will search all outputs, probably should be more directed
     fn workspace_ix_by_name(&self, name: &str) -> Option<NodeIndex> {
         for output in self.tree.children_of(self.tree.root_ix()) {
             for workspace in self.tree.children_of(output) {
@@ -346,6 +344,8 @@ impl LayoutTree {
         self.update_active_of(ContainerType::Workspace);
     }
 
+    /// Determines if the container at the node index is the root.
+    /// Normally, this should only be true if the NodeIndex value is 1.
     fn is_root_container(&self, node_ix: NodeIndex) -> bool {
         self.tree[self.tree.parent_of(node_ix).unwrap_or(node_ix)].get_type() == ContainerType::Workspace
     }
