@@ -357,8 +357,8 @@ impl LayoutTree {
         self.validate();
     }
 
-    /// Adds the container with the node index as a child. This is how split horizontal
-    /// and split vertical is implemented. The node at the node index is removed and
+    /// Adds the container with the node index as a child.
+    /// The node at the node index is removed and
     /// made a child of the new container node.
     fn add_container(&mut self, container: Container, child: NodeIndex) {
         let parent_ix = self.tree.parent_of(child)
@@ -383,12 +383,12 @@ impl LayoutTree {
         self.validate();
     }
 
-    /// Remove a  container from the tree.
+    /// Remove a container from the tree.
     /// The active container is preserved after this operation,
     /// if it was moved then it's new index will be reflected in the structure
     ///
     /// Note that because this causes N indices to be changed (where N is the
-    /// number of children of the container), any node indices should be
+    /// number of descendants of the container), any node indices should be
     /// considered invalid after this operation (except for the active_container)
     fn remove_container(&mut self, container_ix: NodeIndex) {
         let mut children = self.tree.all_descendants_of(&container_ix);
@@ -409,18 +409,13 @@ impl LayoutTree {
     /// Updates the current active container to be the next container or view
     /// to focus on after the previous view/container was moved/removed.
     ///
-    /// A new view will tried to be set, starting with the siblings of the
-    /// removed node. If a view cannot be found there, it starts climbing the
+    /// A new view will tried to be set, starting with the children of the
+    /// parent node. If a view cannot be found there, it starts climbing the
     /// tree until either a view is found or the workspace is (in which case
     /// it set the active container to the root container of the workspace)
-    ///
-    /// Parent should be the parent of the node that was destroyed.
-    /// Note that the node should be destroyed already, otherwise this algorithm
-    /// will simply relocate the node to be destroyed and set it to be the active
-    /// container.
     fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
         while self.tree.node_type(parent_ix)
-            .expect("focus_next: unable to iterate") != ContainerType::Workspace {
+            .expect("Node not part of the tree") != ContainerType::Workspace {
             if let Some(view_ix) = self.tree.descendant_of_type(parent_ix,
                                                            ContainerType::View) {
                 match self.tree[view_ix]
@@ -439,11 +434,9 @@ impl LayoutTree {
                         .expect("Container was not part of a workspace")
                 });
         }
-        // If this is reached, parent is workspace
-        let mut container_ix = self.tree.children_of(parent_ix)[0];
-        if let Some(view_ix) = self.tree.children_of(container_ix).get(0) {
-            container_ix = *view_ix;
-        }
+        // If this is reached, parent is workspace and there are no views in the tree
+        // so set the active container to be the root container
+        let container_ix = self.tree.children_of(parent_ix)[0];
         trace!("Active container set to container {:?}", container_ix);
         self.active_container = Some(container_ix);
 
