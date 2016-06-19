@@ -293,53 +293,37 @@ impl LayoutTree {
     /// We have to ensure that we aren't invalidating the active container
     /// when we remove a view or container.
     fn remove_view_or_container(&mut self, node_ix: NodeIndex) {
-        // NOTE make sure this remains valid
-        let mut parent_ix = self.tree.parent_of(node_ix)
-            .expect("Container we are removing had no parent");
-        if self.active_container.map(|c| c == node_ix).unwrap_or(false) {
-            // Update the active container if needed
-            if let Some(mut parent_index) = self.tree.ancestor_of_type(node_ix,
-                                                                   ContainerType::Container) {
-                if self.tree.is_last_ix(parent_index) {
-                    parent_index = node_ix;
-                }
-                if self.tree.is_last_ix(parent_ix) {
-                    parent_ix = node_ix;
-                }
-                // Remove the view from the tree
-                self.tree.remove(node_ix);
-                self.focus_on_next_container(parent_index);
+        // Only the root container has a non-container parent, and we can't remove that
+        if let Some(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
+                                                                    ContainerType::Container) {
+            // If it'll move, fix that before that happens
+            if self.tree.is_last_ix(parent_ix) {
+                parent_ix = node_ix;
             }
-        } else {
-            // If the active container is the last index in the node array,
-            // its index will become this one.
-            if let Some(mut active_ix) = self.active_container {
-                if self.tree.is_last_ix(active_ix) {
-                    active_ix = node_ix;
+            // If the active container is *not* being removed,
+            // we must ensure that it won't be invalidated by the move
+            // (i.e: if it is the last index)
+            if self.active_container.map(|c| c != node_ix).unwrap_or(false) {
+                if self.tree.is_last_ix(self.active_container.unwrap()) {
+                    self.active_container = Some(node_ix);
                 }
-                if self.tree.is_last_ix(active_ix) {
-                    active_ix = node_ix;
-                }
-                if self.tree.is_last_ix(parent_ix) {
-                    parent_ix = node_ix;
-                }
-                self.tree.remove(node_ix);
-                self.active_container = Some(active_ix);
             }
+            self.tree.remove(node_ix);
+            self.focus_on_next_container(parent_ix);
+            // Remove parent container if it is a non-root container and has no other children
+            match self.tree[parent_ix].get_type() {
+                ContainerType::Container => {
+                    if self.is_root_container(parent_ix) {
+                        return;
+                    }
+                    if self.tree.children_of(parent_ix).len() == 0 {
+                        self.remove_view_or_container(parent_ix);
+                    }
+                }
+                _ => {},
+            }
+            self.update_active_of(ContainerType::Workspace);
         }
-        // Remove parent container if it is a non-root container and has no other children
-        match self.tree[parent_ix].get_type() {
-            ContainerType::Container => {
-                if self.is_root_container(parent_ix) {
-                    return;
-                }
-                if self.tree.children_of(parent_ix).len() == 0 {
-                    self.remove_view_or_container(parent_ix);
-                }
-            }
-            _ => {},
-        }
-        self.update_active_of(ContainerType::Workspace);
         self.validate();
     }
 
