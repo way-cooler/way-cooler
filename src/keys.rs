@@ -10,7 +10,7 @@ use rustwlc::types::*; // Need * for bitflags...
 use super::commands;
 use registry::get_command;
 use super::layout::tree;
-use super::layout::container::Layout;
+use super::layout::container::{Layout, ContainerType};
 use super::lua;
 
 /// Register default keypresses to a map
@@ -111,7 +111,7 @@ fn split_horizontal() {
 fn horizontal_vertical_switch_fn() {
     if let Ok(mut tree) = tree::try_lock_tree() {
         tree.toggle_active_horizontal();
-        tree.update_layout();
+        tree.layout_active_of(ContainerType::Root);
     } else {
         error!("Could not grab tree")
     }
