@@ -487,10 +487,7 @@ impl LayoutTree {
                     self.layout(output_ix);
                 }
             }
-            // NOTE Do we need to set the workspace to the size of the output...?
-            // We should do that here, right?
             ContainerType::Output => {
-                // Workspace doesn't care about how big the output actually is
                 let handle = match self.tree[node_ix] {
                     Container::Output { ref handle, .. } => handle.clone(),
                     _ => unreachable!()
@@ -505,7 +502,7 @@ impl LayoutTree {
                 }
             }
             ContainerType::Workspace => {
-                // Simply call layout_helper with the geometry from the parent output
+                // get geometry from the parent output
                 let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
                     .expect("Workspace had no output parent");
                 let handle = match self.tree[output_ix] {
@@ -526,12 +523,21 @@ impl LayoutTree {
 
     fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry) {
         match self.tree[node_ix].get_type() {
+            ContainerType::Root | ContainerType::Output => {
+                trace!("layout_helper: Laying out entire tree");
+                warn!("Ignoring geometry constraint ({:?}), \
+                       deferring to each output's constraints",
+                      geometry);
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.layout(child_ix);
+                }
+            }
             ContainerType::Workspace => {
-                // NOTE Here is where we deal with the gap for the panel
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out workspace {:?} with geometry constraints {:?}",
-                           container_mut, geometry);
+                    trace!("layout_helper: Laying out workspace {:?} with\
+                            geometry constraints {:?}",
+                        container_mut, geometry);
                     match *container_mut {
                         Container::Workspace { ref mut size, .. } => {
                             *size = geometry.size.clone();
@@ -543,14 +549,6 @@ impl LayoutTree {
                     self.layout_helper(child_ix, geometry.clone());
                 }
             },
-            ContainerType::Root | ContainerType::Output => {
-                trace!("layout_helper: Laying out entire tree");
-                warn!("Ignoring geometry constraint ({:?}), deferring to each output's constraints",
-                      geometry);
-                for child_ix in self.tree.children_of(node_ix) {
-                    self.layout(child_ix);
-                }
-            }
             ContainerType::Container => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
@@ -658,10 +656,6 @@ impl LayoutTree {
                 trace!("layout_helper: Laying out view {:?} with geometry constraints {:?}",
                        handle, geometry);
                 handle.set_geometry(ResizeEdge::empty(), &geometry);
-                // yeahhhh I think I need to do something else?
-                // Probably with geometry
-                //self.update_geometry(node_ix);
-                return;
             }
         }
         self.validate();
