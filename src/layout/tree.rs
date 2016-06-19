@@ -112,12 +112,10 @@ impl LayoutTree {
         return None
     }
 
-    #[allow(dead_code)]
     fn active_of(&self, ctype: ContainerType) -> Option<&Container> {
         self.active_ix_of(ctype).and_then(|ix| self.tree.get(ix))
     }
 
-    #[allow(dead_code)]
     fn active_of_mut(&mut self, ctype: ContainerType) -> Option<&mut Container> {
         self.active_ix_of(ctype).and_then(move |ix| self.tree.get_mut(ix))
     }
@@ -493,7 +491,6 @@ impl LayoutTree {
 
     // Updates the tree's layout recursively starting from the root.
     // This is very expensive, since it traverses the entire tree.
-    #[allow(dead_code)]
     pub fn update_layout(&mut self) {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
