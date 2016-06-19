@@ -61,6 +61,7 @@ pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 ///       - A Workspace can only have Containers as children
 ///   + Container
 ///       - A Container can only have other Containers or Views as children
+///       - All non-root containers need at least one child
 ///   + View
 ///       - A View must be associated with a WlcView
 ///       - A View cannot have any children
