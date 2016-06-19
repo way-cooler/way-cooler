@@ -790,67 +790,55 @@ impl LayoutTree {
     /// Moves the current active container to a new workspace
     pub fn send_active_to_workspace(&mut self, name: &str) {
         // Ensure focus
-        if self.active_container.is_none() {
-            return;
-        }
-
-        let active_ix = self.active_container.expect("Asserted unwrap");
-        let curr_work_ix = self.active_ix_of(ContainerType::Workspace)
-            .expect("send_active: Not currently in a workspace!");
-        if active_ix == self.tree.children_of(curr_work_ix)[0] {
-            warn!("Tried to move the root container of a workspace, aborting move");
-            return;
-        }
-        let next_work_ix = self.get_or_make_workspace(name);
-
-        // Check if the workspaces are the same
-        if next_work_ix == curr_work_ix {
-            trace!("Attempted to move a view to the same workspace {}!", name);
-            return;
-        }
-        self.tree.set_family_visible(curr_work_ix, false);
-
-        // Get active
-        if cfg!(debug_assertions) {
-            let work_children = self.tree.children_of(curr_work_ix);
-            assert!(work_children.len() != 0, "Workspace has no children");
-            assert!(match self.tree[active_ix].get_type() {
-                ContainerType::Container|ContainerType::View => true,
-                _ => false
-            }, "Invalid workspace switch type!");
-        }
-        // Save the parent of this view for focusing
-        let maybe_active_parent = self.tree.parent_of(active_ix);
-
-        // Get the root container of the next workspace
-        let next_work_children = self.tree.children_of(next_work_ix);
-        if cfg!(debug_assertions) {
-            assert!(next_work_children.len() == 1,
-                    "Next workspace has multiple roots!");
-        }
-        let next_work_root_ix = next_work_children[0];
-
-        // Move the container
-        info!("Moving container {:?} to workspace {}",
-              self.get_active_container(), name);
-        self.tree.move_node(active_ix, next_work_root_ix);
-
-        // Update the active container
-        if let Some(parent) = maybe_active_parent {
-            let ctype = self.tree.node_type(parent).unwrap_or(ContainerType::Root);
-            if ctype == ContainerType::Container {
-                self.focus_on_next_container(parent);
-            } else {
-                trace!("Send to container invalidated a NodeIndex: {:?} to {:?}",
-                parent, ctype);
+        if let Some(active_ix) = self.active_container {
+            let curr_work_ix = self.active_ix_of(ContainerType::Workspace)
+                .expect("send_active: Not currently in a workspace!");
+            if active_ix == self.tree.children_of(curr_work_ix)[0] {
+                warn!("Tried to move the root container of a workspace, aborting move");
+                return;
             }
-        }
-        else {
-            self.focus_on_next_container(curr_work_ix);
-        }
+            let next_work_ix = self.get_or_make_workspace(name);
 
-        self.tree.set_family_visible(curr_work_ix, true);
-        self.validate();
+            // Check if the workspaces are the same
+            if next_work_ix == curr_work_ix {
+                trace!("Attempted to move a view to the same workspace {}!", name);
+                return;
+            }
+            self.tree.set_family_visible(curr_work_ix, false);
+
+            // Save the parent of this view for focusing
+            let maybe_active_parent = self.tree.parent_of(active_ix);
+
+            // Get the root container of the next workspace
+            let next_work_children = self.tree.children_of(next_work_ix);
+            if cfg!(debug_assertions) {
+                assert!(next_work_children.len() == 1,
+                        "Next workspace has multiple roots!");
+            }
+            let next_work_root_ix = next_work_children[0];
+
+            // Move the container
+            info!("Moving container {:?} to workspace {}",
+                self.get_active_container(), name);
+            self.tree.move_node(active_ix, next_work_root_ix);
+
+            // Update the active container
+            if let Some(parent) = maybe_active_parent {
+                let ctype = self.tree.node_type(parent).unwrap_or(ContainerType::Root);
+                if ctype == ContainerType::Container {
+                    self.focus_on_next_container(parent);
+                } else {
+                    trace!("Send to container invalidated a NodeIndex: {:?} to {:?}",
+                    parent, ctype);
+                }
+            }
+            else {
+                self.focus_on_next_container(curr_work_ix);
+            }
+
+            self.tree.set_family_visible(curr_work_ix, true);
+                self.validate();
+        }
     }
 
     /// Validates the tree
