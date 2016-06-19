@@ -425,8 +425,6 @@ impl LayoutTree {
         let mut children = self.tree.all_descendants_of(&container_ix);
         // add current container to the list as well
         children.push(container_ix);
-        // Sort by highest to lowest
-        children.sort_by(|a, b| b.cmp(a));
         for node_ix in children {
             trace!("Removing index {:?}: {:?}", node_ix, self.tree[node_ix]);
             match self.tree[node_ix] {
