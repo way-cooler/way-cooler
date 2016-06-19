@@ -172,11 +172,13 @@ impl LayoutTree {
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
         let active_index = self.active_ix_of(ContainerType::Output).expect("get_or_make_wksp: Couldn't get output");
-        self.workspace_ix_by_name(name).unwrap_or_else(|| {
+        let workspace_ix = self.workspace_ix_by_name(name).unwrap_or_else(|| {
             let root_ix = self.init_workspace(name.to_string(), active_index);
             self.tree.parent_of(root_ix)
                 .expect("Workspace was not properly initialized with a root container")
-        })
+        });
+        self.validate();
+        workspace_ix
     }
 
     /// Initializes a workspace and gets the index of the root container
@@ -193,7 +195,8 @@ impl LayoutTree {
             size: size, origin: Point { x: 0, y: 0 }
         };
         let container_ix = self.tree.add_child(worksp_ix,
-                                           Container::new_container(geometry));
+                                               Container::new_container(geometry));
+        self.validate();
         container_ix
     }
 
@@ -265,6 +268,7 @@ impl LayoutTree {
                 _ => unreachable!()
             };
         }
+        self.validate();
     }
 
     /// Add a new view container with the given WlcView to the active container
@@ -342,6 +346,7 @@ impl LayoutTree {
             _ => {},
         }
         self.update_active_of(ContainerType::Workspace);
+        self.validate();
     }
 
     /// Determines if the container at the node index is the root.
@@ -368,6 +373,7 @@ impl LayoutTree {
         new_container.set_layout(Layout::Vertical).ok();
         let active_ix = self.active_container.unwrap();
         self.add_container(new_container, active_ix);
+        self.validate();
     }
 
     /// Splits the active container horizontally
@@ -387,6 +393,7 @@ impl LayoutTree {
         new_container.set_layout(Layout::Horizontal).ok();
         let active_ix = self.active_container.unwrap();
         self.add_container(new_container, active_ix);
+        self.validate();
     }
 
     /// Adds the container with the node index as a child. This is how split horizontal
@@ -412,6 +419,7 @@ impl LayoutTree {
             let new_active_ix = self.tree.add_child(new_container_ix, child_container);
             self.active_container = Some(new_active_ix);
         }
+        self.validate();
     }
 
     /// Remove a  container from the tree.
@@ -493,6 +501,7 @@ impl LayoutTree {
     pub fn update_layout(&mut self) {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
+        self.validate();
     }
 
     // Updates the tree's layout recursively starting from the active container.
@@ -519,6 +528,7 @@ impl LayoutTree {
             error!("{:?} did not have a parent of type {:?}, doing nothing!",
                    self, c_type);
         }
+        self.validate();
     }
 
     /// Given the index of some container in the tree, lays out the children of
@@ -565,6 +575,7 @@ impl LayoutTree {
             }
             _ => panic!("layout should not be called directly on a container, view")
         }
+        self.validate();
     }
 
     fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry) {
@@ -707,6 +718,7 @@ impl LayoutTree {
                 return;
             }
         }
+        self.validate();
     }
 
     /// Calculates how much to scale on average for each value given.
@@ -767,6 +779,7 @@ impl LayoutTree {
                 size: new_size
             };
         }
+        self.validate();
     }
 
     /// Gets the active container and toggles it based on the following rules:
@@ -795,6 +808,7 @@ impl LayoutTree {
         } else {
             error!("No active container")
         }
+        self.validate();
     }
 
     /// Switch to the specified workspace
