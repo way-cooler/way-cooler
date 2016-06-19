@@ -323,7 +323,7 @@ impl LayoutTree {
                 _ => {},
             }
             trace!("Removed container {:?}, index {:?}", container, node_ix);
-            self.update_active_of(ContainerType::Workspace);
+            self.layout_active_of(ContainerType::Workspace);
         }
         self.validate();
     }
@@ -460,7 +460,7 @@ impl LayoutTree {
 
     // Updates the tree's layout recursively starting from the active container.
     // If the active container is a view, it starts at the parent container.
-    pub fn update_active_of(&mut self, c_type: ContainerType) {
+    pub fn layout_active_of(&mut self, c_type: ContainerType) {
         if let Some(container_ix) = self.active_ix_of(c_type) {
             match self.tree[container_ix].clone() {
                 Container::Root { .. } |
@@ -474,7 +474,7 @@ impl LayoutTree {
                 Container::View { .. } => {
                     warn!("Cannot simply update a view's geometry without {}",
                           "consulting container, updating it's parent");
-                    self.update_active_of(ContainerType::Container);
+                    self.layout_active_of(ContainerType::Container);
                 },
 
             }

@@ -47,7 +47,7 @@ pub extern fn output_resolution(output: WlcOutput,
     // Update the resolution of the output and it's children
     output.set_resolution(new_size_ptr.clone());
     if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.update_active_of(ContainerType::Output);
+        tree.layout_active_of(ContainerType::Output);
     }
 }
 /*
@@ -65,7 +65,7 @@ pub extern fn view_created(view: WlcView) -> bool {
     if let Ok(mut tree) = tree::try_lock_tree() {
         tree.add_view(view.clone());
         tree.normalize_view(view.clone());
-        tree.update_active_of(ContainerType::Container);
+        tree.layout_active_of(ContainerType::Container);
         drop(tree);
         view.set_mask(output.get_mask());
         view.bring_to_front();
@@ -80,7 +80,7 @@ pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
     if let Ok(mut tree) = tree::try_lock_tree() {
         tree.remove_view(&view);
-        tree.update_active_of(ContainerType::Workspace);
+        tree.layout_active_of(ContainerType::Workspace);
     } else {
         warn!("Could not delete view {:?}", view);
     }
