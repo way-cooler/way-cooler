@@ -80,7 +80,7 @@ pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
     if let Ok(mut tree) = tree::try_lock_tree() {
         tree.remove_view(&view);
-        tree.update_active_of(ContainerType::Container);
+        tree.update_active_of(ContainerType::Workspace);
     } else {
         warn!("Could not delete view {:?}", view);
     }

@@ -308,7 +308,7 @@ impl LayoutTree {
                     self.active_container = Some(node_ix);
                 }
             }
-            self.tree.remove(node_ix);
+            let container = self.tree.remove(node_ix);
             self.focus_on_next_container(parent_ix);
             // Remove parent container if it is a non-root container and has no other children
             match self.tree[parent_ix].get_type() {
@@ -322,6 +322,7 @@ impl LayoutTree {
                 }
                 _ => {},
             }
+            trace!("Removed container {:?}, index {:?}", container, node_ix);
             self.update_active_of(ContainerType::Workspace);
         }
         self.validate();
