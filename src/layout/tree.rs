@@ -334,12 +334,14 @@ impl LayoutTree {
         self.tree[self.tree.parent_of(node_ix).unwrap_or(node_ix)].get_type() == ContainerType::Workspace
     }
 
-    /// Splits the active container vertically
-    pub fn active_split_vertical(&mut self) {
+    /// Changes the layout of the active container to the given layout.
+    /// If the active container is a view, a new container is added with the given
+    /// layout type.
+    pub fn toggle_active_layout(&mut self, new_layout: Layout) {
         if self.is_root_container(self.active_container.expect("No active container")) {
             match self.tree[self.active_container.unwrap()] {
                 Container::Container { ref mut layout, .. } =>
-                    *layout = Layout::Vertical,
+                    *layout = new_layout,
                 _ => unreachable!()
             }
             return;
@@ -349,27 +351,7 @@ impl LayoutTree {
             .get_geometry().expect("Active container had no geometry");
 
         let mut new_container = Container::new_container(active_geometry);
-        new_container.set_layout(Layout::Vertical).ok();
-        let active_ix = self.active_container.unwrap();
-        self.add_container(new_container, active_ix);
-        self.validate();
-    }
-
-    /// Splits the active container horizontally
-    pub fn active_split_horizontal(&mut self) {
-        if self.is_root_container(self.active_container.expect("No active container")) {
-            match self.tree[self.active_container.unwrap()] {
-                Container::Container { ref mut layout, .. } =>
-                    *layout = Layout::Horizontal,
-                _ => unreachable!()
-            }
-            return;
-        }
-        let active_geometry = self.get_active_container()
-            .expect("Could not get the active container")
-            .get_geometry().expect("Active container had no geometry");
-        let mut new_container = Container::new_container(active_geometry);
-        new_container.set_layout(Layout::Horizontal).ok();
+        new_container.set_layout(new_layout).ok();
         let active_ix = self.active_container.unwrap();
         self.add_container(new_container, active_ix);
         self.validate();

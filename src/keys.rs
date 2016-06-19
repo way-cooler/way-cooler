@@ -10,6 +10,7 @@ use rustwlc::types::*; // Need * for bitflags...
 use super::commands;
 use registry::get_command;
 use super::layout::tree;
+use super::layout::container::Layout;
 use super::lua;
 
 /// Register default keypresses to a map
@@ -96,14 +97,14 @@ lazy_static! {
 fn split_vertical() {
     trace!("Splitting vertically");
     if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.active_split_vertical();
+        tree.toggle_active_layout(Layout::Vertical);
     }
 }
 
 fn split_horizontal() {
     trace!("Splitting horizontally");
     if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.active_split_horizontal();
+        tree.toggle_active_layout(Layout::Horizontal);
     }
 }
 
