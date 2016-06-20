@@ -89,10 +89,10 @@ fn read_packet_json() {
     let packet = packet_stream_from_str(r#"{ "foo": "bar" }"#);
     match read_packet(&mut &*packet) {
         Ok(json) => {
-            let mut desired_map = BTreeMap::new();
-            desired_map.insert("foo".to_string(),
-                             Json::String("bar".to_string()));
-            assert_eq!(json, Json::Object(desired_map));
+            let desired = Json::Object(json_object! {
+                "foo" => "bar"
+            });
+            assert_eq!(json, desired);
         }
         Err(err) => panic!("Unable to parse Json: {:?}", err)
     }
@@ -150,8 +150,7 @@ fn success_json_is_successful() {
                Json::from_str(SUCCESS_JSON).expect("Can't get success Json"));
     assert_eq!(value_json(Json::String("foo".to_string())),
                Json::from_str(VALUE_JSON).expect("Can't get value Json"));
-    let mut json = BTreeMap::new();
-    json.insert("foo".to_string(), Json::String("bar".to_string()));
+    let json = json_object!{ "foo" => "bar" };
     assert_eq!(success_json_with(json),
                Json::from_str(SUCCESS_WITH_FOO).expect("Can't get foo Json"));
 }

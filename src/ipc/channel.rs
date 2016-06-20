@@ -74,10 +74,10 @@ pub fn write_packet(stream: &mut Write, packet: &Json) -> SendResult {
 /// { "type": "error", "reason": "foo" }
 /// ```
 pub fn error_json(reason: String) -> Json {
-    let mut json = BTreeMap::new();
-    json.insert("type".to_string(), Json::String("error".to_string()));
-    json.insert("reason".to_string(), Json::String(reason));
-    Json::Object(json)
+    Json::Object(json_object!{
+        "type" => "error",
+        "reason" => reason
+    })
 }
 
 /// Create a Json error message with additional fields.
@@ -108,10 +108,10 @@ pub fn error_json_with(reason: String,
 ///   "missing": "foo", "expected": "string" }
 /// ```
 pub fn error_expecting_key(key: &'static str, type_: &'static str) -> Json {
-    let mut others = BTreeMap::new();
-    others.insert("missing".to_string(), Json::String(key.to_string()));
-    others.insert("expected".to_string(), Json::String(type_.to_string()));
-    error_json_with("missing message field".to_string(), others)
+    error_json_with("missing message field".to_string(), json_object!{
+        "missing" => key,
+        "expected" => type_
+    })
 }
 
 /// A Json representing a success packet.
@@ -122,9 +122,7 @@ pub fn error_expecting_key(key: &'static str, type_: &'static str) -> Json {
 /// { "type": "success" }
 /// ```
 pub fn success_json() -> Json {
-    let mut responses = BTreeMap::new();
-    responses.insert("type".to_string(), Json::String("success".to_string()));
-    Json::Object(responses)
+    Json::Object(json_object!{ "type" => "success" })
 }
 
 /// Send an error message with additional fields

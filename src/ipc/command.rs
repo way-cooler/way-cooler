@@ -45,17 +45,14 @@ pub fn thread<S: Read + Write>(mut stream: S) {
                 },
                 ReceiveError::InvalidJson(parse_err) => match parse_err {
                     ParserError::SyntaxError(code, start, end) => {
-                        let mut responses = BTreeMap::new();
-                        responses.insert("code".to_string(),
-                                         Json::String(format!("{:?}", code)));
-                        responses.insert("start".to_string(),
-                                         Json::U64(start as u64));
-                        responses.insert("end".to_string(),
-                                         Json::U64(end as u64));
-                        channel::write_packet(&mut stream,
-                                              &channel::error_json_with(
-                                                  "invalid json".to_string(),
-                                                  responses))
+                        let reply = Json::Object(json_object!{
+                            "type" => "error",
+                            "reason" => "invalid json",
+                            "code" => (format!("{:?}", code)),
+                            "start" => (start as u64),
+                            "end" => (end as u64)
+                        });
+                        channel::write_packet(&mut stream, &reply)
                             .expect("invalid syntax: Unaable to reply!");
                     }
                     _ => unreachable!()
@@ -92,13 +89,14 @@ pub fn reply(json: Json) -> Result<Json, Json> {
             match registry::get_data(&key) {
                 Ok(data) => {
                     let (flags, arc) = data.resolve();
-                    let mut json = BTreeMap::new();
-                    json.insert("flags".to_string(), flags.to_json());
+                    let reply = channel::success_json_with(json_object! {
+                        "value" => (arc.deref().clone()),
+                        "flags" => flags
+                    });
                     // I'd return a Cow<Json> because write_packet needs an
                     // &Json, but I dunno how to move the fields over in a
                     // borrow.
-                    json.insert("value".to_string(), arc.deref().clone());
-                    return Ok(channel::success_json_with(json));
+                    return Ok(reply);
                 },
                 Err(err) => match err {
                     KeyNotFound =>
@@ -159,7 +157,9 @@ pub fn reply(json: Json) -> Result<Json, Json> {
             let reg_key = registry::contains_key(&key);
 
             // TODO registry::key_info(key)
-            Ok(channel::value_json(Json::Boolean(reg_key)))
+            Ok(channel::success_json_with(json_object!{
+                "key" => reg_key
+            }))
         },
 
         // Commands
@@ -188,14 +188,10 @@ pub fn reply(json: Json) -> Result<Json, Json> {
         },
 
         "commands" => {
-            Ok(channel::value_json(Json::Array(vec![
-                Json::String("get".to_string()),
-                Json::String("set".to_string()),
-                Json::String("exists".to_string()),
-                Json::String("run".to_string()),
-                Json::String("version".to_string()),
-                Json::String("commands".to_string()),
-                Json::String("ping".to_string())  ])))
+            Ok(channel::value_json(json!([
+                "get", "set", "exists", "run",
+                "version", "commands", "ping"
+                    ])))
         },
 
         "ping" => {
