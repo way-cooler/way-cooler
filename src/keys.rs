@@ -36,10 +36,10 @@ pub fn init() {
         keypress!("Alt", "Escape") => "quit";
         keypress!("Alt", "Return") => "launch_terminal";
         keypress!("Alt", "d") => "launch_dmenu";
-        //keypress!("Alt", "l") => "dmenu_eval";
-        /*KeyPress::from_key_names(vec!["Alt", "Shift"], vec!["l"])
+        keypress!("Alt", "l") => "dmenu_eval";
+        KeyPress::from_key_names(vec!["Alt", "Shift"], vec!["l"])
             .expect("Unable to create default keypress")
-            => "dmenu_lua_dofile";*/
+            => "dmenu_lua_dofile";
 
         keypress!("Alt", "1") => "switch_workspace_1";
         keypress!("Alt", "2") => "switch_workspace_2";

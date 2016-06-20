@@ -1,7 +1,7 @@
 //! Register commands on the registry.
 
 use std::sync::Arc;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::thread;
 use std::env;
 use std::io::prelude::*;
@@ -99,7 +99,8 @@ fn quit() {
 
 fn dmenu_lua_dofile() {
     thread::Builder::new().name("dmenu_dofile".to_string()).spawn(|| {
-        let child = Command::new("dmenu").arg("-p 'Eval Lua file'")
+        let child = Command::new("dmenu").arg("-p").arg("Eval Lua file")
+            .stdin(Stdio::piped()).stdout(Stdio::piped())
             .spawn().expect("Unable to launch dmenu!");
 
         {
@@ -112,14 +113,17 @@ fn dmenu_lua_dofile() {
         let mut output = String::new();
         stdout.read_to_string(&mut output).expect("Unable to read stdout");
 
-        lua::send(LuaQuery::ExecFile(output)).expect("unable to contact Lua");
+        let result = lua::send(LuaQuery::ExecFile(output))
+            .expect("unable to contact Lua").recv().expect("Can't get reply");
+        trace!("Lua result: {:?}", result);
     }).expect("Unable to spawn thread");
 }
 
 fn dmenu_eval() {
        thread::Builder::new().name("dmenu_eval".to_string()).spawn(|| {
-        let child = Command::new("dmenu").arg("-p 'Eval Lua code'")
-            .spawn().expect("Unable to launch dmenu!");
+           let child = Command::new("dmenu").arg("-p").arg("Eval Lua code")
+               .stdin(Stdio::piped()).stdout(Stdio::piped())
+               .spawn().expect("Unable to launch dmenu!");
            {
                // Write \d to stdin to prevent options from being given
                let mut stdin = child.stdin.expect("Unable to access stdin");
@@ -129,6 +133,8 @@ fn dmenu_eval() {
            let mut output = String::new();
            stdout.read_to_string(&mut output).expect("Unable to read stdout");
 
-           lua::send(LuaQuery::Execute(output)).expect("Unable to contact Lua");
+           let result = lua::send(LuaQuery::Execute(output))
+               .expect("Unable to contact Lua").recv().expect("Can't get reply");
+           trace!("Lua result: {:?}", result)
     }).expect("Unable to spawn thread");
 }
