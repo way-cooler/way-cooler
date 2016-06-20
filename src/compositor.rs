@@ -154,8 +154,6 @@ pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, bu
                          state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed {
         if !view.is_root() {
-            view.focus();
-            view.bring_to_front();
             let mut tree = tree::try_lock_tree().expect(ERR_TREE);
             tree.set_active_container(view.clone());
         }

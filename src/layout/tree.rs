@@ -94,6 +94,9 @@ impl LayoutTree {
         info!("Active container was: {:?}", self.active_container);
         if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &handle) {
             self.active_container = Some(node_ix);
+            handle.focus();
+        } else {
+            warn!("Could not find handle {:?}", handle);
         }
         info!("Active container is now: {:?}", self.active_container);
     }
@@ -380,11 +383,11 @@ impl LayoutTree {
                             };
                             if maybe_new_index.is_some() &&
                                 maybe_new_index.unwrap() < siblings.len() {
-                                // There is a sibling to move to.
-                                let new_index = maybe_new_index.unwrap();
-                                let new_active = siblings[new_index];
-                                error!("yay switching focus to {:?}", new_active);
-                                self.active_container = Some(new_active);
+                                    // There is a sibling to move to.
+                                    let new_index = maybe_new_index.unwrap();
+                                    let new_active = siblings[new_index];
+                                    error!("yay switching focus to {:?}", new_active);
+                                    self.active_container = Some(new_active);
                             }
                         },
                         (Layout::Vertical, Direction::Left) |

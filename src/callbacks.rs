@@ -69,10 +69,10 @@ pub extern fn view_created(view: WlcView) -> bool {
         }
         tree.normalize_view(view.clone());
         tree.layout_active_of(ContainerType::Container);
+        tree.set_active_container(view.clone());
         drop(tree);
         view.set_mask(output.get_mask());
         view.bring_to_front();
-        view.focus();
         true
     } else {
         false
