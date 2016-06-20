@@ -10,6 +10,7 @@ lazy_static! {
 
 // Commands for the commands tests
 
+#[test]
 pub fn command() {
     println!("command being run!");
 }
