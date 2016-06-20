@@ -16,6 +16,14 @@ pub type TreeErr = TryLockError<MutexGuard<'static, LayoutTree>>;
 /// Result for locking the tree
 pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 
+#[derive(Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Right,
+    Left
+}
+
 /* An example Tree:
 
       Root
@@ -335,6 +343,73 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Focus on the container relative to the active container.
+    ///
+    /// If Horizontal, left and right will move within siblings.
+    /// If Vertical, up and down will move within siblings.
+    /// Other wise, it moves to the next sibling of the parent container.
+    ///
+    /// If the edge of the children is hit, it does not wrap around,
+    /// but moves between ancestor siblings.
+    pub fn move_focus(&mut self, direction: Direction) {
+        warn!("Moving focus");
+        if let Some(active_ix) = self.active_container {
+            let container_ix = self.active_ix_of(ContainerType::Container)
+                .expect("active had no parent");
+            let parent_ix = self.tree.parent_of(active_ix)
+                .expect("Active ix had no parent");
+            match self.tree[container_ix] {
+                Container::Container { layout, .. } => {
+                    match (layout, direction) {
+                        (Layout::Horizontal, Direction::Left) |
+                        (Layout::Horizontal, Direction::Right) |
+                        (Layout::Vertical, Direction::Up) |
+                        (Layout::Vertical, Direction::Down) => {
+                            warn!("Moving focus left or right in horizontal");
+                            let siblings = self.tree.children_of(parent_ix);
+                            let cur_index = siblings.iter().position(|node| {
+                                *node == active_ix
+                            }).expect("Could not find self in parent");
+                            let maybe_new_index = match direction {
+                                Direction::Right | Direction::Down => {
+                                    cur_index.checked_add(1)
+                                }
+                                Direction::Left  | Direction::Up => {
+                                    cur_index.checked_sub(1)
+                                }
+                            };
+                            if maybe_new_index.is_some() &&
+                                maybe_new_index.unwrap() < siblings.len() {
+                                // There is a sibling to move to.
+                                let new_index = maybe_new_index.unwrap();
+                                let new_active = siblings[new_index];
+                                error!("yay switching focus to {:?}", new_active);
+                                self.active_container = Some(new_active);
+                            }
+                        },
+                        (Layout::Vertical, Direction::Left) |
+                        (Layout::Vertical, Direction::Right)=> {
+                            //
+                        }
+                        (Layout::Horizontal, _) => {
+                            //
+                        }
+                        _ => unimplemented!()
+                    }
+                }
+                _ => unreachable!()
+            }
+            if let Some(active_ix) = self.active_container {
+                match self.tree[active_ix] {
+                    Container::View { ref mut handle, .. } => {
+                        handle.focus()
+                    },
+                    _ => warn!("Could not focus on {:?}", active_ix)
+                }
+            }
+        }
+    }
+
     /// Updates the current active container to be the next container or view
     /// to focus on after the previous view/container was moved/removed.
     ///
@@ -370,7 +445,7 @@ impl LayoutTree {
             self.active_container = Some(root_c_children[0]);
             match self.tree[root_c_children[0]] {
                 Container::View { ref handle, .. } => handle.focus(),
-                _ => unreachable!()
+                _ => {}
             };
             return;
         }

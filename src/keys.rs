@@ -86,11 +86,43 @@ lazy_static! {
             pointer_fn, keypress!("Alt", "p");
             horizontal_vertical_switch_fn, keypress!("Alt", "e");
             split_vertical, keypress!("Alt", "v");
-            split_horizontal, keypress!("Alt", "h")
+            split_horizontal, keypress!("Alt", "h");
+            move_left, keypress!("Alt", "left");
+            move_right, keypress!("Alt", "right");
+            move_up, keypress!("Alt", "up");
+            move_down, keypress!("Alt", "down")
         }
 
         RwLock::new(map)
     };
+}
+
+fn move_up() {
+    use layout::tree::Direction;
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        tree.move_focus(Direction::Up)
+    }
+}
+
+fn move_down() {
+    use layout::tree::Direction;
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        tree.move_focus(Direction::Down)
+    }
+}
+
+fn move_left() {
+    use layout::tree::Direction;
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        tree.move_focus(Direction::Left)
+    }
+}
+
+fn move_right() {
+    use layout::tree::Direction;
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        tree.move_focus(Direction::Right)
+    }
 }
 
 fn split_vertical() {
