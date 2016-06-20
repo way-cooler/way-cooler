@@ -63,7 +63,10 @@ pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
     if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.add_view(view.clone());
+        let v_type = view.get_type();
+        if v_type == ViewType::empty() {
+            tree.add_view(view.clone());
+        }
         tree.normalize_view(view.clone());
         tree.layout_active_of(ContainerType::Container);
         drop(tree);

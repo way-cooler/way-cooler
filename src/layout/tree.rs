@@ -861,6 +861,7 @@ impl LayoutTree {
     /// Validates the tree
     #[cfg(debug_assertions)]
     fn validate(&self) {
+        use rustwlc::ViewType;
         warn!("Validating the tree");
 
         // Recursive method to ensure child/parent nodes are connected
@@ -888,6 +889,10 @@ impl LayoutTree {
                     _ => panic!("Output container had no output")
                 };
             for view in output.get_views() {
+                // Ignore views we aren't supposed to tile
+                if view.get_type() != ViewType::empty() {
+                    continue;
+                }
                 if self.tree.descendant_with_handle(output_ix, &view).is_none() {
                     error!("View handle {:?} could not be found for {:?}",
                            view, output);
