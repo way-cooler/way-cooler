@@ -47,6 +47,12 @@ fn add_commands() {
 }
 
 #[test]
+fn get_command() {
+    wait_for_commands();
+    assert!(commands::get("command").is_some(), "Could not get command!");
+}
+
+#[test]
 fn run_command() {
     wait_for_commands();
     let command = commands::get("command")
