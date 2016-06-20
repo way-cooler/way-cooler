@@ -166,3 +166,5 @@ fn error_json_is_erroneous() {
     assert_eq!(error_json_with("foo".to_string(), json),
                Json::from_str(ERR_JSON_WITH_FOO).expect("Can't get foo err Json"));
 }
+
+

@@ -5,52 +5,61 @@ use std::collections::HashSet;
 use rustc_serialize::json::Json;
 
 use super::*;
-
 use super::super::channel;
+// use commands::tests::wait_for_commands;
+// use registry::tests::wait_for_registry;
 
 const PING: &'static str = r#"{ "type":"ping" }"#;
 const COMMANDS: &'static str = r#"{ "type":"commands" }"#;
 const VERSION: &'static str = r#"{ "type":"version" }"#;
 
-const RUN_COMMAND: &'static str = r#"{ "type":"ping" }"#;
-const RUN_PROP_GET: &'static str = r#"{ "type":"ping" }"#;
-const RUN_OBJECT: &'static str = r#"{ "type":"ping" }"#;
-const RUN_NO_KEY: &'static str = r#"{ "type":"ping" }"#;
+const RUN_COMMAND: &'static str =  r#"{ "type":"run", "key":"command" }"#;
+const RUN_PANIC_COMMAND: &'static str=r#"{"type":"run","key":"panic_command"}"#;
+const RUN_PROP_GET: &'static str = r#"{ "type":"run", "key":"get_prop" }"#;
+const RUN_OBJECT: &'static str =   r#"{ "type":"run", "key":"point" }"#;
+const RUN_NO_KEY: &'static str =   r#"{ "type":"run" }"#;
 
-const GET_OBJECT: &'static str = r#"{ "type":"ping" }"#;
-const GET_PROP: &'static str = r#"{ "type":"ping" }"#;
-const GET_READONLY: &'static str = r#"{ "type":"ping" }"#;
-const GET_WRITEONLY: &'static str = r#"{ "type":"ping" }"#;
-const GET_PROP_WRITE: &'static str = r#"{ "type":"ping" }"#;
-const GET_NO_KEY: &'static str = r#"{ "type":"ping" }"#;
-const GET_NO_PERMS: &'static str = "";
+const GET_OBJECT: &'static str =     r#"{ "type":"get", "key":"point" }"#;
+const GET_PROP: &'static str =       r#"{ "type":"get", "key":"prop_get" }"#;
+const GET_READONLY: &'static str =   r#"{ "type":"get", "key":"readonly" }"#;
+const GET_WRITEONLY: &'static str =  r#"{ "type":"get", "key":"writeonly" }"#;
+const GET_PROP_WRITE: &'static str = r#"{ "type":"get", "key":"set_prop" }"#;
+const GET_NO_KEY: &'static str = r#"{ "type":"get" }"#;
+const GET_NO_PERMS: &'static str = r#"{ "type":"get",   "key":"noperms" }"#;
 
-const SET_OBJECT: &'static str = r#"{ "type":"ping" }"#;
-const SET_PROP: &'static str = r#"{ "type":"ping" }"#;
-const SET_READONLY: &'static str = r#"{ "type":"ping" }"#;
-const SET_WRITEONLY: &'static str = r#"{ "type":"ping" }"#;
-const SET_PROP_READ: &'static str = r#"{ "type":"ping" }"#;
-const SET_NEW_KEY: &'static str = r#"{ "type":"ping" }"#;
-const SET_NO_PERMS: &'static str = "";
+const SET_OBJECT: &'static str
+    = r#"{ "type":"set", "key":"bool", "value":false }"#;
+const SET_PROP: &'static str
+    = r#"{ "type":"set", "key":"prop", "value":null }"#;
+const SET_READONLY: &'static str
+    = r#"{ "type":"set", "key":"readonly", "value":12 }"#;
+const SET_WRITEONLY: &'static str
+    = r#"{ "type":"set", "key":"writeonly", "value":11 }"#;
+const SET_PROP_READ: &'static str
+    = r#"{ "type":"set", "key":"prop_read", "value":"asdf" }"#;
+const SET_NEW_KEY: &'static str
+    = r#"{ "type":"set", "key":"new_key", "value":"value" }"#;
+const SET_NO_PERMS: &'static str
+    = r#"{ "type":"set", "key":"noperms", "value":"something" }"#;
 
-const EXISTS_OBJECT_RW: &'static str = r#"{}"#;
-const EXISTS_PROP: &'static str = r#"{}"#;
-const EXISTS_PROP_READ: &'static str = r#"{}"#;
-const EXISTS_PROP_WRITE: &'static str = r#"{}"#;
-const EXISTS_OBJECT_READ: &'static str = r#"{}"#;
-const EXISTS_OBJECT_WRITE: &'static str = r#"{}"#;
-const EXISTS_NO_KEY: &'static str =
-    r#"{ "type": "exists", "key": "test.no_key"}"#;
+const EXISTS_OBJECT_RW: &'static str = r#"{"type":"exists", "key":"null" }"#;
+const EXISTS_PROP: &'static str = r#"{"type":"exists", "key":"prop" }"#;
+const EXISTS_PROP_READ: &'static str = r#"{"type":"exists","key":"get_prop"}"#;
+const EXISTS_PROP_WRITE: &'static str = r#"{"type":"exists","key":"set_prop"}"#;
+const EXISTS_OBJECT_READ:&'static str = r#"{"type":"exists","key":"readonly"}"#;
+const EXISTS_OBJECT_WRITE:&'static str=r#"{"type":"exists","key":"writeonly"}"#;
+const EXISTS_NO_KEY: &'static str = r#"{ "type": "exists", "key": "nope"}"#;
 
-const BAD_NO_REQUEST: &'static str = r#"{}"#;
-const BAD_INVALID_REQUEST: &'static str = r#"{}"#;
-const BAD_GET_NO_KEY: &'static str = r#"{}"#;
-const BAD_SET_NO_KEY: &'static str = r#"{}"#;
-const BAD_SET_NO_VALUE: &'static str = r#"{}"#;
-const BAD_RUN_NO_COMMAND: &'static str = r#"{}"#;
-const BAD_RUN_EXTRA_FIELDS: &'static str = r#"{}"#;
-const BAD_RUN_U64_COMMAND: &'static str = r#"{}"#;
-const BAD_GET_OBJECT_KEY: &'static str = r#"{}"#;
+const BAD_NO_REQUEST: &'static str = r#"{ "key":"foo", "value":"bar" }"#;
+const BAD_INVALID_REQUEST: &'static str = r#"{ "type":"foo" }"#;
+const BAD_GET_NO_KEY: &'static str = r#"{ "type":"get" }"#;
+const BAD_SET_NO_KEY: &'static str = r#"{ "type":"set", "value":12 }"#;
+const BAD_SET_NO_VALUE: &'static str = r#"{ "type":"set", "key":"f64" }"#;
+const BAD_RUN_NO_COMMAND: &'static str = r#"{ "type":"run" }"#;
+const BAD_RUN_EXTRA_FIELDS: &'static str =
+    r#"{ "type":"run", "key":"command", "foo":"bar" }"#;
+const BAD_RUN_U64_COMMAND: &'static str = r#"{ "type":"run", "key":12 }"#;
+const BAD_GET_OBJECT_KEY: &'static str = r#"{ "type":"get", "key": 12 }"#;
 const BAD_REQUEST_IS_A_NUMBER: &'static str = r#"23"#;
 
 macro_rules! reply {
@@ -101,4 +110,22 @@ fn version() {
         .as_u64().expect("version: reply not u64");
 
     assert_eq!(version, super::super::VERSION);
+}
+
+//#[test]
+fn run_command() {
+    //wait_for_commands();
+    let reply = reply!(RUN_COMMAND);
+    assert_eq!(reply, channel::success_json());
+}
+
+// Note: If a command were to panic in way-cooler, the thread servicing that
+// IPC connection would shut down. However, reply! is routing around that and
+// everything is being run in each test thread. This is more of a general way
+// of making sure commands are being run and we are aware of them.
+
+//#[test]
+//#[should_panic("panic_command panic")]
+fn run_panic_command() {
+    let reply = reply!(RUN_PANIC_COMMAND);
 }
