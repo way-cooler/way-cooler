@@ -100,27 +100,6 @@ impl LayoutTree {
         self.active_container.and_then(move |ix| self.tree.get_mut(ix))
     }
 
-    /// Gets the index of the currently active container with the given type.
-    /// Starts at the active container, moves up until either a container with
-    /// that type is found or the root node is hit
-    fn active_ix_of(&self, ctype: ContainerType) -> Option<NodeIndex> {
-        if let Some(ix) = self.active_container {
-            if self.tree[ix].get_type() == ctype {
-                return Some(ix)
-            }
-            return self.tree.ancestor_of_type(ix, ctype)
-        }
-        return None
-    }
-
-    fn active_of(&self, ctype: ContainerType) -> Option<&Container> {
-        self.active_ix_of(ctype).and_then(|ix| self.tree.get(ix))
-    }
-
-    fn active_of_mut(&mut self, ctype: ContainerType) -> Option<&mut Container> {
-        self.active_ix_of(ctype).and_then(move |ix| self.tree.get_mut(ix))
-    }
-
     /// Gets the parent of the active container
     #[allow(dead_code)]
     pub fn get_active_parent(&self) -> Option<&Container> {
@@ -169,37 +148,34 @@ impl LayoutTree {
         return None
     }
 
-    /// Gets a workspace by name or creates it
-    fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
-        let active_index = self.active_ix_of(ContainerType::Output).expect("get_or_make_wksp: Couldn't get output");
-        let workspace_ix = self.workspace_ix_by_name(name).unwrap_or_else(|| {
-            let root_ix = self.init_workspace(name.to_string(), active_index);
-            self.tree.parent_of(root_ix)
-                .expect("Workspace was not properly initialized with a root container")
-        });
-        self.validate();
-        workspace_ix
+    /// Gets the index of the currently active container with the given type.
+    /// Starts at the active container, moves up until either a container with
+    /// that type is found or the root node is hit
+    fn active_ix_of(&self, ctype: ContainerType) -> Option<NodeIndex> {
+        if let Some(ix) = self.active_container {
+            if self.tree[ix].get_type() == ctype {
+                return Some(ix)
+            }
+            return self.tree.ancestor_of_type(ix, ctype)
+        }
+        return None
     }
 
-    /// Initializes a workspace and gets the index of the root container
-    fn init_workspace(&mut self, name: String, output_ix: NodeIndex)
-                      -> NodeIndex {
-        let size = self.tree.get(output_ix)
-            .expect("init_workspace: invalid output").get_geometry()
-            .expect("init_workspace: no geometry for output").size;
-        let worksp = Container::new_workspace(name.to_string(), size.clone());
-
-        trace!("Adding workspace {:?}", worksp);
-        let worksp_ix = self.tree.add_child(output_ix, worksp);
-        let geometry = Geometry {
-            size: size, origin: Point { x: 0, y: 0 }
-        };
-        let container_ix = self.tree.add_child(worksp_ix,
-                                               Container::new_container(geometry));
-        self.validate();
-        container_ix
+    /// Gets the active container if there is a currently focused container
+    fn active_of(&self, ctype: ContainerType) -> Option<&Container> {
+        self.active_ix_of(ctype).and_then(|ix| self.tree.get(ix))
     }
 
+    /// Gets the active container mutably, if there is a currently focused container
+    fn active_of_mut(&mut self, ctype: ContainerType) -> Option<&mut Container> {
+        self.active_ix_of(ctype).and_then(move |ix| self.tree.get_mut(ix))
+    }
+
+    /// Determines if the container at the node index is the root.
+    /// Normally, this should only be true if the NodeIndex value is 1.
+    fn is_root_container(&self, node_ix: NodeIndex) -> bool {
+        self.tree[self.tree.parent_of(node_ix).unwrap_or(node_ix)].get_type() == ContainerType::Workspace
+    }
 
     /// Make a new output container with the given WlcOutput.
     ///
@@ -213,55 +189,6 @@ impl LayoutTree {
         let output_ix = self.tree.add_child(root_index,
                                           Container::new_output(output));
         self.active_container = Some(self.init_workspace("1".to_string(), output_ix));
-        self.validate();
-    }
-
-    /// Normalizes the geometry of a view to be the same size as it's siblings,
-    /// based on the parent container's layout, at the 0 point of the parent container.
-    /// Note this does not auto-tile, only modifies this one view.
-    ///
-    /// Useful if a container's children want to be evenly distributed, or a new view
-    /// is being added.
-    pub fn normalize_view(&mut self, view: WlcView) {
-        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
-            let parent_ix = self.tree.ancestor_of_type(view_ix,
-                                                       ContainerType::Container)
-                .expect("View had no container parent");
-            let new_geometry: Geometry;
-            let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
-                as u32;
-            let parent_geometry = self.tree[parent_ix].get_geometry()
-                .expect("Parent container had no geometry");
-            match self.tree[parent_ix] {
-                Container::Container { ref layout, .. } => {
-                    match *layout {
-                        Layout::Horizontal => {
-                            new_geometry = Geometry {
-                                origin: parent_geometry.origin.clone(),
-                                size: Size {
-                                    w: parent_geometry.size.w / num_siblings,
-                                    h: parent_geometry.size.h
-                                }
-                            };
-                        }
-                        Layout::Vertical => {
-                            new_geometry = Geometry {
-                                origin: parent_geometry.origin.clone(),
-                                size: Size {
-                                    w: parent_geometry.size.w,
-                                    h: parent_geometry.size.h / num_siblings
-                                }
-                            };
-                        }
-                        _ => unimplemented!()
-                    }
-                },
-                _ => unreachable!()
-            };
-            trace!("Setting view {:?} to geometry: {:?}",
-                   self.tree[view_ix], new_geometry);
-            view.set_geometry(ResizeEdge::empty(), &new_geometry);
-        }
         self.validate();
     }
 
@@ -328,33 +255,35 @@ impl LayoutTree {
         self.validate();
     }
 
-    /// Determines if the container at the node index is the root.
-    /// Normally, this should only be true if the NodeIndex value is 1.
-    fn is_root_container(&self, node_ix: NodeIndex) -> bool {
-        self.tree[self.tree.parent_of(node_ix).unwrap_or(node_ix)].get_type() == ContainerType::Workspace
+    /// Gets a workspace by name or creates it
+    fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
+        let active_index = self.active_ix_of(ContainerType::Output).expect("get_or_make_wksp: Couldn't get output");
+        let workspace_ix = self.workspace_ix_by_name(name).unwrap_or_else(|| {
+            let root_ix = self.init_workspace(name.to_string(), active_index);
+            self.tree.parent_of(root_ix)
+                .expect("Workspace was not properly initialized with a root container")
+        });
+        self.validate();
+        workspace_ix
     }
 
-    /// Changes the layout of the active container to the given layout.
-    /// If the active container is a view, a new container is added with the given
-    /// layout type.
-    pub fn toggle_active_layout(&mut self, new_layout: Layout) {
-        if self.is_root_container(self.active_container.expect("No active container")) {
-            match self.tree[self.active_container.unwrap()] {
-                Container::Container { ref mut layout, .. } =>
-                    *layout = new_layout,
-                _ => unreachable!()
-            }
-            return;
-        }
-        let active_geometry = self.get_active_container()
-            .expect("Could not get the active container")
-            .get_geometry().expect("Active container had no geometry");
+    /// Initializes a workspace and gets the index of the root container
+    fn init_workspace(&mut self, name: String, output_ix: NodeIndex)
+                      -> NodeIndex {
+        let size = self.tree.get(output_ix)
+            .expect("init_workspace: invalid output").get_geometry()
+            .expect("init_workspace: no geometry for output").size;
+        let worksp = Container::new_workspace(name.to_string(), size.clone());
 
-        let mut new_container = Container::new_container(active_geometry);
-        new_container.set_layout(new_layout).ok();
-        let active_ix = self.active_container.unwrap();
-        self.add_container(new_container, active_ix);
+        trace!("Adding workspace {:?}", worksp);
+        let worksp_ix = self.tree.add_child(output_ix, worksp);
+        let geometry = Geometry {
+            size: size, origin: Point { x: 0, y: 0 }
+        };
+        let container_ix = self.tree.add_child(worksp_ix,
+                                               Container::new_container(geometry));
         self.validate();
+        container_ix
     }
 
     /// Adds the container with the node index as a child.
@@ -458,6 +387,29 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Changes the layout of the active container to the given layout.
+    /// If the active container is a view, a new container is added with the given
+    /// layout type.
+    pub fn toggle_active_layout(&mut self, new_layout: Layout) {
+        if self.is_root_container(self.active_container.expect("No active container")) {
+            match self.tree[self.active_container.unwrap()] {
+                Container::Container { ref mut layout, .. } =>
+                    *layout = new_layout,
+                _ => unreachable!()
+            }
+            return;
+        }
+        let active_geometry = self.get_active_container()
+            .expect("Could not get the active container")
+            .get_geometry().expect("Active container had no geometry");
+
+        let mut new_container = Container::new_container(active_geometry);
+        new_container.set_layout(new_layout).ok();
+        let active_ix = self.active_container.unwrap();
+        self.add_container(new_container, active_ix);
+        self.validate();
+    }
+
     // Updates the tree's layout recursively starting from the active container.
     // If the active container is a view, it starts at the parent container.
     pub fn layout_active_of(&mut self, c_type: ContainerType) {
@@ -481,6 +433,55 @@ impl LayoutTree {
         } else {
             error!("{:?} did not have a parent of type {:?}, doing nothing!",
                    self, c_type);
+        }
+        self.validate();
+    }
+
+    /// Normalizes the geometry of a view to be the same size as it's siblings,
+    /// based on the parent container's layout, at the 0 point of the parent container.
+    /// Note this does not auto-tile, only modifies this one view.
+    ///
+    /// Useful if a container's children want to be evenly distributed, or a new view
+    /// is being added.
+    pub fn normalize_view(&mut self, view: WlcView) {
+        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
+            let parent_ix = self.tree.ancestor_of_type(view_ix,
+                                                       ContainerType::Container)
+                .expect("View had no container parent");
+            let new_geometry: Geometry;
+            let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
+                as u32;
+            let parent_geometry = self.tree[parent_ix].get_geometry()
+                .expect("Parent container had no geometry");
+            match self.tree[parent_ix] {
+                Container::Container { ref layout, .. } => {
+                    match *layout {
+                        Layout::Horizontal => {
+                            new_geometry = Geometry {
+                                origin: parent_geometry.origin.clone(),
+                                size: Size {
+                                    w: parent_geometry.size.w / num_siblings,
+                                    h: parent_geometry.size.h
+                                }
+                            };
+                        }
+                        Layout::Vertical => {
+                            new_geometry = Geometry {
+                                origin: parent_geometry.origin.clone(),
+                                size: Size {
+                                    w: parent_geometry.size.w,
+                                    h: parent_geometry.size.h / num_siblings
+                                }
+                            };
+                        }
+                        _ => unimplemented!()
+                    }
+                },
+                _ => unreachable!()
+            };
+            trace!("Setting view {:?} to geometry: {:?}",
+                   self.tree[view_ix], new_geometry);
+            view.set_geometry(ResizeEdge::empty(), &new_geometry);
         }
         self.validate();
     }
@@ -524,11 +525,19 @@ impl LayoutTree {
                 trace!("layout: Laying out workspace, using size of the screen output {:?}", handle);
                 self.layout_helper(node_ix, output_geometry);
             }
-            _ => panic!("layout should not be called directly on a container, view")
+            _ => {
+                warn!("layout should not be called directly on a container, view\
+                       laying out the entire tree just to be safe");
+                let root_ix = self.tree.root_ix();
+                self.layout(root_ix);
+            }
         }
         self.validate();
     }
 
+    /// Helper function to layout a container. The geometry is the constraint geometry,
+    /// the container tries to lay itself out within the confines defined by the constraint.
+    /// Generally, this should not be used directly and layout should be used.
     fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry) {
         match self.tree[node_ix].get_type() {
             ContainerType::Root | ContainerType::Output => {
