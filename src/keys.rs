@@ -90,7 +90,8 @@ lazy_static! {
             move_left, keypress!("Alt", "left");
             move_right, keypress!("Alt", "right");
             move_up, keypress!("Alt", "up");
-            move_down, keypress!("Alt", "down")
+            move_down, keypress!("Alt", "down");
+            debug_tree, keypress!("Alt", "q")
         }
 
         RwLock::new(map)
@@ -185,6 +186,12 @@ fn pointer_fn() {
 fn quit_fn() {
     info!("handler: Esc keypress!");
     ::rustwlc::terminate();
+}
+
+fn debug_tree() {
+    if let Ok(tree) = tree::try_lock_tree() {
+        error!("The tree: {:#?}", *tree);
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
