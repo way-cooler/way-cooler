@@ -12,8 +12,10 @@ local config = require("config") -- Used for configuring way-cooler after setup
 -- For a list of tiling options, see way-cooler docs or `man way-cooler-tiling`.
 -- Workspaces, like arrays in Lua, start with 1.
 local workspace_settings = {
+  -- The first workspace (index 1) is named web
+  "web",
   -- The 9th workspace is named "free", and all windows sent there float.
-  [9] = { name = "free", mode = "float" }
+  [9] = { name = "free", mode = "float" },
 }
 
 -- Create 9 workspaces with the given settings.
@@ -50,11 +52,15 @@ config.init_workspaces(9, workspace_settings)
 mod = "Mod4"
 local key = config.key -- Alias key so it's faster to type
 
+local terminal = "weston-terminal" -- Use the terminal of your choice
+
 local keys = {
   -- Open dmenu
   key({ mod }, "d", "launch_dmenu"),
   -- Open terminal
-  key({ mod }, "Enter", "launch_terminal"),
+  key({ mod }, "Enter", function()
+      util.exec.spawn(terminal)
+  end),
 
   -- Switch workspaces L/R/previous
   key({ mod }, "Left",      "workspace.switch_left"),
