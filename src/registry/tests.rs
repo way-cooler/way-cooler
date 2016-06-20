@@ -179,8 +179,8 @@ fn key_perms() {
         ("readonly",  AccessFlags::READ()),
         ("writeonly", AccessFlags::WRITE()),
         ("prop",      AccessFlags::all()),
-        //("prop_read", AccessFlags::READ()),
-        //("prop_write", AccessFlags::WRITE())
+        ("get_prop", AccessFlags::READ()),
+        //("set_prop", AccessFlags::WRITE())
     ];
 
     for (name, flags) in perms.into_iter() {
