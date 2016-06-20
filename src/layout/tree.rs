@@ -434,9 +434,17 @@ impl LayoutTree {
                         .expect("Container was not part of a workspace")
                 });
         }
-        // If this is reached, parent is workspace and there are no views in the tree
-        // so set the active container to be the root container
+        // If this is reached, parent is workspace
         let container_ix = self.tree.children_of(parent_ix)[0];
+        let root_c_children = self.tree.children_of(container_ix);
+        if root_c_children.len() > 0 {
+            self.active_container = Some(root_c_children[0]);
+            match self.tree[root_c_children[0]] {
+                Container::View { ref handle, .. } => handle.focus(),
+                _ => unreachable!()
+            };
+            return;
+        }
         trace!("Active container set to container {:?}", container_ix);
         self.active_container = Some(container_ix);
 
