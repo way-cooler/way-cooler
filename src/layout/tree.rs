@@ -528,7 +528,7 @@ impl LayoutTree {
 
             }
         } else {
-            error!("{:?} did not have a parent of type {:?}, doing nothing!",
+            warn!("{:?} did not have a parent of type {:?}, doing nothing!",
                    self, c_type);
         }
         self.validate();
@@ -961,7 +961,6 @@ impl LayoutTree {
     #[cfg(debug_assertions)]
     fn validate(&self) {
         use rustwlc::ViewType;
-        warn!("Validating the tree");
 
         // Recursive method to ensure child/parent nodes are connected
         fn validate_node_connections(this: &LayoutTree, parent_ix: NodeIndex) {
