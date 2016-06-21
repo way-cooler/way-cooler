@@ -195,7 +195,6 @@ fn start_interactive_action(view: &WlcView, origin: &Point) -> Result<(), &'stat
         }
     }
 
-    view.bring_to_front();
     Ok(())
 }
 
