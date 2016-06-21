@@ -349,62 +349,77 @@ impl LayoutTree {
     /// If the edge of the children is hit, it does not wrap around,
     /// but moves between ancestor siblings.
     pub fn move_focus(&mut self, direction: Direction) {
-        warn!("Moving focus");
-        if let Some(active_ix) = self.active_container {
-            let container_ix = self.active_ix_of(ContainerType::Container)
-                .expect("active had no parent");
-            let parent_ix = self.tree.parent_of(active_ix)
-                .expect("Active ix had no parent");
-            match self.tree[container_ix] {
-                Container::Container { layout, .. } => {
-                    match (layout, direction) {
-                        (Layout::Horizontal, Direction::Left) |
-                        (Layout::Horizontal, Direction::Right) |
-                        (Layout::Vertical, Direction::Up) |
-                        (Layout::Vertical, Direction::Down) => {
-                            warn!("Moving focus left or right in horizontal");
-                            let siblings = self.tree.children_of(parent_ix);
-                            let cur_index = siblings.iter().position(|node| {
-                                *node == active_ix
-                            }).expect("Could not find self in parent");
-                            let maybe_new_index = match direction {
-                                Direction::Right | Direction::Down => {
-                                    cur_index.checked_add(1)
-                                }
-                                Direction::Left  | Direction::Up => {
-                                    cur_index.checked_sub(1)
-                                }
-                            };
-                            if maybe_new_index.is_some() &&
-                                maybe_new_index.unwrap() < siblings.len() {
-                                    // There is a sibling to move to.
-                                    let new_index = maybe_new_index.unwrap();
-                                    let new_active = siblings[new_index];
-                                    error!("yay switching focus to {:?}", new_active);
-                                    self.active_container = Some(new_active);
-                            }
-                        },
-                        (Layout::Vertical, Direction::Left) |
-                        (Layout::Vertical, Direction::Right)=> {
-                            //
-                        }
-                        (Layout::Horizontal, _) => {
-                            //
-                        }
-                        _ => unimplemented!()
-                    }
-                }
-                _ => unreachable!()
+        if let Some(prev_active_ix) = self.active_container {
+            self.active_container = Some(self.move_focus_recurse(prev_active_ix, direction)
+                .unwrap_or(prev_active_ix));
+            match self.tree[self.active_container.unwrap()] {
+                Container::View { ref handle, .. } => handle.focus(),
+                _ => warn!("move_focus returned a non-view, cannot focus")
             }
-            if let Some(active_ix) = self.active_container {
-                match self.tree[active_ix] {
-                    Container::View { ref mut handle, .. } => {
-                        handle.focus()
-                    },
-                    _ => warn!("Could not focus on {:?}", active_ix)
-                }
-            }
+        } else {
+            warn!("Cannot move active focus when not there is no active container");
         }
+        self.validate();
+    }
+    fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, ()> {
+        match self.tree[node_ix].get_type() {
+            ContainerType::View | ContainerType::Container => { /* continue */ },
+            _ => return Err(())
+        }
+        let parent_ix = self.tree.parent_of(node_ix)
+            .expect("Active ix had no parent");
+        match self.tree[parent_ix] {
+            Container::Container { layout, .. } => {
+                match (layout, direction) {
+                    (Layout::Horizontal, Direction::Left) |
+                    (Layout::Horizontal, Direction::Right) |
+                    (Layout::Vertical, Direction::Up) |
+                    (Layout::Vertical, Direction::Down) => {
+                        let siblings = self.tree.children_of(parent_ix);
+                        let cur_index = siblings.iter().position(|node| {
+                            *node == node_ix
+                        }).expect("Could not find self in parent");
+                        let maybe_new_index = match direction {
+                            Direction::Right | Direction::Down => {
+                                cur_index.checked_add(1)
+                            }
+                            Direction::Left  | Direction::Up => {
+                                cur_index.checked_sub(1)
+                            }
+                        };
+                        if maybe_new_index.is_some() &&
+                            maybe_new_index.unwrap() < siblings.len() {
+                                // There is a sibling to move to.
+                                let new_index = maybe_new_index.unwrap();
+                                let new_active_ix = siblings[new_index];
+                                match self.tree[new_active_ix].get_type() {
+                                    ContainerType::Container => {
+                                        // Get the first view we can find in the container
+                                        let first_view = self.tree.descendant_of_type(new_active_ix, ContainerType::View)
+                                            .expect("Could not find view in ancestor sibling container");
+                                        trace!("Moving to different view {:?} in container {:?}",
+                                               self.tree[first_view], self.tree[new_active_ix]);
+                                        return Ok(first_view);
+                                    },
+                                    ContainerType::View => {
+                                        trace!("Moving to other view {:?}", self.tree[new_active_ix]);
+                                        return Ok(new_active_ix)
+                                    },
+                                    _ => unreachable!()
+                                };
+                            }
+                    },
+                    _ => { /* We are moving out of siblings, recurse */ }
+                }
+            }
+            Container::Workspace { .. } => {
+                return Err(());
+            }
+            _ => unreachable!()
+        }
+        let parent_ix = self.tree.parent_of(node_ix)
+            .expect("Node had no parent");
+        return self.move_focus_recurse(parent_ix, direction);
     }
 
     /// Updates the current active container to be the next container or view
