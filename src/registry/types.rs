@@ -239,4 +239,46 @@ mod tests {
         assert_eq!(format!("{:?}", get_obj),
               "RegistryGetData::Object { flags: READ, data: String(\"foo\") }");
     }
+
+    #[test]
+    fn registry_field() {
+        let prop = RegistryField::Property {
+            get: None, set: None
+        };
+        assert_eq!(prop.get_type(), FieldType::Property);
+
+        let null_field = RegistryField::Object {
+            flags: AccessFlags::READ(),
+            data: Arc::new(Json::Null)
+        };
+
+        /* Set Data */
+        assert_eq!(null_field.get_type(), FieldType::Object);
+        let null_data = null_field.clone().as_object().unwrap().1;
+        assert_eq!(*null_data, Json::Null);
+        let prop = RegistrySetData::Displaced(null_data);
+        assert_eq!(prop.get_type(), FieldType::Object);
+
+        // send function
+        fn send(_json: Json) {}
+
+        let set_prop = RegistrySetData::Property(AccessFlags::WRITE(),
+                                                 Arc::new(send));
+        assert_eq!(set_prop.get_type(), FieldType::Property);
+
+        /* Get Data */
+        assert_eq!(null_field.get_type(), FieldType::Object);
+        let null_data = null_field.as_object().unwrap().1;
+        assert_eq!(*null_data, Json::Null);
+        let prop = RegistryGetData::Object(AccessFlags::READ(),
+                                           null_data.clone());
+        assert_eq!(prop.get_type(), FieldType::Object);
+
+        // send function
+        fn _get() -> Json { panic!()}
+
+        let set_prop = RegistryGetData::Property(AccessFlags::WRITE(),
+                                                 Arc::new(_get));
+        assert_eq!(set_prop.get_type(), FieldType::Property);
+    }
 }
