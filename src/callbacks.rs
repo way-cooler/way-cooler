@@ -64,13 +64,13 @@ pub extern fn view_created(view: WlcView) -> bool {
     let output = view.get_output();
     if let Ok(mut tree) = tree::try_lock_tree() {
         let v_type = view.get_type();
-        if v_type == ViewType::empty() {
-            tree.add_view(view.clone());
+        if v_type != ViewType::empty() {
+            return true
         }
+        tree.add_view(view.clone());
         tree.normalize_view(view.clone());
         tree.layout_active_of(ContainerType::Container);
         tree.set_active_container(view.clone());
-        drop(tree);
         view.set_mask(output.get_mask());
         true
     } else {
