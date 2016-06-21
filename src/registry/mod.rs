@@ -1,10 +1,6 @@
 //! way-cooler registry.
 
 use std::ops::Deref;
-use std::cmp::Eq;
-use std::fmt::Display;
-use std::hash::Hash;
-use std::borrow::Borrow;
 use std::collections::hash_map::{HashMap, Entry};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -12,7 +8,6 @@ use rustc_serialize::Decodable;
 use rustc_serialize::json::{Json, ToJson, Decoder, DecoderError};
 
 mod types;
-mod commands;
 pub use self::types::*; // Export constants too
 
 #[cfg(test)]
@@ -30,20 +25,15 @@ lazy_static! {
 pub enum RegistryError {
     /// The registry key was not found
     KeyNotFound,
-    /// The registry key was of the wrong type
-    WrongKeyType,
     /// Attempting to set a readonly value
     InvalidOperation,
-    /// The object couldn't be converted to/from Json
-    DecoderError(DecoderError)
 }
 
 /// Result type of gets/sets to the registry
 pub type RegistryResult<T> = Result<T, RegistryError>;
 
-/// Initialize the registry (register default commands)
+/// Initialize the registry (register default API)
 pub fn init() {
-    commands::register_defaults();
 }
 
 /// Acquires a read lock on the registry.
@@ -57,185 +47,113 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
 }
 
 /// Gets a RegistryField enum with the specified name
-pub fn get_field<K>(name: &K) -> Option<RegistryField>
-    where String: Borrow<K>, K: Hash + Eq + Display {
+pub fn get_field(name: &str) -> Option<RegistryField> {
     // clone() will either clone an Arc or an Arc+AccessFlags
     let result = read_lock().get(name).map(|v| v.clone());
     trace!("get: {} => {:?}", name, &result);
     return result;
 }
 
-/// Attempts to get a command from the registry.
-pub fn get_command<K>(name: &K) -> RegistryResult<CommandFn>
-    where String: Borrow<K>, K: Hash + Eq + Display {
-    get_field(name).ok_or(RegistryError::KeyNotFound)
-        .and_then(|val| match val {
-        RegistryField::Command(com) => Ok(com),
-        _ => Err(RegistryError::WrongKeyType)
-    })
-}
-
 /// Gets a data type from the registry, returning a reference to the property
 /// method if the field is a property.
-pub fn get_data<K>(name: &K) -> RegistryResult<RegistryGetData>
-where String: Borrow<K>, K: Hash + Eq + Display {
+pub fn get_data(name: &str) -> RegistryResult<RegistryGetData> {
     get_field(name).ok_or(RegistryError::KeyNotFound)
         .and_then(|val| match val {
             RegistryField::Object { flags, data } =>
                 Ok(RegistryGetData::Object(flags, data)),
-            RegistryField::Property { get: maybe_get, .. } =>
+            RegistryField::Property { get: maybe_get, set: maybe_set } =>
                 match maybe_get {
-                    Some(get) => Ok(RegistryGetData::Property(get)),
+                    Some(get) => {
+                        let mut flags = AccessFlags::READ();
+                        if maybe_set.is_some() {
+                            flags.insert(AccessFlags::WRITE());
+                        }
+                        Ok(RegistryGetData::Property(flags, get))
+                    }
                     None => Err(RegistryError::InvalidOperation)
                 },
-            _ => Err(RegistryError::WrongKeyType)
         })
 }
 
 /// Get a Rust structure from the registry
 #[allow(dead_code)]
-pub fn get_struct<K, T>(name: &K) -> RegistryResult<(AccessFlags, T)>
-where String: Borrow <K>, K: Hash + Eq + Display, T: Decodable {
-    get_json(name).and_then(|(flags, json)|
-        T::decode(&mut Decoder::new(json.deref().clone()))
-                            .map_err(|e| RegistryError::DecoderError(e))
-                            .map(|data| (flags, data)))
-}
-
-/// Get Json data from the registry, evaluating if a property was found.
-pub fn get_json<K>(name: &K) -> RegistryResult<(AccessFlags, Arc<Json>)>
-where String: Borrow<K>, K: Hash + Eq + Display {
-    get_data(name).map(|val| val.resolve())
+pub fn get_struct<T>(name: &str)
+                     -> RegistryResult<(AccessFlags, Result<T, DecoderError>)>
+where T: Decodable {
+    get_data(name).map(|data| data.resolve())
+        .map(|(flags, json)|
+             (flags, T::decode(&mut Decoder::new(json.deref().clone()))))
 }
 
 /// Set a value to the given registry field.
-pub fn set_field(key: String, value: RegistryField)
-                 -> RegistryResult<Option<RegistryField>> {
+pub fn insert_field(key: String, value: RegistryField) -> Option<RegistryField> {
     let mut reg = write_lock();
-    match reg.entry(key) {
-        Entry::Occupied(mut entry) => {
-            let first_type = entry.get().get_type();
-            if first_type.can_set_from(value.get_type()) {
-                Ok(Some(entry.insert(value)))
-            }
-            else {
-                Err(RegistryError::WrongKeyType)
-            }
-        },
-        Entry::Vacant(vacancy) => {
-            vacancy.insert(value);
-            Ok(None)
-        }
-    }
+    reg.insert(key, value)
 }
 
-/// Set a command to the given Command
-#[allow(dead_code)]
-pub fn set_command(key: String, command: CommandFn)
-                   -> RegistryResult<Option<CommandFn>> {
-    set_field(key, RegistryField::Command(command))
-        .map(|maybe_field|
-              maybe_field.and_then(|field|
-                                    field.get_command()))
+/// Add the json object to the registry
+pub fn insert_json(key: String, flags: AccessFlags, value: Json)
+                   -> Option<RegistryField> {
+    write_lock().insert(key,
+                        RegistryField::Object {
+                            flags: flags,
+                            data: Arc::new(value)
+                        })
 }
 
 /// Set a value to the given JSON value.
-#[allow(dead_code)]
-pub fn set_json(key: String, flags: AccessFlags, json: Json)
-                -> RegistryResult<Option<(AccessFlags, Arc<Json>)>> {
+pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
     let mut reg = write_lock();
     match reg.entry(key) {
-        Entry::Vacant(vacancy) => {
-            vacancy.insert(RegistryField::Object {
-                flags: flags, data: Arc::new(json)
-            });
-            return Ok(None);
+        Entry::Vacant(_vacancy) => {
+            return Err(RegistryError::KeyNotFound)
         },
         Entry::Occupied(mut entry) => {
             let first_type = entry.get().get_type();
+            let flags = entry.get().get_flags();
             if first_type == FieldType::Object {
-                return Ok(entry.insert(RegistryField::Object {
-                    flags: flags, data: Arc::new(json)
-                }).as_object());
+                return Ok(RegistrySetData::Displaced(
+                    entry.insert(RegistryField::Object {
+                        flags: flags, data: Arc::new(json)
+                    }).as_object()
+                        .expect("Just created object").1));
             }
             else if first_type == FieldType::Property {
                 match entry.get().clone().as_property_set() {
-                    Some(func) => {
-                        func(json);
-                        return Ok(None);
-                    }
+                    Some(func) =>
+                        return Ok(RegistrySetData::Property(flags, func)),
                     None => return Err(RegistryError::InvalidOperation)
                 }
             }
             else {
-                return Err(RegistryError::WrongKeyType);
+                return Err(RegistryError::InvalidOperation);
             }
         }
     }
-    return Ok(None);
 }
 
 /// Set an object/property in the registry to a value using a ToJson.
 #[allow(dead_code)]
-pub fn set_struct<T: ToJson>(key: String, flags: AccessFlags, value: T)
-                             -> RegistryResult<Option<(AccessFlags, Arc<Json>)>> {
-    set_json(key, flags, value.to_json())
+pub fn insert_struct<T: ToJson>(key: String, flags: AccessFlags, value: T)
+                             -> Option<RegistryField> {
+    insert_field(key, RegistryField::Object {
+        flags: flags,
+        data: Arc::new(value.to_json()) })
 }
 
-/// Sets a value for a given Json value, optionally returning the associated property.
-#[allow(dead_code)]
-pub fn set_with_property(key: String, flags: AccessFlags, json: Json)
-                         -> RegistryResult<Option<(Json, SetFn)>> {
-    let mut reg = write_lock();
-    match reg.entry(key) {
-        Entry::Vacant(vacancy) => {
-            vacancy.insert(RegistryField::Object {
-                flags: flags, data: Arc::new(json)
-            });
-            Ok(None)
-        },
-        Entry::Occupied(mut entry) => {
-            let first_type = entry.get().get_type();
-            if first_type == FieldType::Object {
-                entry.insert(RegistryField::Object {
-                    flags: flags, data: Arc::new(json)
-                });
-                Ok(None)
-            }
-            else if first_type == FieldType::Property {
-                Ok(Some((json, entry.get().clone().as_property_set()
-                   .expect("set_json_property: checked value of field type"))))
-            }
-            else {
-                Err(RegistryError::WrongKeyType)
-            }
-        }
-    }
-}
 
 /// Binds properties to a field of the registry
-#[allow(dead_code)]
-pub fn set_property_field(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>)
-                          -> RegistryResult<Option<RegistryField>> {
-    set_field(key, RegistryField::Property { get: get_fn, set: set_fn })
+pub fn insert_property(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>)
+                          -> Option<RegistryField> {
+    insert_field(key, RegistryField::Property { get: get_fn, set: set_fn })
 }
 
-/// Whether this map contains a key of any type
+/// Gets access flags and field type of the given key.
+///
+/// Returns `None` if the key does not exist.
 #[allow(dead_code)]
-pub fn contains_key<K>(key: &K) -> bool
-where String: Borrow<K>, K: Hash + Eq + Display {
-    trace!("contains_key: {}", *key);
+pub fn key_info(key: &str) -> Option<(FieldType, AccessFlags)> {
+    trace!("key_info: {}", key);
     let read_reg = read_lock();
-    read_reg.contains_key(key)
-}
-
-/// Whether the registry contains a key of some type:
-/// None: no key
-/// true: same type key
-/// false: different type key
-#[allow(dead_code)]
-pub fn contains_key_of<K>(key: &K, field_type: FieldType) -> Option<bool>
-where String: Borrow<K>, K: Hash + Eq + Display {
-    let read_reg = read_lock();
-    read_reg.get(key).map(|field| field.get_type() == field_type)
+    read_reg.get(key).map(|field| (field.get_type(), field.get_flags()))
 }

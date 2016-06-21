@@ -35,6 +35,7 @@ mod keys;
 
 mod lua;
 mod registry;
+mod commands;
 mod convert;
 
 mod layout;
@@ -97,8 +98,9 @@ fn main() {
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
 
     // (Future config initialization goes here)
-
-    // Add commands to registry
+    // Initialize commands
+    commands::init();
+    // Add API to registry
     registry::init();
     // And bind the defaults
     keys::init();

@@ -1,24 +1,24 @@
 //! Register commands on the registry.
 
 use std::sync::Arc;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::thread;
 use std::env;
 use std::io::prelude::*;
 
-use registry::{self, RegistryField, CommandFn};
+use commands::{self, CommandFn};
 use layout::tree::try_lock_tree;
 use lua::{self, LuaQuery};
 
-/// Register the default commands on the registry.
+/// Register the default commands in the API.
 ///
 /// Some of this code will be moved to be called after the config,
 /// and will be registered dynamically.
 pub fn register_defaults() {
-    let mut reg = registry::write_lock();
+    let mut coms = commands::write_lock();
 
     let mut register = |name: &'static str, val: CommandFn| {
-        reg.insert(name.to_string(), RegistryField::Command(val));
+        coms.insert(name.to_string(), val);
     };
 
     // Workspace
@@ -97,38 +97,44 @@ fn quit() {
     ::rustwlc::terminate();
 }
 
-#[allow(unused_variables)]
 fn dmenu_lua_dofile() {
     thread::Builder::new().name("dmenu_dofile".to_string()).spawn(|| {
-        let child = Command::new("dmenu").arg("-p 'Eval Lua file'")
+        let child = Command::new("dmenu").arg("-p").arg("Eval Lua file")
+            .stdin(Stdio::piped()).stdout(Stdio::piped())
             .spawn().expect("Unable to launch dmenu!");
 
-        // Write \d to stdin to prevent options from being given
-        let stdin = child.stdin.expect("Unable to access stdin");
-        //stdin.write_all(b"\d");
+        {
+            // Write \d to stdin to prevent options from being given
+            let mut stdin = child.stdin.expect("Unable to access stdin");
+            stdin.write_all(b"\n").expect("Unable to write to stdin");
+        }
 
         let mut stdout = child.stdout.expect("Unable to access stdout");
         let mut output = String::new();
         stdout.read_to_string(&mut output).expect("Unable to read stdout");
 
-        lua::send(LuaQuery::ExecFile(output)).expect("unable to contact Lua");
+        let result = lua::send(LuaQuery::ExecFile(output))
+            .expect("unable to contact Lua").recv().expect("Can't get reply");
+        trace!("Lua result: {:?}", result);
     }).expect("Unable to spawn thread");
 }
 
-#[allow(unused_variables)]
 fn dmenu_eval() {
        thread::Builder::new().name("dmenu_eval".to_string()).spawn(|| {
-        let child = Command::new("dmenu").arg("-p 'Eval Lua code'")
-            .spawn().expect("Unable to launch dmenu!");
+           let child = Command::new("dmenu").arg("-p").arg("Eval Lua code")
+               .stdin(Stdio::piped()).stdout(Stdio::piped())
+               .spawn().expect("Unable to launch dmenu!");
+           {
+               // Write \d to stdin to prevent options from being given
+               let mut stdin = child.stdin.expect("Unable to access stdin");
+               stdin.write_all(b"\n").expect("Unable to write to stdin");
+           }
+           let mut stdout = child.stdout.expect("Unable to access stdout");
+           let mut output = String::new();
+           stdout.read_to_string(&mut output).expect("Unable to read stdout");
 
-        // Write \d to stdin to prevent options from being given
-        let stdin = child.stdin.expect("Unable to access stdin");
-        //stdin.write_all(b"\d");
-
-        let mut stdout = child.stdout.expect("Unable to access stdout");
-        let mut output = String::new();
-        stdout.read_to_string(&mut output).expect("Unable to read stdout");
-
-        lua::send(LuaQuery::Execute(output)).expect("Unable to contact Lua");
+           let result = lua::send(LuaQuery::Execute(output))
+               .expect("Unable to contact Lua").recv().expect("Can't get reply");
+           trace!("Lua result: {:?}", result)
     }).expect("Unable to spawn thread");
 }

@@ -1,16 +1,68 @@
 //! Tests for the registry
 
-use std::sync::{mpsc, Arc};
-use std::time::Duration;
-use std::thread;
+use std::sync::{Arc, Mutex, Condvar};
 
-use rustc_serialize::Decodable;
 use rustc_serialize::json::{Json, ToJson};
 
 use registry;
-use registry::{AccessFlags, get_struct};
+use registry::{AccessFlags, FieldType};
+
+lazy_static! {
+    static ref ACCESS_PAIR: Arc<(Mutex<bool>, Condvar)>
+        = Arc::new((Mutex::new(false), Condvar::new()));
+}
+
+// Constants for use with registry-accessing tests
+
+pub const BOOL: bool = true;
+pub const U64: u64 = 42;
+pub const I64: i64 = -1;
+pub const F64: f64 = 21.5;
+
+pub const TEXT: &'static str = "Hello way-cooler";
+pub const POINT: Point = Point { x: 12, y: 12 };
+
+pub const READONLY: &'static str = "read only text";
+pub const WRITEONLY: &'static str = "write only text";
+pub const NO_PERMS: &'static str = "<look ma no perms>";
+
+pub const PROP_GET_RESULT: &'static str = "get property";
+
+pub fn get_prop() -> Json {
+    PROP_GET_RESULT.to_json()
+}
+
+pub fn get_panic_prop() -> Json {
+    panic!("get_panic_prop panic")
+}
+
+pub fn set_prop(_json: Json) {
+    println!("set_prop being called!");
+}
+
+pub fn set_panic_prop(_json: Json) {
+    panic!("set_panic_prop panic")
+}
+
+
+/// [0, 1, 2]
+pub fn u64s() -> Vec<Json> {
+    vec![Json::U64(0), Json::U64(1), Json::U64(2)]
+}
+
+/// Wait for the registry to initialize
+pub fn wait_for_registry() {
+    // First star for lazy static, second for Arc
+    let &(ref lock, ref cond) = &**ACCESS_PAIR;
+    let mut started = lock.lock().expect("Unable to lock ACCESS_PAIR lock!");
+    while !*started {
+        started = cond.wait(started)
+            .expect("Oh boy, I can't wait for the registry to start!");
+    }
+}
 
 json_convertible! {
+    /// Has an x and y field
     #[derive(Debug, Clone, Eq, PartialEq)]
     struct Point {
         x: i32,
@@ -18,126 +70,179 @@ json_convertible! {
     }
 }
 
-impl Point {
-    fn new(x: i32, y: i32) -> Point {
-        Point { x: x, y: y }
-    }
-}
-
-const ERR: &'static str = "Key which was added no longer exists!";
-
-fn prop_get() -> Json {
-    Point::new(0, 0).to_json()
-}
+unsafe impl Sync for Point {}
 
 #[test]
 fn add_keys() {
-    let num = 1i32;
-    let double = -392f64;
-    let string = "Hello world".to_string();
-    let numbers = vec![1, 2, 3, 4, 5];
-    let point = Point::new(-11, 12);
+    let values = vec![
+        ("bool",  AccessFlags::all(), BOOL.to_json()),
+        ("u64",   AccessFlags::all(), U64.to_json()),
+        ("i64",   AccessFlags::all(), I64.to_json()),
+        ("f64",   AccessFlags::all(), F64.to_json()),
+        ("text",  AccessFlags::all(), TEXT.to_json()),
+        ("point", AccessFlags::all(), POINT.to_json()),
+        ("null",  AccessFlags::all(), Json::Null),
+        ("u64s",  AccessFlags::all(), Json::Array(u64s())),
 
-    registry::set_struct("test_num".to_string(), AccessFlags::READ(), num.to_json()).expect(ERR);
-    registry::set_struct("test_double".to_string(), AccessFlags::READ(), double).expect(ERR);
-    registry::set_struct("test_string".to_string(), AccessFlags::READ(), string.clone()).expect(ERR);
-    registry::set_struct("test_numbers".to_string(), AccessFlags::READ(), numbers.clone()).expect(ERR);
-    registry::set_struct("test_point".to_string(), AccessFlags::READ(), point.clone()).expect(ERR);
-    registry::set_property_field("test_func".to_string(), Some(Arc::new(prop_get)), None).expect(ERR);
+        ("readonly",  AccessFlags::READ(),  READONLY.to_json()),
+        ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
+        ("noperms",   AccessFlags::empty(), NO_PERMS.to_json())
+    ];
+
+    for (name, flags, json) in values.into_iter() {
+        assert!(registry::insert_json(name.to_string(), flags, json).is_none(),
+            "Unable to initialize objects in registry");
+    }
+
+    // Read/write property
+    assert!(registry::insert_property("prop".to_string(),
+                              Some(Arc::new(get_prop)),
+                              Some(Arc::new(set_prop)))
+        .is_none(), "Unable to initialize property in registry");
+
+    // Readonly/writeonly properties
+    assert!(registry::insert_property("get_prop".to_string(),
+                              Some(Arc::new(get_prop)),
+                              None)
+        .is_none(), "Unable to initialize property in registry");
+    assert!(registry::insert_property("set_prop".to_string(),
+                              None,
+                              Some(Arc::new(set_prop)))
+        .is_none(), "Unable to initialize property in registry");
+
+    // Readonly/writeonly panicking properties
+    assert!(registry::insert_property("get_panic_prop".to_string(),
+                              Some(Arc::new(get_panic_prop)),
+                              None)
+        .is_none(), "Unable to initialize property in registry");
+    assert!(registry::insert_property("set_panic_prop".to_string(),
+                              None,
+                              Some(Arc::new(set_panic_prop)))
+        .is_none(), "Unable to initialize property in registry");
+
+    // Allow waiting threads to continue
+    let &(ref lock, ref cond) = &**ACCESS_PAIR;
+    let mut started = lock.lock().expect("Couldn't unlock threads");
+    *started = true;
+    cond.notify_all();
 }
 
 #[test]
 fn contains_keys() {
-    thread::sleep(Duration::from_millis(240));
-    assert!(registry::contains_key(&"test_num".to_string()), "num");
-    assert!(registry::contains_key(&"test_double".to_string()), "double");
-    assert!(registry::contains_key(&"test_string".to_string()), "string");
-    assert!(registry::contains_key(&"test_numbers".to_string()), "numbers");
-    assert!(registry::contains_key(&"test_point".to_string()), "point");
-    assert!(registry::contains_key(&"test_func".to_string()), "func");
+    wait_for_registry();
+
+    let keys = [
+        "bool", "u64", "i64", "f64", "null", "text", "point",
+        "u64s", "readonly", "writeonly", "prop", "noperms",
+        "get_prop", "set_prop", "get_panic_prop", "set_panic_prop",
+    ];
+    for key in keys.into_iter() {
+        assert!(registry::key_info(key).is_some(),
+                "Could not find key {}", key);
+    }
 }
 
 #[test]
-fn keys_equal() {
-    let num = 1i32;
-    let double = -392f64;
-    let string = "Hello world".to_string();
-    let numbers = vec![1, 2, 3, 4, 5];
-    let point = Point::new(-11, 12);
-    thread::sleep(Duration::from_millis(240));
-    assert_eq!(get_struct::<_, i32>(&"test_num".to_string()).expect(ERR).1, num);
-    assert_eq!(get_struct::<_, f64>(&"test_double".to_string()).expect(ERR).1, double);
-    assert_eq!(get_struct::<_,String>(&"test_string".to_string()).expect(ERR).1, string);
-    assert_eq!(get_struct::<_, Vec<i32>>(&"test_numbers".to_string()).expect(ERR).1,
-               numbers);
-    assert_eq!(get_struct::<_, Point>(&"test_point".to_string()).expect(ERR).1, point);
-    assert_eq!(get_struct::<_, Point>(&"test_func".to_string()).expect(ERR).1,
-               Point::new(0, 0));
+fn key_info() {
+    wait_for_registry();
+
+    let keys = [
+        ("bool", FieldType::Object, AccessFlags::all()),
+        ("u64",  FieldType::Object, AccessFlags::all()),
+        ("readonly", FieldType::Object, AccessFlags::READ()),
+        ("writeonly", FieldType::Object, AccessFlags::WRITE()),
+        ("prop", FieldType::Property, AccessFlags::all()),
+        ("noperms", FieldType::Object, AccessFlags::empty()),
+        ("get_prop", FieldType::Property, AccessFlags::READ()),
+        ("set_prop", FieldType::Property, AccessFlags::WRITE()),
+    ];
+    for &(key, type_, flags) in keys.into_iter() {
+        assert!(registry::key_info(key) == Some((type_, flags)),
+                "Invalid flags for {}", key);
+    }
+}
+
+#[test]
+fn objects_and_keys_equal() {
+    wait_for_registry();
+
+    let values = vec![
+        ("bool",  AccessFlags::all(), BOOL.to_json()),
+        ("u64",   AccessFlags::all(), U64.to_json()),
+        ("i64",   AccessFlags::all(), I64.to_json()),
+        ("f64",   AccessFlags::all(), F64.to_json()),
+        ("text",  AccessFlags::all(), TEXT.to_json()),
+        ("point", AccessFlags::all(), POINT.to_json()),
+        ("null",  AccessFlags::all(), Json::Null),
+        ("u64s",  AccessFlags::all(), Json::Array(u64s())),
+
+        ("readonly",  AccessFlags::READ(),  READONLY.to_json()),
+        ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
+        ("noperms",   AccessFlags::empty(), NO_PERMS.to_json())
+    ];
+
+    for (name, flags, json) in values.into_iter() {
+        let (found_flags, found) = registry::get_data(name)
+            .expect(&format!("Unable to get key {}", name))
+            .resolve();
+        assert_eq!(found_flags, flags);
+        assert_eq!(*found, json);
+    }
 }
 
 #[test]
 fn key_perms() {
-    thread::sleep(Duration::from_millis(240));
-    registry::set_struct("perm_none".to_string(), AccessFlags::empty(), 0).expect(ERR);
-    registry::set_struct("perm_read".to_string(), AccessFlags::READ(), 1).expect(ERR);
-    registry::set_struct("perm_write".to_string(), AccessFlags::WRITE(), 2).expect(ERR);
+    wait_for_registry();
 
-    assert_eq!(get_struct::<_, i32>(&"perm_none".to_string()).expect(ERR).0, AccessFlags::empty());
-    assert_eq!(get_struct::<_, i32>(&"perm_read".to_string()).expect(ERR).0, AccessFlags::READ());
-    assert_eq!(get_struct::<_, i32>(&"perm_write".to_string()).expect(ERR).0, AccessFlags::WRITE());
-    assert_eq!(registry::get_json(&"test_func".to_string()).expect(ERR).0, AccessFlags::all());
+    let perms = vec![
+        ("bool",      AccessFlags::all()),
+        ("readonly",  AccessFlags::READ()),
+        ("writeonly", AccessFlags::WRITE()),
+        ("prop",      AccessFlags::all()),
+        ("get_prop", AccessFlags::READ()),
+        //("set_prop", AccessFlags::WRITE())
+    ];
+
+    for (name, flags) in perms.into_iter() {
+        let found_data = registry::get_data(name)
+            .expect(&format!("Could not get data for {}", name));
+
+        let (found_flags, _) = found_data.resolve();
+        println!("Testing flags for {}", name);
+        assert_eq!(found_flags, flags);
+    }
 }
 
 #[test]
-fn multithreaded() {
-    let (tx, rx) = mpsc::channel();
-    thread::sleep(Duration::from_millis(240));
-    let num = 1i32;
-    let double = -392f64;
-    let string = "Hello world".to_string();
-    let numbers = vec![1, 2, 3, 4, 5];
-    let point = Point { x: -11, y: 12 };
+fn property_get() {
+    wait_for_registry();
+    let prop_read = registry::get_data("get_prop")
+        .expect("Couldn't get prop_read");
 
-    let tx1 = tx.clone();
-    thread::spawn(move || {
-        read_thread(String::from("test_num"), num, tx1);
-    });
-    let tx2 = tx.clone();
-    thread::spawn(move || {
-        read_thread(String::from("test_double"), double, tx2);
-    });
-    let tx3 = tx.clone();
-    thread::spawn(move || {
-        read_thread(String::from("test_string"), string, tx3);
-    });
-    let tx4 = tx.clone();
-    thread::spawn(move || {
-        read_thread(String::from("test_numbers"), numbers, tx4);
-    });
-    let tx5 = tx.clone();
-    thread::spawn(move || {
-        read_thread(String::from("test_point"), point, tx5);
-    });
-
-    let mut result = true;
-
-    for _ in 0..5 {
-        result = result && rx.recv().expect("Unable to connect to read thread");
-    }
-    assert!(result);
+    assert_eq!(*prop_read.resolve().1, PROP_GET_RESULT.to_json());
 }
 
-fn read_thread<T>(name: String, in_val: T, sender: mpsc::Sender<bool>)
-where T: ::std::fmt::Debug + Decodable + PartialEq {
-    for _ in 1 .. 50 {
-        if let Ok(acc_val) = get_struct::<_, T>(&name) {
-            let (acc, val) = acc_val;
-            assert!(acc.contains(AccessFlags::READ()));
-            assert_eq!(val, in_val);
-        }
-        else {
-            sender.send(false).expect("Unable to reply to test thread");
-        }
-    }
-    sender.send(true).expect("Unable to reply to test thread");
+#[test]
+#[should_panic(expected="get_panic_prop panic")]
+fn panicking_property_get() {
+    wait_for_registry();
+    let prop_read = registry::get_data("get_panic_prop")
+        .expect("Couldn't get prop_read");
+
+    assert_eq!(*prop_read.resolve().1, PROP_GET_RESULT.to_json());
+}
+
+#[test]
+fn property_set() {
+    wait_for_registry();
+    registry::set_json("set_prop".to_string(), Json::Null)
+            .expect("Unable to set data").call(Json::Null);
+}
+
+#[test]
+#[should_panic(expected="set_panic_prop panic")]
+fn panicking_property_set() {
+    wait_for_registry();
+    registry::set_json("set_panic_prop".to_string(), Json::Null)
+            .expect("Unable to set data").call(Json::Null);
 }
