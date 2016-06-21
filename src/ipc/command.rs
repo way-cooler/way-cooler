@@ -8,7 +8,7 @@ use rustc_serialize::json::{encode, Json, ToJson, ParserError};
 use super::channel::{self, ReceiveError};
 
 use registry;
-use registry::AccessFlags;
+use commands;
 
 macro_rules! expect_key {
     ($in_json:expr; $name:expr, $typ:ident) => {
@@ -31,6 +31,7 @@ pub fn thread<S: Read + Write>(mut stream: S) {
             Ok(packet) => {
                 trace!("Read packet: {}", encode(&packet)
                     .unwrap_or("<packet that was read already??>".to_string()));
+                // Error half of result is discarded but isn't very relevant
                 let reply = reply(packet).unwrap_or_else(|e| e);
                 trace!("Writing reply: {}", encode(&reply)
                        .unwrap_or("<a reply which is not writable>".to_string()));
@@ -55,6 +56,7 @@ pub fn thread<S: Read + Write>(mut stream: S) {
                         channel::write_packet(&mut stream, &reply)
                             .expect("invalid syntax: Unaable to reply!");
                     }
+                    // Should not be ParserError::IOError...
                     _ => unreachable!()
                 }
             }
@@ -101,12 +103,8 @@ pub fn reply(json: Json) -> Result<Json, Json> {
                 Err(err) => match err {
                     KeyNotFound =>
                         return Err(channel::error_json("key not found".to_string())),
-                    InvalidOperation|WrongKeyType =>
-                        return Err(channel::error_json("invalid operation".to_string())),
-                    DecoderError(err) => {
-                        error!("Got a decoder error from the registry! {:?}", err);
-                        return Err(channel::error_json("key not found".to_string()))
-                    }
+                    InvalidOperation =>
+                        return Err(channel::error_json("cannot get that key".to_string())),
                 }
             }
         },
@@ -120,62 +118,36 @@ pub fn reply(json: Json) -> Result<Json, Json> {
                 None => return Err(channel::error_expecting_key("value", "any"))
             }
 
-            // TODO FIXME properly implement flags
-            let mut applied_flags = AccessFlags::all();
-            if let Some(json_flags) = object.get("flags") {
-                // Parse custom flags
-                let flag_list = try!(json_flags.as_array()
-                                     .ok_or(channel::error_expecting_key(
-                                         "flags", "string array")));
-                let mut flags = AccessFlags::empty();
-                for flag in flag_list {
-                    let flag_str = try!(flag.as_string()
-                                        .ok_or(channel::error_expecting_key(
-                                            "flags", "string array")));
-                    match flag_str {
-                        "read"|"r" => flags.insert(AccessFlags::READ()),
-                        "write"|"w" => flags.insert(AccessFlags::WRITE()),
-                        _ => return Err(channel::error_json(
-                            "Flags can either be 'read' or 'write'".to_string()))
-                    }
-                }
-                applied_flags = flags;
-            }
-            try!(registry::set_json(key, applied_flags, value)
+            let reg_set = try!(registry::set_json(key, value.clone())
                  .map_err(|e| match e {
                      InvalidOperation =>
-                         channel::error_json("invalid operation 'set'".to_string()),
-                     WrongKeyType =>
-                         channel::error_json("invalid operation; use 'run'".to_string()),
-                     _ => unimplemented!() // TODO clean up registry err enum(s)
+                         channel::error_json("cannot set that key".to_string()),
+                     KeyNotFound =>
+                         channel::error_json("key not found, use insert".to_string())
                  }));
+            reg_set.call(value);
+
             Ok(channel::success_json())
         },
         "exists" => {
             let key = expect_key!(&mut object; "key", String);
 
-            let reg_key = registry::contains_key(&key);
+            let (type_, flags) = try!(registry::key_info(&key).ok_or(
+                channel::success_json_with(json_object!{ "exists" => false })));
 
-            // TODO registry::key_info(key)
             Ok(channel::success_json_with(json_object!{
-                "key" => reg_key
+                "exists" => true,
+                "flags" => flags,
+                "type" => type_
             }))
         },
 
         // Commands
         "run" => {
-            use registry::RegistryError::*;
             let key = expect_key!(&mut object; "key", String);
 
-            let command = try!(registry::get_command(&key).map_err(|e| match e {
-                KeyNotFound => channel::error_json("field not found".to_string()),
-                WrongKeyType =>
-                    channel::error_json("invalid operation; use 'get/'set'".to_string()),
-                // may not be relevant
-                InvalidOperation =>
-                    channel::error_json("invalid operation; use 'set'".to_string()),
-                _ => unimplemented!()
-            }));
+            let command = try!(commands::get(&key).ok_or(
+                channel::error_json("command not found".to_string())));
 
             command();
 
@@ -188,10 +160,10 @@ pub fn reply(json: Json) -> Result<Json, Json> {
         },
 
         "commands" => {
-            Ok(channel::value_json(json!([
+            Ok(channel::value_json(Json::Array([
                 "get", "set", "exists", "run",
-                "version", "commands", "ping"
-                    ])))
+                "version", "commands", "ping",
+                ].into_iter().map(|v | Json::String(v.to_string())).collect())))
         },
 
         "ping" => {
