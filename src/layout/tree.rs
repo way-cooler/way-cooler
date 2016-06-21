@@ -305,12 +305,6 @@ impl LayoutTree {
             .expect("Node had no parent");
         if self.is_root_container(parent_ix) {
             if let Some(child_container) = self.tree.remove(child) {
-                match container {
-                    Container::Container { ref layout, .. } => {
-                        self.tree[parent_ix].set_layout(layout.clone()).ok()
-                    }
-                    _ => unreachable!()
-                };
                 let new_active_ix = self.tree.add_child(parent_ix, child_container);
                 self.active_container = Some(new_active_ix);
             }
