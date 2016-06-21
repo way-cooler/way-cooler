@@ -119,34 +119,7 @@ impl Debug for RegistrySetData {
     }
 }
 
-impl FieldType {
-    /// Whether a field of this type can be changed by a field of type other.
-    pub fn can_set_from(self, other: FieldType) -> bool {
-        match self {
-            FieldType::Property =>
-                other == FieldType::Object ||
-                other == FieldType::Property,
-            FieldType::Object => other == FieldType::Object
-        }
-    }
-}
-
 impl RegistryField {
-    /// Attempts to access the RegistryField as a file
-    #[allow(dead_code)]
-    pub fn get_data(&self) -> Option<RegistryGetData> {
-        match *self {
-            RegistryField::Object { ref flags, ref data } =>
-                Some(RegistryGetData::Object(flags.clone(), data.clone())),
-            RegistryField::Property { ref get, ref set } => {
-                let mut flags = AccessFlags::empty();
-                if get.is_some() { flags.insert(AccessFlags::READ()) }
-                if set.is_some() { flags.insert(AccessFlags::WRITE()) }
-                get.clone().map(|g| RegistryGetData::Property(flags, g.clone()))
-            }
-        }
-    }
-
     /// Converts this RegistryField to maybe an object. Does not call property methods.
     pub fn as_object(self) -> Option<(AccessFlags, Arc<Json>)> {
         match self {
@@ -236,5 +209,34 @@ impl RegistrySetData {
             RegistrySetData::Displaced(_) => FieldType::Object,
             RegistrySetData::Property(_, _) => FieldType::Property
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use rustc_serialize::json::Json;
+    use super::*;
+
+    #[test]
+    fn registry_field_debug() {
+        let field_obj = RegistryField::Object {
+            flags: AccessFlags::READ(),
+            data: Arc::new(Json::String("foo".to_string()))
+        };
+        let field_prop = RegistryField::Property { get: None, set: None };
+
+        assert_eq!(format!("{:?}", field_obj),
+            "RegistryField::Object { flags: READ, data: String(\"foo\") }");
+        assert_eq!(format!("{:?}", field_prop),
+                   "RegistryField::Property { get: None, set: None }");
+    }
+
+    #[test]
+    fn registry_get_data_debug() {
+        let get_obj = RegistryGetData::Object(
+            AccessFlags::READ(), Arc::new(Json::String("foo".to_string())));
+        assert_eq!(format!("{:?}", get_obj),
+              "RegistryGetData::Object { flags: READ, data: String(\"foo\") }");
     }
 }

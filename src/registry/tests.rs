@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, Condvar};
 use rustc_serialize::json::{Json, ToJson};
 
 use registry;
-use registry::AccessFlags;
+use registry::{AccessFlags, FieldType};
 
 lazy_static! {
     static ref ACCESS_PAIR: Arc<(Mutex<bool>, Condvar)>
@@ -137,8 +137,28 @@ fn contains_keys() {
         "get_prop", "set_prop", "get_panic_prop", "set_panic_prop",
     ];
     for key in keys.into_iter() {
-        assert!(registry::contains_key(key),
+        assert!(registry::key_info(key).is_some(),
                 "Could not find key {}", key);
+    }
+}
+
+#[test]
+fn key_info() {
+    wait_for_registry();
+
+    let keys = [
+        ("bool", FieldType::Object, AccessFlags::all()),
+        ("u64",  FieldType::Object, AccessFlags::all()),
+        ("readonly", FieldType::Object, AccessFlags::READ()),
+        ("writeonly", FieldType::Object, AccessFlags::WRITE()),
+        ("prop", FieldType::Property, AccessFlags::all()),
+        ("noperms", FieldType::Object, AccessFlags::empty()),
+        ("get_prop", FieldType::Property, AccessFlags::READ()),
+        ("set_prop", FieldType::Property, AccessFlags::WRITE()),
+    ];
+    for &(key, type_, flags) in keys.into_iter() {
+        assert!(registry::key_info(key) == Some((type_, flags)),
+                "Invalid flags for {}", key);
     }
 }
 

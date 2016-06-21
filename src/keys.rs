@@ -7,13 +7,11 @@ use std::hash::{Hash, Hasher};
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 
-use super::commands::{self, CommandFn};
+use super::commands;
 
 lazy_static! {
-    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
-        let mut map = HashMap::<KeyPress, KeyEvent>::new();
-        RwLock::new(map)
-    };
+    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> =
+        RwLock::new(HashMap::new());
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]

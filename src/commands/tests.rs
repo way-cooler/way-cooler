@@ -1,7 +1,7 @@
 //! Tests on the command API
 use std::sync::{Arc, Mutex, Condvar};
 
-use commands::{self, CommandFn};
+use commands;
 
 lazy_static! {
     static ref ACCESS_PAIR: Arc<(Mutex<bool>, Condvar)>

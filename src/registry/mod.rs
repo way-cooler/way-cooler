@@ -32,7 +32,7 @@ pub enum RegistryError {
 /// Result type of gets/sets to the registry
 pub type RegistryResult<T> = Result<T, RegistryError>;
 
-/// Initialize the registry (register default commands)
+/// Initialize the registry (register default API)
 pub fn init() {
 }
 
@@ -91,6 +91,7 @@ pub fn insert_field(key: String, value: RegistryField) -> Option<RegistryField> 
     reg.insert(key, value)
 }
 
+/// Add the json object to the registry
 pub fn insert_json(key: String, flags: AccessFlags, value: Json)
                    -> Option<RegistryField> {
     write_lock().insert(key,
@@ -147,17 +148,10 @@ pub fn insert_property(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>
     insert_field(key, RegistryField::Property { get: get_fn, set: set_fn })
 }
 
-/// Whether this map contains a key of any type
-#[allow(dead_code)]
-pub fn contains_key(key: &str) -> bool {
-    trace!("contains_key: {}", key);
-    let read_reg = read_lock();
-    read_reg.contains_key(key)
-}
-
 /// Gets access flags and field type of the given key.
 ///
 /// Returns `None` if the key does not exist.
+#[allow(dead_code)]
 pub fn key_info(key: &str) -> Option<(FieldType, AccessFlags)> {
     trace!("key_info: {}", key);
     let read_reg = read_lock();
