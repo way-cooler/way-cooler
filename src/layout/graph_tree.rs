@@ -85,7 +85,7 @@ impl Tree {
 
     /// Finds the index of the container at the child index's parent,
     /// modifies it so that it's the given child number in the list.
-    pub fn correct_to(&mut self, child_ix: NodeIndex, mut child_pos: u32) {
+    pub fn set_child_pos(&mut self, child_ix: NodeIndex, mut child_pos: u32) {
         let parent_ix = self.parent_of(child_ix)
             .expect("Child had no parent");
         let siblings = self.children_of(parent_ix);

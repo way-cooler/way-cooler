@@ -206,12 +206,19 @@ impl LayoutTree {
     /// Add a new view container with the given WlcView to the active container
     pub fn add_view(&mut self, view: WlcView) {
         if let Some(mut active_ix) = self.active_container {
+            let parent_ix = self.tree.parent_of(active_ix)
+                .expect("Active container had no parent");
+            // Get the previous position before correcting the container
+            let prev_pos = *self.tree.get_edge_weight_between(parent_ix, active_ix)
+                .expect("Could not get edge weight between active and active parent")
+                + 1;
             if self.tree[active_ix].get_type() == ContainerType::View {
                 active_ix = self.tree.parent_of(active_ix)
                     .expect("View had no parent");
             }
             let view_ix = self.tree.add_child(active_ix,
                                               Container::new_view(view));
+            self.tree.set_child_pos(view_ix, prev_pos);
             self.active_container = Some(view_ix);
         }
         self.validate();
@@ -314,7 +321,7 @@ impl LayoutTree {
         if let Some(child_container) = self.tree.remove(child_ix) {
             let new_container_ix = self.tree.add_child(parent_ix, container);
             let new_active_ix = self.tree.add_child(new_container_ix, child_container);
-            self.tree.correct_to(new_container_ix, old_weight);
+            self.tree.set_child_pos(new_container_ix, old_weight);
             self.active_container = Some(new_active_ix);
         }
         self.validate();
