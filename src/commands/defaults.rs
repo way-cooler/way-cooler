@@ -7,7 +7,8 @@ use std::env;
 use std::io::prelude::*;
 
 use commands::{self, CommandFn};
-use layout::tree::try_lock_tree;
+use layout::tree::{Direction, try_lock_tree};
+use layout::container::{ContainerType, Layout};
 use lua::{self, LuaQuery};
 
 /// Register the default commands in the API.
@@ -21,7 +22,6 @@ pub fn register_defaults() {
         coms.insert(name.to_string(), val);
     };
 
-    // Workspace
     register("quit", Arc::new(quit));
     register("launch_terminal", Arc::new(launch_terminal));
     register("launch_dmenu", Arc::new(launch_dmenu));
@@ -29,9 +29,6 @@ pub fn register_defaults() {
 
     register("dmenu_eval", Arc::new(dmenu_eval));
     register("dmenu_lua_dofile", Arc::new(dmenu_lua_dofile));
-
-    //register("workspace_left", workspace_left);
-    //register("workspace_right", workspace_right);
 
     /// Generate switch_workspace methods and register them in $map
     macro_rules! gen_switch_workspace {
@@ -58,10 +55,61 @@ pub fn register_defaults() {
                           switch_workspace_9, "9";
                           switch_workspace_0, "0");
 
+    register("horizontal_vertical_switch", Arc::new(tile_switch));
+    register("split_vertical", Arc::new(split_vertical));
+    register("split_horizontal", Arc::new(split_horizontal));
+    register("focus_left", Arc::new(focus_left));
+    register("focus_right", Arc::new(focus_right));
+    register("focus_up", Arc::new(focus_up));
+    register("focus_down", Arc::new(focus_down));
+
 }
 
 // All of the methods defined should be registered.
 #[deny(dead_code)]
+
+fn tile_switch() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.toggle_active_horizontal();
+        tree.layout_active_of(ContainerType::Workspace);
+    }
+}
+
+fn split_vertical() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.toggle_active_layout(Layout::Vertical);
+    }
+}
+
+fn split_horizontal() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.toggle_active_layout(Layout::Horizontal);
+    }
+}
+
+fn focus_left() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Left);
+    }
+}
+
+fn focus_right() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Right);
+    }
+}
+
+fn focus_up() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Up);
+    }
+}
+
+fn focus_down() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Down);
+    }
+}
 
 fn launch_terminal() {
     let term = env::var("WAYLAND_TERMINAL")

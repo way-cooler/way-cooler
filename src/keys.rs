@@ -39,6 +39,17 @@ pub fn init() {
             .expect("Unable to create default keypress")
             => "dmenu_lua_dofile";
 
+        /* Layout key bindings */
+        keypress!("Alt", "e") => "horizontal_vertical_switch";
+        keypress!("Alt", "v") => "split_vertical";
+        keypress!("Alt", "h") => "split_horizontal";
+        /* Focus key bindings */
+        keypress!("Alt", "left") => "focus_left";
+        keypress!("Alt", "right") => "focus_right";
+        keypress!("Alt", "up") => "focus_up";
+        keypress!("Alt", "down") => "focus_down";
+
+        /* Workspace switching key bindings */
         keypress!("Alt", "1") => "switch_workspace_1";
         keypress!("Alt", "2") => "switch_workspace_2";
         keypress!("Alt", "3") => "switch_workspace_3";
