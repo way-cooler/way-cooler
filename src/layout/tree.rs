@@ -435,7 +435,7 @@ impl LayoutTree {
     fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
         while self.tree.node_type(parent_ix)
             .expect("Node not part of the tree") != ContainerType::Workspace {
-            if let Some(view_ix) = self.tree.descendant_of_type(parent_ix,
+            if let Some(view_ix) = self.tree.descendant_of_type_right(parent_ix,
                                                            ContainerType::View) {
                 match self.tree[view_ix]
                                     .get_handle().expect("view had no handle") {

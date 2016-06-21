@@ -216,6 +216,7 @@ impl Tree {
     }
 
     /// Attempts to get a descendant of the matching type
+    /// Looks down the left side of the tree first
     pub fn descendant_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Option<NodeIndex> {
         if let Some(container) = self.get(node_ix) {
@@ -225,7 +226,24 @@ impl Tree {
         }
         for child in self.children_of(node_ix) {
             if let Some(desc) = self.descendant_of_type(child, container_type) {
-                    return Some(desc)
+                return Some(desc)
+            }
+        }
+        return None
+    }
+
+    /// Attempts to get a descendant of the matching type.
+    /// Looks down the right side of the tree first
+    pub fn descendant_of_type_right(&self, node_ix: NodeIndex,
+                              container_type: ContainerType) -> Option<NodeIndex> {
+        if let Some(container) = self.get(node_ix) {
+            if container.get_type() == container_type {
+                return Some(node_ix)
+            }
+        }
+        for child in self.children_of(node_ix).iter().rev() {
+            if let Some(desc) = self.descendant_of_type(*child, container_type) {
+                return Some(desc)
             }
         }
         return None
