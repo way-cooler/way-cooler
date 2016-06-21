@@ -132,6 +132,15 @@ impl Debug for RegistrySetData {
     }
 }
 
+impl ToJson for FieldType {
+    fn to_json(&self) -> Json {
+        match *self {
+            FieldType::Property => json!("Property"),
+            FieldType::Object => json!("Object")
+        }
+    }
+}
+
 impl RegistryField {
     /// Converts this RegistryField to maybe an object. Does not call property methods.
     pub fn as_object(self) -> Option<(AccessFlags, Arc<Json>)> {
