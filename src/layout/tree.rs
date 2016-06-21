@@ -300,18 +300,21 @@ impl LayoutTree {
     /// Adds the container with the node index as a child.
     /// The node at the node index is removed and
     /// made a child of the new container node.
-    fn add_container(&mut self, container: Container, child: NodeIndex) {
-        let parent_ix = self.tree.parent_of(child)
+    ///
+    /// The new container has the same edge weight as the child that is passed in.
+    fn add_container(&mut self, container: Container, child_ix: NodeIndex) {
+        let mut parent_ix = self.tree.parent_of(child_ix)
             .expect("Node had no parent");
-        if self.is_root_container(parent_ix) {
-            if let Some(child_container) = self.tree.remove(child) {
-                let new_active_ix = self.tree.add_child(parent_ix, child_container);
-                self.active_container = Some(new_active_ix);
-            }
+        let old_weight = *self.tree.get_edge_weight_between(parent_ix, child_ix)
+            .expect("parent and children were not connected");
+        if self.tree.is_last_ix(parent_ix) {
+            // correct before removal
+            parent_ix = child_ix;
         }
-        if let Some(child_container) = self.tree.remove(child) {
+        if let Some(child_container) = self.tree.remove(child_ix) {
             let new_container_ix = self.tree.add_child(parent_ix, container);
             let new_active_ix = self.tree.add_child(new_container_ix, child_container);
+            self.tree.correct_to(new_container_ix, old_weight);
             self.active_container = Some(new_active_ix);
         }
         self.validate();

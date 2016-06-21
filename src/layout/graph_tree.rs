@@ -30,6 +30,15 @@ impl Tree {
         self.root
     }
 
+    pub fn get_edge_weight_between(&self, parent_ix: NodeIndex, child_ix: NodeIndex)
+                            -> Option<&u32> {
+        if let Some(edge_ix) = self.graph.find_edge(parent_ix, child_ix) {
+            self.graph.edge_weight(edge_ix)
+        } else {
+            None
+        }
+    }
+
     /// Gets the edge value of the largest child of the node
     fn largest_child(&self, node: NodeIndex) -> (NodeIndex, u32) {
         use std::cmp::{Ord, Ordering};
@@ -54,7 +63,7 @@ impl Tree {
 
     /// Add an existing node (detached in the graph) to the tree.
     /// Note that floating nodes shouldn't exist for too long.
-    pub fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex)
+    fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex)
                      -> EdgeIndex {
         // Make sure the child doesn't have a parent
         if cfg!(debug_assertions) && self.has_parent(child_ix) {
@@ -72,6 +81,28 @@ impl Tree {
         }
         let (_ix, biggest_child) = self.largest_child(parent_ix);
         self.graph.update_edge(parent_ix, child_ix, biggest_child + 1)
+    }
+
+    /// Finds the index of the container at the child index's parent,
+    /// modifies it so that it's the given child number in the list.
+    pub fn correct_to(&mut self, child_ix: NodeIndex, mut child_pos: u32) {
+        let parent_ix = self.parent_of(child_ix)
+            .expect("Child had no parent");
+        let siblings = self.children_of(parent_ix);
+        if child_pos > siblings.len() as u32 {
+            child_pos = siblings.len() as u32;
+        }
+        let mut counter = child_pos + 1;
+        for sibling_ix in siblings {
+            let edge_weight = *self.get_edge_weight_between(parent_ix, sibling_ix)
+                .expect("Sibling had no edge weight");
+            if edge_weight < child_pos {
+                continue;
+            }
+            self.graph.update_edge(parent_ix, sibling_ix, counter);
+            counter += 1;
+        }
+        self.graph.update_edge(parent_ix, child_ix, child_pos);
     }
 
     /// Detaches a node from the tree (causing there to be two trees).
