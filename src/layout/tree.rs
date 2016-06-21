@@ -953,6 +953,8 @@ impl LayoutTree {
             self.tree.set_family_visible(curr_work_ix, true);
                 self.validate();
         }
+        let root_ix = self.tree.root_ix();
+        self.layout(root_ix);
     }
 
     /// Validates the tree
