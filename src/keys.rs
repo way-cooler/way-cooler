@@ -8,183 +8,10 @@ use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 
 use super::commands;
-use registry::get_command;
-use super::layout::tree;
-use super::layout::container::{Layout, ContainerType};
-use super::lua;
-
-/// Register default keypresses to a map
-macro_rules! register_defaults {
-    ( $map:expr; $($func:expr, $press:expr);+ ) => {
-        $(
-            let _ = $map.insert($press, Arc::new($func));
-            )+
-    }
-}
-
-/// Generate switch_workspace methods and register them in $map
-macro_rules! gen_switch_workspace {
-    ($map:expr; $($b:ident, $n:expr);+) => {
-        $(fn $b() {
-            trace!("Switching to workspace {}", $n);
-            if let Ok(mut tree)  = tree::try_lock_tree() {
-                tree.switch_to_workspace(&$n);
-            }
-        }
-          register_defaults!( $map; $b, keypress!("Alt", $n) );
-          )+
-    };
-}
-
-/// Generate move_container_to methods and register them in $map
-macro_rules! gen_move_to_workspace {
-    ($map:expr; $($b:ident, $n:expr);+) => {
-        $(fn $b() {
-            trace!("Moving active container to {}", $n);
-            if let Ok(mut tree) = tree::try_lock_tree() {
-                tree.send_active_to_workspace(&$n);
-            }
-        }
-          register_defaults!( $map; $b, KeyPress::from_key_names(vec!["Alt", "Shift"],
-                                                                vec![$n]).unwrap());
-        )+
-    };
-}
 
 lazy_static! {
-    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
-        let mut map = HashMap::<KeyPress, KeyEvent>::new();
-
-        gen_move_to_workspace!(map;
-                               move_to_workspace_1, "1";
-                               move_to_workspace_2, "2";
-                               move_to_workspace_3, "3";
-                               move_to_workspace_4, "4";
-                               move_to_workspace_5, "5";
-                               move_to_workspace_6, "6";
-                               move_to_workspace_7, "7";
-                               move_to_workspace_8, "8";
-                               move_to_workspace_9, "9";
-                               move_to_workspace_0, "0");
-
-        gen_switch_workspace!(map; switch_workspace_1, "1";
-                              switch_workspace_2, "2";
-                              switch_workspace_3, "3";
-                              switch_workspace_4, "4";
-                              switch_workspace_5, "5";
-                              switch_workspace_6, "6";
-                              switch_workspace_7, "7";
-                              switch_workspace_8, "8";
-                              switch_workspace_9, "9";
-                              switch_workspace_0, "0");
-
-        register_defaults! {
-            map;
-            quit_fn, keypress!("Alt", "Escape");
-            terminal_fn, keypress!("Alt", "Return");
-            dmenu_fn, keypress!("Alt", "d");
-            pointer_fn, keypress!("Alt", "p");
-            horizontal_vertical_switch_fn, keypress!("Alt", "e");
-            split_vertical, keypress!("Alt", "v");
-            split_horizontal, keypress!("Alt", "h");
-            move_left, keypress!("Alt", "left");
-            move_right, keypress!("Alt", "right");
-            move_up, keypress!("Alt", "up");
-            move_down, keypress!("Alt", "down")
-        }
-
-        RwLock::new(map)
-    };
-}
-
-fn move_up() {
-    use layout::tree::Direction;
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.move_focus(Direction::Up)
-    }
-}
-
-fn move_down() {
-    use layout::tree::Direction;
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.move_focus(Direction::Down)
-    }
-}
-
-fn move_left() {
-    use layout::tree::Direction;
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.move_focus(Direction::Left)
-    }
-}
-
-fn move_right() {
-    use layout::tree::Direction;
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.move_focus(Direction::Right)
-    }
-}
-
-fn split_vertical() {
-    trace!("Splitting vertically");
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.toggle_active_layout(Layout::Vertical);
-    }
-}
-
-fn split_horizontal() {
-    trace!("Splitting horizontally");
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.toggle_active_layout(Layout::Horizontal);
-    }
-}
-
-fn horizontal_vertical_switch_fn() {
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.toggle_active_horizontal();
-        tree.layout_active_of(ContainerType::Root);
-    } else {
-        error!("Could not grab tree")
-    }
-}
-
-fn terminal_fn() {
-    use std::process::Command;
-    use std::env;
-
-    let term = env::var("WAYLAND_TERMINAL")
-        .unwrap_or("weston-terminal".to_string());
-
-    Command::new("sh")
-        .arg("-c")
-        .arg(term)
-        .spawn().expect("Error launching terminal");
-}
-
-fn dmenu_fn() {
-    use std::process::Command;
-    Command::new("sh")
-        .arg("-c")
-        .arg("dmenu_run")
-        .spawn().expect("Error launching terminal");
-}
-
-fn pointer_fn() {
-    use lua::LuaQuery;
-    let code = "if wm == nil then print('wm table does not exist')\n\
-                elseif wm.pointer == nil then print('wm.pointer table does not exist')\n\
-                else\n\
-                print('get_position is a func, preparing execution')
-                local x, y = wm.pointer.get_position()\n\
-                print('The cursor is at ' .. x .. ', ' .. y)\n\
-                end".to_string();
-    lua::send(LuaQuery::Execute(code))
-        .expect("Error telling Lua to get pointer coords");
-}
-
-fn quit_fn() {
-    info!("handler: Esc keypress!");
-    ::rustwlc::terminate();
+    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> =
+        RwLock::new(HashMap::new());
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -197,7 +24,7 @@ pub fn init() {
     macro_rules! insert_all {
         ( $($press:expr => $name:expr);+ ) => {
             register(vec![
-                $( ($press, get_command(&$name.to_string())
+                $( ($press, commands::get(&$name.to_string())
                   .expect("Unable to register default command!")) ),+
                 ]);
         }
@@ -207,10 +34,10 @@ pub fn init() {
         keypress!("Alt", "Escape") => "quit";
         keypress!("Alt", "Return") => "launch_terminal";
         keypress!("Alt", "d") => "launch_dmenu";
-        //keypress!("Alt", "l") => "dmenu_eval";
-        /*KeyPress::from_key_names(vec!["Alt", "Shift"], vec!["l"])
+        keypress!("Alt", "l") => "dmenu_eval";
+        KeyPress::from_key_names(vec!["Alt", "Shift"], vec!["l"])
             .expect("Unable to create default keypress")
-            => "dmenu_lua_dofile";*/
+            => "dmenu_lua_dofile";
 
         keypress!("Alt", "1") => "switch_workspace_1";
         keypress!("Alt", "2") => "switch_workspace_2";
