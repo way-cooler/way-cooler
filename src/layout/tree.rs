@@ -464,10 +464,13 @@ impl LayoutTree {
         let container_ix = self.tree.children_of(parent_ix)[0];
         let root_c_children = self.tree.children_of(container_ix);
         if root_c_children.len() > 0 {
-            self.active_container = Some(root_c_children[0]);
-            match self.tree[root_c_children[0]] {
+            let first_view_ix = self.tree.descendant_of_type(root_c_children[0],
+                                                             ContainerType::View)
+                .expect("No views, but the root had children");
+            self.active_container = Some(first_view_ix);
+            match self.tree[first_view_ix] {
                 Container::View { ref handle, .. } => handle.focus(),
-                _ => {}
+                _ => unreachable!()
             };
             return;
         }
@@ -1167,6 +1170,21 @@ mod tests {
     }
 
     #[test]
+    fn active_container_test() {
+        let mut tree = basic_tree();
+        tree.active_container = None;
+        assert_eq!(tree.get_active_container(), None);
+        assert_eq!(tree.get_active_parent(), None);
+        assert_eq!(tree.active_ix_of(ContainerType::View), None);
+        assert_eq!(tree.active_ix_of(ContainerType::Container), None);
+        assert_eq!(tree.active_ix_of(ContainerType::Workspace), None);
+        assert_eq!(tree.active_ix_of(ContainerType::Output), None);
+        assert_eq!(tree.active_ix_of(ContainerType::Root), None);
+        tree.set_active_container(WlcView::root());
+        assert_eq!(tree.get_active_container(), Some(&Container::new_view(WlcView::root())));
+    }
+
+    #[test]
     /// Tests workspace functions, ensuring we can get workspaces and new
     /// ones are properly generated with a root container when we request one
     /// that doesn't yet exist
@@ -1210,6 +1228,9 @@ mod tests {
         tree.remove_view(&WlcView::root());
         assert_eq!(tree.active_ix_of(ContainerType::View).unwrap(), old_active_view);
         assert_eq!(tree.tree.children_of(parent_container).len(), 1);
+        for _ in 1..2 {
+            tree.remove_view(&WlcView::root());
+        }
     }
 
     #[test]
@@ -1231,6 +1252,24 @@ mod tests {
             .expect("Remove view invalidated the active container");
         assert_eq!(new_active_container, *new_active_container_ix);
 
+    }
+
+    #[test]
+    fn non_root_container_auto_removal_test() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("2");
+        /* Remove first View */
+        let active_view_ix = tree.active_container.unwrap();
+        assert_eq!(tree.tree[active_view_ix].get_type(), ContainerType::View);
+        /*tree.remove_view_or_container(active_view_ix);
+        /* Remove the other view*/
+        let active_view_ix = tree.active_container.unwrap();
+        assert_eq!(tree.tree[active_view_ix].get_type(), ContainerType::View);
+        tree.remove_view_or_container(active_view_ix);
+        /* This should remove the other container,
+        the count of the root container should be 0 */
+        let active_ix = tree.active_container.unwrap();
+        assert!(tree.is_root_container(active_ix));*/
     }
 
     #[test]
