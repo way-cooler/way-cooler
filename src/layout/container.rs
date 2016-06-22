@@ -230,8 +230,10 @@ impl Container {
             }),
             Container::Container { ref geometry, .. } => Some(geometry.clone()),
             Container::View { ref handle, ..} => {
-                Some(handle.get_geometry().expect(
-                    "View did not have a geometry").clone())
+                match handle.get_geometry() {
+                    Some(geometry) => Some(geometry.clone()),
+                    _ => None
+                }
             },
         }
     }

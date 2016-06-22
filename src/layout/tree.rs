@@ -268,7 +268,6 @@ impl LayoutTree {
                 _ => {},
             }
             trace!("Removed container {:?}, index {:?}", container, node_ix);
-            self.layout_active_of(ContainerType::Workspace);
         }
         self.validate();
     }
@@ -464,13 +463,13 @@ impl LayoutTree {
         let container_ix = self.tree.children_of(parent_ix)[0];
         let root_c_children = self.tree.children_of(container_ix);
         if root_c_children.len() > 0 {
-            let first_view_ix = self.tree.descendant_of_type(root_c_children[0],
+            let new_active_ix = self.tree.descendant_of_type(root_c_children[0],
                                                              ContainerType::View)
-                .expect("No views, but the root had children");
-            self.active_container = Some(first_view_ix);
-            match self.tree[first_view_ix] {
+                .unwrap_or(root_c_children[0]);
+            self.active_container = Some(new_active_ix);
+            match self.tree[new_active_ix] {
                 Container::View { ref handle, .. } => handle.focus(),
-                _ => unreachable!()
+                _ => {}
             };
             return;
         }
@@ -1259,9 +1258,13 @@ mod tests {
         let mut tree = basic_tree();
         tree.switch_to_workspace("2");
         /* Remove first View */
+        let root_container = tree.tree.children_of(tree.active_ix_of(ContainerType::Workspace)
+                                                   .expect("No active workspace"))[0];
+        let num_children = tree.tree.children_of(root_container).len();
+        assert_eq!(num_children, 1);
         let active_view_ix = tree.active_container.unwrap();
         assert_eq!(tree.tree[active_view_ix].get_type(), ContainerType::View);
-        /*tree.remove_view_or_container(active_view_ix);
+        tree.remove_view_or_container(active_view_ix);
         /* Remove the other view*/
         let active_view_ix = tree.active_container.unwrap();
         assert_eq!(tree.tree[active_view_ix].get_type(), ContainerType::View);
@@ -1269,7 +1272,11 @@ mod tests {
         /* This should remove the other container,
         the count of the root container should be 0 */
         let active_ix = tree.active_container.unwrap();
-        assert!(tree.is_root_container(active_ix));*/
+        assert!(tree.is_root_container(active_ix));
+        let root_container = tree.tree.children_of(tree.active_ix_of(ContainerType::Workspace)
+                                                   .expect("No active workspace"))[0];
+        let num_children = tree.tree.children_of(root_container).len();
+        assert_eq!(num_children, 0);
     }
 
     #[test]
