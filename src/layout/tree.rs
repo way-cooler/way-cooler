@@ -1272,6 +1272,29 @@ mod tests {
     }
 
     #[test]
+    fn toggle_layout_test() {
+        let mut tree = basic_tree();
+        let root_container = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        tree.active_container = Some(root_container);
+        assert!(tree.is_root_container(root_container));
+        let layout = match tree.tree[root_container] {
+            Container::Container { ref layout, .. } => layout.clone(),
+            _ => panic!()
+        };
+        // default layout
+        assert_eq!(layout, Layout::Horizontal);
+        for new_layout in &[Layout::Vertical, Layout::Horizontal,
+                           Layout::Tabbed, Layout::Stacked] {
+            tree.toggle_active_layout(*new_layout);
+            let layout = match tree.tree[root_container] {
+                Container::Container { ref layout, .. } => layout.clone(),
+                _ => panic!()
+            };
+            assert_eq!(layout, *new_layout);
+        }
+    }
+
+    #[test]
     fn add_container_test() {
         let mut tree = basic_tree();
         let active_ix = tree.active_container.unwrap();
