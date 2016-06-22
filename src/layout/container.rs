@@ -334,4 +334,44 @@ mod tests {
         // NOTE Can't test view, because that will just segfault as well
         //let mut view = Container::new_view(WlcView::root());
     }
+
+    #[test]
+    fn layout_change_test() {
+        use rustwlc::*;
+        let root = Container::Root;
+        let output = Container::new_output(WlcView::root().as_output());
+        let workspace = Container::new_workspace("1".to_string(),
+                                                     Size { w: 500, h: 500 });
+        let mut container = Container::new_container(Geometry {
+            origin: Point { x: 0, y: 0},
+            size: Size { w: 0, h:0}
+        });
+        let view = Container::new_view(WlcView::root());
+
+        /* Container first, the only thing we can set the layout on */
+        let layout = match container {
+            Container::Container { ref layout, .. } => layout.clone(),
+            _ => panic!()
+        };
+        assert_eq!(layout, Layout::Horizontal);
+        let layouts = [Layout::Vertical, Layout::Horizontal,
+                       Layout::Tabbed, Layout::Stacked];
+        for new_layout in &layouts {
+            container.set_layout(*new_layout).ok();
+            let layout = match container {
+                Container::Container { ref layout, .. } => layout.clone(),
+                _ => panic!()
+            };
+            assert_eq!(layout, *new_layout);
+        }
+
+        for new_layout in &layouts {
+            for container in &mut [root.clone(), output.clone(),
+                                   workspace.clone(), view.clone()] {
+                let result = container.set_layout(*new_layout);
+                assert!(result.is_err());
+            }
+        }
+
+    }
 }
