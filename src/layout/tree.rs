@@ -1433,4 +1433,24 @@ mod tests {
             _ => unreachable!()
         }
     }
+
+    #[test]
+    fn move_focus_test() {
+        let mut tree = basic_tree();
+        let directions = [Direction::Up, Direction::Right,
+                          Direction::Down, Direction::Left];
+        let old_active_ix = tree.active_container.clone();
+        tree.active_container = None;
+        for direction in &directions {
+            // should do nothing when there is no active container
+            tree.move_focus(*direction);
+            assert_eq!(tree.active_container, None);
+        }
+        tree.active_container = old_active_ix;
+        for direction in &directions {
+            // should do nothing when there are no other views to move to
+            tree.move_focus(*direction);
+            assert_eq!(tree.active_container, old_active_ix);
+        }
+    }
 }
