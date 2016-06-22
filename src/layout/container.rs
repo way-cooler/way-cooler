@@ -84,8 +84,6 @@ pub enum Container {
     Container {
         /// How the container is layed out
         layout: Layout,
-        /// Whether the container is visible
-        visible: bool,
         /// If the container is focused
         focused: bool,
         /// If the container is floating
@@ -97,8 +95,6 @@ pub enum Container {
     View {
         /// The wlc handle to the view
         handle: WlcView,
-        /// Whether this view is visible
-        visible: bool,
         /// Whether this view is focused
         focused: bool,
         /// Whether this view is floating
@@ -128,7 +124,6 @@ impl Container {
     pub fn new_container(geometry: Geometry) -> Container {
         Container::Container {
             layout: Layout::Horizontal,
-            visible: false,
             focused: false,
             floating: false,
             geometry: geometry
@@ -139,7 +134,6 @@ impl Container {
     pub fn new_view(handle: WlcView) -> Container {
         Container::View {
             handle: handle,
-            visible: false,
             focused: false,
             floating: false
         }
@@ -147,11 +141,6 @@ impl Container {
 
     /// Sets the visibility of this container
     pub fn set_visibility(&mut self, visibility: bool) {
-        match *self {
-            Container::View { ref mut visible, .. } => *visible = visibility,
-            Container::Container { ref mut visible, .. } => *visible = visibility,
-            _ => {return},
-        }
         let mask = if visibility { 1 } else { 0 };
         if let Some(handle) = self.get_handle() {
             match handle {
@@ -160,16 +149,6 @@ impl Container {
                 },
                 _ => {},
             }
-        }
-    }
-
-    /// Gets the visibility flag of this container
-    #[allow(dead_code)]
-    pub fn get_visibility(&mut self) -> Option<bool> {
-        match *self {
-            Container::View { visible, .. } => Some(visible),
-            Container::Container { visible, .. } => Some(visible),
-            _ => None
         }
     }
 
