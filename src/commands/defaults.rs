@@ -30,7 +30,7 @@ pub fn register_defaults() {
     register("dmenu_eval", Arc::new(dmenu_eval));
     register("dmenu_lua_dofile", Arc::new(dmenu_lua_dofile));
 
-    /// Generate switch_workspace methods and register them in $map
+    /// Generate switch_workspace methods and register them
     macro_rules! gen_switch_workspace {
         ( $($b:ident, $n:expr);+ ) => {
             $(fn $b() {
@@ -40,6 +40,19 @@ pub fn register_defaults() {
                 }
             }
             register(stringify!($b), Arc::new($b)); )+
+        }
+    }
+
+    //// Generates move_to_workspace methods and registers them
+    macro_rules! gen_move_to_workspace {
+        ( $($b:ident, $n:expr);+ ) => {
+            $(fn $b() {
+                trace!("Switching to workspace {}", $n);
+                if let Ok(mut tree) = try_lock_tree() {
+                    tree.send_active_to_workspace(&$n.to_string());
+                }
+            }
+              register(stringify!($b), Arc::new($b)); )+
         }
     }
 
@@ -54,6 +67,17 @@ pub fn register_defaults() {
                           switch_workspace_8, "8";
                           switch_workspace_9, "9";
                           switch_workspace_0, "0");
+
+    gen_move_to_workspace!(move_to_workspace_1, "1";
+                           move_to_workspace_2, "2";
+                           move_to_workspace_3, "3";
+                           move_to_workspace_4, "4";
+                           move_to_workspace_5, "5";
+                           move_to_workspace_6, "6";
+                           move_to_workspace_7, "7";
+                           move_to_workspace_8, "8";
+                           move_to_workspace_9, "9";
+                           move_to_workspace_0, "0");
 
     register("horizontal_vertical_switch", Arc::new(tile_switch));
     register("split_vertical", Arc::new(split_vertical));
