@@ -1307,7 +1307,13 @@ mod tests {
     #[test]
     fn move_to_workspace_test() {
         let mut tree = basic_tree();
+        /* Make sure sending to the current workspace does nothing */
         let old_view = tree.tree[tree.active_container.unwrap()].clone();
+        tree.send_active_to_workspace("1");
+        assert_eq!(old_view, tree.tree[tree.active_container.unwrap()]);
+        let old_view = tree.tree[tree.active_container.unwrap()].clone();
+        tree.send_active_to_workspace("2");
+        // Trying to send the root container does nothing
         tree.send_active_to_workspace("2");
         let active_ix = tree.active_container.unwrap();
         assert!(tree.is_root_container(active_ix));
