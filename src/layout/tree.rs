@@ -1273,24 +1273,52 @@ mod tests {
 
     #[test]
     fn toggle_layout_test() {
-        let mut tree = basic_tree();
-        let root_container = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
-        tree.active_container = Some(root_container);
-        assert!(tree.is_root_container(root_container));
-        let layout = match tree.tree[root_container] {
-            Container::Container { ref layout, .. } => layout.clone(),
-            _ => panic!()
-        };
-        // default layout
-        assert_eq!(layout, Layout::Horizontal);
-        for new_layout in &[Layout::Vertical, Layout::Horizontal,
-                           Layout::Tabbed, Layout::Stacked] {
-            tree.toggle_active_layout(*new_layout);
+        {
+            let mut tree = basic_tree();
+            let root_container = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+            tree.active_container = Some(root_container);
+            assert!(tree.is_root_container(root_container));
             let layout = match tree.tree[root_container] {
                 Container::Container { ref layout, .. } => layout.clone(),
                 _ => panic!()
             };
-            assert_eq!(layout, *new_layout);
+            // default layout
+            assert_eq!(layout, Layout::Horizontal);
+            for new_layout in &[Layout::Vertical, Layout::Horizontal,
+                            Layout::Tabbed, Layout::Stacked] {
+                tree.toggle_active_layout(*new_layout);
+                let layout = match tree.tree[root_container] {
+                    Container::Container { ref layout, .. } => layout.clone(),
+                    _ => panic!()
+                };
+                assert_eq!(layout, *new_layout);
+            }
+        }
+        /* Now test wrapping the active container in a new container */
+        {
+            let mut tree = basic_tree();
+            let active_ix = tree.active_container.unwrap();
+            let active_container = tree.tree[active_ix].clone();
+            let old_parent = tree.tree[tree.tree.parent_of(active_ix).unwrap()]
+                .clone();
+            let old_layout = match old_parent {
+                Container::Container { ref layout, ..} => layout.clone(),
+                _ => panic!()
+            };
+            assert_eq!(old_layout, Layout::Horizontal);
+            tree.toggle_active_layout(Layout::Vertical);
+            // should still be focused on the previous container.
+            // though the active index might be different
+            let active_ix = tree.active_container.unwrap();
+            assert_eq!(active_container, tree.tree[active_ix]);
+            let new_parent = tree.tree[tree.tree.parent_of(active_ix).unwrap()]
+                .clone();
+            let new_layout = match new_parent {
+                Container::Container { ref layout, ..} => layout.clone(),
+                _ => panic!()
+            };
+            assert!(old_parent != new_parent);
+            assert_eq!(new_layout, Layout::Vertical);
         }
     }
 
