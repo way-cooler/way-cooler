@@ -1254,6 +1254,31 @@ mod tests {
     }
 
     #[test]
+    fn add_container_test() {
+        let mut tree = basic_tree();
+        let active_ix = tree.active_container.unwrap();
+        let parent_ix = tree.tree.parent_of(active_ix).unwrap();
+        let old_edge_weight = *tree.tree.get_edge_weight_between(parent_ix, active_ix)
+            .unwrap();
+        // First and only child, so the edge weight is 1
+        assert_eq!(old_edge_weight, 1);
+        let geometry = Geometry {
+            origin: Point { x: 0, y: 0},
+            size: Size { w: 0, h: 0}
+        };
+        let new_container = Container::new_container(geometry);
+        tree.add_container(new_container, active_ix);
+        let new_active_ix = tree.active_container.unwrap();
+        // The view moved, since it was placed in the new container
+        assert!(active_ix != new_active_ix);
+        let new_container_ix = tree.tree.parent_of(new_active_ix).unwrap();
+        let new_edge_weight = *tree.tree.get_edge_weight_between(parent_ix, new_container_ix)
+            .unwrap();
+        assert_eq!(new_edge_weight, old_edge_weight);
+
+    }
+
+    #[test]
     fn non_root_container_auto_removal_test() {
         let mut tree = basic_tree();
         tree.switch_to_workspace("2");
