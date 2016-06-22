@@ -15,7 +15,11 @@ matrix:
   allow_failures:
     - rust: nightly
 notifications:
-  slack: way-cooler:W2vOSvJvgxGi7EiGkZCtvlB6
+  slack:
+    rooms:
+      - way-cooler:W2vOSvJvgxGi7EiGkZCtvlB6#way-cooler
+    on_success: :change
+    on_failure: :change
   email: false
 # load travis-cargo
 before_script:
