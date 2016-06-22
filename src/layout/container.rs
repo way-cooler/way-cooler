@@ -184,10 +184,11 @@ impl Container {
     #[allow(dead_code)]
     pub fn is_focused(&self) -> bool {
         match *self {
-            Container::Output { ref focused, .. } => focused.clone(),
-            Container::Workspace { ref focused, .. } => focused.clone(),
-            Container::View { ref focused, .. } => focused.clone(),
-            _ => false
+            Container::Root { .. } => false,
+            Container::Output { ref focused, .. } => *focused,
+            Container::Workspace { ref focused, .. } => *focused,
+            Container::Container { ref focused, .. } => *focused,
+            Container::View { ref focused, .. } =>*focused,
         }
     }
 
@@ -248,6 +249,7 @@ impl Container {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustwlc::*;
 
     #[test]
     fn can_have_child() {
@@ -337,7 +339,6 @@ mod tests {
 
     #[test]
     fn layout_change_test() {
-        use rustwlc::*;
         let root = Container::Root;
         let output = Container::new_output(WlcView::root().as_output());
         let workspace = Container::new_workspace("1".to_string(),
@@ -372,6 +373,23 @@ mod tests {
                 assert!(result.is_err());
             }
         }
+    }
 
+    #[test]
+    fn is_focused_test() {
+        let root = Container::Root;
+        let output = Container::new_output(WlcView::root().as_output());
+        let workspace = Container::new_workspace("1".to_string(),
+                                                 Size { w: 500, h: 500 });
+        let container = Container::new_container(Geometry {
+            origin: Point { x: 0, y: 0},
+            size: Size { w: 0, h:0}
+        });
+        let view = Container::new_view(WlcView::root());
+        for container in &mut [root.clone(), output.clone(),
+                               container.clone(),
+                               workspace.clone(), view.clone()] {
+            assert_eq!(container.is_focused(), false);
+        }
     }
 }
