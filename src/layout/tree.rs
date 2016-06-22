@@ -1233,6 +1233,24 @@ mod tests {
     }
 
     #[test]
+    fn add_output_test() {
+        let mut tree = basic_tree();
+        let new_output = WlcView::root().as_output();
+        tree.add_output(new_output);
+        let output_ix = tree.active_ix_of(ContainerType::Output).unwrap();
+        let handle = match tree.tree[output_ix].get_handle().unwrap() {
+            Handle::Output(output) => output,
+            _ => panic!()
+        };
+        assert_eq!(handle, new_output);
+        let workspace_ix = tree.tree.descendant_of_type(output_ix, ContainerType::Workspace).unwrap();
+        assert_eq!(tree.tree[workspace_ix].get_name().unwrap(), "1");
+        let active_ix = tree.active_container.unwrap();
+        assert_eq!(tree.tree.parent_of(active_ix).unwrap(), workspace_ix);
+        assert_eq!(tree.tree.children_of(active_ix).len(), 0);
+    }
+
+    #[test]
     /// Tests that we can remove the active container and have it properly reset
     fn basic_removal() {
         let mut tree = basic_tree();
