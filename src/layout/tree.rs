@@ -1305,6 +1305,19 @@ mod tests {
     }
 
     #[test]
+    fn move_to_workspace_test() {
+        let mut tree = basic_tree();
+        let old_view = tree.tree[tree.active_container.unwrap()].clone();
+        tree.send_active_to_workspace("2");
+        let active_ix = tree.active_container.unwrap();
+        assert!(tree.is_root_container(active_ix));
+        tree.switch_to_workspace("2");
+        let active_ix = tree.active_container.unwrap();
+        // Switch to new workspace, should be focused on the old view
+        assert_eq!(old_view, tree.tree[active_ix]);
+    }
+
+    #[test]
     /// Ensure that calculate_scale is fair to all it's children
     fn calculate_scale_test() {
         assert_eq!(LayoutTree::calculate_scale(vec!(), 0.0), 0.0);
