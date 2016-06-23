@@ -100,6 +100,13 @@ impl LayoutTree {
         }
         info!("Active container is now: {:?}", self.active_container);
     }
+
+    /// Unsets the active container. This should be used when focusing on
+    /// a view that is not a part of the tree.
+    pub fn unset_active_container(&mut self) {
+        self.active_container = None;
+    }
+
     /// Gets the currently active container.
     pub fn get_active_container(&self) -> Option<&Container> {
         self.active_container.and_then(|ix| self.tree.get(ix))
@@ -503,6 +510,9 @@ impl LayoutTree {
     /// If the active container is a view, a new container is added with the given
     /// layout type.
     pub fn toggle_active_layout(&mut self, new_layout: Layout) {
+        if self.active_container.is_none() {
+            return;
+        }
         if self.is_root_container(self.active_container.expect("No active container")) {
             match self.tree[self.active_container.unwrap()] {
                 Container::Container { ref mut layout, .. } =>
@@ -994,27 +1004,6 @@ impl LayoutTree {
 
         validate_node_connections(self, self.tree.root_ix());
 
-        // For each view, ensure it's a node in the tree
-        for output_ix in self.tree.children_of(self.tree.root_ix()) {
-            let output = match self.tree[output_ix]
-                .get_handle().expect("Child of root had no output") {
-                    Handle::Output(output) => output,
-                    _ => panic!("Output container had no output")
-                };
-            for view in output.get_views() {
-                // Ignore views we aren't supposed to tile
-                if view.get_type() != ViewType::empty() {
-                    continue;
-                }
-                if self.tree.descendant_with_handle(output_ix, &view).is_none() {
-                    error!("View handle {:?} could not be found for {:?}",
-                           view, output);
-                    trace!("The tree: {:#?}", self);
-                    panic!()
-                }
-            }
-        }
-
         // Ensure active container is in tree and of right type
         if let Some(active_ix) = self.active_container {
             let active = self.get_active_container()
@@ -1194,6 +1183,9 @@ mod tests {
         assert_eq!(tree.active_ix_of(ContainerType::Root), None);
         tree.set_active_container(WlcView::root());
         assert_eq!(tree.get_active_container(), Some(&Container::new_view(WlcView::root())));
+        tree.unset_active_container();
+        assert_eq!(tree.get_active_container(), None);
+        assert_eq!(tree.active_container, None);
     }
 
     #[test]

@@ -62,11 +62,18 @@ pub extern fn output_render_post(output: WlcOutput) {
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
-    view.set_mask(output.get_mask());
     if let Ok(mut tree) = tree::try_lock_tree() {
+        if tree.get_active_container().is_none() {
+            warn!("Could not create view, there is no focus \
+                    so Way-Cooler doesn't know where to put it");
+            return false;
+        }
+        view.set_mask(output.get_mask());
         let v_type = view.get_type();
         if v_type != ViewType::empty() {
             view.focus();
+            // Now focused on something outside the tree, have to unset the active container
+            tree.unset_active_container();
             return true
         }
         tree.add_view(view.clone());
