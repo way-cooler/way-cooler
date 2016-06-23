@@ -1507,4 +1507,24 @@ mod tests {
         assert_eq!(old_ix, tree.active_container.unwrap());
         // Move left, be back on the very first one
     }
+
+    #[test]
+    fn switch_to_workspace_test() {
+        let mut tree = basic_tree();
+        let old_active = tree.active_container.clone();
+        let current_workspace_ix = tree.active_ix_of(ContainerType::Workspace).unwrap();
+        tree.active_container = None;
+        tree.switch_to_workspace("3");
+        // didn't move, because we have no active container
+        tree.active_container = old_active;
+        assert_eq!(tree.active_ix_of(ContainerType::Workspace).unwrap(), current_workspace_ix);
+        tree.switch_to_workspace("1");
+        // didn't move, because we aren't going anywhere different (same workspace)
+        assert_eq!(tree.active_ix_of(ContainerType::Workspace).unwrap(), current_workspace_ix);
+        tree.active_container = tree.active_ix_of(ContainerType::Output);
+        tree.switch_to_workspace("3");
+        // didn't move, because we aren't focused on something with a workspace
+        tree.active_container = old_active;
+        assert_eq!(tree.active_ix_of(ContainerType::Workspace).unwrap(), current_workspace_ix);
+    }
 }
