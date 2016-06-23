@@ -1393,6 +1393,23 @@ mod tests {
     }
 
     #[test]
+    fn auto_workspace_adding() {
+        let mut tree = basic_tree();
+        let output = tree.active_ix_of(ContainerType::Output).unwrap();
+        // there are two workspaces at the beginning, 1 and 2
+        assert_eq!(tree.tree.children_of(output).len(), 2);
+        tree.switch_to_workspace("1");
+        // Switching to current doesn't change that
+        assert_eq!(tree.tree.children_of(output).len(), 2);
+        // Switching to other doesn't either
+        tree.switch_to_workspace("2");
+        assert_eq!(tree.tree.children_of(output).len(), 2);
+        // This does add the new one
+        tree.switch_to_workspace("3");
+        assert_eq!(tree.tree.children_of(output).len(), 3);
+    }
+
+    #[test]
     /// Ensure that calculate_scale is fair to all it's children
     fn calculate_scale_test() {
         assert_eq!(LayoutTree::calculate_scale(vec!(), 0.0), 0.0);
@@ -1435,7 +1452,7 @@ mod tests {
     }
 
     #[test]
-    fn move_focus_test() {
+    fn move_focus_simple_test() {
         let mut tree = basic_tree();
         let directions = [Direction::Up, Direction::Right,
                           Direction::Down, Direction::Left];
@@ -1452,5 +1469,42 @@ mod tests {
             tree.move_focus(*direction);
             assert_eq!(tree.active_container, old_active_ix);
         }
+        // set to root container
+        let root_container_ix = tree.tree.parent_of(old_active_ix.unwrap()).unwrap();
+        assert!(tree.is_root_container(root_container_ix));
+        tree.active_container = Some(root_container_ix);
+        for direction in &directions {
+            tree.move_focus(*direction);
+            assert_eq!(tree.active_container, Some(root_container_ix));
+        }
+    }
+
+    #[test]
+    fn move_focus_complex_test() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("2");
+        // We are focused on the far left container
+        let old_ix = tree.active_container.unwrap();
+        // Get the next one
+        tree.move_focus(Direction::Right);
+        // Make sure we moved
+        let new_ix = tree.active_container.unwrap();
+        assert!(old_ix != new_ix);
+        // make a vertical container here, try to move back to the original
+        let new_container = tree.tree[new_ix].clone();
+        tree.toggle_active_layout(Layout::Vertical);
+        assert_eq!(new_container, tree.tree[tree.active_container.unwrap()]);
+        // Add a new view, it'll be below us
+        tree.add_view(WlcView::root());
+        // Move up, should be on the original view still
+        tree.move_focus(Direction::Up);
+        assert_eq!(new_container, tree.tree[tree.active_container.unwrap()]);
+        // Move Right, should be right where we are, nothing to the right
+        tree.move_focus(Direction::Right);
+        assert_eq!(new_container, tree.tree[tree.active_container.unwrap()]);
+        // Move left, be back on the very first one
+        tree.move_focus(Direction::Left);
+        assert_eq!(old_ix, tree.active_container.unwrap());
+        // Move left, be back on the very first one
     }
 }
