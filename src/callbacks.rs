@@ -73,6 +73,11 @@ pub extern fn view_created(view: WlcView) -> bool {
         if v_type != ViewType::empty() {
             view.focus();
             // Now focused on something outside the tree, have to unset the active container
+            if tree.get_active_container().is_some() {
+                if tree.active_is_root() {
+                    return true;
+                }
+            }
             tree.unset_active_container();
             return true
         }
