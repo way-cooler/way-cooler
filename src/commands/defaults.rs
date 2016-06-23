@@ -86,11 +86,18 @@ pub fn register_defaults() {
     register("focus_right", Arc::new(focus_right));
     register("focus_up", Arc::new(focus_up));
     register("focus_down", Arc::new(focus_down));
+    register("remove_active", Arc::new(remove_active))
 
 }
 
 // All of the methods defined should be registered.
 #[deny(dead_code)]
+
+fn remove_active() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.remove_active();
+    }
+}
 
 fn tile_switch() {
     if let Ok(mut tree) = try_lock_tree() {

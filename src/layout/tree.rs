@@ -234,6 +234,13 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Removes the current active container
+    pub fn remove_active(&mut self) {
+        if let Some(active_ix) = self.active_container {
+            self.remove_view_or_container(active_ix);
+        }
+    }
+
     /// Special code to handle removing a View or Container.
     /// We have to ensure that we aren't invalidating the active container
     /// when we remove a view or container.
@@ -253,7 +260,15 @@ impl LayoutTree {
                     self.active_container = Some(node_ix);
                 }
             }
-            let container = self.tree.remove(node_ix);
+            let container = self.tree.remove(node_ix)
+                .expect("Could not remove container");
+            match container {
+                Container::View { ref handle, .. } => {
+                    handle.close();
+                },
+                Container::Container { .. } => {},
+                _ => unreachable!()
+            };
             self.focus_on_next_container(parent_ix);
             // Remove parent container if it is a non-root container and has no other children
             match self.tree[parent_ix].get_type() {
@@ -482,8 +497,6 @@ impl LayoutTree {
             Container::Container { .. } => WlcView::root().focus(),
             _ => panic!("Active container not view or container!")
         });
-
-        self.validate();
     }
 
     /// Changes the layout of the active container to the given layout.
@@ -1230,6 +1243,14 @@ mod tests {
         for _ in 1..2 {
             tree.remove_view(&WlcView::root());
         }
+    }
+
+    #[test]
+    fn remove_active_test() {
+        let mut tree = basic_tree();
+        let root_container = tree.tree[tree.tree.parent_of(tree.active_container.unwrap()).unwrap()].clone();
+        tree.remove_active();
+        assert_eq!(tree.tree[tree.active_container.unwrap()], root_container);
     }
 
     #[test]

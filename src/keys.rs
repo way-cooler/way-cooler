@@ -49,6 +49,8 @@ pub fn init() {
         keypress!("Alt", "up") => "focus_up";
         keypress!("Alt", "down") => "focus_down";
 
+        keypress!("Alt", "q") => "remove_active";
+
         /* Workspace switching key bindings */
         keypress!("Alt", "1") => "switch_workspace_1";
         keypress!("Alt", "2") => "switch_workspace_2";
