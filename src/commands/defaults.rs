@@ -7,7 +7,8 @@ use std::env;
 use std::io::prelude::*;
 
 use commands::{self, CommandFn};
-use layout::tree::try_lock_tree;
+use layout::tree::{Direction, try_lock_tree};
+use layout::container::{ContainerType, Layout};
 use lua::{self, LuaQuery};
 
 /// Register the default commands in the API.
@@ -21,7 +22,6 @@ pub fn register_defaults() {
         coms.insert(name.to_string(), val);
     };
 
-    // Workspace
     register("quit", Arc::new(quit));
     register("launch_terminal", Arc::new(launch_terminal));
     register("launch_dmenu", Arc::new(launch_dmenu));
@@ -30,10 +30,7 @@ pub fn register_defaults() {
     register("dmenu_eval", Arc::new(dmenu_eval));
     register("dmenu_lua_dofile", Arc::new(dmenu_lua_dofile));
 
-    //register("workspace_left", workspace_left);
-    //register("workspace_right", workspace_right);
-
-    /// Generate switch_workspace methods and register them in $map
+    /// Generate switch_workspace methods and register them
     macro_rules! gen_switch_workspace {
         ( $($b:ident, $n:expr);+ ) => {
             $(fn $b() {
@@ -43,6 +40,19 @@ pub fn register_defaults() {
                 }
             }
             register(stringify!($b), Arc::new($b)); )+
+        }
+    }
+
+    //// Generates move_to_workspace methods and registers them
+    macro_rules! gen_move_to_workspace {
+        ( $($b:ident, $n:expr);+ ) => {
+            $(fn $b() {
+                trace!("Switching to workspace {}", $n);
+                if let Ok(mut tree) = try_lock_tree() {
+                    tree.send_active_to_workspace(&$n.to_string());
+                }
+            }
+              register(stringify!($b), Arc::new($b)); )+
         }
     }
 
@@ -58,10 +68,79 @@ pub fn register_defaults() {
                           switch_workspace_9, "9";
                           switch_workspace_0, "0");
 
+    gen_move_to_workspace!(move_to_workspace_1, "1";
+                           move_to_workspace_2, "2";
+                           move_to_workspace_3, "3";
+                           move_to_workspace_4, "4";
+                           move_to_workspace_5, "5";
+                           move_to_workspace_6, "6";
+                           move_to_workspace_7, "7";
+                           move_to_workspace_8, "8";
+                           move_to_workspace_9, "9";
+                           move_to_workspace_0, "0");
+
+    register("horizontal_vertical_switch", Arc::new(tile_switch));
+    register("split_vertical", Arc::new(split_vertical));
+    register("split_horizontal", Arc::new(split_horizontal));
+    register("focus_left", Arc::new(focus_left));
+    register("focus_right", Arc::new(focus_right));
+    register("focus_up", Arc::new(focus_up));
+    register("focus_down", Arc::new(focus_down));
+    register("remove_active", Arc::new(remove_active))
+
 }
 
 // All of the methods defined should be registered.
 #[deny(dead_code)]
+
+fn remove_active() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.remove_active();
+    }
+}
+
+fn tile_switch() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.toggle_active_horizontal();
+        tree.layout_active_of(ContainerType::Workspace);
+    }
+}
+
+fn split_vertical() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.toggle_active_layout(Layout::Vertical);
+    }
+}
+
+fn split_horizontal() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.toggle_active_layout(Layout::Horizontal);
+    }
+}
+
+fn focus_left() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Left);
+    }
+}
+
+fn focus_right() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Right);
+    }
+}
+
+fn focus_up() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Up);
+    }
+}
+
+fn focus_down() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_focus(Direction::Down);
+    }
+}
 
 fn launch_terminal() {
     let term = env::var("WAYLAND_TERMINAL")

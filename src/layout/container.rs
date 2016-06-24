@@ -84,8 +84,6 @@ pub enum Container {
     Container {
         /// How the container is layed out
         layout: Layout,
-        /// Whether the container is visible
-        visible: bool,
         /// If the container is focused
         focused: bool,
         /// If the container is floating
@@ -97,8 +95,6 @@ pub enum Container {
     View {
         /// The wlc handle to the view
         handle: WlcView,
-        /// Whether this view is visible
-        visible: bool,
         /// Whether this view is focused
         focused: bool,
         /// Whether this view is floating
@@ -127,8 +123,7 @@ impl Container {
     /// Creates a new container
     pub fn new_container(geometry: Geometry) -> Container {
         Container::Container {
-            layout: Layout::Floating,
-            visible: false,
+            layout: Layout::Horizontal,
             focused: false,
             floating: false,
             geometry: geometry
@@ -139,7 +134,6 @@ impl Container {
     pub fn new_view(handle: WlcView) -> Container {
         Container::View {
             handle: handle,
-            visible: false,
             focused: false,
             floating: false
         }
@@ -147,11 +141,6 @@ impl Container {
 
     /// Sets the visibility of this container
     pub fn set_visibility(&mut self, visibility: bool) {
-        match *self {
-            Container::View { ref mut visible, .. } => *visible = visibility,
-            Container::Container { ref mut visible, .. } => *visible = visibility,
-            _ => {return},
-        }
         let mask = if visibility { 1 } else { 0 };
         if let Some(handle) = self.get_handle() {
             match handle {
@@ -160,16 +149,6 @@ impl Container {
                 },
                 _ => {},
             }
-        }
-    }
-
-    /// Gets the visibility flag of this container
-    #[allow(dead_code)]
-    pub fn get_visibility(&mut self) -> Option<bool> {
-        match *self {
-            Container::View { visible, .. } => Some(visible),
-            Container::Container { visible, .. } => Some(visible),
-            _ => None
         }
     }
 
@@ -205,10 +184,11 @@ impl Container {
     #[allow(dead_code)]
     pub fn is_focused(&self) -> bool {
         match *self {
-            Container::Output { ref focused, .. } => focused.clone(),
-            Container::Workspace { ref focused, .. } => focused.clone(),
-            Container::View { ref focused, .. } => focused.clone(),
-            _ => false
+            Container::Root { .. } => false,
+            Container::Output { ref focused, .. } => *focused,
+            Container::Workspace { ref focused, .. } => *focused,
+            Container::Container { ref focused, .. } => *focused,
+            Container::View { ref focused, .. } =>*focused,
         }
     }
 
@@ -229,10 +209,8 @@ impl Container {
                 size: size.clone()
             }),
             Container::Container { ref geometry, .. } => Some(geometry.clone()),
-            Container::View { ref handle, ..} => {
-                Some(handle.get_geometry().expect(
-                    "View did not have a geometry").clone())
-            },
+            Container::View { ref handle, ..} =>
+                handle.get_geometry().map(|geo| geo.clone()),
         }
     }
 
@@ -252,11 +230,22 @@ impl Container {
         };
         return Ok(())
     }
+
+    pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), String>{
+        match *self {
+            Container::Container { ref mut layout, .. } => *layout = new_layout,
+            ref other => return Err(
+                format!("Can only set the layout of a container, not {:?}",
+                        other))
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustwlc::*;
 
     #[test]
     fn can_have_child() {
@@ -342,5 +331,61 @@ mod tests {
 
         // NOTE Can't test view, because that will just segfault as well
         //let mut view = Container::new_view(WlcView::root());
+    }
+
+    #[test]
+    fn layout_change_test() {
+        let root = Container::Root;
+        let output = Container::new_output(WlcView::root().as_output());
+        let workspace = Container::new_workspace("1".to_string(),
+                                                     Size { w: 500, h: 500 });
+        let mut container = Container::new_container(Geometry {
+            origin: Point { x: 0, y: 0},
+            size: Size { w: 0, h:0}
+        });
+        let view = Container::new_view(WlcView::root());
+
+        /* Container first, the only thing we can set the layout on */
+        let layout = match container {
+            Container::Container { ref layout, .. } => layout.clone(),
+            _ => panic!()
+        };
+        assert_eq!(layout, Layout::Horizontal);
+        let layouts = [Layout::Vertical, Layout::Horizontal,
+                       Layout::Tabbed, Layout::Stacked];
+        for new_layout in &layouts {
+            container.set_layout(*new_layout).ok();
+            let layout = match container {
+                Container::Container { ref layout, .. } => layout.clone(),
+                _ => panic!()
+            };
+            assert_eq!(layout, *new_layout);
+        }
+
+        for new_layout in &layouts {
+            for container in &mut [root.clone(), output.clone(),
+                                   workspace.clone(), view.clone()] {
+                let result = container.set_layout(*new_layout);
+                assert!(result.is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn is_focused_test() {
+        let root = Container::Root;
+        let output = Container::new_output(WlcView::root().as_output());
+        let workspace = Container::new_workspace("1".to_string(),
+                                                 Size { w: 500, h: 500 });
+        let container = Container::new_container(Geometry {
+            origin: Point { x: 0, y: 0},
+            size: Size { w: 0, h:0}
+        });
+        let view = Container::new_view(WlcView::root());
+        for container in &mut [root.clone(), output.clone(),
+                               container.clone(),
+                               workspace.clone(), view.clone()] {
+            assert_eq!(container.is_focused(), false);
+        }
     }
 }

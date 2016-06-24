@@ -39,6 +39,19 @@ pub fn init() {
             .expect("Unable to create default keypress")
             => "dmenu_lua_dofile";
 
+        /* Layout key bindings */
+        keypress!("Alt", "e") => "horizontal_vertical_switch";
+        keypress!("Alt", "v") => "split_vertical";
+        keypress!("Alt", "h") => "split_horizontal";
+        /* Focus key bindings */
+        keypress!("Alt", "left") => "focus_left";
+        keypress!("Alt", "right") => "focus_right";
+        keypress!("Alt", "up") => "focus_up";
+        keypress!("Alt", "down") => "focus_down";
+
+        keypress!("Alt", "q") => "remove_active";
+
+        /* Workspace switching key bindings */
         keypress!("Alt", "1") => "switch_workspace_1";
         keypress!("Alt", "2") => "switch_workspace_2";
         keypress!("Alt", "3") => "switch_workspace_3";
@@ -48,7 +61,19 @@ pub fn init() {
         keypress!("Alt", "7") => "switch_workspace_7";
         keypress!("Alt", "8") => "switch_workspace_8";
         keypress!("Alt", "9") => "switch_workspace_9";
-        keypress!("Alt", "0") => "switch_workspace_0"
+        keypress!("Alt", "0") => "switch_workspace_0";
+
+        /* Moving active container to another Workspace key bindings */
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("1")).unwrap() => "move_to_workspace_1";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("2")).unwrap() => "move_to_workspace_2";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("3")).unwrap() => "move_to_workspace_3";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("4")).unwrap() => "move_to_workspace_4";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("5")).unwrap() => "move_to_workspace_5";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("6")).unwrap() => "move_to_workspace_6";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("7")).unwrap() => "move_to_workspace_7";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("8")).unwrap() => "move_to_workspace_8";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("9")).unwrap() => "move_to_workspace_9";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("0")).unwrap() => "move_to_workspace_0"
     }
 }
 

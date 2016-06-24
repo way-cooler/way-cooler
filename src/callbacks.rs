@@ -9,6 +9,7 @@ use super::keys;
 use super::lua;
 use super::keys::KeyPress;
 use super::layout::tree;
+use super::layout::container::ContainerType;
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -42,7 +43,12 @@ pub extern fn output_focus(output: WlcOutput, focused: bool) {
 pub extern fn output_resolution(output: WlcOutput,
                             old_size_ptr: &Size, new_size_ptr: &Size) {
     trace!("output_resolution: {:?} from  {:?} to {:?}",
-             output, *old_size_ptr, *new_size_ptr);
+           output, *old_size_ptr, *new_size_ptr);
+    // Update the resolution of the output and its children
+    output.set_resolution(new_size_ptr.clone());
+    if let Ok(mut tree) = tree::try_lock_tree() {
+        tree.layout_active_of(ContainerType::Output);
+    }
 }
 /*
 pub extern fn output_render_pre(output: WlcOutput) {
@@ -57,12 +63,27 @@ pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
     if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.add_view(view.clone());
-        drop(tree);
+        if tree.get_active_container().is_none() {
+            warn!("Could not create view, so there is no focus and \
+                    way-cooler doesn't know where to put it");
+            return false
+        }
         view.set_mask(output.get_mask());
-        view.bring_to_front();
-        view.focus();
-        true
+        let v_type = view.get_type();
+        if v_type != ViewType::empty() {
+            view.focus();
+            // Now focused on something outside the tree,
+            // have to unset the active container
+            if !tree.active_is_root() {
+                tree.unset_active_container();
+            }
+            return true
+        }
+        tree.add_view(view.clone());
+        tree.normalize_view(view.clone());
+        tree.layout_active_of(ContainerType::Container);
+        tree.set_active_container(view.clone());
+        return true
     } else {
         false
     }
@@ -72,6 +93,7 @@ pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
     if let Ok(mut tree) = tree::try_lock_tree() {
         tree.remove_view(&view);
+        tree.layout_active_of(ContainerType::Workspace);
     } else {
         warn!("Could not delete view {:?}", view);
     }
@@ -97,7 +119,7 @@ pub extern fn view_move_to_output(current: WlcView,
 
 pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
     trace!("view_request_geometry: {:?} wants {:?}", view, geometry);
-    view.set_geometry(EDGE_NONE, geometry);
+    warn!("Denying view {} request for size", view.get_title());
 }
 
 pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
