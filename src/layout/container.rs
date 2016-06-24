@@ -209,12 +209,8 @@ impl Container {
                 size: size.clone()
             }),
             Container::Container { ref geometry, .. } => Some(geometry.clone()),
-            Container::View { ref handle, ..} => {
-                match handle.get_geometry() {
-                    Some(geometry) => Some(geometry.clone()),
-                    _ => None
-                }
-            },
+            Container::View { ref handle, ..} =>
+                handle.get_geometry().map(|geo| geo.clone()),
         }
     }
 

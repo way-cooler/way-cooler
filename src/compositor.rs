@@ -149,9 +149,9 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
 }
 
 /// Performs an operation on a pointer button, to be used in the callback
-#[allow(unused_variables)]
-pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, button: u32,
-                         state: ButtonState, point: &Point) -> bool {
+pub fn on_pointer_button(view: WlcView, _time: u32, _mods: &KeyboardModifiers,
+                         _button: u32, state: ButtonState, _point: &Point)
+                         -> bool {
     if state == ButtonState::Pressed {
         if !view.is_root() {
             let mut tree = tree::try_lock_tree().expect(ERR_TREE);
@@ -162,10 +162,8 @@ pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, bu
         stop_interactive_action();
     }
 
-    {
-        let comp = COMPOSITOR.read().expect(ERR_LOCK);
-        return comp.view.is_some();
-    }
+    let comp = COMPOSITOR.read().expect(ERR_LOCK);
+    return comp.view.is_some()
 }
 
 /// Performs an operation on a pointer motion, to be used in the callback

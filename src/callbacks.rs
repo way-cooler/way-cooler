@@ -44,7 +44,7 @@ pub extern fn output_resolution(output: WlcOutput,
                             old_size_ptr: &Size, new_size_ptr: &Size) {
     trace!("output_resolution: {:?} from  {:?} to {:?}",
            output, *old_size_ptr, *new_size_ptr);
-    // Update the resolution of the output and it's children
+    // Update the resolution of the output and its children
     output.set_resolution(new_size_ptr.clone());
     if let Ok(mut tree) = tree::try_lock_tree() {
         tree.layout_active_of(ContainerType::Output);
@@ -64,28 +64,26 @@ pub extern fn view_created(view: WlcView) -> bool {
     let output = view.get_output();
     if let Ok(mut tree) = tree::try_lock_tree() {
         if tree.get_active_container().is_none() {
-            warn!("Could not create view, there is no focus \
-                    so Way-Cooler doesn't know where to put it");
-            return false;
+            warn!("Could not create view, so there is no focus and \
+                    way-cooler doesn't know where to put it");
+            return false
         }
         view.set_mask(output.get_mask());
         let v_type = view.get_type();
         if v_type != ViewType::empty() {
             view.focus();
-            // Now focused on something outside the tree, have to unset the active container
-            if tree.get_active_container().is_some() {
-                if tree.active_is_root() {
-                    return true;
-                }
+            // Now focused on something outside the tree,
+            // have to unset the active container
+            if !tree.active_is_root() {
+                tree.unset_active_container();
             }
-            tree.unset_active_container();
             return true
         }
         tree.add_view(view.clone());
         tree.normalize_view(view.clone());
         tree.layout_active_of(ContainerType::Container);
         tree.set_active_container(view.clone());
-        true
+        return true
     } else {
         false
     }
@@ -121,7 +119,7 @@ pub extern fn view_move_to_output(current: WlcView,
 
 pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
     trace!("view_request_geometry: {:?} wants {:?}", view, geometry);
-    warn!("Denying request");
+    warn!("Denying view {} request for size", view.get_title());
 }
 
 pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {

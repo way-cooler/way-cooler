@@ -30,13 +30,11 @@ impl Tree {
         self.root
     }
 
-    pub fn get_edge_weight_between(&self, parent_ix: NodeIndex, child_ix: NodeIndex)
-                            -> Option<&u32> {
-        if let Some(edge_ix) = self.graph.find_edge(parent_ix, child_ix) {
-            self.graph.edge_weight(edge_ix)
-        } else {
-            None
-        }
+    /// Gets the weight of a possible edge between two notes
+    pub fn get_edge_weight_between(&self, parent_ix: NodeIndex,
+                                   child_ix: NodeIndex) -> Option<&u32> {
+        self.graph.find_edge(parent_ix, child_ix)
+            .and_then(|edge_ix| self.graph.edge_weight(edge_ix))
     }
 
     /// Gets the edge value of the largest child of the node
