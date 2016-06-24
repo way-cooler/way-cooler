@@ -195,6 +195,15 @@ impl LayoutTree {
         self.tree[self.tree.parent_of(node_ix).unwrap_or(node_ix)].get_type() == ContainerType::Workspace
     }
 
+    /// Determines if the active container is the root container
+    pub fn active_is_root(&self) -> bool {
+        if let Some(active_ix) = self.active_container {
+            self.is_root_container(active_ix)
+        } else {
+            false
+        }
+    }
+
     /// Make a new output container with the given WlcOutput.
     ///
     /// A new workspace is automatically added to the output, to ensure
@@ -985,8 +994,6 @@ impl LayoutTree {
     /// Validates the tree
     #[cfg(debug_assertions)]
     fn validate(&self) {
-        use rustwlc::ViewType;
-
         // Recursive method to ensure child/parent nodes are connected
         fn validate_node_connections(this: &LayoutTree, parent_ix: NodeIndex) {
             for child_ix in this.tree.children_of(parent_ix) {
@@ -1539,5 +1546,13 @@ mod tests {
         // didn't move, because we aren't focused on something with a workspace
         tree.active_container = old_active;
         assert_eq!(tree.active_ix_of(ContainerType::Workspace).unwrap(), current_workspace_ix);
+    }
+
+    #[test]
+    fn active_is_root_test() {
+        let mut tree = basic_tree();
+        assert_eq!(tree.active_is_root(), false);
+        tree.remove_active();
+        assert_eq!(tree.active_is_root(), true);
     }
 }
