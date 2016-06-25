@@ -13,7 +13,6 @@ lazy_static! {
 
 const ERR_LOCK: &'static str = "Unable to lock compositor!";
 const ERR_TREE: &'static str = "Unable to lock tree!";
-const ERR_GEO: &'static str = "Unable to access view geometry!";
 
 #[derive(Debug, PartialEq)]
 pub struct Compositor {
@@ -74,30 +73,6 @@ enum ClickAction {
     BeginResizing,
     SelectWindow,
 
-}
-
-/// Maximizes the view to the size of the output it sits in
-pub fn set_focused_window_maximized(wlc_view: &WlcView) {
-    let maybe_geometry = wlc_view.get_geometry();
-    if maybe_geometry.is_none() {
-        return;
-    }
-    let geometry = maybe_geometry.expect(ERR_GEO);
-    if start_interactive_action(wlc_view, &geometry.origin).is_err() {
-        return;
-    };
-    {
-        let mut comp = COMPOSITOR.write().expect(ERR_LOCK);
-        if let Some(ref mut view) = comp.view {
-            let output = view.get_output();
-            trace!("Output size of the view: {:?}", output.get_resolution());
-            let output_size = output.get_resolution();
-            let geometry = Geometry { origin: Point { x: 0, y: 0},
-                                        size: output_size.clone() };
-            view.set_geometry(EDGE_NONE, &geometry);
-        }
-    }
-    stop_interactive_action();
 }
 
 /// Makes the compositor no longer track the node to be used in some interaction
@@ -174,99 +149,26 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
 }
 
 /// Performs an operation on a pointer button, to be used in the callback
-pub fn on_pointer_button(view: WlcView, _time: u32, mods: &KeyboardModifiers, button: u32,
-                         state: ButtonState, point: &Point) -> bool {
+pub fn on_pointer_button(view: WlcView, _time: u32, _mods: &KeyboardModifiers,
+                         _button: u32, state: ButtonState, _point: &Point)
+                         -> bool {
     if state == ButtonState::Pressed {
         if !view.is_root() {
-            view.focus();
-            view.bring_to_front();
-            if mods.mods.contains(MOD_CTRL) {
-                // Button left, we need to include linux/input.h somehow
-                if button == 0x110 {
-                    start_interactive_move(&view, point);
-                }
-                if button == 0x111 {
-                    start_interactive_resize(&view, ResizeEdge::empty(), point);
-                }
-                if mods.mods.contains(MOD_SHIFT) {
-                    set_focused_window_maximized(&view);
-                }
-            }
+            let mut tree = tree::try_lock_tree().expect(ERR_TREE);
+            tree.set_active_container(view.clone());
         }
     }
     else {
         stop_interactive_action();
     }
 
-    {
-        let comp = COMPOSITOR.read().expect(ERR_LOCK);
-        return comp.view.is_some();
-    }
+    let comp = COMPOSITOR.read().expect(ERR_LOCK);
+    return comp.view.is_some()
 }
 
 /// Performs an operation on a pointer motion, to be used in the callback
 pub fn on_pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     rustwlc::input::pointer::set_position(point);
-    if let Ok(comp) = COMPOSITOR.read() {
-        if let Some(ref view) = comp.view {
-            let dx = point.x - comp.grab.x;
-            let dy = point.y - comp.grab.y;
-            let mut geo = view.get_geometry().expect(ERR_GEO).clone();
-            if comp.edges.bits() != 0 {
-                let min = Size { w: 80u32, h: 40u32};
-                let mut new_geo = geo.clone();
-
-                if comp.edges.contains(RESIZE_LEFT) {
-                    if dx < 0 {
-                        new_geo.size.w += dx.abs() as u32;
-                    } else {
-                        new_geo.size.w -= dx.abs() as u32;
-                    }
-                    new_geo.origin.x += dx;
-                }
-                else if comp.edges.contains(RESIZE_RIGHT) {
-                    if dx < 0 {
-                        new_geo.size.w -= dx.abs() as u32;
-                    } else {
-                        new_geo.size.w += dx.abs() as u32;
-                    }
-                }
-
-                if comp.edges.contains(RESIZE_TOP) {
-                    if dy < 0 {
-                        new_geo.size.h += dy.abs() as u32;
-                    } else {
-                        new_geo.size.h -= dy.abs() as u32;
-                    }
-                    new_geo.origin.y += dy;
-                }
-                else if comp.edges.contains(RESIZE_BOTTOM) {
-                    if dy < 0 {
-                        new_geo.size.h -= dy.abs() as u32;
-                    } else {
-                        new_geo.size.h += dy.abs() as u32;
-                    }
-                }
-
-                if new_geo.size.w >= min.w {
-                    geo.origin.x = new_geo.origin.x;
-                    geo.size.w = new_geo.size.w;
-                }
-
-                if new_geo.size.h >= min.h {
-                    geo.origin.y = new_geo.origin.y;
-                    geo.size.h = new_geo.size.h;
-                }
-
-                view.set_geometry(comp.edges, &geo);
-            }
-            else {
-                geo.origin.x += dx;
-                geo.origin.y += dy;
-                view.set_geometry(ResizeEdge::empty(), &geo);
-            }
-        }
-    }
     if let Ok(mut comp) = COMPOSITOR.write() {
         comp.grab = point.clone();
         comp.view.is_some()
@@ -291,7 +193,6 @@ fn start_interactive_action(view: &WlcView, origin: &Point) -> Result<(), &'stat
         }
     }
 
-    view.bring_to_front();
     Ok(())
 }
 
