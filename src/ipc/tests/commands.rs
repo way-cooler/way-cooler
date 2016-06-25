@@ -1,6 +1,6 @@
 //! Tests individual commands via `reply`
 
-use std::collections::HashSet;
+use std::collections::{HashSet, BTreeMap};
 
 use rustc_serialize::json::{Json, ToJson};
 
@@ -8,7 +8,6 @@ use super::*;
 use super::super::channel;
 
 use registry;
-use registry::tests as regtests;
 
 const PING: &'static str =     r#"{ "type":"ping" }"#;
 const COMMANDS: &'static str = r#"{ "type":"commands" }"#;
@@ -36,7 +35,7 @@ const SET_READONLY: &'static str
 const SET_WRITEONLY: &'static str
     = r#"{ "type":"set", "key":"ipc_test_writeonly", "value":11 }"#;
 const SET_PROP_READ: &'static str
-    = r#"{ "type":"set", "key":"prop_read", "value":"asdf" }"#;
+    = r#"{ "type":"set", "key":"get_prop", "value":"asdf" }"#;
 const SET_NEW_KEY: &'static str
     = r#"{ "type":"set", "key":"new_key", "value":"value" }"#;
 const SET_NO_PERMS: &'static str
@@ -55,16 +54,10 @@ const EXISTS_PROP_WRITE: &'static str = r#"{"type":"exists","key":"set_prop"}"#;
 const EXISTS_OBJECT_READ:&'static str = r#"{"type":"exists","key":"readonly"}"#;
 const EXISTS_OBJECT_WRITE:&'static str= r#"{"type":"exists","key":"writeonly"}"#;
 const EXISTS_BAD_KEY: &'static str =    r#"{"type":"exists","key": "nope"}"#;
+const EXISTS_NO_KEY: &'static str =     r#"{"type":"exists"}"#;
 
 const BAD_NO_REQUEST: &'static str = r#"{ "key":"foo", "value":"bar" }"#;
 const BAD_INVALID_REQUEST: &'static str = r#"{ "type":"foo" }"#;
-const BAD_SET_NO_KEY: &'static str = r#"{ "type":"set", "value":12 }"#;
-const BAD_SET_NO_VALUE: &'static str = r#"{ "type":"set", "key":"f64" }"#;
-const BAD_RUN_NO_COMMAND: &'static str = r#"{ "type":"run" }"#;
-const BAD_RUN_EXTRA_FIELDS: &'static str =
-    r#"{ "type":"run", "key":"command", "foo":"bar" }"#;
-const BAD_RUN_U64_COMMAND: &'static str = r#"{ "type":"run", "key":12 }"#;
-const BAD_GET_OBJECT_KEY: &'static str = r#"{ "type":"get", "key": 12 }"#;
 const BAD_REQUEST_IS_A_NUMBER: &'static str = r#"23"#;
 
 macro_rules! reply {
@@ -127,7 +120,7 @@ fn run_command() {
 #[test]
 #[should_panic(reason = "panic_command panic")]
 fn run_panic_command() {
-    let reply = reply!(RUN_PANIC_COMMAND);
+    let _reply = reply!(RUN_PANIC_COMMAND);
 }
 
 #[test]
@@ -179,11 +172,66 @@ fn set_stuff() {
     assert_eq!(reply!(SET_PROP_READ), error_set);
     assert_eq!(reply!(SET_NO_PERMS), error_set);
     assert_eq!(reply!(SET_NEW_KEY),
-               channel::error_json("key not found".to_string()));
+               channel::error_json("key not found, use insert".to_string()));
     assert_eq!(reply!(SET_NO_KEY),
                channel::error_expecting_key("key", "String"));
     assert_eq!(reply!(SET_BAD_KEY_TYPE),
                channel::error_expecting_key("key", "String"));
     assert_eq!(reply!(SET_NO_VALUE),
-               channel::error_expecting_key("Value", "any"));
+               channel::error_expecting_key("value", "any"));
+}
+
+#[test]
+fn exists() {
+    fn exists_json(mut others: BTreeMap<String, Json>) -> Json {
+        others.insert("exists".to_string(), Json::Boolean(true));
+        channel::success_json_with(others)
+    }
+
+    assert_eq!(reply!(EXISTS_OBJECT_RW),
+               exists_json(json_object!{
+                   "flags" => (json!([ "read".to_json(), "write".to_json()])),
+                   "type" => ("Object".to_json())
+               }));
+    assert_eq!(reply!(EXISTS_PROP),
+               exists_json(json_object!{
+                   "flags" => (json!([ "read".to_json(), "write".to_json()])),
+                   "type" => ("Property".to_json())
+               }));
+    assert_eq!(reply!(EXISTS_PROP_READ),
+               exists_json(json_object!{
+                   "flags" => (json!([ "read".to_json() ])),
+                   "type" => ("Property".to_json())
+               }));
+    assert_eq!(reply!(EXISTS_PROP_WRITE),
+               exists_json(json_object!{
+                   "flags" => (json!([ "write".to_json() ])),
+                   "type" => ("Property".to_json())
+               }));
+    assert_eq!(reply!(EXISTS_OBJECT_READ),
+               exists_json(json_object!{
+                   "flags" => (json!([ "read".to_json() ])),
+                   "type" => ("Object".to_json())
+               }));
+    assert_eq!(reply!(EXISTS_OBJECT_WRITE),
+               exists_json(json_object!{
+                   "flags" => (json!([ "write".to_json()])),
+                   "type" => ("Object".to_json())
+               }));
+    assert_eq!(reply!(EXISTS_BAD_KEY),
+               channel::success_json_with(json_object!{
+                   "exists" => false
+               }));
+    assert_eq!(reply!(EXISTS_NO_KEY),
+               channel::error_expecting_key("key", "String"));
+}
+
+#[test]
+fn bad_requests() {
+    assert_eq!(reply!(BAD_NO_REQUEST),
+               channel::error_expecting_key("type", "String"));
+    assert_eq!(reply!(BAD_INVALID_REQUEST),
+               channel::error_json("invalid request; see 'commands'".to_string()));
+    assert_eq!(reply!(BAD_REQUEST_IS_A_NUMBER),
+               channel::error_json("invalid format - object required".to_string()));
 }
