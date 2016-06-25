@@ -15,16 +15,21 @@ pub mod tests;
 
 pub type RegMap = HashMap<String, RegistryField>;
 
+#[cfg(not(test))]
+#[inline]
+fn new_map() -> RegMap {
+    HashMap::new()
+}
+
+#[cfg(test)]
+#[inline]
+fn new_map() -> RegMap {
+    self::tests::registry_map()
+}
+
 lazy_static! {
     /// Static HashMap for the registry
-    static ref REGISTRY: RwLock<RegMap> = {
-        if cfg!(test) {
-            RwLock::new(self::tests::registry_map())
-        }
-        else {
-            RwLock::new(HashMap::new())
-        }
-    };
+    static ref REGISTRY: RwLock<RegMap> = RwLock::new(new_map());
 }
 
 /// Error types that can happen
@@ -118,6 +123,9 @@ pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
         Entry::Occupied(mut entry) => {
             let first_type = entry.get().get_type();
             let flags = entry.get().get_flags();
+            if !flags.contains(AccessFlags::WRITE()) {
+                return Err(RegistryError::InvalidOperation)
+            }
             if first_type == FieldType::Object {
                 return Ok(RegistrySetData::Displaced(
                     entry.insert(RegistryField::Object {
@@ -129,6 +137,7 @@ pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
                 match entry.get().clone().as_property_set() {
                     Some(func) =>
                         return Ok(RegistrySetData::Property(flags, func)),
+                    // None: should not happen
                     None => return Err(RegistryError::InvalidOperation)
                 }
             }
