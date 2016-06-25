@@ -90,7 +90,7 @@ pub fn reply(json: Json) -> Result<Json, Json> {
 
             match registry::get_data(&key) {
                 Ok(data) => {
-                    let (flags, arc) = data.resolve();
+                    let (_flags, arc) = data.resolve();
                     let reply = channel::value_json(arc.deref().clone());
                     // I'd return a Cow<Json> because write_packet needs an
                     // &Json, but I dunno how to move the fields over in a

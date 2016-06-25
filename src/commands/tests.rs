@@ -1,5 +1,5 @@
 //! Tests on the command API
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::Arc;
 use std::collections::HashMap;
 
 use commands::{self, ComMap};
