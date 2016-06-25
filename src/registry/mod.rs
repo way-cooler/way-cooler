@@ -11,13 +11,20 @@ mod types;
 pub use self::types::*; // Export constants too
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 pub type RegMap = HashMap<String, RegistryField>;
 
 lazy_static! {
-    /// Registry variable for the registry
-    static ref REGISTRY: RwLock<RegMap> = RwLock::new(HashMap::new());
+    /// Static HashMap for the registry
+    static ref REGISTRY: RwLock<RegMap> = {
+        if cfg!(test) {
+            RwLock::new(self::tests::registry_map())
+        }
+        else {
+            RwLock::new(HashMap::new())
+        }
+    };
 }
 
 /// Error types that can happen

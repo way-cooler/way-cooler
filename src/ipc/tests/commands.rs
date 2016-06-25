@@ -7,10 +7,8 @@ use rustc_serialize::json::{Json, ToJson};
 use super::*;
 use super::super::channel;
 
-use commands::tests::wait_for_commands;
 use registry;
-use registry::tests;
-use registry::tests::wait_for_registry;
+use registry::tests as regtests;
 
 const PING: &'static str =     r#"{ "type":"ping" }"#;
 const COMMANDS: &'static str = r#"{ "type":"commands" }"#;
@@ -117,7 +115,6 @@ fn version() {
 
 #[test]
 fn run_command() {
-    wait_for_commands();
     let reply = reply!(RUN_COMMAND);
     assert_eq!(reply, channel::success_json());
 }
@@ -130,13 +127,11 @@ fn run_command() {
 #[test]
 #[should_panic(reason = "panic_command panic")]
 fn run_panic_command() {
-    wait_for_commands();
     let reply = reply!(RUN_PANIC_COMMAND);
 }
 
 #[test]
 fn command_bad_args() {
-    wait_for_commands();
     assert_eq!(reply!(RUN_BAD_KEY), Json::Object(json_object!{
         "type" => "error",
         "reason" => "command not found"
@@ -151,7 +146,6 @@ fn command_bad_args() {
 
 #[test]
 fn get_stuff() {
-    wait_for_registry();
     assert_eq!(reply!(GET_OBJECT),
                channel::value_json(registry::tests::POINT.to_json()));
     assert_eq!(reply!(GET_PROP),
@@ -170,7 +164,6 @@ fn get_stuff() {
 
 #[test]
 fn set_stuff() {
-    wait_for_registry();
     let error_set = channel::error_json("cannot set that key".to_string());
     assert_eq!(reply!(SET_OBJECT), channel::success_json());
     assert_eq!(reply!(SET_PROP), channel::success_json());

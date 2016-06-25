@@ -1,15 +1,58 @@
 //! Tests for the registry
 
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::Arc;
+use std::collections::HashMap;
 
 use rustc_serialize::json::{Json, ToJson};
 
 use registry;
-use registry::{AccessFlags, FieldType};
+use registry::{RegMap, RegistryField, GetFn, SetFn,
+               AccessFlags, FieldType};
 
-lazy_static! {
-    static ref ACCESS_PAIR: Arc<(Mutex<bool>, Condvar)>
-        = Arc::new((Mutex::new(false), Condvar::new()));
+/// Gets the initial HashMap used by the registry
+pub fn registry_map() -> RegMap {
+    let mut map = HashMap::new();
+
+    let values: Vec<(&str, AccessFlags, Json)> = vec![
+        ("bool",  AccessFlags::all(), BOOL.to_json()),
+        ("u64",   AccessFlags::all(), U64.to_json()),
+        ("i64",   AccessFlags::all(), I64.to_json()),
+        ("f64",   AccessFlags::all(), F64.to_json()),
+        ("text",  AccessFlags::all(), TEXT.to_json()),
+        ("point", AccessFlags::all(), POINT.to_json()),
+        ("null",  AccessFlags::all(), Json::Null),
+        ("u64s",  AccessFlags::all(), Json::Array(u64s())),
+
+        ("readonly",  AccessFlags::READ(),  READONLY.to_json()),
+        ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
+        ("noperms",   AccessFlags::empty(), NO_PERMS.to_json())
+    ];
+
+    for (name, flags, json) in values.into_iter() {
+        assert!(map.insert(name.to_string(),
+                           RegistryField::Object {
+                               flags: flags,
+                               data: Arc::new(json)
+                           }).is_none(), "Duplicate element inserted!");
+    }
+
+    let props: Vec<(&str, Option<GetFn>, Option<SetFn>)> = vec![
+        ("prop", Some(Arc::new(get_prop)),
+         Some(Arc::new(set_prop))),
+        ("get_prop", Some(Arc::new(get_prop)), None),
+        ("set_prop", None, Some(Arc::new(set_prop))),
+
+        ("get_panic_prop", Some(Arc::new(get_panic_prop)), None),
+        ("set_panic_prop", None, Some(Arc::new(set_panic_prop))),
+    ];
+
+    for (name, get, set) in props.into_iter() {
+        assert!(map.insert(name.to_string(),
+                           RegistryField::Property {
+                               get: get, set: set
+                           }).is_none(), "Duplicate element inserted!");
+    }
+    map
 }
 
 // Constants for use with registry-accessing tests
@@ -50,17 +93,6 @@ pub fn u64s() -> Vec<Json> {
     vec![Json::U64(0), Json::U64(1), Json::U64(2)]
 }
 
-/// Wait for the registry to initialize
-pub fn wait_for_registry() {
-    // First star for lazy static, second for Arc
-    let &(ref lock, ref cond) = &**ACCESS_PAIR;
-    let mut started = lock.lock().expect("Unable to lock ACCESS_PAIR lock!");
-    while !*started {
-        started = cond.wait(started)
-            .expect("Oh boy, I can't wait for the registry to start!");
-    }
-}
-
 json_convertible! {
     /// Has an x and y field
     #[derive(Debug, Clone, Eq, PartialEq)]
@@ -74,63 +106,10 @@ unsafe impl Sync for Point {}
 
 #[test]
 fn add_keys() {
-    let values = vec![
-        ("bool",  AccessFlags::all(), BOOL.to_json()),
-        ("u64",   AccessFlags::all(), U64.to_json()),
-        ("i64",   AccessFlags::all(), I64.to_json()),
-        ("f64",   AccessFlags::all(), F64.to_json()),
-        ("text",  AccessFlags::all(), TEXT.to_json()),
-        ("point", AccessFlags::all(), POINT.to_json()),
-        ("null",  AccessFlags::all(), Json::Null),
-        ("u64s",  AccessFlags::all(), Json::Array(u64s())),
-
-        ("readonly",  AccessFlags::READ(),  READONLY.to_json()),
-        ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
-        ("noperms",   AccessFlags::empty(), NO_PERMS.to_json())
-    ];
-
-    for (name, flags, json) in values.into_iter() {
-        assert!(registry::insert_json(name.to_string(), flags, json).is_none(),
-            "Unable to initialize objects in registry");
-    }
-
-    // Read/write property
-    assert!(registry::insert_property("prop".to_string(),
-                              Some(Arc::new(get_prop)),
-                              Some(Arc::new(set_prop)))
-        .is_none(), "Unable to initialize property in registry");
-
-    // Readonly/writeonly properties
-    assert!(registry::insert_property("get_prop".to_string(),
-                              Some(Arc::new(get_prop)),
-                              None)
-        .is_none(), "Unable to initialize property in registry");
-    assert!(registry::insert_property("set_prop".to_string(),
-                              None,
-                              Some(Arc::new(set_prop)))
-        .is_none(), "Unable to initialize property in registry");
-
-    // Readonly/writeonly panicking properties
-    assert!(registry::insert_property("get_panic_prop".to_string(),
-                              Some(Arc::new(get_panic_prop)),
-                              None)
-        .is_none(), "Unable to initialize property in registry");
-    assert!(registry::insert_property("set_panic_prop".to_string(),
-                              None,
-                              Some(Arc::new(set_panic_prop)))
-        .is_none(), "Unable to initialize property in registry");
-
-    // Allow waiting threads to continue
-    let &(ref lock, ref cond) = &**ACCESS_PAIR;
-    let mut started = lock.lock().expect("Couldn't unlock threads");
-    *started = true;
-    cond.notify_all();
 }
 
 #[test]
 fn contains_keys() {
-    wait_for_registry();
-
     let keys = [
         "bool", "u64", "i64", "f64", "null", "text", "point",
         "u64s", "readonly", "writeonly", "prop", "noperms",
@@ -144,8 +123,6 @@ fn contains_keys() {
 
 #[test]
 fn key_info() {
-    wait_for_registry();
-
     let keys = [
         ("bool", FieldType::Object, AccessFlags::all()),
         ("u64",  FieldType::Object, AccessFlags::all()),
@@ -164,8 +141,6 @@ fn key_info() {
 
 #[test]
 fn objects_and_keys_equal() {
-    wait_for_registry();
-
     let values = vec![
         ("bool",  AccessFlags::all(), BOOL.to_json()),
         ("u64",   AccessFlags::all(), U64.to_json()),
@@ -192,8 +167,6 @@ fn objects_and_keys_equal() {
 
 #[test]
 fn key_perms() {
-    wait_for_registry();
-
     let perms = vec![
         ("bool",      AccessFlags::all()),
         ("readonly",  AccessFlags::READ()),
@@ -215,7 +188,6 @@ fn key_perms() {
 
 #[test]
 fn property_get() {
-    wait_for_registry();
     let prop_read = registry::get_data("get_prop")
         .expect("Couldn't get prop_read");
 
@@ -225,7 +197,6 @@ fn property_get() {
 #[test]
 #[should_panic(expected="get_panic_prop panic")]
 fn panicking_property_get() {
-    wait_for_registry();
     let prop_read = registry::get_data("get_panic_prop")
         .expect("Couldn't get prop_read");
 
@@ -234,7 +205,6 @@ fn panicking_property_get() {
 
 #[test]
 fn property_set() {
-    wait_for_registry();
     registry::set_json("set_prop".to_string(), Json::Null)
             .expect("Unable to set data").call(Json::Null);
 }
@@ -242,7 +212,6 @@ fn property_set() {
 #[test]
 #[should_panic(expected="set_panic_prop panic")]
 fn panicking_property_set() {
-    wait_for_registry();
     registry::set_json("set_panic_prop".to_string(), Json::Null)
             .expect("Unable to set data").call(Json::Null);
 }
