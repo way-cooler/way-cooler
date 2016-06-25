@@ -28,13 +28,13 @@ const GET_NO_KEY: &'static str =     r#"{ "type":"get" }"#;
 const GET_BAD_KEY: &'static str =   r#"{ "type":"get", "key":"novalue" }"#;
 
 const SET_OBJECT: &'static str
-    = r#"{ "type":"set", "key":"bool", "value":false }"#;
+    = r#"{ "type":"set", "key":"ipc_test_bool", "value":false }"#;
 const SET_PROP: &'static str
     = r#"{ "type":"set", "key":"prop", "value":null }"#;
 const SET_READONLY: &'static str
     = r#"{ "type":"set", "key":"readonly", "value":12 }"#;
 const SET_WRITEONLY: &'static str
-    = r#"{ "type":"set", "key":"writeonly", "value":11 }"#;
+    = r#"{ "type":"set", "key":"ipc_test_writeonly", "value":11 }"#;
 const SET_PROP_READ: &'static str
     = r#"{ "type":"set", "key":"prop_read", "value":"asdf" }"#;
 const SET_NEW_KEY: &'static str
@@ -164,7 +164,14 @@ fn get_stuff() {
 
 #[test]
 fn set_stuff() {
+    use registry::AccessFlags;
     let error_set = channel::error_json("cannot set that key".to_string());
+    registry::insert_json("ipc_test_bool".to_string(),
+                          AccessFlags::all(),
+                          true.to_json());
+    registry::insert_json("ipc_test_writeonly".to_string(),
+                          AccessFlags::WRITE(),
+                          false.to_json());
     assert_eq!(reply!(SET_OBJECT), channel::success_json());
     assert_eq!(reply!(SET_PROP), channel::success_json());
     assert_eq!(reply!(SET_READONLY), error_set);
