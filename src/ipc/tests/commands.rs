@@ -55,6 +55,7 @@ const EXISTS_OBJECT_READ:&'static str = r#"{"type":"exists","key":"readonly"}"#;
 const EXISTS_OBJECT_WRITE:&'static str= r#"{"type":"exists","key":"writeonly"}"#;
 const EXISTS_BAD_KEY: &'static str =    r#"{"type":"exists","key": "nope"}"#;
 const EXISTS_NO_KEY: &'static str =     r#"{"type":"exists"}"#;
+const EXISTS_COMMAND: &'static str =    r#"{"type":"exists","key":"command"}"#;
 
 const BAD_NO_REQUEST: &'static str = r#"{ "key":"foo", "value":"bar" }"#;
 const BAD_INVALID_REQUEST: &'static str = r#"{ "type":"foo" }"#;
@@ -224,6 +225,10 @@ fn exists() {
                }));
     assert_eq!(reply!(EXISTS_NO_KEY),
                channel::error_expecting_key("key", "String"));
+    assert_eq!(reply!(EXISTS_COMMAND),
+               exists_json(json_object!{
+                   "key_type" => "Command"
+               }));
 }
 
 #[test]

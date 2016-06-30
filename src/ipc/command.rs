@@ -129,14 +129,25 @@ pub fn reply(json: Json) -> Result<Json, Json> {
         "exists" => {
             let key = expect_key!(&mut object; "key", String);
 
-            let (type_, flags) = try!(registry::key_info(&key).ok_or(
-                channel::success_json_with(json_object!{ "exists" => false })));
 
-            Ok(channel::success_json_with(json_object!{
-                "exists" => true,
-                "flags" => flags,
-                "key_type" => type_
-            }))
+            if let Some((key_type, flags)) = registry::key_info(&key) {
+                Ok(channel::success_json_with(json_object!{
+                    "exists" => true,
+                    "flags" => flags,
+                    "key_type" => key_type
+                }))
+            }
+            else if let Some(_) = commands::get(&key) {
+                Ok(channel::success_json_with(json_object!{
+                    "exists" => true,
+                    "key_type" => "Command"
+                }))
+            }
+            else {
+                Ok(channel::success_json_with(json_object!{
+                    "exists" => false
+                }))
+            }
         },
 
         // Commands
