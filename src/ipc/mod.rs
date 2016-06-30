@@ -2,7 +2,8 @@
 
 use std::thread;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus};
 use std::fs;
 
 use unix_socket::UnixListener;
@@ -17,15 +18,22 @@ mod tests;
 /// Versions are incremented.
 pub const VERSION: u64 = 0u64; // Increment to 1 on release.
 
-/// Very much not cross-platform!
-/// Submit an issue when Wayland is ported to Windoze.
-pub const SOCKET_FOLDER: &'static str = "/var/run/way-cooler/";
 /// Socket over which synchronous communication is made with clients.
 pub const COMMAND_SOCKET: &'static str = "command";
 /// Socket over which events are sent to clients.
 pub const EVENT_SOCKET: &'static str = "event";
 /// Folder in which sockets are created
 pub const PATH_VAR: &'static str = "WAY_COOLER_SOCKET_FOLDER";
+
+lazy_static! {
+    static ref ID: u32 = unique_ish_id();
+    static ref BASE_PATH: PathBuf = {
+        let mut path = socket_base_path();
+        path.push("way-cooler");
+        path.push(format!("{}", *ID));
+        path
+    };
+}
 
 /// We need random folder names to place sockets in, but they don't need
 /// to be _that_ random.
@@ -46,28 +54,48 @@ pub fn unique_ish_id() -> u32 {
     (hasher.finish() >> MAGIC_SHIFT_NUMBER) as u32
 }
 
+/// Gets the base path which the socket uses
+fn socket_base_path() -> PathBuf {
+    if let Ok(path) = env::var("XDG_RUNTIME_DIR") {
+        return PathBuf::from(path)
+    }
+
+    let user = env::var("USER")
+        .expect("$USER environment variable undefined!");
+
+    let output = Command::new("id")
+        .arg("-u").arg(user)
+        .output()
+        .unwrap_or_else(|e| panic!("Failed to get user ID: {}", e));
+
+    if !output.status.success() {
+        panic!("Executing id command failed!")
+    }
+
+    match String::from_utf8(output.stdout) {
+        Ok(id) => return Path::new("/var/run/user").join(id),
+        Err(err) => panic!("Unable to parse user id: {:?}", err)
+    }
+}
+
 /// Initialize the IPC socket.
 pub fn init() {
-    let id = unique_ish_id();
-    info!("Starting IPC with unique ID {}", id);
+    info!("Starting IPC with unique ID {}", *ID);
 
-    let mut socket_path = PathBuf::from(SOCKET_FOLDER);
-    socket_path.push(id.to_string());
-
-    if let Err(ioerr) = fs::create_dir_all(socket_path.clone()) {
+    if let Err(ioerr) = fs::create_dir_all(BASE_PATH.clone()) {
         // How can we handle not having a socket?
         // In the future, we could log and continue.
         // We could have a config option to not create/create-if-possible
         error!("Unable to create temp folder: {:?}", ioerr);
         return;
     }
-    let command_socket = UnixListener::bind(socket_path.join(COMMAND_SOCKET))
+    let command_socket = UnixListener::bind(BASE_PATH.join(COMMAND_SOCKET))
         .expect("Unable to open command socket!");
 
-    let event_socket = UnixListener::bind(socket_path.join(EVENT_SOCKET))
+    let event_socket = UnixListener::bind(BASE_PATH.join(EVENT_SOCKET))
         .expect("Unable to open event socket!");
 
-    env::set_var(PATH_VAR, socket_path.clone());
+    env::set_var(PATH_VAR, BASE_PATH.clone());
 
     debug!("IPC initialized, now listening for clients.");
 
@@ -80,6 +108,16 @@ pub fn init() {
         .spawn(move || { event_thread(event_socket) });
 
     trace!("IPC initialized.");
+}
+
+pub fn terminate() {
+    if let Some(path) = BASE_PATH.to_str() {
+        trace!("Removing folder {}", path);
+    }
+    if let Err(ioerr) = fs::remove_dir_all(BASE_PATH.clone()) {
+        error!("Unable to delete path: {}", ioerr);
+    }
+    info!("Cleaned up IPC folder");
 }
 
 fn command_thread(socket: UnixListener) {

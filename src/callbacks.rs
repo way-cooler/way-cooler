@@ -195,8 +195,11 @@ pub extern fn compositor_ready() {
 }
 
 pub extern fn compositor_terminating() {
+    use ipc;
     info!("Compositor terminating!");
+    ipc::terminate();
     lua::send(lua::LuaQuery::Terminate).ok();
+
 }
 
 
