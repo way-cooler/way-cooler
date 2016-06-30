@@ -1,33 +1,16 @@
-# Sockets
-IPC with way-cooler taks place over two Unix sockets:
-
-`/tmp/way-cooler/server` and `/tmp/way-cooler/events`.
-
-Requests in the `server` socket allow clients to send commands to the server and fetch specific data.
-
-The `events` socket allows clients to subscribe to events (key presses, workspace switches, etc.) from way-cooler. 
-
-Communication in both pipes done by exchanging a series of "packets" back and forth
-between the client and server.
-
-# Packets
-A packet will consist of a length followed by JSON payload.
-The length shall be an unsigned 32-bit number (`uint32`) encoded in big-endian.
-Following this will be a UTF-8 encoded string representing a valid JSON object.
-
-Replies from the server will follow the same protocol.
-
 # Command Channel Packets
-These are the packets used in `/tmp/way-cooler/server`. 
-Each is a JSON table, with a `type` field specifying what kind of packet it is.
+These are the packets used in `/tmp/way-cooler/server`.
+Each is a JSON table, with a `type` field specifying what kind of request it is.
 
 ## Errors
-In the event of an error - a malformed packet or an invalid user action, an error response will be sent.
-This has the key `type` set to `error` and a short description in `reason`.
+In the event of an error - a malformed packet or an invalid user action - an error response will be sent.
+This has the key `type` set to `error` and a short description in `reason`. All errors WILL have reasons.
 
 ```json
 SEND { "type": "some-invalid-type" }
 RECV { "type": "error", "reason": "invalid message type" }
+SEND { "type": "get" }
+RECV { "type": "error", "reason": "missing message field", "missing": "key", "expected": "String" }
 ```
 
 # Communication
@@ -48,73 +31,91 @@ The reply will either be a `value` with the requested value, or an error.
 ```
 
 ### Errors
-Errors will be returned if the registry key does not exist, or the registry
-key cannot be accessed (if it is not an object or if it has restricted flags),
-or if the value is write-only.
+Errors will be returned if the key does not exist or is a command ("key not found"),
+or the key cannot be accessed (if it is write-only; "cannot 'get' that key").
 
 ```json
 SEND { "type": "get", "key": "some-invalid-key-heeeeerrrreeee" }
 RECV { "type": "error", "reason": "key not found" }
 
 SEND { "type": "get", "key": "workspace-right" }
-RECV { "type": "error", "reason": "invalid key" }
+RECV { "type": "error", "reason": "key not found" }
 
 SEND { "type": "get", "key": "notify" }
-RECV { "type": "error", "reason": "no write access"}
+RECV { "type": "error", "reason": "cannot 'get' that key"}
 ```
 
 ## set
 Sets data in way-cooler. See <the registry docs> for a list of keys.
+Note that at the moment new keys cannot be created, in the future an 'insert' command may be added.
 ```json
 { "type": "set", "key": "mouse.coords", "value": { "x": 12, "y": 22 } }
 ```
 
 ### Reply
-The reply will either be an empty `success` with the serialized value, or an access
-error.
+The reply will either be an empty `success` or an access error.
 ```json
 SEND { "type": "set", "key": "mouse.coords", "value": { "x": 12, "y": 22 } }
 RECV { "type": "success" }
 ```
 
 ### Errors
-Errors will be returned if the registry key cannot be accessed
-(if it is not an object or if it has restricted flags).
+Errors will be returned if the key does not exist or is a command ("key not found"),
+or the key cannot be accessed (if it is read-only; "cannot 'set' that key").
 ```json
-SEND { "type": "set", "key": "private_key", "value": "secret" }
-RECV { "type": "error", "reason": "invalid key" }
+SEND { "type": "set", "key": "immutable_key", "value": "newvalue" }
+RECV { "type": "error", "reason": "cannot 'set' that key" }
+SEND { "type": "set", "key": "workspace-right", "value": "workspace-left" }
+RECV { "type": "error", "reason": "key not found" }
+SEND { "type": "set", "key": "totally a real key", "value": "totally a legit value" }
+RECV { "type": "error", "reason": "key not found" }
 ```
 
 ## exists
-Checks if a key with that name exists
+Checks if a key with that name exists, and gets some metadata about it.
 ```json
 { "type": "exists", "key": "some_key" }
 ```
 
 ### Reply
-The reply will either be `"contains": "true"` with fields `key_type` and `flags` or 
-`"contains": "false"`. 
-The `flags` field is a list possibly containing `"read"` and/or `"write"`, if `key_type` is not `command`.
-The `key_type` field is one of `object`, `property`, and `command`.
+The reply will always be `success` if the `key` field was specified.
+The reply will either have `"exists": true` or `"exists": false`.
 
+If the key exists, the field `key_type` will be one of the following:
+- `Object`: The value at that key is a plain old JSON.
+- `Property`: The value at that key is a property, getting and setting it may involve code being executed (i.e. `mouse.coords` is a property with get/set).
+- `Command`: The value at that key is a command, which can be run using `run`.
+
+If the key is an `Object` or `Property`, it will also have a `flags` array, which may contain the following:
+- `"read"`: `get` will work on the key.
+- `"write"`: `set` will work on the key.
+
+There are currently no special flags for commands.
 ```json
 SEND { "type": "exists", "key": "some_key" }
-RECV { "type": "success", "contains": "true", "key_type": "object", "flags": [ "read", "write" ] }
+RECV { "type": "success", "exists": true, "key_type": "Object", "flags": [ "read", "write" ] }
 
 SEND { "type": "exists", "key": "quit" }
-RECV { "type": "success", "contains": "true", "key_type": "command" }
+RECV { "type": "success", "exists": true, "key_type": "Command" }
 
 SEND { "type": "exists", "key": "pointer.coords" }
-RECV { "type": "success", "contains": "true", "key_type": "property", "flags": [ "read", "write" ] }
+RECV { "type": "success", "exists": true, "key_type": "Property", "flags": [ "read", "write" ] }
 
 SEND { "type": "exists", "key": "foobar" }
-RECV { "type": "success", "contains": "false" }
+RECV { "type": "success", "exists": false }
+
+SEND { "type": "exists", "key": "screens.length" }
+RECV { "type": "success", "exists": true, "key_type": "Property", "flags": [ "read" ] }
 ```
 ### Errors
-This command will not return errors.
+This command will only return an error if the `key` field is not specified.
+```
+SEND { "type": "exists" }
+RECV { "type": "error", "reason": "missing message field", "missing": "key", "expected": "String" }
+```
 
 ## run
-Run a command. Comamdns are considered different than data: they are actions which take and return no data.
+Run a command. Command names are used for keybindings in the init file.
 ```json
 { "type": "run", "key": "workspace_move_left" }
 ```
@@ -127,9 +128,11 @@ RECV { "type": "success" }
 ```
 
 ### Errors
-An error will be returned if the command does not exist.
+An error will be returned if the key does not exists or is not a command ("key not found").
 ```json
 SEND { "type": "run", "key": "bogus_command" }
+RECV { "type": "error", "reason": "key not found" }
+SEND { "type": "run", "key": "mouse.coords" }
 RECV { "type": "error", "reason": "key not found" }
 ```
 
@@ -143,25 +146,3 @@ SEND { "type": "version" }
 RECV { "type": "success", "value": 1 }
 ```
 
-# Events
-By connecting to an event channel, clients can recieve envents from way-cooler. 
-
-## Requesting
-The first pakcet set across the event pipe should be a list of events requested.
-```json
-{ "type": "request", "events": [  { "type": "key.pressed", "keys": [ "ctrl", "alt", "delete" ] }, "workspace.switched" ] }
-```
-If the request packet is formatted properly, the server wil send a `{ "type": "success" }` packet.
-
-### Errors
-The reply will be an error if the JSON was invalid or an event was requested which does not exist.
-The client may re-attempt to register events after receiving an error.
-
-## Event loop
-After the server sends the success packet, it will send events. The server will not listen for inputs and only send more packets.
-
-### Event packets
-Event packets are described in the <event docs>. The general format:
-```json
-{ "type": "event", "name": "event_name", "field1": "value",  }
-```
