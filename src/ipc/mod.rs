@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::fs;
 
+use nix::unistd::getuid;
 use unix_socket::UnixListener;
 
 mod channel;
@@ -59,23 +60,8 @@ fn socket_base_path() -> PathBuf {
     if let Ok(path) = env::var("XDG_RUNTIME_DIR") {
         return PathBuf::from(path)
     }
-
-    let user = env::var("USER")
-        .expect("$USER environment variable undefined!");
-
-    let output = Command::new("id")
-        .arg("-u").arg(user)
-        .output()
-        .unwrap_or_else(|e| panic!("Failed to get user ID: {}", e));
-
-    if !output.status.success() {
-        panic!("Executing id command failed!")
-    }
-
-    match String::from_utf8(output.stdout) {
-        Ok(id) => return Path::new("/var/run/user").join(id),
-        Err(err) => panic!("Unable to parse user id: {:?}", err)
-    }
+    let user_id = getuid();
+    return Path::new("/var/run/user").join(user_id.to_string());
 }
 
 /// Initialize the IPC socket.

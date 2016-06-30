@@ -22,6 +22,8 @@ extern crate rustc_serialize;
 extern crate json_macro;
 extern crate unix_socket;
 
+extern crate nix;
+
 extern crate petgraph;
 
 use std::env;

@@ -19,6 +19,7 @@ petgraph = "0.2.*"
 rustc-serialize = "0.3.*"
 json_macro = "0.1.*"
 unix_socket = "0.5.*"
+nix = "0.6.0"
 
 [dev-dependencies]
 dummy-rustwlc = "0.3.*"
