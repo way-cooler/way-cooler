@@ -18,3 +18,12 @@ The length shall be an unsigned 32-bit number (`uint32`) encoded in big-endian.
 Following this will be a UTF-8 encoded string representing a valid JSON object.
 
 Replies from the server will follow the same protocol.
+
+# Errors
+All JSON packets sent are objects. Both channels will reject other JSON values:
+```json
+SEND 12
+RECV { "type": "error", "reason": "invalid request" }
+```
+
+The `events` and `command` channels both define their own error packets for invalid requests.
