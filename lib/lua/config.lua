@@ -32,26 +32,25 @@ end
 
 local use_key = ", use the `key` or `config.key` method to create a keybinding"
 
--- Register keybindings
-config.register_keys = function(keys)
-    keys = assert(keys, "key table was nil" .. use_key)
-    keys = assert(type(keys) == 'table', "keys must be a table" .. use_key)
-    for _,v in pairs(keys) do
-        if type(v) ~= 'table' then
-            error("invalid keybinding given" .. use_key, 2)
-        end
-        assert(v.mods, "keybinding missing modifiers" .. use_key)
-        assert(v.key, "keybinding missing modifiers" .. use_key)
-        assert(v.action, "keybinding missing action" .. use_key)
-        assert(v.loop, "keybinding missing repeat" .. use_key)
-        assert(type(v.mods) == 'table',
-               "keybinding modifiers: expected table" .. use_key)
-        assert(type(v.key) == 'string',
-               "keybinding key: expected string" .. use_key)
-        assert(type(v.action) == 'string' or type(v.action) == 'function',
-               "keybinding action: expected string or table" .. use_key)
-        assert(type(v.loop) == 'boolean',
-               "keybinding repeat: expected optional boolean" .. use_key)
+-- Register a keybinding
+config.register_key = function(key)
+    assert(key.mods, "keybinding missing modifiers" .. use_key)
+    assert(key.key, "keybinding missing modifiers" .. use_key)
+    assert(key.action, "keybinding missing action" .. use_key)
+    assert(key.loop, "keybinding missing repeat" .. use_key)
+    assert(type(key.mods) == 'table',
+           "keybinding modifiers: expected table" .. use_key)
+    assert(type(key.key) == 'string',
+           "keybinding key: expected string" .. use_key)
+    assert(type(key.loop) == 'boolean',
+           "keybinding repeat: expected optional boolean" .. use_key)
+
+    if (type(key.action) == 'string') then
+        rust.register_command_key(key.mods, key.key, key.action, key.loop)
+    elseif (type(key.action) == 'function') then
+        rust.register_lua_key(key.mods, key.key, key.action, key.loop)
+    else
+        error("keybinding action: expected string or a function"..use_key, 2)
     end
 end
 

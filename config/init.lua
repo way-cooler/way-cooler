@@ -2,7 +2,6 @@
 
 local way_cooler = require("way_cooler") -- way-cooler IPC
 local utils = require("utils") -- Utilities, i.e. shell
-local config = require("config") -- Used for configuring way-cooler after setup
 
 --
 -- Layouts
@@ -52,7 +51,7 @@ config.init_workspaces(9, workspace_settings)
 mod = "Mod4"
 local key = config.key -- Alias key so it's faster to type
 
-local terminal = "weston-terminal" -- Use the terminal of your choice
+way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
 
 local keys = {
   -- Open dmenu
@@ -82,13 +81,16 @@ local keys = {
 
 -- Add Mod + X bindings to switch to workspace X, Mod+Shift+X send active to X
 for i = 1, max_workspaces do
-  keys = util.table.add_all(keys,
+  util.table.append_to(keys,
     key({ mod          }, tostring(i), "workspace.switch_to" .. i),
     key({ mod, "Shift" }, tostring(i), "workspace.send_active_to_" .. i)
   )
 end
+
 -- Register the keybindings.
-config.register_keys(keys)
+for _, key in pairs(keys) do
+    config.register_keybinding(key)
+end
 
 -- To use plugins such as bars, or to start other programs on startup,
 -- call util.exec.spawn_once, which will not spawn copies after a config reload.
