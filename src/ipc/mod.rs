@@ -2,7 +2,7 @@
 
 use std::thread;
 use std::env;
-use std::path::PathBuf;
+use std::socket_path::PathBuf;
 use std::fs;
 
 use unix_socket::UnixListener;
@@ -19,7 +19,7 @@ pub const VERSION: u64 = 0u64; // Increment to 1 on release.
 
 /// Very much not cross-platform!
 /// Submit an issue when Wayland is ported to Windoze.
-pub const TEMP_FOLDER: &'static str = "/run/way-cooler/";
+pub const SOCKET_FOLDER: &'static str = "/var/run/way-cooler/";
 /// Socket over which synchronous communication is made with clients.
 pub const COMMAND_SOCKET: &'static str = "command";
 /// Socket over which events are sent to clients.
@@ -51,23 +51,23 @@ pub fn init() {
     let id = unique_ish_id();
     info!("Starting IPC with unique ID {}", id);
 
-    let mut path = PathBuf::from(TEMP_FOLDER);
-    path.push(id.to_string());
+    let mut socket_path = PathBuf::from(SOCKET_FOLDER);
+    socket_path.push(id.to_string());
 
-    if let Err(ioerr) = fs::create_dir_all(path.clone()) {
+    if let Err(ioerr) = fs::create_dir_all(socket_path.clone()) {
         // How can we handle not having a socket?
         // In the future, we could log and continue.
         // We could have a config option to not create/create-if-possible
         error!("Unable to create temp folder: {:?}", ioerr);
         return;
     }
-    let command_socket = UnixListener::bind(path.join(COMMAND_SOCKET))
+    let command_socket = UnixListener::bind(socket_path.join(COMMAND_SOCKET))
         .expect("Unable to open command socket!");
 
-    let event_socket = UnixListener::bind(path.join(EVENT_SOCKET))
+    let event_socket = UnixListener::bind(socket_path.join(EVENT_SOCKET))
         .expect("Unable to open event socket!");
 
-    env::set_var(PATH_VAR, path.clone());
+    env::set_var(PATH_VAR, socket_path.clone());
 
     debug!("IPC initialized, now listening for clients.");
 
