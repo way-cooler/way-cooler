@@ -5,6 +5,7 @@ use std::sync::{Mutex, MutexGuard, TryLockError};
 use std::cmp;
 
 use petgraph::graph::NodeIndex;
+use rustc_serialize::json::{Json, ToJson};
 
 use layout::container::{Container, Handle, ContainerType, Layout};
 use rustwlc::{WlcView, WlcOutput, Geometry, Point, Size, ResizeEdge};
@@ -1046,6 +1047,29 @@ impl LayoutTree {
 
 }
 
+impl ToJson for LayoutTree {
+    fn to_json(&self) -> Json {
+        use std::collections::BTreeMap;
+        fn node_to_json(node_ix: NodeIndex, tree: &LayoutTree) -> Json {
+            match &tree.tree[node_ix] {
+                &Container::View { .. } => {
+                    // probably put something more helpful here
+                    return Json::String("A handle".to_string())
+                },
+                ref container => {
+                    let mut inner_map = BTreeMap::new();
+                    let children = tree.tree.children_of(node_ix).iter()
+                        .map(|node| node_to_json(*node, tree)).collect();
+                    inner_map.insert(format!("{:?}", container.get_type()),
+                                     Json::Array(children));
+                    return Json::Object(inner_map)
+                }
+            }
+        }
+        return node_to_json(self.tree.root_ix(), self);
+    }
+}
+
 /// Attempts to lock the tree. If the Result is Err, then a thread that
 /// previously had the lock panicked and potentially left the tree in a bad state
 pub fn try_lock_tree() -> TreeResult {
@@ -1053,6 +1077,14 @@ pub fn try_lock_tree() -> TreeResult {
     TREE.try_lock()
 }
 
+
+pub fn get_json() -> Json {
+    if let Ok(tree) = try_lock_tree() {
+        tree.to_json()
+    } else {
+        Json::Null
+    }
+}
 
 #[cfg(test)]
 mod tests {
