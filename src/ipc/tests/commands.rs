@@ -191,32 +191,32 @@ fn exists() {
     assert_eq!(reply!(EXISTS_OBJECT_RW),
                exists_json(json_object!{
                    "flags" => (json!([ "read".to_json(), "write".to_json()])),
-                   "type" => ("Object".to_json())
+                   "key_type" => "Object"
                }));
     assert_eq!(reply!(EXISTS_PROP),
                exists_json(json_object!{
                    "flags" => (json!([ "read".to_json(), "write".to_json()])),
-                   "type" => ("Property".to_json())
+                   "key_type" => "Property"
                }));
     assert_eq!(reply!(EXISTS_PROP_READ),
                exists_json(json_object!{
                    "flags" => (json!([ "read".to_json() ])),
-                   "type" => ("Property".to_json())
+                   "key_type" => "Property"
                }));
     assert_eq!(reply!(EXISTS_PROP_WRITE),
                exists_json(json_object!{
                    "flags" => (json!([ "write".to_json() ])),
-                   "type" => ("Property".to_json())
+                   "key_type" => "Property"
                }));
     assert_eq!(reply!(EXISTS_OBJECT_READ),
                exists_json(json_object!{
                    "flags" => (json!([ "read".to_json() ])),
-                   "type" => ("Object".to_json())
+                   "key_type" => "Object"
                }));
     assert_eq!(reply!(EXISTS_OBJECT_WRITE),
                exists_json(json_object!{
                    "flags" => (json!([ "write".to_json()])),
-                   "type" => ("Object".to_json())
+                   "key_type" => "Object"
                }));
     assert_eq!(reply!(EXISTS_BAD_KEY),
                channel::success_json_with(json_object!{

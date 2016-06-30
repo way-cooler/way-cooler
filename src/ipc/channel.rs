@@ -46,6 +46,7 @@ pub fn u32_from_bytes(bytes: [u8; 4]) -> u32 {
 /// Receives a packet from the given stream.
 pub fn read_packet(stream: &mut Read) -> ReceiveResult {
     let mut buffer = [0u8; 4];
+    // Stream can blindly read "get a billion bytes" and will wait
     try!(stream.read_exact(&mut buffer).map_err(ReceiveError::IO));
     let len = u32_from_bytes(buffer);
     trace!("Listening for packet of length {}", len);

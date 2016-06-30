@@ -25,7 +25,7 @@ macro_rules! expect_key {
 }
 
 /// Run a thread reading and replying to queries
-pub fn thread<S: Read + Write>(mut stream: S) {
+pub fn thread<S: Read + Write>(mut stream: &mut S) {
     loop {
         match channel::read_packet(&mut stream) {
             Ok(packet) => {
@@ -135,7 +135,7 @@ pub fn reply(json: Json) -> Result<Json, Json> {
             Ok(channel::success_json_with(json_object!{
                 "exists" => true,
                 "flags" => flags,
-                "type" => type_
+                "key_type" => type_
             }))
         },
 
