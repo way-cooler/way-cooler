@@ -2,7 +2,7 @@
 
 use std::thread;
 use std::env;
-use std::socket_path::PathBuf;
+use std::path::PathBuf;
 use std::fs;
 
 use unix_socket::UnixListener;
