@@ -4,7 +4,6 @@ use std::collections::{HashSet, BTreeMap};
 
 use rustc_serialize::json::{Json, ToJson};
 
-use super::*;
 use super::super::channel;
 
 use registry;

@@ -128,15 +128,13 @@ impl Write for BidirectionalStream {
 
 #[test]
 fn command_loop() {
-    let (mut in_channel, mut _in_len) = ipc_input();
-    let (mut expected_out, mut _out_len) = ipc_output();
+    let (in_channel, _in_len) = ipc_input();
+    let (expected_out, _out_len) = ipc_output();
 
-    let mut thread_out = Vec::new();
+    let thread_out = Vec::new();
     let mut stream = BidirectionalStream::new(in_channel, thread_out);
 
     command::thread(&mut stream);
 
     assert_eq!(stream.output, expected_out);
-}
-fn read_after_take() {
 }

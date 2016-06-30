@@ -1,6 +1,6 @@
 //! Tests for IPC
 
-use rustc_serialize::json::Json;
+//use rustc_serialize::json::Json;
 
 // Unit tests for methods in channel.rs
 mod channel;
