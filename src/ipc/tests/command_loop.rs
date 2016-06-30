@@ -1,6 +1,7 @@
 //! Test the command channel's integrity/ability to run.
 
 use super::super::{channel, command};
+use registry::tests as regtests;
 
 const WRITE_ERR: &'static str = "Unable to write to channel!";
 
@@ -9,23 +10,23 @@ fn ipc_input() -> (Vec<u8>, u32) {
     let mut count = 0u32;
 
     channel::write_packet(&mut turn, &json!({
-        "type" => ("version".to_json())
+        "type" => "version"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => ("commands".to_json())
+        "type" => "commands"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => ("get".to_json()),
-        "key" => ("point".to_json())
+        "type" => "get",
+        "key" => "point"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => ("run".to_json()),
-        "key" => ("command".to_json())
+        "type" => "run",
+        "key" => "command"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => ("set".to_json()),
+        "type" => "set",
         "key" => "bool",
-        "value" => false
+        "value" => true
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
         "type" => "set",
@@ -37,12 +38,11 @@ fn ipc_input() -> (Vec<u8>, u32) {
         "key" => "null"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => "run",
-        "key" => "command"
-    })).expect(WRITE_ERR); count += 1;
-    channel::write_packet(&mut turn, &json!({
         "type" => "get",
         "key" => "get_prop"
+    })).expect(WRITE_ERR); count += 1;
+    channel::write_packet(&mut turn, &json!({
+        "type" => "ping"
     })).expect(WRITE_ERR); count += 1;
     (turn, count)
 }
@@ -57,36 +57,34 @@ fn ipc_output() -> (Vec<u8>, u32) {
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
         "type" => "success",
-        "value" => (json!([ "get", "set", "commands", "run", "version"]))
+        "value" => (json!([ "get", "set", "exists", "run",
+                             "version", "commands", "ping"]))
     })).expect(WRITE_ERR);
     channel::write_packet(&mut turn, &json!({
-        "type" => "get",
-        "key" => "point",
-        "value" => (json!({
-            "x" => 10, "y" => 12
-        }))
+        "type" => "success",
+        "value" => (regtests::POINT.to_json())
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => ("success".to_json())
+        "type" => "success"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => ("success".to_json())
+        "type" => "success"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
         "type" => "success"
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
         "type" => "success",
+        "exists" => true,
         "key_type" => "Object",
         "flags" => (json!([ "read".to_json(), "write".to_json() ]))
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => "run",
-        "key" => "command"
+        "type" => "success",
+        "value" => (regtests::PROP_GET_RESULT.to_json())
     })).expect(WRITE_ERR); count += 1;
     channel::write_packet(&mut turn, &json!({
-        "type" => "success",
-        "value" => 12
+        "type" => "success"
     })).expect(WRITE_ERR); count += 1;
     (turn, count)
 }
