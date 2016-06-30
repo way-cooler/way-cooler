@@ -24,13 +24,13 @@ Gets data from way-cooler. See the <registry docs> for a list of keys.
 { "type": "get", "key": "mouse.coords" }
 ```
 
-### Reply
+#### Reply
 The reply will either be a `value` with the requested value, or an error.
 ```json
 { "type": "success", "value": 12 }
 ```
 
-### Errors
+#### Errors
 Errors will be returned if the key does not exist or is a command ("key not found"),
 or the key cannot be accessed (if it is write-only; "cannot 'get' that key").
 
@@ -52,14 +52,14 @@ Note that at the moment new keys cannot be created, in the future an 'insert' co
 { "type": "set", "key": "mouse.coords", "value": { "x": 12, "y": 22 } }
 ```
 
-### Reply
+#### Reply
 The reply will either be an empty `success` or an access error.
 ```json
 SEND { "type": "set", "key": "mouse.coords", "value": { "x": 12, "y": 22 } }
 RECV { "type": "success" }
 ```
 
-### Errors
+#### Errors
 Errors will be returned if the key does not exist or is a command ("key not found"),
 or the key cannot be accessed (if it is read-only; "cannot 'set' that key").
 ```json
@@ -77,7 +77,7 @@ Checks if a key with that name exists, and gets some metadata about it.
 { "type": "exists", "key": "some_key" }
 ```
 
-### Reply
+#### Reply
 The reply will always be `success` if the `key` field was specified.
 The reply will either have `"exists": true` or `"exists": false`.
 
@@ -107,7 +107,7 @@ RECV { "type": "success", "exists": false }
 SEND { "type": "exists", "key": "screens.length" }
 RECV { "type": "success", "exists": true, "key_type": "Property", "flags": [ "read" ] }
 ```
-### Errors
+#### Errors
 This command will only return an error if the `key` field is not specified.
 ```
 SEND { "type": "exists" }
@@ -120,14 +120,14 @@ Run a command. Command names are used for keybindings in the init file.
 { "type": "run", "key": "workspace_move_left" }
 ```
 
-### Reply
+#### Reply
 The reply will either be `success` or an error.
 ```json
 SEND { "type": "run", "key": "workspace_send_right" }
 RECV { "type": "success" }
 ```
 
-### Errors
+#### Errors
 An error will be returned if the key does not exists or is not a command ("key not found").
 ```json
 SEND { "type": "run", "key": "bogus_command" }
@@ -136,7 +136,7 @@ SEND { "type": "run", "key": "mouse.coords" }
 RECV { "type": "error", "reason": "key not found" }
 ```
 
-### version
+## version
 Gets the version of the API. Currently version 0, will hit version 1 on release,
 and any changes in the API result in a version increment. Consult these docs to see
 what changes between versions.
@@ -146,3 +146,9 @@ SEND { "type": "version" }
 RECV { "type": "success", "value": 1 }
 ```
 
+## ping
+Replies with a `success` packet.
+```json
+SEND { "type": "ping" }
+RECV { "type": "success" }
+```
