@@ -30,6 +30,9 @@ use std::env;
 
 use log::LogLevel;
 
+use nix::sys::signal::{SigHandler, SigSet, SigAction, SaFlags};
+use nix::sys::signal;
+
 use rustwlc::types::LogType;
 
 #[macro_use] // As it happens, it's important to declare the macros first.
@@ -88,8 +91,16 @@ pub fn init_logs() {
     info!("Logger initialized, setting wlc handlers.");
 }
 
+/// Handler for signals, should close the ipc
+extern "C" fn sig_handle(_: nix::libc::c_int) {
+    rustwlc::terminate();
+}
+
 fn main() {
     println!("Launching way-cooler...");
+
+    let sig_action = SigAction::new(SigHandler::Handler(sig_handle), SaFlags::empty(), SigSet::empty());
+    unsafe {signal::sigaction(signal::SIGINT, &sig_action).unwrap() };
 
     // Start logging first
     init_logs();

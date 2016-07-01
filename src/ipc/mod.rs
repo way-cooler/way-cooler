@@ -4,7 +4,6 @@ use std::thread;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::sync::RwLock;
 
 use nix::unistd::getuid;
 use unix_socket::UnixListener;
