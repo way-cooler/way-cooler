@@ -109,7 +109,7 @@ fn main() {
     // Add API to registry
     registry::init();
     // Start listening for clients
-    ipc::init();
+    let _ipc = ipc::init();
     // And bind the defaults
     keys::init();
     //
