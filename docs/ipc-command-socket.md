@@ -1,10 +1,10 @@
 # Command Channel Packets
-These are the packets used in `/tmp/way-cooler/server`.
+These are the packets used in the socket `/var/run/user/<user-id>/way-cooler/<unique-id>/command`.
 Each is a JSON table, with a `type` field specifying what kind of request it is.
 
 ## Errors
 In the event of an error - a malformed packet or an invalid user action - an error response will be sent.
-This has the key `type` set to `error` and a short description in `reason`. All errors WILL have reasons.
+This has the key `type` set to `error` and a short description in `reason`. All errors will have reasons.
 
 ```json
 SEND { "type": "some-invalid-type" }
@@ -18,7 +18,7 @@ The client starts communication by sending a packet, and the server will send re
 Replies either have `"type": "success"` or `"type": "error"`.
 
 ## get
-Gets data from way-cooler. See the <registry docs> for a list of keys.
+Gets data from way-cooler. See the registry docs for a list of keys.
 ```json
 { "type": "get", "key": "views.current" }
 { "type": "get", "key": "mouse.coords" }

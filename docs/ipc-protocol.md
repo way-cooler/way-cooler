@@ -1,11 +1,14 @@
 # Sockets
 IPC with way-cooler taks place over two Unix sockets:
 
-`/tmp/way-cooler/server` and `/tmp/way-cooler/events`.
+`/var/run/user/<user-id>/way-cooler/<unique-id>/command` and `/tmp/way-cooler/<unique-id>/event`.
 
-Requests in the `server` socket allow clients to send commands to the server and fetch specific data.
+The unique-id is generated at runtime, and these paths can be found in the `WAY_COOLER_SOCKET_FOLDER` environment variable.
+I.e, in this example `WAY_COOLER_SOCKET_FOLDER` would be `/var/run/user/<user-id>/way-cooler/<unique-id>/`.
 
-The `events` socket allows clients to subscribe to events (key presses, workspace switches, etc.) from way-cooler.
+Requests in the `command` socket allow clients to send commands to the server and fetch specific data.
+
+The `event` socket allows clients to subscribe to events (key presses, workspace switches, etc.) from way-cooler.
 
 Communication in both pipes done by exchanging a series of "packets" back and forth
 between the client and server.
