@@ -156,7 +156,7 @@ fn command_thread(socket: UnixListener) {
                 info!("Command: connected to {:?}", stream);
                 let _handle = thread::Builder::new()
                     .name("IPC server helper".to_string())
-                    .spawn(move || command::thread(&mut stream));
+                    .spawn(move || command::listen_loop(&mut stream));
             },
             Err(err) => {
                 info!("Error receiving a stream: {}", err);

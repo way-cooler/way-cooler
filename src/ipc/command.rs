@@ -10,6 +10,7 @@ use super::channel::{self, ReceiveError};
 use registry;
 use commands;
 
+/// NOTE This should be removed when types are added to the registry, and this ugly check is unnecessary
 macro_rules! expect_key {
     ($in_json:expr; $name:expr, $typ:ident) => {
         match $in_json.remove($name) {
@@ -25,7 +26,7 @@ macro_rules! expect_key {
 }
 
 /// Run a thread reading and replying to queries
-pub fn thread<S: Read + Write>(mut stream: &mut S) {
+pub fn listen_loop<S: Read + Write>(mut stream: &mut S) {
     loop {
         match channel::read_packet(&mut stream) {
             Ok(packet) => {
@@ -56,8 +57,7 @@ pub fn thread<S: Read + Write>(mut stream: &mut S) {
                         channel::write_packet(&mut stream, &reply)
                             .expect("invalid syntax: Unaable to reply!");
                     }
-                    // Should not be ParserError::IOError...
-                    _ => unreachable!()
+                    ParserError::IoError(_) => unreachable!()
                 }
             }
         }
@@ -65,8 +65,8 @@ pub fn thread<S: Read + Write>(mut stream: &mut S) {
 }
 
 /// Generates the response needed to a given command
-/// If the request is invalid it returns an Err.
-/// If the request is valid but fails it returns an Ok.
+/// If the request is ill-formed it returns an Err.
+/// If the request is valid but fails it returns an Err.
 pub fn reply(json: Json) -> Result<Json, Json> {
     let mut object: BTreeMap<String, Json>;
     if let Json::Object(obj) = json {
@@ -79,8 +79,7 @@ pub fn reply(json: Json) -> Result<Json, Json> {
 
     let request_type = expect_key!(object; "type", String);
 
-    // Converts the string to a str in the most Rustic way possible
-    match &*request_type {
+    match request_type.as_str() {
         // Registry
         "get" => {
             use std::ops::Deref;
@@ -92,9 +91,6 @@ pub fn reply(json: Json) -> Result<Json, Json> {
                 Ok(data) => {
                     let (_flags, arc) = data.resolve();
                     let reply = channel::value_json(arc.deref().clone());
-                    // I'd return a Cow<Json> because write_packet needs an
-                    // &Json, but I dunno how to move the fields over in a
-                    // borrow.
                     return Ok(reply);
                 },
                 Err(err) => match err {

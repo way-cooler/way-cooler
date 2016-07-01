@@ -134,7 +134,7 @@ fn command_loop() {
     let thread_out = Vec::new();
     let mut stream = BidirectionalStream::new(in_channel, thread_out);
 
-    command::thread(&mut stream);
+    command::listen_loop(&mut stream);
 
     assert_eq!(stream.output, expected_out);
 }
