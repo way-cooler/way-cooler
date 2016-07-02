@@ -7,35 +7,33 @@ use std::hash::{Hash, Hasher};
 use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
 
-use super::commands;
+use super::commands::{self, CommandFn};
+
+mod keypress;
+pub use self::keypress::KeyPress;
 
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> =
         RwLock::new(HashMap::new());
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct KeyPress {
-    modifiers: KeyMod,
-    keys: Vec<Keysym>
-}
 
 pub fn init() {
-    macro_rules! insert_all {
+    macro_rules! register {
         ( $($press:expr => $name:expr);+ ) => {
             register(vec![
-                $( ($press, commands::get(&$name.to_string())
-                  .expect("Unable to register default command!")) ),+
+                $( ($press, KeyEvent::Command(commands::get(&$name.to_string())
+                  .expect("Unable to register default command!"))) ),+
                 ]);
         }
     }
 
-    insert_all! {
+    register! {
         keypress!("Alt", "Escape") => "quit";
         keypress!("Alt", "Return") => "launch_terminal";
         keypress!("Alt", "d") => "launch_dmenu";
         keypress!("Alt", "l") => "dmenu_eval";
-        KeyPress::from_key_names(vec!["Alt", "Shift"], vec!["l"])
+        KeyPress::from_key_names(vec!["Alt", "Shift"], "l")
             .expect("Unable to create default keypress")
             => "dmenu_lua_dofile";
 
@@ -64,16 +62,16 @@ pub fn init() {
         keypress!("Alt", "0") => "switch_workspace_0";
 
         /* Moving active container to another Workspace key bindings */
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("1")).unwrap() => "move_to_workspace_1";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("2")).unwrap() => "move_to_workspace_2";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("3")).unwrap() => "move_to_workspace_3";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("4")).unwrap() => "move_to_workspace_4";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("5")).unwrap() => "move_to_workspace_5";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("6")).unwrap() => "move_to_workspace_6";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("7")).unwrap() => "move_to_workspace_7";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("8")).unwrap() => "move_to_workspace_8";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("9")).unwrap() => "move_to_workspace_9";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), vec!("0")).unwrap() => "move_to_workspace_0"
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "1").unwrap() => "move_to_workspace_1";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "2").unwrap() => "move_to_workspace_2";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "3").unwrap() => "move_to_workspace_3";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "4").unwrap() => "move_to_workspace_4";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "5").unwrap() => "move_to_workspace_5";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "6").unwrap() => "move_to_workspace_6";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "7").unwrap() => "move_to_workspace_7";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "8").unwrap() => "move_to_workspace_8";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "9").unwrap() => "move_to_workspace_9";
+        KeyPress::from_key_names(vec!("Alt", "Shift"), "0").unwrap() => "move_to_workspace_0"
     }
 }
 
@@ -95,54 +93,16 @@ pub fn keymod_from_names(keys: Vec<&str>) -> Result<KeyMod, String> {
     return Ok(result);
 }
 
-impl KeyPress {
-    /// Creates a new KeyPress struct from a list of modifier and key names
-    pub fn from_key_names(mods: Vec<&str>, keys: Vec<&str>) -> Result<KeyPress, String> {
-        keymod_from_names(mods).and_then(|mods| {
-            let mut syms: Vec<Keysym> = Vec::with_capacity(keys.len());
-            for name in keys {
-                // Parse a keysym for each given key
-                if let Some(sym) = Keysym::from_name(name.to_string(),
-                                                     NameFlags::None) {
-                    syms.push(sym);
-                }
-                // If lowercase cannot be parsed, try case insensitive
-                else if let Some(sym) = Keysym::from_name(name.to_string(),
-                                                          NameFlags::CaseInsensitive) {
-                    syms.push(sym);
-                }
-                else {
-                    return Err(format!("Invalid key: {}", name));
-                }
-            }
-            // Sort and dedup to make sure hashes are the same
-            syms.sort_by_key(|s| s.get_code());
-            syms.dedup();
-            return Ok(KeyPress { modifiers: mods, keys: syms });
-        })
-    }
 
-    /// Creates a KeyPress from keys that are pressed at the moment
-    pub fn new(mods: KeyMod, mut keys: Vec<Keysym>) -> KeyPress {
-        // Sort and dedup to make sure hashes are the same
-        keys.sort_by_key(|k| k.get_code());
-        keys.dedup();
-
-        KeyPress { modifiers: mods, keys: keys }
-    }
+// Actions which can be taken on a keypress
+#[derive(Clone)]
+pub enum KeyEvent {
+    /// A way-cooler command is run
+    Command(CommandFn),
+    /// A Lua function is invoked.
+    /// The String field is used as a unique identifier to the Lua thread.
+    Lua
 }
-
-impl Hash for KeyPress {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        hasher.write_u32(self.modifiers.bits());
-        for ref sym in &self.keys {
-            hasher.write_u32(sym.get_code());
-        }
-    }
-}
-
-/// The type of function a key press handler is.
-pub type KeyEvent = Arc<Fn() + Send + Sync>;
 
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
@@ -155,7 +115,6 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
 }
 
 /// Register a new set of key mappings
-#[allow(dead_code)]
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
