@@ -1052,6 +1052,20 @@ impl ToJson for LayoutTree {
         use std::collections::BTreeMap;
         fn node_to_json(node_ix: NodeIndex, tree: &LayoutTree) -> Json {
             match &tree.tree[node_ix] {
+                &Container::Workspace { ref name, .. } => {
+                    let mut inner_map = BTreeMap::new();
+                    let children = tree.tree.children_of(node_ix).iter()
+                        .map(|node| node_to_json(*node, tree)).collect();
+                    inner_map.insert(format!("Workspace {}", name), Json::Array(children));
+                    return Json::Object(inner_map);
+                }
+                &Container::Container { ref layout, .. } => {
+                    let mut inner_map = BTreeMap::new();
+                    let children = tree.tree.children_of(node_ix).iter()
+                        .map(|node| node_to_json(*node, tree)).collect();
+                    inner_map.insert(format!("Container w/ layout {:?}", layout), Json::Array(children));
+                    return Json::Object(inner_map);
+                }
                 &Container::View { ref handle, .. } => {
                     return Json::String(handle.get_title());
                 },
