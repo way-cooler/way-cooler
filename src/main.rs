@@ -18,6 +18,11 @@ extern crate env_logger;
 #[macro_use]
 extern crate hlua;
 extern crate rustc_serialize;
+#[macro_use]
+extern crate json_macro;
+extern crate unix_socket;
+
+extern crate nix;
 
 extern crate petgraph;
 
@@ -25,10 +30,14 @@ use std::env;
 
 use log::LogLevel;
 
+use nix::sys::signal::{SigHandler, SigSet, SigAction, SaFlags};
+use nix::sys::signal;
+
 use rustwlc::types::LogType;
 
 #[macro_use] // As it happens, it's important to declare the macros first.
 mod macros;
+mod convert;
 
 mod callbacks;
 mod keys;
@@ -36,7 +45,7 @@ mod keys;
 mod lua;
 mod registry;
 mod commands;
-mod convert;
+mod ipc;
 
 mod layout;
 mod compositor;
@@ -82,8 +91,16 @@ pub fn init_logs() {
     info!("Logger initialized, setting wlc handlers.");
 }
 
+/// Handler for signals, should close the ipc
+extern "C" fn sig_handle(_: nix::libc::c_int) {
+    rustwlc::terminate();
+}
+
 fn main() {
     println!("Launching way-cooler...");
+
+    let sig_action = SigAction::new(SigHandler::Handler(sig_handle), SaFlags::empty(), SigSet::empty());
+    unsafe {signal::sigaction(signal::SIGINT, &sig_action).unwrap() };
 
     // Start logging first
     init_logs();
@@ -102,8 +119,11 @@ fn main() {
     commands::init();
     // Add API to registry
     registry::init();
+    // Start listening for clients
+    let _ipc = ipc::init();
     // And bind the defaults
     keys::init();
+    //
 
     // Hand control over to wlc's event loop
     info!("Running wlc...");

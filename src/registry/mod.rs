@@ -11,13 +11,25 @@ mod types;
 pub use self::types::*; // Export constants too
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 pub type RegMap = HashMap<String, RegistryField>;
 
+#[cfg(not(test))]
+#[inline]
+fn new_map() -> RegMap {
+    HashMap::new()
+}
+
+#[cfg(test)]
+#[inline]
+fn new_map() -> RegMap {
+    self::tests::registry_map()
+}
+
 lazy_static! {
-    /// Registry variable for the registry
-    static ref REGISTRY: RwLock<RegMap> = RwLock::new(HashMap::new());
+    /// Static HashMap for the registry
+    static ref REGISTRY: RwLock<RegMap> = RwLock::new(new_map());
 }
 
 /// Error types that can happen
@@ -111,6 +123,9 @@ pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
         Entry::Occupied(mut entry) => {
             let first_type = entry.get().get_type();
             let flags = entry.get().get_flags();
+            if !flags.contains(AccessFlags::WRITE()) {
+                return Err(RegistryError::InvalidOperation)
+            }
             if first_type == FieldType::Object {
                 return Ok(RegistrySetData::Displaced(
                     entry.insert(RegistryField::Object {
@@ -122,6 +137,7 @@ pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
                 match entry.get().clone().as_property_set() {
                     Some(func) =>
                         return Ok(RegistrySetData::Property(flags, func)),
+                    // None: should not happen
                     None => return Err(RegistryError::InvalidOperation)
                 }
             }
@@ -151,7 +167,6 @@ pub fn insert_property(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>
 /// Gets access flags and field type of the given key.
 ///
 /// Returns `None` if the key does not exist.
-#[allow(dead_code)]
 pub fn key_info(key: &str) -> Option<(FieldType, AccessFlags)> {
     trace!("key_info: {}", key);
     let read_reg = read_lock();

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
-use rustc_serialize::json::Json;
+use rustc_serialize::json::{Json, ToJson};
 
 bitflags! {
     /// Access permissions for items in the registry
@@ -26,6 +26,19 @@ impl AccessFlags {
     #[inline]
     #[allow(non_snake_case)]
     pub fn WRITE() -> AccessFlags { WRITE }
+}
+
+impl ToJson for AccessFlags {
+    fn to_json(&self) -> Json {
+        let mut arr = Vec::with_capacity(2);
+        if self.contains(READ) {
+            arr.push(Json::String("read".to_string()));
+        }
+        if self.contains(WRITE) {
+            arr.push(Json::String("write".to_string()))
+        }
+        Json::Array(arr)
+    }
 }
 
 /// Function which will yield an object
@@ -115,6 +128,15 @@ impl Debug for RegistrySetData {
                 .field("data", data as &Debug).finish(),
             &RegistrySetData::Property(_, _) =>
                 write!(f, "RegistrySetData::Property(...)")
+        }
+    }
+}
+
+impl ToJson for FieldType {
+    fn to_json(&self) -> Json {
+        match *self {
+            FieldType::Property => json!("Property"),
+            FieldType::Object => json!("Object")
         }
     }
 }

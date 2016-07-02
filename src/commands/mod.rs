@@ -12,9 +12,21 @@ pub type CommandFn = Arc<Fn() + Send + Sync>;
 
 pub type ComMap = HashMap<String, CommandFn>;
 
+#[cfg(not(test))]
+#[inline]
+fn new_map() -> ComMap {
+    HashMap::new()
+}
+
+#[cfg(test)]
+#[inline]
+fn new_map() -> ComMap {
+    self::tests::command_map()
+}
+
 lazy_static! {
     /// Registry variable for the registry
-    static ref COMMANDS: RwLock<ComMap> = RwLock::new(HashMap::new());
+    static ref COMMANDS: RwLock<ComMap> = RwLock::new(new_map());
 }
 
 /// Initialize commands API (register default commands)
