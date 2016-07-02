@@ -1052,9 +1052,8 @@ impl ToJson for LayoutTree {
         use std::collections::BTreeMap;
         fn node_to_json(node_ix: NodeIndex, tree: &LayoutTree) -> Json {
             match &tree.tree[node_ix] {
-                &Container::View { .. } => {
-                    // probably put something more helpful here
-                    return Json::String("A handle".to_string())
+                &Container::View { ref handle, .. } => {
+                    return Json::String(handle.get_title());
                 },
                 ref container => {
                     let mut inner_map = BTreeMap::new();
