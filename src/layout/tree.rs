@@ -89,6 +89,17 @@ lazy_static! {
 }
 
 impl LayoutTree {
+    /// Drops every node in the tree, essentially invalidating it
+    pub fn destroy_tree(&mut self) {
+        let root_ix = self.tree.root_ix();
+        let mut nodes = self.tree.all_descendants_of(&root_ix);
+        nodes.sort_by(|a, b| b.cmp(a));
+        for node in nodes {
+            self.tree.remove(node);
+        }
+        self.unset_active_container();
+    }
+
     /// Sets the active container by finding the node with the WlcView
     pub fn set_active_container(&mut self, handle: WlcView) {
         info!("Active container was: {:?}", self.active_container);
@@ -1013,18 +1024,20 @@ impl LayoutTree {
 
         // Ensure active container is in tree and of right type
         if let Some(active_ix) = self.active_container {
-            let active = self.get_active_container()
-                .expect("active_container points to invalid node");
-            match active.get_type() {
-                ContainerType::View | ContainerType::Container => {},
-                _ => panic!("Active container was not view or container")
-            }
-            // Check active container in tree
-            if self.tree.ancestor_of_type(active_ix, ContainerType::Root).is_none() {
-                error!("Active container @ {:?} is not part of tree!", active_ix);
-                error!("Active container is {:?}", active);
-                trace!("The tree: {:#?}", self);
-                panic!()
+            if self.active_container.is_some() {
+                let active = self.get_active_container()
+                    .expect("active_container points to invalid node");
+                match active.get_type() {
+                    ContainerType::View | ContainerType::Container => {},
+                    _ => panic!("Active container was not view or container")
+                }
+                // Check active container in tree
+                if self.tree.ancestor_of_type(active_ix, ContainerType::Root).is_none() {
+                    error!("Active container @ {:?} is not part of tree!", active_ix);
+                    error!("Active container is {:?}", active);
+                    trace!("The tree: {:#?}", self);
+                    panic!()
+                }
             }
         }
 
