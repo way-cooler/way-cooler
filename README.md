@@ -1,15 +1,15 @@
-# way-cooler
+# Way-Cooler
 
-[![Join the chat at https://gitter.im/Immington-Industries/way-cooler](https://badges.gitter.im/Immington-Industries/way-cooler.svg)][gitter]
+[![Join the chat at https://gitter.im/Immington-Industries/Way-Cooler](https://badges.gitter.im/Immington-Industries/way-cooler.svg)][gitter]
 [![Crates.io](https://img.shields.io/badge/crates.io-v0.2.0-orange.svg)](https://crates.io/crate/way-cooler)
 [![Build Status](https://travis-ci.org/Immington-Industries/way-cooler.svg?branch=master)](https://travis-ci.org/Immington-Industries/way-cooler)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Immington-Industries/way-cooler/)
 
-way-cooler is a customizeable tiling window manager written in [Rust][] for [Wayland][wayland]. It uses the Wayland compositor library [wlc][].
+Way-Cooler is a customizeable tiling window manager written in [Rust][] for [Wayland][wayland].
 
 # Development
 
-way-cooler is currently in alpha. We have most of our goals in mind, and are working on infrastructure now (nothing screenshot-worthy). 
+Way-Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to make it user friendly.
 
 ## Motivation
 
@@ -18,61 +18,63 @@ and not being backwards compatable with existing X11 tools, we wanted to put our
 
 We take a lot of inspiration from current window managers (namely [i3][] and [awesome][]) but the goal is to exist as a unique alternative.
 
+
+## Features
+- i3-style tiling
+  * Horizontal/Vertical layouts
+  * Nest containers with different layouts
+- Client application support via an IPC
+  * Enables dynamic configuration at runtime, without having to reload a configuration file
+  * Allows extensions of the window manager to exist as separate programs talking over the IPC
+- A Lua environment designed to make extending Way-Cooler simple and easy
+  * Lua is the configuration format, allowing the user to enhance their window manager in any way they want.
+  * Utilities library included to aid communicating with Way-Cooler
+- X programs supported through XWayland
+
 ## Planned Features
-We will be tracking these in the [issues section][].
 
-- Workspaces
-- i3-style tiling windows (with additional automatic tiling configurations)
-- Lua scriptibility
-- Control Lua via inter-process channels
-- Dynamic configuration
-- Compatable versions of existing X tools/setup (`xmodmap`, `xbindkeys`, `xdotool`)
-- Extensibility via other programs (i.e. a separate `way-cooler-bar`, `way-cooler-widgets`, etc.)
+- i3 Tabbed/Stacked tiling
+- Floating windows
+- Server-side borders around window clients
+- A WebKit powered status bar
+- More customization settings
 
-A lot of the graphical parts of way-cooler (a bar, widgets, etc.) will ultimately be separate programs.
+Follow the development of these features in our [issues section][] or checkout our [contribution guidelines](#Contributing) if you want to help out.
 
 # Installation
 
-You will need Wayland, which should be availble from your distro's package manager.
+You will need the following dependencies installed on your machine to install Way-Cooler:
+- Wayland
+  * Including the server and client libraries
+- wlc
+  * Installation instructions can be found on [their github page](https://github.com/Cloudef/wlc)
+- Weston (optional)
+  * `WAYLAND_TERMINAL` defaults to `weston-terminal`
+- Cargo
+  * The package manager / build system used by Rust
 
-These are the package names on Arch:
-`wayland` for the Wayland protocol
-`xorg-server-xwayland` to run X programs on Wayland (recommended)
-`weston` provides `weston-terminal` (which can be the default terminal for way-cooler)
-
-If you have Rust, way-cooler can be installed via cargo:
+Finally, to install Way-Cooler simply run the following cargo command:
 
 ```shell
-cargo install way-cooler
+cargo install Way-Cooler
 ```
 
-This will build way-cooler from source. 
-
-For now, you will also need to install our non-Rust dependency, wlc. To do that, see [wlc's GitHub][wlc].
-
-In the future we will have a cargo build script, which will install wlc in the `.cargo` folder.
-
-# Compatability with X11
-
-Wayland is designed to be backwards-compatable with X11 by running X programs using a program called `xwayland`.
-Most existing X programs will run in way-cooler this way. 
-
-To only run Wayland programs, set the environment variable `WLC_XWAYLAND` to 0.
-
+You can try it out while running in an X environment, or switch to a TTY and run it as a standalone
 # Controls
 
 This alpha version currently supports these hardcoded controls: 
 
 - `Alt+Enter` Launches a terminal defined by the `WAYLAND_TERMINAL` environment variable - 
-if unset this defaults to `weston-terminal` which will require installing `weston` (should be available on most distros). 
-Note that you can set `WAYLAND_TERMINAL` to be an X11 program, and it will run under `Xwayland`.
+if unset this defaults to `weston-terminal` which will require installing `weston`
 - `Alt+d` Open `dmenu` to launch a program
-- `Alt+p` Shows off the Lua thread - prints the mouse coordinates to stdout using Lua
-- `Alt+Esc` Closes way-cooler
-- `Alt-1` through `Alt-9` Switch workspace
-- `Ctrl-LeftMouse` Drag the focused window around the workspace
-- `Ctrl-RightMouse` Resize the focused window (somewhat buggy at the moment)
-- `Ctrl-Shift-LeftMouse` Maximize window
+- `Alt+p` Send expressions to be executed directly by the Lua thread
+- `Alt+Esc` Closes Way-Cooler
+- `Alt+1` through `Alt+0` Switch workspace
+- `Alt+v` Make a new sub-container with a vertical layout
+- `Alt+h` Make a new sub-container with a horizontal layout
+- `Alt+<arrow-key>` Switch focus to a window in that direction
+- `Alt+<number-key>` Switch to different workspace
+- `Alt+shift+<number-key>` Move the focused container to another workspace
 
 # Contributing
 If you would like to contribute code, please feel free to fork and branch off of `development` and submit a pull request.
@@ -84,6 +86,6 @@ If you find bugs or have questions about the code, please [submit an issue] or p
 [wlc]: https://github.com/Cloudef/wlc
 [i3]: i3wm.org
 [awesome]: https://awesomewm.org/
-[issues section]: https://github.com/Immington-Industries/way-cooler/labels/features
-[submit an issue]: https://github.com/Immington-Industries/way-cooler/issues/new
-[gitter]: https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+[issues section]: https://github.com/Immington-Industries/Way-Cooler/labels/features
+[submit an issue]: https://github.com/Immington-Industries/Way-Cooler/issues/new
+[gitter]: https://gitter.im/Immington-Industries/Way-Cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
