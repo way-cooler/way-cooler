@@ -408,4 +408,42 @@ mod tests {
         assert_eq!(children_of_view.len(), 0);
     }
 
+    #[test]
+    fn test_id() {
+        let mut tree = basic_tree();
+        let root_ix = tree.root_ix();
+        {
+            // Root container should not have a UUID associated with it
+            let root = &tree[root_ix];
+            assert_eq!(root.get_id(), None);
+        }
+        // This is the uuid of the view, we will invalidate it in the next block
+        let view_id;
+        {
+            let view_ix = tree.descendant_of_type(root_ix, ContainerType::View).unwrap();
+            let view_container = &tree[view_ix];
+            view_id = view_container.get_id().unwrap();
+            assert_eq!(*tree.id_map.get(&view_id).unwrap(), view_ix);
+        }
+        {
+            let view_ix = *tree.id_map.get(&view_id).unwrap();
+            tree.remove(view_ix);
+            assert_eq!(tree.id_map.get(&view_id), None);
+        }
+        let fake_view = WlcView::root();
+        let root_container_ix = tree.descendant_of_type(root_ix, ContainerType::Container).unwrap();
+        let container = Container::new_view(fake_view);
+        let container_uuid = container.get_id().unwrap();
+        tree.add_child(root_container_ix, container.clone());
+        let only_view = &tree[tree.descendant_of_type(root_ix, ContainerType::View).unwrap()];
+        assert_eq!(*only_view, container);
+        assert_eq!(only_view.get_id(), Some(container_uuid));
+
+        // Generic test where we make sure all of them have the right ids in the map
+        for container_ix in tree.all_descendants_of(&root_ix) {
+            let container = &tree[container_ix];
+            let container_id = container.get_id().unwrap();
+            assert_eq!(*tree.id_map.get(&container_id).unwrap(), container_ix);
+        }
+    }
 }
