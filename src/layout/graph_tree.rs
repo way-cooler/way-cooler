@@ -144,6 +144,14 @@ impl Tree {
     /// the displaced node.
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
         let id = self.graph[node_ix].get_id().unwrap();
+        let last_ix: NodeIndex<u32> = NodeIndex::new(self.graph.node_count() - 1);
+        if last_ix != node_ix {
+            // The container at last_ix will now have node_ix as its index
+            // Have to update the id map
+            let last_container = &self.graph[last_ix];
+            let last_id = last_container.get_id().expect("Could not get container id");
+            self.id_map.insert(last_id, node_ix);
+        }
         self.id_map.remove(&id);
         self.graph.remove_node(node_ix)
     }
