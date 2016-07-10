@@ -20,6 +20,7 @@ rustc-serialize = "0.3.*"
 json_macro = "0.1.*"
 unix_socket = "0.5.*"
 nix = "0.6.0"
+uuid = {version = "0.2", features = ["v4", "rustc-serialize"]}
 
 [dev-dependencies]
 dummy-rustwlc = "0.3.*"

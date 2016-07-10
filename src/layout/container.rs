@@ -1,5 +1,7 @@
 //! Container types
 
+use uuid::Uuid;
+
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
@@ -66,7 +68,9 @@ pub enum Container {
         /// Handle to the wlc
         handle: WlcOutput,
         /// Whether the output is focused
-        focused: bool
+        focused: bool,
+        /// UUID associated with container, client program can use container
+        id: Uuid,
     },
     /// Workspace
     Workspace {
@@ -79,6 +83,8 @@ pub enum Container {
         /// The size of the workspace on the screen.
         /// Might be different if there is e.g a bar present
         size: Size,
+        /// UUID associated with container, client program can use container
+        id: Uuid,
     },
     /// Container
     Container {
@@ -90,6 +96,8 @@ pub enum Container {
         floating: bool,
         /// The geometry of the container, relative to the parent container
         geometry: Geometry,
+        /// UUID associated with container, client program can use container
+        id: Uuid,
     },
     /// View or window
     View {
@@ -99,6 +107,8 @@ pub enum Container {
         focused: bool,
         /// Whether this view is floating
         floating: bool,
+        /// UUID associated with container, client program can use container
+        id: Uuid,
     }
 }
 
@@ -107,7 +117,8 @@ impl Container {
     pub fn new_output(handle: WlcOutput) -> Container {
         Container::Output {
             handle: handle,
-            focused: false
+            focused: false,
+            id: Uuid::new_v4()
         }
     }
 
@@ -116,7 +127,10 @@ impl Container {
     /// unless there is a bar or something.
     pub fn new_workspace(name: String, size: Size) -> Container {
         Container::Workspace {
-            name: name, focused: false, size: size
+            name: name,
+            focused: false,
+            size: size,
+            id: Uuid::new_v4()
         }
     }
 
@@ -126,7 +140,8 @@ impl Container {
             layout: Layout::Horizontal,
             focused: false,
             floating: false,
-            geometry: geometry
+            geometry: geometry,
+            id: Uuid::new_v4()
         }
     }
 
@@ -135,7 +150,8 @@ impl Container {
         Container::View {
             handle: handle,
             focused: false,
-            floating: false
+            floating: false,
+            id: Uuid::new_v4()
         }
     }
 
@@ -239,6 +255,16 @@ impl Container {
                         other))
         }
         Ok(())
+    }
+
+    pub fn get_id(&self) -> Option<Uuid> {
+        match *self {
+            Container::Root => None,
+            Container::Output { ref id, .. } | Container::Workspace { ref id, .. } |
+            Container::Container { ref id, .. } | Container::View { ref id, .. } => {
+                Some(*id)
+            }
+        }
     }
 }
 
