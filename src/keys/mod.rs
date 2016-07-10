@@ -12,6 +12,9 @@ use super::commands::{self, CommandFn};
 mod keypress;
 pub use self::keypress::KeyPress;
 
+mod event;
+pub use self::event::KeyEvent;
+
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> =
         RwLock::new(HashMap::new());
@@ -93,25 +96,11 @@ pub fn keymod_from_names(keys: Vec<&str>) -> Result<KeyMod, String> {
     return Ok(result);
 }
 
-
-// Actions which can be taken on a keypress
-#[derive(Clone)]
-pub enum KeyEvent {
-    /// A way-cooler command is run
-    Command(CommandFn),
-    /// A Lua function is invoked.
-    /// The String field is used as a unique identifier to the Lua thread.
-    Lua
-}
-
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     let bindings = BINDINGS.read()
         .expect("Keybindings/get: unable to lock keybindings");
-    match bindings.get(key) {
-        None => None,
-        Some(val) => Some(val.clone())
-    }
+    bindings.get(key).map(KeyEvent::clone)
 }
 
 /// Register a new set of key mappings
