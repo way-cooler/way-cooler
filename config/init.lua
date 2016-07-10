@@ -1,6 +1,5 @@
 -- Lua configuration file for way-cooler.
 
-local way_cooler = require("way_cooler") -- way-cooler IPC
 local utils = require("utils") -- Utilities, i.e. shell
 
 --
@@ -11,8 +10,8 @@ local utils = require("utils") -- Utilities, i.e. shell
 -- For a list of tiling options, see way-cooler docs or `man way-cooler-tiling`.
 -- Workspaces, like arrays in Lua, start with 1.
 local workspace_settings = {
-  -- The first workspace (index 1) is named web
-  "web",
+  -- The first workspace is named web
+  [1] = { name = "web" },
   -- The 9th workspace is named "free", and all windows sent there float.
   [9] = { name = "free", mode = "float" },
 }
