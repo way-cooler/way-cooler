@@ -2,9 +2,11 @@
 //! layout.
 
 use std::iter::Iterator;
+use std::collections::HashMap;
 
 use petgraph::EdgeDirection;
 use petgraph::graph::{Graph, NodeIndex, EdgeIndex};
+use uuid::Uuid;
 
 use rustwlc::WlcView;
 
@@ -14,6 +16,7 @@ use layout::{Container, ContainerType};
 #[derive(Debug)]
 pub struct Tree {
     graph: Graph<Container, u32>, // Directed graph
+    id_map: HashMap<Uuid, NodeIndex>,
     root: NodeIndex
 }
 
@@ -22,7 +25,10 @@ impl Tree {
     pub fn new() -> Tree {
         let mut graph = Graph::new();
         let root_ix = graph.add_node(Container::Root);
-        Tree { graph: graph, root: root_ix }
+        Tree { graph: graph,
+               id_map: HashMap::new(),
+               root: root_ix
+        }
     }
 
     /// Gets the index of the tree's root node
@@ -54,8 +60,10 @@ impl Tree {
     /// Adds a new child to a node at the index, returning the node index
     /// of the new child node.
     pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container) -> NodeIndex {
+        let id = val.get_id().unwrap();
         let child_ix = self.graph.add_node(val);
         self.attach_child(parent_ix, child_ix);
+        self.id_map.insert(id, child_ix);
         child_ix
     }
 
@@ -135,6 +143,8 @@ impl Tree {
     /// with an endpoint in a, and including the edges with an endpoint in
     /// the displaced node.
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
+        let id = self.graph[node_ix].get_id().unwrap();
+        self.id_map.remove(&id);
         self.graph.remove_node(node_ix)
     }
 
