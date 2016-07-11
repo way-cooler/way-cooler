@@ -217,6 +217,11 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
             let result = func(lua);
             thread_send(request.reply, LuaResponse::Variable(Some(result)));
         },
+        LuaQuery::HandleKey(press) => {
+            let press_ix = press.get_lua_index_string();
+            // Access the index
+            thread_send(request.reply, LuaResponse::Pong);
+        }
         LuaQuery::Ping => {
             thread_send(request.reply, LuaResponse::Pong);
         },

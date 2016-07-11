@@ -6,9 +6,9 @@ use std::sync::Arc;
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::LuaString;
 
-use registry::{self, RegistryField, AccessFlags};
+use registry::{self, RegistryField, AccessFlags, RegistryError};
 use convert::ToTable;
-use convert::json::lua_to_json;
+use convert::json::{lua_to_json, json_to_lua};
 
 pub fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) -> AnyLuaValue {
     if let LuaString(key) = lua_key {
@@ -55,4 +55,21 @@ pub fn new_index(_table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue)
 /// Method called on Lua code like `print(registry)`
 pub fn to_string(_table: AnyLuaValue) -> &'static str {
     "A table used to share data with way-cooler"
+}
+
+/// IPC 'get' handler
+pub fn get(key: String) -> Result<AnyLuaValue, &'static str> {
+    match registry::get_data(&key) {
+        Ok(regdata) => {
+            let (flags, arc_data) = regdata.resolve();
+
+            Ok(json_to_lua(arc_data.deref().clone()))
+        },
+        Err(err) => match err {
+            RegistryError::InvalidOperation =>
+                Err("Cannot get that key, use set or assign"),
+            RegistryError::KeyNotFound =>
+                Err("Key not found")
+        }
+    }
 }

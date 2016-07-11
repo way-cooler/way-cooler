@@ -17,15 +17,15 @@ pub struct Keybind {
 
 pub fn init_workspaces(count: i32, options: Vec<(i32, WorkspaceOptions)>)
                        -> Result<(), String> {
+    // TODO The tree doesn't accept workspace names yet.
+}
+
+pub fn register_command_key(mods: String, command: String, repeat: bool)
+                            -> Result<(), String> {
+}
+
+pub fn register_lua_key(mods: String, repeat: bool) -> Result<(), String> {
     
 }
 
-pub fn register_key_command(mods: AnyLuaValue, key: String, command: String)
-                            -> Result<(), String> {
-    
-}
-
-pub fn register_key_function(mods: AnyLuaValue, key: String, id: String)
-                            -> Result<(), String> {
-    
-}
+pub fn keymods_index(mods: String)

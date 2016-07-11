@@ -53,7 +53,7 @@ end
 -- Save the action at the __key_map and tell Rust to register the Lua key
 local function register_lua_key(index, action, loop)
     __key_map[index] = action
-    rust.register_lua_key(index, action, loop)
+    rust.register_lua_key(index, loop)
 end
 
 -- Register a keybinding

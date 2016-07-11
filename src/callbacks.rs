@@ -3,13 +3,10 @@ use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 
-
 use compositor;
-use super::keys;
-use super::lua;
-use super::keys::KeyPress;
-use super::layout::try_lock_tree;
-use super::layout::ContainerType;
+use super::keys::{self, KeyPress, KeyEvent};
+use super::layout::{try_lock_tree, ContainerType};
+use super::lua::{self, LuaQuery};
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -124,17 +121,32 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
-        let keys = vec![sym];
-
-        let press = KeyPress::new(mods.mods, keys);
+        let press = KeyPress::new(mods.mods, sym);
         if let Some(action) = keys::get(&press) {
             debug!("[key] Found an action for {:?}", press);
-            action();
-            return EVENT_HANDLED;
+            match action {
+                KeyEvent::Command(func) => {
+                    func();
+                },
+                KeyEvent::Lua => {
+                    match lua::send(LuaQuery::HandleKey(press)) {
+                        Ok(_) => {},
+                        Err(err) => {
+                            // We may want to wait for Lua's reply from
+                            // keypresses; for example if the table is tampered
+                            // with or Lua is restarted or Lua has an error.
+                            // ATM Lua asynchronously logs this but in the future
+                            // an error popup/etc is a good idea.
+                            error!("Error sending keypress: {:?}", err);
+                        }
+                    }
+                }
+            }
+            return EVENT_HANDLED
         }
     }
 
-    return EVENT_PASS_THROUGH;
+    return EVENT_PASS_THROUGH
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
