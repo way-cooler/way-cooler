@@ -210,7 +210,7 @@ impl LayoutTree {
     /// Determines if the active container is the root container
     pub fn active_is_root(&self) -> bool {
         if let Some(active_ix) = self.active_container {
-            self.is_root_container(active_ix)
+            self.tree.is_root_container(active_ix)
         } else {
             false
         }
@@ -301,7 +301,7 @@ impl LayoutTree {
             // Remove parent container if it is a non-root container and has no other children
             match self.tree[parent_ix].get_type() {
                 ContainerType::Container => {
-                    if self.is_root_container(parent_ix) {
+                    if self.tree.is_root_container(parent_ix) {
                         return;
                     }
                     if self.tree.children_of(parent_ix).len() == 0 {
@@ -534,7 +534,7 @@ impl LayoutTree {
         if self.active_container.is_none() {
             return;
         }
-        if self.is_root_container(self.active_container.expect("No active container")) {
+        if self.tree.is_root_container(self.active_container.expect("No active container")) {
             match self.tree[self.active_container.unwrap()] {
                 Container::Container { ref mut layout, .. } =>
                     *layout = new_layout,
@@ -1356,7 +1356,7 @@ mod tests {
             let mut tree = basic_tree();
             let root_container = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
             tree.active_container = Some(root_container);
-            assert!(tree.is_root_container(root_container));
+            assert!(tree.tree.is_root_container(root_container));
             let layout = match tree.tree[root_container] {
                 Container::Container { ref layout, .. } => layout.clone(),
                 _ => panic!()
@@ -1445,7 +1445,7 @@ mod tests {
         /* This should remove the other container,
         the count of the root container should be 0 */
         let active_ix = tree.active_container.unwrap();
-        assert!(tree.is_root_container(active_ix));
+        assert!(tree.tree.is_root_container(active_ix));
         let root_container = tree.tree.children_of(tree.active_ix_of(ContainerType::Workspace)
                                                    .expect("No active workspace"))[0];
         let num_children = tree.tree.children_of(root_container).len();
@@ -1465,7 +1465,7 @@ mod tests {
         // Trying to send the root container does nothing
         tree.send_active_to_workspace("3");
         let active_ix = tree.active_container.unwrap();
-        assert!(tree.is_root_container(active_ix));
+        assert!(tree.tree.is_root_container(active_ix));
         tree.switch_to_workspace("3");
         let active_ix = tree.active_container.unwrap();
         // Switch to new workspace, should be focused on the old view
@@ -1551,7 +1551,7 @@ mod tests {
         }
         // set to root container
         let root_container_ix = tree.tree.parent_of(old_active_ix.unwrap()).unwrap();
-        assert!(tree.is_root_container(root_container_ix));
+        assert!(tree.tree.is_root_container(root_container_ix));
         tree.active_container = Some(root_container_ix);
         for direction in &directions {
             tree.move_focus(*direction);

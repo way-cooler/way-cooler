@@ -31,6 +31,17 @@ impl Tree {
         }
     }
 
+    /// Determines if the container at the node index is the root.
+    /// Normally, this should only be true if the NodeIndex value is 1.
+    pub fn is_root_container(&self, node_ix: NodeIndex) -> bool {
+        if let Some(parent_ix) = self.parent_of(node_ix) {
+            self.graph[parent_ix].get_type() == ContainerType::Workspace
+        } else {
+            false
+        }
+    }
+
+
     /// Gets the index of the tree's root node
     pub fn root_ix(&self) -> NodeIndex {
         self.root
