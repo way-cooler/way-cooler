@@ -609,6 +609,28 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Normalizes the geometry of a view or a container of views so that
+    /// the view is the same size as its siblings.
+    ///
+    /// See `normalize_view` for more information
+    fn normalize_view_or_container(&mut self, node_ix: NodeIndex) {
+        match self.tree[node_ix].get_type() {
+            ContainerType::Container  => {
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.normalize_view_or_container(child_ix)
+                }
+            },
+            ContainerType::View  => {
+                let handle = match self.tree[node_ix] {
+                    Container::View { ref handle, .. } => handle.clone(),
+                    _ => unreachable!()
+                };
+                self.normalize_view(handle);
+            },
+            _ => panic!("Can only normalize the view on a view or container")
+        }
+    }
+
     /// Given the index of some container in the tree, lays out the children of
     /// that container based on what type of container it is and how big of an
     /// area is allocated for it and its children.
@@ -981,10 +1003,11 @@ impl LayoutTree {
 
             self.tree.set_family_visible(curr_work_ix, true);
 
-            self.validate();
+            self.normalize_view_or_container(active_ix);
         }
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
+        self.validate();
     }
 
     /// Validates the tree
