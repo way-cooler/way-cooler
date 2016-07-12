@@ -227,6 +227,19 @@ impl Tree {
         self.graph.node_weight(node_ix).map(Container::get_type)
     }
 
+    /// Gets the index of the workspace of this name
+    pub fn workspace_ix_by_name(&self, name: &str) -> Option<NodeIndex> {
+        for output in self.children_of(self.root_ix()) {
+            for workspace in self.children_of(output) {
+                if self.graph[workspace].get_name()
+                    .expect("workspace_by_name: bad tree structure") == name {
+                        return Some(workspace)
+                    }
+            }
+        }
+        return None
+    }
+
     /// Attempts to get an ancestor matching the matching type
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Option<NodeIndex> {

@@ -165,19 +165,6 @@ impl LayoutTree {
         self.active_of_mut(ContainerType::Workspace)
     }
 
-    /// Gets the index of the workspace of this name
-    fn workspace_ix_by_name(&self, name: &str) -> Option<NodeIndex> {
-        for output in self.tree.children_of(self.tree.root_ix()) {
-            for workspace in self.tree.children_of(output) {
-                if self.tree[workspace].get_name()
-                    .expect("workspace_by_name: bad tree structure") == name {
-                    return Some(workspace)
-                }
-            }
-        }
-        return None
-    }
-
     /// Gets the index of the currently active container with the given type.
     /// Starts at the active container, moves up until either a container with
     /// that type is found or the root node is hit
@@ -318,7 +305,7 @@ impl LayoutTree {
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
         let active_index = self.active_ix_of(ContainerType::Output).expect("get_or_make_wksp: Couldn't get output");
-        let workspace_ix = self.workspace_ix_by_name(name).unwrap_or_else(|| {
+        let workspace_ix = self.tree.workspace_ix_by_name(name).unwrap_or_else(|| {
             let root_ix = self.init_workspace(name.to_string(), active_index);
             self.tree.parent_of(root_ix)
                 .expect("Workspace was not properly initialized with a root container")
@@ -941,7 +928,7 @@ impl LayoutTree {
                    .expect("Workspace had no name"));
             self.remove_container(old_worksp_ix);
         }
-        workspace_ix = self.workspace_ix_by_name(name)
+        workspace_ix = self.tree.workspace_ix_by_name(name)
             .expect("Workspace we just made was deleted!");
         self.focus_on_next_container(workspace_ix);
         self.validate();
@@ -1261,22 +1248,22 @@ mod tests {
     fn workspace_tests() {
         let mut tree = basic_tree();
         /* Simple workspace access tests */
-        let workspace_1_ix = tree.workspace_ix_by_name("1")
+        let workspace_1_ix = tree.tree.workspace_ix_by_name("1")
             .expect("Workspace 1 did not exist");
         assert_eq!(tree.tree[workspace_1_ix].get_type(), ContainerType::Workspace);
         assert_eq!(tree.tree[workspace_1_ix].get_name().unwrap(), "1");
-        let workspace_2_ix = tree.workspace_ix_by_name("2")
+        let workspace_2_ix = tree.tree.workspace_ix_by_name("2")
             .expect("Workspace 2 did not exist");
         assert_eq!(tree.tree[workspace_2_ix].get_type(), ContainerType::Workspace);
         assert_eq!(tree.tree[workspace_2_ix].get_name().unwrap(), "2");
-        assert!(tree.workspace_ix_by_name("3").is_none(),
+        assert!(tree.tree.workspace_ix_by_name("3").is_none(),
                 "Workspace three existed, expected it not to");
         /* init workspace tests */
         let output_ix = tree.active_ix_of(ContainerType::Output)
             .expect("No active output");
         let active_3_ix = tree.init_workspace("3".to_string(), output_ix);
         let workspace_3_ix = tree.tree.parent_of(active_3_ix).unwrap();
-        assert!(tree.workspace_ix_by_name("3").is_some(),
+        assert!(tree.tree.workspace_ix_by_name("3").is_some(),
                 "Workspace three still does not exist, even though we just initialized it");
         assert_eq!(tree.tree[workspace_3_ix].get_type(), ContainerType::Workspace);
         assert_eq!(tree.tree[workspace_3_ix].get_name().unwrap(), "3");
