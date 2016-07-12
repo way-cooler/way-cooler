@@ -17,7 +17,7 @@ pub struct KeyPress {
 
 impl KeyPress {
     /// Creates a new KeyPress struct from a list of modifier and key names
-    pub fn from_key_names(mods: Vec<&str>, key: &str) -> Result<KeyPress, String> {
+    pub fn from_key_names(mods: &[&str], key: &str) -> Result<KeyPress, String> {
         super::keymod_from_names(mods).and_then(|mods| {
             // Parse a keysym for each given key
             let key_sym = try!(

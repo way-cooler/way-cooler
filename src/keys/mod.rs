@@ -36,7 +36,7 @@ pub fn init() {
         keypress!("Alt", "Return") => "launch_terminal";
         keypress!("Alt", "d") => "launch_dmenu";
         keypress!("Alt", "l") => "dmenu_eval";
-        KeyPress::from_key_names(vec!["Alt", "Shift"], "l")
+        KeyPress::from_key_names(&["Alt", "Shift"], "l")
             .expect("Unable to create default keypress")
             => "dmenu_lua_dofile";
 
@@ -65,21 +65,21 @@ pub fn init() {
         keypress!("Alt", "0") => "switch_workspace_0";
 
         /* Moving active container to another Workspace key bindings */
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "1").unwrap() => "move_to_workspace_1";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "2").unwrap() => "move_to_workspace_2";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "3").unwrap() => "move_to_workspace_3";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "4").unwrap() => "move_to_workspace_4";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "5").unwrap() => "move_to_workspace_5";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "6").unwrap() => "move_to_workspace_6";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "7").unwrap() => "move_to_workspace_7";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "8").unwrap() => "move_to_workspace_8";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "9").unwrap() => "move_to_workspace_9";
-        KeyPress::from_key_names(vec!("Alt", "Shift"), "0").unwrap() => "move_to_workspace_0"
+        KeyPress::from_key_names(&["Alt", "Shift"], "1").unwrap() => "move_to_workspace_1";
+        KeyPress::from_key_names(&["Alt", "Shift"], "2").unwrap() => "move_to_workspace_2";
+        KeyPress::from_key_names(&["Alt", "Shift"], "3").unwrap() => "move_to_workspace_3";
+        KeyPress::from_key_names(&["Alt", "Shift"], "4").unwrap() => "move_to_workspace_4";
+        KeyPress::from_key_names(&["Alt", "Shift"], "5").unwrap() => "move_to_workspace_5";
+        KeyPress::from_key_names(&["Alt", "Shift"], "6").unwrap() => "move_to_workspace_6";
+        KeyPress::from_key_names(&["Alt", "Shift"], "7").unwrap() => "move_to_workspace_7";
+        KeyPress::from_key_names(&["Alt", "Shift"], "8").unwrap() => "move_to_workspace_8";
+        KeyPress::from_key_names(&["Alt", "Shift"], "9").unwrap() => "move_to_workspace_9";
+        KeyPress::from_key_names(&["Alt", "Shift"], "0").unwrap() => "move_to_workspace_0"
     }
 }
 
 /// Parses a KeyMod from key names.
-pub fn keymod_from_names(keys: Vec<&str>) -> Result<KeyMod, String> {
+pub fn keymod_from_names(keys: &[&str]) -> Result<KeyMod, String> {
     let mut result = KeyMod::empty();
     for key in keys {
         match key.to_lowercase().as_str() {
