@@ -288,10 +288,7 @@ impl LayoutTree {
             // Remove parent container if it is a non-root container and has no other children
             match self.tree[parent_ix].get_type() {
                 ContainerType::Container => {
-                    if self.tree.is_root_container(parent_ix) {
-                        return;
-                    }
-                    if self.tree.children_of(parent_ix).len() == 0 {
+                    if self.tree.can_remove_empty_parent(parent_ix) {
                         self.remove_view_or_container(parent_ix);
                     }
                 }

@@ -167,6 +167,21 @@ impl Tree {
         self.graph.remove_node(node_ix)
     }
 
+    /// Determines if the container node can be removed because it is empty.
+    /// If it is a non-root container then it can never be removed.
+    pub fn can_remove_empty_parent(&self, container_ix: NodeIndex) -> bool {
+        if self.graph[container_ix].get_type() != ContainerType::Container
+        || self.is_root_container(container_ix) {
+            return false
+        }
+        if self.children_of(container_ix).len() == 0 {
+            true
+        } else {
+            false
+        }
+
+    }
+
     /// Moves a node between two indices
     pub fn move_node(&mut self, node_ix: NodeIndex, new_parent: NodeIndex) {
         self.detach(node_ix);
