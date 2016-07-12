@@ -80,7 +80,7 @@ impl Tree {
 
     /// Add an existing node (detached in the graph) to the tree.
     /// Note that floating nodes shouldn't exist for too long.
-    fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex)
+    pub fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex)
                      -> EdgeIndex {
         // Make sure the child doesn't have a parent
         if cfg!(debug_assertions) && self.has_parent(child_ix) {

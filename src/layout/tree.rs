@@ -339,20 +339,15 @@ impl LayoutTree {
     ///
     /// The new container has the same edge weight as the child that is passed in.
     fn add_container(&mut self, container: Container, child_ix: NodeIndex) {
-        let mut parent_ix = self.tree.parent_of(child_ix)
+        let parent_ix = self.tree.parent_of(child_ix)
             .expect("Node had no parent");
         let old_weight = *self.tree.get_edge_weight_between(parent_ix, child_ix)
             .expect("parent and children were not connected");
-        if self.tree.is_last_ix(parent_ix) {
-            // correct before removal
-            parent_ix = child_ix;
-        }
-        if let Some(child_container) = self.tree.remove(child_ix) {
-            let new_container_ix = self.tree.add_child(parent_ix, container);
-            let new_active_ix = self.tree.add_child(new_container_ix, child_container);
-            self.tree.set_child_pos(new_container_ix, old_weight);
-            self.active_container = Some(new_active_ix);
-        }
+        self.tree.detach(child_ix);
+        let new_container_ix = self.tree.add_child(parent_ix, container);
+        self.tree.attach_child(new_container_ix, child_ix);
+        self.tree.set_child_pos(new_container_ix, old_weight);
+        self.active_container = Some(new_container_ix);
         self.validate();
     }
 
@@ -537,6 +532,8 @@ impl LayoutTree {
         new_container.set_layout(new_layout).ok();
         let active_ix = self.active_container.unwrap();
         self.add_container(new_container, active_ix);
+        // add_container sets the active container to be the new container
+        self.active_container = Some(active_ix);
         self.validate();
     }
 
@@ -1407,6 +1404,7 @@ mod tests {
         // The view moved, since it was placed in the new container
         assert!(active_ix != new_active_ix);
         let new_container_ix = tree.tree.parent_of(new_active_ix).unwrap();
+        let parent_ix = tree.tree.parent_of(new_container_ix).unwrap();
         let new_edge_weight = *tree.tree.get_edge_weight_between(parent_ix, new_container_ix)
             .unwrap();
         assert_eq!(new_edge_weight, old_edge_weight);
@@ -1551,14 +1549,14 @@ mod tests {
         let mut tree = basic_tree();
         tree.switch_to_workspace("2");
         // We are focused on the far left container
-        let old_ix = tree.active_container.unwrap();
+        let left_ix = tree.active_container.unwrap();
         // Get the next one
         tree.move_focus(Direction::Right);
         // Make sure we moved
-        let new_ix = tree.active_container.unwrap();
-        assert!(old_ix != new_ix);
+        let right_ix = tree.active_container.unwrap();
+        assert!(left_ix != right_ix);
         // make a vertical container here, try to move back to the original
-        let new_container = tree.tree[new_ix].clone();
+        let new_container = tree.tree[right_ix].clone();
         tree.toggle_active_layout(Layout::Vertical);
         assert_eq!(new_container, tree.tree[tree.active_container.unwrap()]);
         // Add a new view, it'll be below us
@@ -1571,7 +1569,7 @@ mod tests {
         assert_eq!(new_container, tree.tree[tree.active_container.unwrap()]);
         // Move left, be back on the very first one
         tree.move_focus(Direction::Left);
-        assert_eq!(old_ix, tree.active_container.unwrap());
+        assert_eq!(left_ix, tree.active_container.unwrap());
         // Move left, be back on the very first one
     }
 
