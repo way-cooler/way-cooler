@@ -218,9 +218,21 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
             thread_send(request.reply, LuaResponse::Variable(Some(result)));
         },
         LuaQuery::HandleKey(press) => {
+            trace!("Lua: handling keypress {:?}", press);
             let press_ix = press.get_lua_index_string();
             // Access the index
-            thread_send(request.reply, LuaResponse::Pong);
+            let code = format!("__key_map[{}]()", press_ix);
+
+            match lua.execute::<()>(&code) {
+                Err(error) => {
+                    warn!("Error handling {:?}: {:?}", press, error);
+                    thread_send(request.reply, LuaResponse::Error(error));
+                }
+                Ok(_) => {
+                    trace!("Handled keypress okay.");
+                    thread_send(request.reply, LuaResponse::Pong);
+                }
+            }
         }
         LuaQuery::Ping => {
             thread_send(request.reply, LuaResponse::Pong);

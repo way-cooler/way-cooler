@@ -7,8 +7,8 @@ use hlua::{Lua, LuaTable};
 #[forbid(dead_code)]
 #[forbid(unused_variables)]
 
-mod input;
 mod ipc;
+mod config;
 
 const ERR_TABLE_404: &'static str = "Lua thread was not properly initialized!";
 
