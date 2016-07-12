@@ -963,13 +963,16 @@ impl LayoutTree {
             self.tree.move_node(active_ix, next_work_root_ix);
 
             // Update the active container
-            if let Some(parent) = maybe_active_parent {
-                let ctype = self.tree.node_type(parent).unwrap_or(ContainerType::Root);
+            if let Some(parent_ix) = maybe_active_parent {
+                let ctype = self.tree.node_type(parent_ix).unwrap_or(ContainerType::Root);
                 if ctype == ContainerType::Container {
-                    self.focus_on_next_container(parent);
+                    self.focus_on_next_container(parent_ix);
                 } else {
                     trace!("Send to container invalidated a NodeIndex: {:?} to {:?}",
-                    parent, ctype);
+                    parent_ix, ctype);
+                }
+                if self.tree.can_remove_empty_parent(parent_ix) {
+                    self.remove_view_or_container(parent_ix);
                 }
             }
             else {
@@ -977,6 +980,7 @@ impl LayoutTree {
             }
 
             self.tree.set_family_visible(curr_work_ix, true);
+
             self.validate();
         }
         let root_ix = self.tree.root_ix();
