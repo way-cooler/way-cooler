@@ -340,9 +340,8 @@ impl LayoutTree {
             .expect("Node had no parent");
         let old_weight = *self.tree.get_edge_weight_between(parent_ix, child_ix)
             .expect("parent and children were not connected");
-        self.tree.detach(child_ix);
         let new_container_ix = self.tree.add_child(parent_ix, container);
-        self.tree.attach_child(new_container_ix, child_ix);
+        self.tree.move_node(child_ix, new_container_ix);
         self.tree.set_child_pos(new_container_ix, old_weight);
         self.active_container = Some(new_container_ix);
         self.validate();
@@ -978,7 +977,7 @@ impl LayoutTree {
             }
 
             self.tree.set_family_visible(curr_work_ix, true);
-                self.validate();
+            self.validate();
         }
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);

@@ -124,7 +124,7 @@ impl Tree {
 
     /// Detaches a node from the tree (causing there to be two trees).
     /// This should only be done temporarily.
-    pub fn detach(&mut self, node_ix: NodeIndex) {
+    fn detach(&mut self, node_ix: NodeIndex) {
         if let Some(parent_ix) = self.parent_of(node_ix) {
             let edge = self.graph.find_edge(parent_ix, node_ix)
                 .expect("detatch: Node has parent but edge cannot be found!");
