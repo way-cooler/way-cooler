@@ -45,15 +45,14 @@ local use_key = ", use the `key` or `config.key` method to create a keybinding"
 
 -- Converts a list of modifiers to a string
 local function keymods_to_string(mods, key)
-    table.sort(mods)
     table.insert(mods, key)
     return table.concat(mods, ',')
 end
 
 -- Save the action at the __key_map and tell Rust to register the Lua key
 local function register_lua_key(index, action, loop)
-    __key_map[index] = action
-    rust.register_lua_key(index, loop)
+    local map_ix = rust.register_lua_key(index, loop)
+    __key_map[map_ix] = action
 end
 
 -- Register a keybinding
