@@ -31,6 +31,17 @@ impl Tree {
         }
     }
 
+    /// Determines if the container at the node index is the root.
+    /// Normally, this should only be true if the NodeIndex value is 1.
+    pub fn is_root_container(&self, node_ix: NodeIndex) -> bool {
+        if let Some(parent_ix) = self.parent_of(node_ix) {
+            self.graph[parent_ix].get_type() == ContainerType::Workspace
+        } else {
+            false
+        }
+    }
+
+
     /// Gets the index of the tree's root node
     pub fn root_ix(&self) -> NodeIndex {
         self.root
@@ -69,7 +80,7 @@ impl Tree {
 
     /// Add an existing node (detached in the graph) to the tree.
     /// Note that floating nodes shouldn't exist for too long.
-    fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex)
+    pub fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex)
                      -> EdgeIndex {
         // Make sure the child doesn't have a parent
         if cfg!(debug_assertions) && self.has_parent(child_ix) {
@@ -113,7 +124,7 @@ impl Tree {
 
     /// Detaches a node from the tree (causing there to be two trees).
     /// This should only be done temporarily.
-    pub fn detach(&mut self, node_ix: NodeIndex) {
+    fn detach(&mut self, node_ix: NodeIndex) {
         if let Some(parent_ix) = self.parent_of(node_ix) {
             let edge = self.graph.find_edge(parent_ix, node_ix)
                 .expect("detatch: Node has parent but edge cannot be found!");
@@ -154,6 +165,21 @@ impl Tree {
         }
         self.id_map.remove(&id);
         self.graph.remove_node(node_ix)
+    }
+
+    /// Determines if the container node can be removed because it is empty.
+    /// If it is a non-root container then it can never be removed.
+    pub fn can_remove_empty_parent(&self, container_ix: NodeIndex) -> bool {
+        if self.graph[container_ix].get_type() != ContainerType::Container
+        || self.is_root_container(container_ix) {
+            return false
+        }
+        if self.children_of(container_ix).len() == 0 {
+            true
+        } else {
+            false
+        }
+
     }
 
     /// Moves a node between two indices
@@ -214,6 +240,19 @@ impl Tree {
     /// Gets the ContainerType of the selected node
     pub fn node_type(&self, node_ix: NodeIndex) -> Option<ContainerType> {
         self.graph.node_weight(node_ix).map(Container::get_type)
+    }
+
+    /// Gets the index of the workspace of this name
+    pub fn workspace_ix_by_name(&self, name: &str) -> Option<NodeIndex> {
+        for output in self.children_of(self.root_ix()) {
+            for workspace in self.children_of(output) {
+                if self.graph[workspace].get_name()
+                    .expect("workspace_by_name: bad tree structure") == name {
+                        return Some(workspace)
+                    }
+            }
+        }
+        return None
     }
 
     /// Attempts to get an ancestor matching the matching type
