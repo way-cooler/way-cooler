@@ -7,7 +7,7 @@ use std::env;
 use std::io::prelude::*;
 
 use commands::{self, CommandFn};
-use layout::tree::{Direction, try_lock_tree};
+use layout::{Direction, try_lock_tree};
 use layout::{ContainerType, Layout};
 use lua::{self, LuaQuery};
 

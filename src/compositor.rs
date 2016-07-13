@@ -5,7 +5,7 @@ use std::sync::RwLock;
 
 use rustwlc;
 use rustwlc::*;
-use layout::tree;
+use layout::try_lock_tree;
 
 lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
@@ -138,7 +138,7 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
         {
-            let mut tree = tree::try_lock_tree().expect(ERR_TREE);
+            let mut tree = try_lock_tree().expect(ERR_TREE);
             tree.set_active_container(view.clone());
         }
         true
@@ -154,7 +154,7 @@ pub fn on_pointer_button(view: WlcView, _time: u32, _mods: &KeyboardModifiers,
                          -> bool {
     if state == ButtonState::Pressed {
         if !view.is_root() {
-            let mut tree = tree::try_lock_tree().expect(ERR_TREE);
+            let mut tree = try_lock_tree().expect(ERR_TREE);
             tree.set_active_container(view.clone());
         }
     }
@@ -188,7 +188,7 @@ fn start_interactive_action(view: &WlcView, origin: &Point) -> Result<(), &'stat
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
         {
-            let mut tree = tree::try_lock_tree().expect(ERR_TREE);
+            let mut tree = try_lock_tree().expect(ERR_TREE);
             tree.set_active_container(view.clone());
         }
     }

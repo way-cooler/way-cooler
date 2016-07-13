@@ -46,8 +46,8 @@ pub type RegistryResult<T> = Result<T, RegistryError>;
 
 /// Initialize the registry (register default API)
 pub fn init() {
-    use layout::tree;
-    insert_property("tree_layout".to_string(), Some(Arc::new(tree::get_json)), None);
+    use layout::tree_as_json as get_json;
+    insert_property("tree_layout".to_string(), Some(Arc::new(get_json)), None);
 }
 
 /// Acquires a read lock on the registry.

@@ -8,7 +8,7 @@ use compositor;
 use super::keys;
 use super::lua;
 use super::keys::KeyPress;
-use super::layout::tree;
+use super::layout::try_lock_tree;
 use super::layout::ContainerType;
 
 /// If the event is handled by way-cooler
@@ -22,7 +22,7 @@ const EVENT_PASS_THROUGH: bool = false;
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
     {
-        if let Ok(mut tree) = tree::try_lock_tree() {
+        if let Ok(mut tree) = try_lock_tree() {
             tree.add_output(output.clone());
             tree.switch_to_workspace(&"1");
             true
@@ -46,7 +46,7 @@ pub extern fn output_resolution(output: WlcOutput,
            output, *old_size_ptr, *new_size_ptr);
     // Update the resolution of the output and its children
     output.set_resolution(new_size_ptr.clone());
-    if let Ok(mut tree) = tree::try_lock_tree() {
+    if let Ok(mut tree) = try_lock_tree() {
         tree.layout_active_of(ContainerType::Output);
     }
 }
@@ -62,7 +62,7 @@ pub extern fn output_render_post(output: WlcOutput) {
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     let output = view.get_output();
-    if let Ok(mut tree) = tree::try_lock_tree() {
+    if let Ok(mut tree) = try_lock_tree() {
         if tree.get_active_container().is_none() {
             warn!("Could not create view, so there is no focus and \
                     way-cooler doesn't know where to put it");
@@ -91,7 +91,7 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    if let Ok(mut tree) = tree::try_lock_tree() {
+    if let Ok(mut tree) = try_lock_tree() {
         tree.remove_view(&view);
         tree.layout_active_of(ContainerType::Workspace);
     } else {
@@ -106,7 +106,7 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
     {
         // If tree is already grabbed,
         // it should have the active container all set
-        if let Ok(mut tree) = tree::try_lock_tree() {
+        if let Ok(mut tree) = try_lock_tree() {
             tree.set_active_container(current.clone());
         }
     }
@@ -197,7 +197,7 @@ pub extern fn compositor_ready() {
 pub extern fn compositor_terminating() {
     info!("Compositor terminating!");
     lua::send(lua::LuaQuery::Terminate).ok();
-    if let Ok(mut tree) = tree::try_lock_tree() {
+    if let Ok(mut tree) = try_lock_tree() {
         tree.destroy_tree();
     }
 
