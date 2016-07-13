@@ -8,7 +8,7 @@ use std::io::prelude::*;
 
 use commands::{self, CommandFn};
 use layout::tree::{Direction, try_lock_tree};
-use layout::container::{ContainerType, Layout};
+use layout::{ContainerType, Layout};
 use lua::{self, LuaQuery};
 
 /// Register the default commands in the API.

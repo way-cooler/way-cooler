@@ -9,7 +9,7 @@ use super::keys;
 use super::lua;
 use super::keys::KeyPress;
 use super::layout::tree;
-use super::layout::container::ContainerType;
+use super::layout::ContainerType;
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
