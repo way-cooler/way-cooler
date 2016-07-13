@@ -26,6 +26,8 @@ extern crate nix;
 
 extern crate petgraph;
 
+extern crate uuid;
+
 use std::env;
 
 use log::LogLevel;
