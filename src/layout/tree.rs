@@ -1247,7 +1247,8 @@ mod tests {
         assert_eq!(tree.active_ix_of(ContainerType::Output), None);
         assert_eq!(tree.active_ix_of(ContainerType::Root), None);
         tree.set_active_container(WlcView::root());
-        assert_eq!(tree.get_active_container(), Some(&Container::new_view(WlcView::root())));
+        let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(), &WlcView::root()).unwrap();
+        assert_eq!(tree.active_container, Some(view_ix));
         tree.unset_active_container();
         assert_eq!(tree.get_active_container(), None);
         assert_eq!(tree.active_container, None);
@@ -1453,18 +1454,19 @@ mod tests {
 
     #[test]
     fn move_to_workspace_test() {
+        // NOTE Need to test adding to workspace with stuff already in that workspace
         let mut tree = basic_tree();
         /* Make sure sending to the current workspace does nothing */
         let old_view = tree.tree[tree.active_container.unwrap()].clone();
         tree.send_active_to_workspace("1");
         assert_eq!(old_view, tree.tree[tree.active_container.unwrap()]);
-        let old_view = tree.tree[tree.active_container.unwrap()].clone();
-        tree.send_active_to_workspace("2");
+        //let old_view = tree.tree[tree.active_container.unwrap()].clone();
+        tree.send_active_to_workspace("3");
         // Trying to send the root container does nothing
-        tree.send_active_to_workspace("2");
+        tree.send_active_to_workspace("3");
         let active_ix = tree.active_container.unwrap();
         assert!(tree.is_root_container(active_ix));
-        tree.switch_to_workspace("2");
+        tree.switch_to_workspace("3");
         let active_ix = tree.active_container.unwrap();
         // Switch to new workspace, should be focused on the old view
         assert_eq!(old_view, tree.tree[active_ix]);
