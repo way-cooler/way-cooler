@@ -125,14 +125,12 @@ impl LayoutTree {
     }
 
     /// Gets the currently active container.
-    #[allow(dead_code)]
-    pub fn get_active_container_mut(&mut self) -> Option<&mut Container> {
+    fn get_active_container_mut(&mut self) -> Option<&mut Container> {
         self.active_container.and_then(move |ix| self.tree.get_mut(ix))
     }
 
     /// Gets the parent of the active container
-    #[allow(dead_code)]
-    pub fn get_active_parent(&self) -> Option<&Container> {
+    fn get_active_parent(&self) -> Option<&Container> {
         if let Some(container_ix) = self.active_container {
             if let Some(parent_ix) = self.tree.parent_of(container_ix) {
                 return Some(&self.tree[parent_ix]);
@@ -142,26 +140,22 @@ impl LayoutTree {
     }
 
     /// Gets the active output. This contains the WlcOutput
-    #[allow(dead_code)]
-    pub fn get_active_output(&self) -> Option<&Container> {
+    fn get_active_output(&self) -> Option<&Container> {
         self.active_of(ContainerType::Output)
     }
 
     /// Gets the active output. This contains the WlcOutput
-    #[allow(dead_code)]
-    pub fn get_active_output_mut(&mut self) -> Option<&mut Container> {
+    fn get_active_output_mut(&mut self) -> Option<&mut Container> {
         self.active_of_mut(ContainerType::Output)
     }
 
     /// Gets the workspace the active container is located on
-    #[allow(dead_code)]
-    pub fn get_active_workspace(&self) -> Option<&Container> {
+    fn get_active_workspace(&self) -> Option<&Container> {
         self.active_of(ContainerType::Workspace)
     }
 
     /// Gets the workspace the active container is located on
-    #[allow(dead_code)]
-    pub fn get_active_workspace_mut(&mut self) -> Option<&mut Container> {
+    fn get_active_workspace_mut(&mut self) -> Option<&mut Container> {
         self.active_of_mut(ContainerType::Workspace)
     }
 
