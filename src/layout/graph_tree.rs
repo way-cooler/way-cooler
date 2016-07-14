@@ -179,7 +179,6 @@ impl Tree {
         } else {
             false
         }
-
     }
 
     /// Moves a node between two indices
@@ -225,6 +224,27 @@ impl Tree {
             .collect::<Vec<(NodeIndex, &u32)>>();
         edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
         edges.into_iter().map(|(ix, _edge)| ix).collect()
+    }
+
+    /// Looks up a container by id
+    pub fn lookup_id(&self, id: Uuid) -> Option<&Container> {
+        if let Some(node_ix) = self.id_map.get(&id) {
+            self.get(*node_ix)
+        } else {
+            None
+        }
+    }
+
+    /// Looks up a container by id mutably
+    pub fn lookup_id_mut(&mut self, id: Uuid) -> Option<&mut Container> {
+        let node_ix: NodeIndex;
+        if let Some(ix) = self.id_map.get(&id) {
+            node_ix = *ix;
+        }
+        else {
+            return None
+        }
+        self.get_mut(node_ix)
     }
 
     /// Gets the container of the given node.
