@@ -358,3 +358,15 @@ impl LayoutTree {
         }
     }
 }
+
+mod test {
+    use super::super::tree::LayoutTree;
+
+    #[test]
+    /// Ensure that calculate_scale is fair to all it's children
+    fn calculate_scale_test() {
+        assert_eq!(LayoutTree::calculate_scale(vec!(), 0.0), 0.0);
+        assert_eq!(LayoutTree::calculate_scale(vec!(5.0, 5.0, 5.0, 5.0, 5.0, 5.0), 0.0), 30.0);
+        assert_eq!(LayoutTree::calculate_scale(vec!(5.0, 5.0, 5.0, 5.0, -5.0, 0.0), 5.0), 22.0);
+    }
+}

@@ -408,7 +408,7 @@ impl IndexMut<NodeIndex> for Tree {
 mod tests {
 
     use super::*;
-    use layout::container::*;
+    use super::super::container::*;
     use rustwlc::*;
 
     /// Makes a very basic tree.

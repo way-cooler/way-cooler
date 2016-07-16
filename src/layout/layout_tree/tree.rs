@@ -793,7 +793,7 @@ mod tests {
 
     use super::super::graph_tree::Tree;
     use super::*;
-    use layout::container::*;
+    use super::super::container::*;
     use rustwlc::*;
 
     /// Makes a very basic tree.
@@ -1166,13 +1166,6 @@ mod tests {
         assert_eq!(tree.tree.children_of(output).len(), 3);
     }
 
-    #[test]
-    /// Ensure that calculate_scale is fair to all it's children
-    fn calculate_scale_test() {
-        assert_eq!(LayoutTree::calculate_scale(vec!(), 0.0), 0.0);
-        assert_eq!(LayoutTree::calculate_scale(vec!(5.0, 5.0, 5.0, 5.0, 5.0, 5.0), 0.0), 30.0);
-        assert_eq!(LayoutTree::calculate_scale(vec!(5.0, 5.0, 5.0, 5.0, -5.0, 0.0), 5.0), 22.0);
-    }
 
     #[test]
     /// Ensures that toggle horizontal key (<Leader> + e) does the same thing as it does in i3.
