@@ -1,13 +1,12 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
-use std::cmp;
 use std::sync::{Mutex, MutexGuard, TryLockError};
 
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
 
-use rustwlc::{WlcView, WlcOutput, Geometry, Point, Size, ResizeEdge};
+use rustwlc::{WlcView, WlcOutput, Geometry, Point};
 
 use super::graph_tree::Tree;
 use super::container::{Container, Handle, ContainerType, Layout};

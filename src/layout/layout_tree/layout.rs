@@ -1,10 +1,10 @@
 use std::cmp;
 
 use petgraph::graph::NodeIndex;
-use rustwlc::{WlcView, WlcOutput, Geometry, Point, Size, ResizeEdge};
+use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
 use super::tree::LayoutTree;
-use super::container::{Container, ContainerType, Layout, Handle};
+use super::container::{Container, ContainerType, Layout};
 
 impl LayoutTree {
     /// Given the index of some container in the tree, lays out the children of
