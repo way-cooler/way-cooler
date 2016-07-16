@@ -181,12 +181,6 @@ impl LayoutTree {
         self.active_ix_of(ctype).and_then(move |ix| self.tree.get_mut(ix))
     }
 
-    /// Determines if the container at the node index is the root.
-    /// Normally, this should only be true if the NodeIndex value is 1.
-    fn is_root_container(&self, node_ix: NodeIndex) -> bool {
-        self.tree[self.tree.parent_of(node_ix).unwrap_or(node_ix)].get_type() == ContainerType::Workspace
-    }
-
     /// Determines if the active container is the root container
     pub fn active_is_root(&self) -> bool {
         if let Some(active_ix) = self.active_container {
