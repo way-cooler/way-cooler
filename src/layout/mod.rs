@@ -1,6 +1,4 @@
-mod container;
-mod graph_tree;
-mod tree;
+mod layout_tree;
 
-pub use self::container::{Container, ContainerType, Handle, Layout};
-pub use self::tree::{Direction, try_lock_tree, get_json as tree_as_json};
+pub use self::layout_tree::container::{Container, ContainerType, Handle, Layout};
+pub use self::layout_tree::tree::{Direction, try_lock_tree, get_json as tree_as_json};

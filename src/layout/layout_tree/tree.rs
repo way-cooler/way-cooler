@@ -7,10 +7,10 @@ use std::cmp;
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
 
-use layout::container::{Container, Handle, ContainerType, Layout};
 use rustwlc::{WlcView, WlcOutput, Geometry, Point, Size, ResizeEdge};
 
-use layout::graph_tree::Tree;
+use super::graph_tree::Tree;
+use super::container::{Container, Handle, ContainerType, Layout};
 
 /// Error for trying to lock the tree
 pub type TreeErr = TryLockError<MutexGuard<'static, LayoutTree>>;
