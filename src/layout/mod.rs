@@ -1,8 +1,9 @@
 mod layout_tree;
+mod graph_tree;
 
 pub use self::layout_tree::container::{Container, ContainerType, Handle, Layout};
 pub use self::layout_tree::tree::{Direction};
-pub use self::layout_tree::graph_tree::{Tree};
+pub use self::graph_tree::Tree;
 
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};

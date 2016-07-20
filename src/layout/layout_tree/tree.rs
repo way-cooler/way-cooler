@@ -662,7 +662,7 @@ impl LayoutTree {
 #[cfg(test)]
 mod tests {
     use super::super::super::LayoutTree;
-    use super::super::graph_tree::Tree;
+    use super::super::super::graph_tree::Tree;
     use super::*;
     use super::super::container::*;
     use rustwlc::*;
