@@ -5,7 +5,7 @@ use std::sync::RwLock;
 
 use rustwlc;
 use rustwlc::*;
-use layout::try_lock_tree;
+use layout::{try_lock_tree, commands as layout_cmds};
 
 lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
@@ -137,15 +137,16 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
         }
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
-        {
-            let mut tree = try_lock_tree().expect(ERR_TREE);
-            tree.set_active_container(view.clone());
+        if let Ok(mut tree) = try_lock_tree() {
+            if let Err(err) = layout_cmds::set_active_view(&mut tree, view.clone()) {
+                error!("start_interactive_move error: {}", err);
+                return false
+            } else {
+                return true
+            }
         }
-        true
-    } else {
-        false
     }
-
+    return false
 }
 
 /// Performs an operation on a pointer button, to be used in the callback
@@ -187,12 +188,12 @@ fn start_interactive_action(view: &WlcView, origin: &Point) -> Result<(), &'stat
         }
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
-        {
-            let mut tree = try_lock_tree().expect(ERR_TREE);
-            tree.set_active_container(view.clone());
+        if let Ok(mut tree) = try_lock_tree() {
+            return Ok(try!(layout_cmds::set_active_view(&mut tree, view.clone()).map_err(|_| {
+                "start_interactive_action: Could not start move"
+            })));
         }
     }
-
     Ok(())
 }
 
