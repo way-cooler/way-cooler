@@ -7,7 +7,7 @@ use rustwlc::{WlcView, WlcOutput, Geometry, Point};
 
 use super::super::LayoutTree;
 
-use super::container::{Container, Handle, ContainerType, Layout};
+use super::super::container::{Container, Handle, ContainerType, Layout};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -662,9 +662,9 @@ impl LayoutTree {
 #[cfg(test)]
 mod tests {
     use super::super::super::LayoutTree;
+    use super::super::super::container::*;
     use super::super::super::graph_tree::Tree;
     use super::*;
-    use super::super::container::*;
     use rustwlc::*;
 
     /// Makes a very basic tree.

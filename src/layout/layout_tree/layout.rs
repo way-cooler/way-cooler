@@ -4,7 +4,7 @@ use petgraph::graph::NodeIndex;
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
 use super::super::LayoutTree;
-use super::container::{Container, ContainerType, Layout};
+use super::super::container::{Container, ContainerType, Layout};
 
 impl LayoutTree {
     /// Given the index of some container in the tree, lays out the children of
@@ -359,6 +359,7 @@ impl LayoutTree {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::super::super::LayoutTree;
 
