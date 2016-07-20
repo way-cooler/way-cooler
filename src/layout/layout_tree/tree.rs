@@ -156,13 +156,15 @@ impl LayoutTree {
     }
 
     //// Remove a view container from the tree
-    pub fn remove_view(&mut self, view: &WlcView) {
+    pub fn remove_view(&mut self, view: &WlcView) -> Result<(), String> {
         if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), view) {
             self.remove_view_or_container(view_ix);
+            self.validate();
+            Ok(())
         } else {
-            warn!("Could not find descendant with handle {:#?} to remove", view);
+            self.validate();
+            Err(format!("Could not find descendant with handle {:#?} to remove", view))
         }
-        self.validate();
     }
 
     /// Removes the current active container

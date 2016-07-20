@@ -12,8 +12,10 @@ use rustc_serialize::json::{Json, ToJson};
 
 use std::sync::{Mutex, MutexGuard, TryLockError};
 
+/// Mutex guard around the tree
+pub type TreeGuard = MutexGuard<'static, LayoutTree>;
 /// Error for trying to lock the tree
-pub type TreeErr = TryLockError<MutexGuard<'static, LayoutTree>>;
+pub type TreeErr = TryLockError<TreeGuard>;
 /// Result for locking the tree
 pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 

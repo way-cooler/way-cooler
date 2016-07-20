@@ -9,6 +9,7 @@ use super::keys;
 use super::lua;
 use super::keys::KeyPress;
 use super::layout::try_lock_tree;
+use super::layout::commands as layout_cmds;
 use super::layout::ContainerType;
 
 /// If the event is handled by way-cooler
@@ -21,14 +22,12 @@ const EVENT_PASS_THROUGH: bool = false;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
-    {
-        if let Ok(mut tree) = try_lock_tree() {
-            tree.add_output(output.clone());
-            tree.switch_to_workspace(&"1");
-            true
-        } else {
-            false
-        }
+    if let Ok(mut tree) = try_lock_tree() {
+        layout_cmds::add_output(&mut tree, output).and_then(|_|{
+            layout_cmds::switch_to_workspace(&mut tree, &"1")
+        }).is_ok()
+    } else {
+        false
     }
 }
 
@@ -47,43 +46,17 @@ pub extern fn output_resolution(output: WlcOutput,
     // Update the resolution of the output and its children
     output.set_resolution(new_size_ptr.clone());
     if let Ok(mut tree) = try_lock_tree() {
-        tree.layout_active_of(ContainerType::Output);
+        layout_cmds::layout_active_of(&mut tree, ContainerType::Output)
+            .expect("Could not layout active output");
     }
 }
-/*
-pub extern fn output_render_pre(output: WlcOutput) {
-    //println!("output_render_pre");
-}
 
-pub extern fn output_render_post(output: WlcOutput) {
-    //println!("output_render_post");
-}
-*/
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
-    let output = view.get_output();
     if let Ok(mut tree) = try_lock_tree() {
-        if tree.get_active_container().is_none() {
-            warn!("Could not create view, so there is no focus and \
-                    way-cooler doesn't know where to put it");
-            return false
-        }
-        view.set_mask(output.get_mask());
-        let v_type = view.get_type();
-        if v_type != ViewType::empty() {
-            view.focus();
-            // Now focused on something outside the tree,
-            // have to unset the active container
-            if !tree.active_is_root() {
-                tree.unset_active_container();
-            }
-            return true
-        }
-        tree.add_view(view.clone());
-        tree.normalize_view(view.clone());
-        tree.layout_active_of(ContainerType::Container);
-        tree.set_active_container(view.clone());
-        return true
+        layout_cmds::add_view(&mut tree, view.clone()).and_then(|_| {
+            layout_cmds::set_active_view(&mut tree, view)
+        }).is_ok()
     } else {
         false
     }
@@ -92,10 +65,13 @@ pub extern fn view_created(view: WlcView) -> bool {
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
     if let Ok(mut tree) = try_lock_tree() {
-        tree.remove_view(&view);
-        tree.layout_active_of(ContainerType::Workspace);
+        layout_cmds::remove_view(&mut tree, view.clone()).and_then(|_| {
+            layout_cmds::layout_active_of(&mut tree, ContainerType::Workspace)
+        }).unwrap_or_else(|err| {
+            error!("Error in view_destroyed: {}", err);
+        });
     } else {
-        warn!("Could not delete view {:?}", view);
+        error!("Could not delete view {:?}", view);
     }
 }
 
@@ -103,11 +79,11 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
     trace!("view_focus: {:?} {}", current, focused);
     current.set_state(VIEW_ACTIVATED, focused);
     // set the focus view in the tree
-    {
-        // If tree is already grabbed,
-        // it should have the active container all set
-        if let Ok(mut tree) = try_lock_tree() {
-            tree.set_active_container(current.clone());
+    // If tree is already grabbed,
+    // it should have the active container all set
+    if let Ok(mut tree) = try_lock_tree() {
+        if layout_cmds::set_active_view(&mut tree, current.clone()).is_err() {
+            error!("Could not layout {:?}", current);
         }
     }
 }
@@ -198,7 +174,9 @@ pub extern fn compositor_terminating() {
     info!("Compositor terminating!");
     lua::send(lua::LuaQuery::Terminate).ok();
     if let Ok(mut tree) = try_lock_tree() {
-        tree.destroy_tree();
+        if layout_cmds::destroy_tree(&mut tree).is_err() {
+            error!("Could not destroy tree");
+        }
     }
 
 }
