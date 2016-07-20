@@ -1,6 +1,7 @@
 mod layout_tree;
 mod graph_tree;
 mod container;
+pub mod commands;
 
 pub use self::container::{Container, ContainerType, Handle, Layout};
 pub use self::layout_tree::tree::{Direction};
