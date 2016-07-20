@@ -4,7 +4,7 @@ mod container;
 
 pub use self::container::{Container, ContainerType, Handle, Layout};
 pub use self::layout_tree::tree::{Direction};
-pub use self::graph_tree::Tree;
+use self::graph_tree::Tree;
 
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
