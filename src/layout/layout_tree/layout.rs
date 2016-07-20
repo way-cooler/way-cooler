@@ -3,7 +3,7 @@ use std::cmp;
 use petgraph::graph::NodeIndex;
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
-use super::tree::LayoutTree;
+use super::super::LayoutTree;
 use super::container::{Container, ContainerType, Layout};
 
 impl LayoutTree {
@@ -360,7 +360,7 @@ impl LayoutTree {
 }
 
 mod test {
-    use super::super::tree::LayoutTree;
+    use super::super::super::LayoutTree;
 
     #[test]
     /// Ensure that calculate_scale is fair to all it's children

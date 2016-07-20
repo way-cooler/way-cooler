@@ -1,20 +1,13 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
-use std::sync::{Mutex, MutexGuard, TryLockError};
-
 use petgraph::graph::NodeIndex;
-use rustc_serialize::json::{Json, ToJson};
 
 use rustwlc::{WlcView, WlcOutput, Geometry, Point};
 
-use super::graph_tree::Tree;
-use super::container::{Container, Handle, ContainerType, Layout};
+use super::super::LayoutTree;
 
-/// Error for trying to lock the tree
-pub type TreeErr = TryLockError<MutexGuard<'static, LayoutTree>>;
-/// Result for locking the tree
-pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
+use super::container::{Container, Handle, ContainerType, Layout};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -22,70 +15,6 @@ pub enum Direction {
     Down,
     Right,
     Left
-}
-
-/* An example Tree:
-
-      Root
-        |
-    ____|____
-   /         \
-   |         |
- Output    Output
-   |         |
- Workspace   |
-   |        / \
-   |       /   \
-   | Workspace Workspace
-   |     |         |
-   |  Container Container
- Container
-    |
-   / \
-  /   \
-  |    \
-  |     \
-  |      \
-  |       \
- Container \
-     |      \
-   View    View
- */
-
-/// The layout tree builds on top of the graph_tree.
-///
-/// There are various invariants that the tree upholds:
-///
-///   + Root
-///       - There is only one Root
-///       - The root can only have Outputs (monitors) as children
-///   + Output
-///       - An Output must have at least one Workspace associated with it
-///       - An Output must be associated with a WlcOutput (real monitor)
-///       - An Output can only have Workspaces as children
-///   + Workspace
-///       - A Workspace must have at least one Container, even if it doesn't
-///         contain any views
-///       - A Workspace can only have Containers as children
-///   + Container
-///       - A Container can only have other Containers or Views as children
-///       - All non-root containers need at least one child
-///   + View
-///       - A View must be associated with a WlcView
-///       - A View cannot have any children
-#[derive(Debug)]
-pub struct LayoutTree {
-    pub tree: Tree,
-    pub active_container: Option<NodeIndex>
-}
-
-lazy_static! {
-    static ref TREE: Mutex<LayoutTree> = {
-        Mutex::new(LayoutTree {
-            tree: Tree::new(),
-            active_container: None
-        })
-    };
 }
 
 impl LayoutTree {
@@ -729,61 +658,10 @@ impl LayoutTree {
 
 }
 
-impl ToJson for LayoutTree {
-    fn to_json(&self) -> Json {
-        use std::collections::BTreeMap;
-        fn node_to_json(node_ix: NodeIndex, tree: &LayoutTree) -> Json {
-            match &tree.tree[node_ix] {
-                &Container::Workspace { ref name, .. } => {
-                    let mut inner_map = BTreeMap::new();
-                    let children = tree.tree.children_of(node_ix).iter()
-                        .map(|node| node_to_json(*node, tree)).collect();
-                    inner_map.insert(format!("Workspace {}", name), Json::Array(children));
-                    return Json::Object(inner_map);
-                }
-                &Container::Container { ref layout, .. } => {
-                    let mut inner_map = BTreeMap::new();
-                    let children = tree.tree.children_of(node_ix).iter()
-                        .map(|node| node_to_json(*node, tree)).collect();
-                    inner_map.insert(format!("Container w/ layout {:?}", layout), Json::Array(children));
-                    return Json::Object(inner_map);
-                }
-                &Container::View { ref handle, .. } => {
-                    return Json::String(handle.get_title());
-                },
-                ref container => {
-                    let mut inner_map = BTreeMap::new();
-                    let children = tree.tree.children_of(node_ix).iter()
-                        .map(|node| node_to_json(*node, tree)).collect();
-                    inner_map.insert(format!("{:?}", container.get_type()),
-                                     Json::Array(children));
-                    return Json::Object(inner_map)
-                }
-            }
-        }
-        return node_to_json(self.tree.root_ix(), self);
-    }
-}
-
-/// Attempts to lock the tree. If the Result is Err, then a thread that
-/// previously had the lock panicked and potentially left the tree in a bad state
-pub fn try_lock_tree() -> TreeResult {
-    trace!("Locking the tree!");
-    TREE.try_lock()
-}
-
-
-pub fn get_json() -> Json {
-    if let Ok(tree) = try_lock_tree() {
-        tree.to_json()
-    } else {
-        Json::Null
-    }
-}
 
 #[cfg(test)]
 mod tests {
-
+    use super::super::super::LayoutTree;
     use super::super::graph_tree::Tree;
     use super::*;
     use super::super::container::*;

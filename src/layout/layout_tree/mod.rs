@@ -1,4 +1,4 @@
 pub mod layout;
 pub mod container;
 pub mod tree;
-mod graph_tree;
+pub mod graph_tree;
