@@ -5,7 +5,7 @@ use std::sync::RwLock;
 
 use rustwlc;
 use rustwlc::*;
-use layout::{try_lock_tree, commands as layout_cmds};
+use layout::try_lock_tree;
 
 lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
@@ -138,7 +138,7 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
         if let Ok(mut tree) = try_lock_tree() {
-            if let Err(err) = layout_cmds::set_active_view(&mut tree, view.clone()) {
+            if let Err(err) = tree.set_active_view(view.clone()) {
                 error!("start_interactive_move error: {}", err);
                 return false
             } else {
@@ -155,8 +155,9 @@ pub fn on_pointer_button(view: WlcView, _time: u32, _mods: &KeyboardModifiers,
                          -> bool {
     if state == ButtonState::Pressed {
         if !view.is_root() {
-            let mut tree = try_lock_tree().expect(ERR_TREE);
-            tree.set_active_container(view.clone());
+            if let Ok(mut tree) = try_lock_tree() {
+                tree.set_active_view(view.clone());
+            }
         }
     }
     else {
@@ -189,7 +190,7 @@ fn start_interactive_action(view: &WlcView, origin: &Point) -> Result<(), &'stat
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
         if let Ok(mut tree) = try_lock_tree() {
-            return Ok(try!(layout_cmds::set_active_view(&mut tree, view.clone()).map_err(|_| {
+            return Ok(try!(tree.set_active_view(view.clone()).map_err(|_| {
                 "start_interactive_action: Could not start move"
             })));
         }

@@ -12,6 +12,8 @@ use rustc_serialize::json::{Json, ToJson};
 
 use std::sync::{Mutex, MutexGuard, TryLockError};
 
+/// A wrapper around tree, to hide its methods
+pub struct TreeWrapper(TreeGuard);
 /// Mutex guard around the tree
 pub type TreeGuard = MutexGuard<'static, LayoutTree>;
 /// Error for trying to lock the tree
@@ -73,15 +75,16 @@ impl ToJson for LayoutTree {
 
 /// Attempts to lock the tree. If the Result is Err, then a thread that
 /// previously had the lock panicked and potentially left the tree in a bad state
-pub fn try_lock_tree() -> TreeResult {
+pub fn try_lock_tree() -> Result<TreeWrapper, TreeErr> {
     trace!("Locking the tree!");
-    TREE.try_lock()
+    let tree = try!(TREE.try_lock());
+    Ok(TreeWrapper(tree))
 }
 
 
 pub fn tree_as_json() -> Json {
     if let Ok(tree) = try_lock_tree() {
-        tree.to_json()
+        tree.0.to_json()
     } else {
         Json::Null
     }
