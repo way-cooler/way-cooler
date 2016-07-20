@@ -1,21 +1,9 @@
--- Contains Lua glue for initializing things in the config
-
-local config = {}
-
 -- Private table of Rust functions
-local rust = nil
-
--- Public method to set up private Rust data.
--- This is called in the lib init, and this method
--- and externally visible Rust tables are destroyed.
-config.set_rust = function(interop, key)
-    rust = interop
-    return rust
-end
+local rust = __rust
+__rust = nil
 
 -- Initialize the workspaces
-config.init_workspaces = function(count, settings)
-    error("This feature is not yet implemented!", 2) -- TODO implement
+config.init_workspaces = function(settings)
     assert(type(count) == 'number', "count: expected number")
     assert(type(settings) == 'table', "settings: expected table")
     for ix, val in pairs(settings) do
@@ -25,7 +13,7 @@ config.init_workspaces = function(count, settings)
         val.name = val.name or ""
         val.mode = val.mode or "tiling"
     end
-    rust.init_workspaces(count, settings)
+    rust.init_workspaces(settings)
 end
 
 -- Create a new keybinding to register with Rust
@@ -72,11 +60,9 @@ config.register_key = function(key)
         rust.register_command_key(keymods_to_string(key.mods),
                                   key.key, key.action, key.loop)
     elseif (type(key.action) == 'function') then
-        register_lua_key(rust.keymods_index(keymods_to_string(key.mods, key.key)),
+        register_lua_key(keymods_to_string(key.mods, key.key),
                               key.action, key.loop)
     else
         error("keybinding action: expected string or a function"..use_key, 2)
     end
 end
-
-return config

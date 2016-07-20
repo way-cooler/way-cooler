@@ -6,8 +6,6 @@ local utils = require("utils") -- Utilities, i.e. shell
 -- Layouts
 --
 
---[[ -- We have not yet implemented workspace defaults. Coming soon.
-
 local max_workspaces = 9
 
 -- The default layout options are no names, mode = "default" (use keybindings).
@@ -21,9 +19,7 @@ local workspace_settings = {
 }
 
 -- Create 9 workspaces with the given settings.
-config.init_workspaces(max_workspaces, workspace_settings)
-
-]] -- End config init
+config.init_workspaces(workspace_settings)
 
 --
 -- Background

@@ -1,12 +1,11 @@
 //! Lua functionality
 
-#[macro_use]
-mod funcs;
 #[cfg(test)]
 mod tests;
 
 mod types;
 mod thread;
+mod init_rust;
 pub use self::types::{LuaQuery, LuaFunc, LuaResponse};
 
 pub use self::thread::{running, send, LuaSendError};

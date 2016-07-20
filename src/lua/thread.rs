@@ -12,7 +12,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use hlua::{Lua, LuaError};
 
 use super::types::*;
-use super::funcs;
+use super::init_rust;
 
 lazy_static! {
     /// Sends requests to the Lua thread
@@ -98,15 +98,8 @@ pub fn init() {
     let mut lua = Lua::new();
     debug!("Loading Lua libraries...");
     lua.openlibs();
-    trace!("Loading way-cooler lua extensions...");
-    // We should have some good file handling, read files from /usr by default,
-    // but for now we're reading directly from the source.
-    lua.execute_from_reader::<(), File>(
-        File::open("lib/lua/init.lua")
-            .expect("Lua thread unable to find init file")
-    ).expect("Lua thread: unable to execute init file");
     trace!("Loading way-cooler libraries...");
-    funcs::register_libraries(&mut lua);
+    init_rust::register_libraries(&mut lua);
     // Only ready after loading libs
     *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
     debug!("Entering main loop...");
