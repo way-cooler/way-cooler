@@ -8,8 +8,7 @@ use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
 use commands::{self, CommandFn};
-use layout::{Direction, try_lock_tree};
-use layout::{ContainerType, Layout};
+use layout::try_lock_tree;
 use lua::{self, LuaQuery};
 
 /// Register the default commands in the API.
@@ -37,7 +36,10 @@ pub fn register_defaults() {
             $(fn $b() {
                 trace!("Switching to workspace {}", $n);
                 if let Ok(mut tree) = try_lock_tree() {
-                    tree.switch_to_workspace(&$n.to_string());
+                    tree.switch_to_workspace(&$n.to_string())
+                        .unwrap_or_else(|_| {
+                            error!("Could not switch workspace");
+                        });
                 }
             }
             register(stringify!($b), Arc::new($b)); )+
@@ -50,7 +52,10 @@ pub fn register_defaults() {
             $(fn $b() {
                 trace!("Switching to workspace {}", $n);
                 if let Ok(mut tree) = try_lock_tree() {
-                    tree.send_active_to_workspace(&$n.to_string());
+                    tree.send_active_to_workspace(&$n.to_string())
+                        .unwrap_or_else(|_| {
+                            error!("Could not send to a different workspace");
+                        })
                 }
             }
               register(stringify!($b), Arc::new($b)); )+

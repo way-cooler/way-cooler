@@ -12,7 +12,6 @@ lazy_static! {
 }
 
 const ERR_LOCK: &'static str = "Unable to lock compositor!";
-const ERR_TREE: &'static str = "Unable to lock tree!";
 
 #[derive(Debug, PartialEq)]
 pub struct Compositor {
@@ -156,7 +155,10 @@ pub fn on_pointer_button(view: WlcView, _time: u32, _mods: &KeyboardModifiers,
     if state == ButtonState::Pressed {
         if !view.is_root() {
             if let Ok(mut tree) = try_lock_tree() {
-                tree.set_active_view(view.clone());
+                tree.set_active_view(view.clone())
+                    .unwrap_or_else(|err| {
+                        error!("Could not set active container {:?}", err);
+                    });
             }
         }
     }

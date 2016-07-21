@@ -2,7 +2,6 @@
 
 use super::try_lock_tree;
 use super::{ContainerType, Direction, Layout};
-use super::TreeGuard;
 use super::TreeWrapper;
 
 use rustwlc::{WlcView, WlcOutput, ViewType};
@@ -18,7 +17,10 @@ pub fn remove_active() {
 pub fn tile_switch() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.0.toggle_active_horizontal();
-        tree.layout_active_of(ContainerType::Workspace);
+        tree.layout_active_of(ContainerType::Workspace)
+            .unwrap_or_else(|_| {
+                error!("Could not tile workspace");
+            });
     }
 }
 
@@ -36,25 +38,37 @@ pub fn split_horizontal() {
 
 pub fn focus_left() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Left);
+        tree.move_focus(Direction::Left)
+            .unwrap_or_else(|_| {
+                error!("Could not focus left");
+            });
     }
 }
 
 pub fn focus_right() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Right);
+        tree.move_focus(Direction::Right)
+            .unwrap_or_else(|_| {
+                error!("Could not focus right");
+            });
     }
 }
 
 pub fn focus_up() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Up);
+        tree.move_focus(Direction::Up)
+            .unwrap_or_else(|_| {
+                error!("Could not focus up");
+            });
     }
 }
 
 pub fn focus_down() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Down);
+        tree.move_focus(Direction::Down)
+            .unwrap_or_else(|_| {
+                error!("Could not focus down");
+            });
     }
 }
 
