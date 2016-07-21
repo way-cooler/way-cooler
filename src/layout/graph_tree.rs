@@ -227,24 +227,12 @@ impl Tree {
     }
 
     /// Looks up a container by id
-    pub fn lookup_id(&self, id: Uuid) -> Option<&Container> {
+    pub fn lookup_id(&self, id: Uuid) -> Option<NodeIndex> {
         if let Some(node_ix) = self.id_map.get(&id) {
-            self.get(*node_ix)
+            Some(*node_ix)
         } else {
             None
         }
-    }
-
-    /// Looks up a container by id mutably
-    pub fn lookup_id_mut(&mut self, id: Uuid) -> Option<&mut Container> {
-        let node_ix: NodeIndex;
-        if let Some(ix) = self.id_map.get(&id) {
-            node_ix = *ix;
-        }
-        else {
-            return None
-        }
-        self.get_mut(node_ix)
     }
 
     /// Gets the container of the given node.

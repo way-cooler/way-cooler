@@ -1,9 +1,10 @@
 //! Commands from the user to manipulate the tree
 
 use super::try_lock_tree;
-use super::{ContainerType, Direction, Layout};
+use super::{ContainerType, Direction, Handle, Layout};
 use super::TreeWrapper;
 
+use uuid::Uuid;
 use rustwlc::{WlcView, WlcOutput, ViewType};
 
 pub type CommandResult = Result<(), String>;
@@ -123,10 +124,55 @@ impl TreeWrapper {
         self.0.remove_view(&view)
     }
 
+    #[allow(dead_code)]
+    /// Attempts to remove a container based on UUID. Fails if the container
+    /// cannot be removed or if the container does not exist.
+    pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
+        if let Some(node_ix) = self.0.tree.lookup_id(id) {
+            match self.0.tree[node_ix].get_type() {
+                ContainerType::View => {
+                    let handle = match self.0.tree[node_ix].get_handle()
+                        .expect("Could not get handle") {
+                            Handle::View(ref handle) => handle.clone(),
+                            _ => unreachable!()
+                        };
+                    return self.remove_view(handle)
+                },
+                _ => {
+                    Err("That UUID was not associated with a view".into())
+                }
+            }
+        } else {
+            Err("Could not find container".into())
+        }
+    }
+
     /// Sets the view to be the new active container. Never fails
     pub fn set_active_view(&mut self, view: WlcView) -> CommandResult {
         self.0.set_active_container(view);
         Ok(())
+    }
+
+    #[allow(dead_code)]
+    /// Sets the active container to be the container at the UUID
+    /// Fails if the container is not a container or view, or if the
+    /// container does not exist
+    pub fn set_active_container_by_id(&mut self, id: Uuid) -> CommandResult {
+        if let Some(node_ix) = self.0.tree.lookup_id(id) {
+            match self.0.tree[node_ix].get_type() {
+                ContainerType::View | ContainerType::Container => {
+                    self.0.active_container = Some(node_ix);
+                    Ok(())
+                },
+                _ => {
+                    Err(format!("UUID did not point to view, it pointed to index {:?}, which points to {:?}",
+                                node_ix, self.0.tree[node_ix]))
+                }
+
+            }
+        } else {
+            Err("Could not find container".into())
+        }
     }
 
     /// Destroy the tree
