@@ -671,7 +671,7 @@ impl LayoutTree {
 mod tests {
     use super::super::super::LayoutTree;
     use super::super::super::container::*;
-    use super::super::super::graph_tree::Tree;
+    use super::super::super::graph_tree::InnerTree;
     use super::*;
     use rustwlc::*;
 
@@ -685,7 +685,7 @@ mod tests {
     /// The active container is the only view in the first workspace
     #[allow(unused_variables)]
     fn basic_tree() -> LayoutTree {
-        let mut tree = Tree::new();
+        let mut tree = InnerTree::new();
         let fake_view_1 = WlcView::root();
         let fake_output = fake_view_1.clone().as_output();
         let root_ix = tree.root_ix();

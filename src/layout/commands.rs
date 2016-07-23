@@ -2,7 +2,7 @@
 
 use super::try_lock_tree;
 use super::{ContainerType, Direction, Handle, Layout};
-use super::TreeWrapper;
+use super::Tree;
 
 use uuid::Uuid;
 use rustwlc::{WlcView, WlcOutput, ViewType};
@@ -75,7 +75,7 @@ pub fn focus_down() {
 
 /* Commands that can be chained together with a locked tree */
 
-impl TreeWrapper {
+impl Tree {
 
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {

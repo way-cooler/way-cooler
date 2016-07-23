@@ -5,7 +5,7 @@ pub mod commands;
 
 pub use self::container::{Container, ContainerType, Handle, Layout};
 pub use self::layout_tree::tree::{Direction};
-use self::graph_tree::Tree;
+use self::graph_tree::InnerTree;
 
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
@@ -13,7 +13,7 @@ use rustc_serialize::json::{Json, ToJson};
 use std::sync::{Mutex, MutexGuard, TryLockError};
 
 /// A wrapper around tree, to hide its methods
-pub struct TreeWrapper(TreeGuard);
+pub struct Tree(TreeGuard);
 /// Mutex guard around the tree
 pub type TreeGuard = MutexGuard<'static, LayoutTree>;
 /// Error for trying to lock the tree
@@ -24,14 +24,14 @@ pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 
 #[derive(Debug)]
 pub struct LayoutTree {
-    tree: Tree,
+    tree: InnerTree,
     active_container: Option<NodeIndex>
 }
 
 lazy_static! {
     static ref TREE: Mutex<LayoutTree> = {
         Mutex::new(LayoutTree {
-            tree: Tree::new(),
+            tree: InnerTree::new(),
             active_container: None
         })
     };
@@ -75,10 +75,10 @@ impl ToJson for LayoutTree {
 
 /// Attempts to lock the tree. If the Result is Err, then a thread that
 /// previously had the lock panicked and potentially left the tree in a bad state
-pub fn try_lock_tree() -> Result<TreeWrapper, TreeErr> {
+pub fn try_lock_tree() -> Result<Tree, TreeErr> {
     trace!("Locking the tree!");
     let tree = try!(TREE.try_lock());
-    Ok(TreeWrapper(tree))
+    Ok(Tree(tree))
 }
 
 
