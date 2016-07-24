@@ -22,60 +22,6 @@ lazy_static! {
 
 
 pub fn init() {
-    macro_rules! register {
-        ( $($press:expr => $name:expr);+ ) => {
-            register(vec![
-                $( ($press, KeyEvent::Command(commands::get(&$name.to_string())
-                  .expect("Unable to register default command!"))) ),+
-                ]);
-        }
-    }
-
-    register! {
-        keypress!("Alt", "Escape") => "quit";
-        keypress!("Alt", "Return") => "launch_terminal";
-        keypress!("Alt", "d") => "launch_dmenu";
-        keypress!("Alt", "l") => "dmenu_eval";
-        KeyPress::from_key_names(&["Alt", "Shift"], "l")
-            .expect("Unable to create default keypress")
-            => "dmenu_lua_dofile";
-
-        /* Layout key bindings */
-        keypress!("Alt", "e") => "horizontal_vertical_switch";
-        keypress!("Alt", "v") => "split_vertical";
-        keypress!("Alt", "h") => "split_horizontal";
-        /* Focus key bindings */
-        keypress!("Alt", "left") => "focus_left";
-        keypress!("Alt", "right") => "focus_right";
-        keypress!("Alt", "up") => "focus_up";
-        keypress!("Alt", "down") => "focus_down";
-
-        keypress!("Alt", "q") => "remove_active";
-
-        /* Workspace switching key bindings */
-        keypress!("Alt", "1") => "switch_workspace_1";
-        keypress!("Alt", "2") => "switch_workspace_2";
-        keypress!("Alt", "3") => "switch_workspace_3";
-        keypress!("Alt", "4") => "switch_workspace_4";
-        keypress!("Alt", "5") => "switch_workspace_5";
-        keypress!("Alt", "6") => "switch_workspace_6";
-        keypress!("Alt", "7") => "switch_workspace_7";
-        keypress!("Alt", "8") => "switch_workspace_8";
-        keypress!("Alt", "9") => "switch_workspace_9";
-        keypress!("Alt", "0") => "switch_workspace_0";
-
-        /* Moving active container to another Workspace key bindings */
-        KeyPress::from_key_names(&["Alt", "Shift"], "1").unwrap() => "move_to_workspace_1";
-        KeyPress::from_key_names(&["Alt", "Shift"], "2").unwrap() => "move_to_workspace_2";
-        KeyPress::from_key_names(&["Alt", "Shift"], "3").unwrap() => "move_to_workspace_3";
-        KeyPress::from_key_names(&["Alt", "Shift"], "4").unwrap() => "move_to_workspace_4";
-        KeyPress::from_key_names(&["Alt", "Shift"], "5").unwrap() => "move_to_workspace_5";
-        KeyPress::from_key_names(&["Alt", "Shift"], "6").unwrap() => "move_to_workspace_6";
-        KeyPress::from_key_names(&["Alt", "Shift"], "7").unwrap() => "move_to_workspace_7";
-        KeyPress::from_key_names(&["Alt", "Shift"], "8").unwrap() => "move_to_workspace_8";
-        KeyPress::from_key_names(&["Alt", "Shift"], "9").unwrap() => "move_to_workspace_9";
-        KeyPress::from_key_names(&["Alt", "Shift"], "0").unwrap() => "move_to_workspace_0"
-    }
 }
 
 /// Parses a KeyMod from key names.
@@ -98,6 +44,7 @@ pub fn keymod_from_names(keys: &[&str]) -> Result<KeyMod, String> {
 
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
+    trace!("Searching for {}", key);
     let bindings = BINDINGS.read()
         .expect("Keybindings/get: unable to lock keybindings");
     bindings.get(key).map(KeyEvent::clone)
@@ -105,6 +52,7 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
 
 /// Register a new set of key mappings
 pub fn register(values: Vec<(KeyPress, KeyEvent)>) {
+    trace!("Registering some keypress: {}", values[0].0);
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
     for value in values {

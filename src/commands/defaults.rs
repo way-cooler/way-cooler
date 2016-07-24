@@ -93,7 +93,6 @@ pub fn register_defaults() {
     register("focus_up", Arc::new(layout_cmds::focus_up));
     register("focus_down", Arc::new(layout_cmds::focus_down));
     register("remove_active", Arc::new(layout_cmds::remove_active))
-
 }
 
 // All of the methods defined should be registered.

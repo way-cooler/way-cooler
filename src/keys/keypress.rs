@@ -5,6 +5,9 @@ use rustwlc::KeyMod;
 use rustwlc::xkb::{Keysym, NameFlags};
 use std::hash::{Hash, Hasher, SipHasher};
 
+use std::fmt::Result as FmtResult;
+use std::fmt::{Display, Formatter};
+
 /// Structure containing keys which are pressed
 /// to trigger a keybinding.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,5 +65,14 @@ impl Hash for KeyPress {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         hasher.write_u32(self.modifiers.bits());
         hasher.write_u32(self.key.get_code());
+    }
+}
+
+impl Display for KeyPress {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f.debug_tuple("Keypress")
+            .field(&self.modifiers)
+            .field(&self.key.get_name())
+            .finish()
     }
 }

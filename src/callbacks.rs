@@ -123,7 +123,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
         let press = KeyPress::new(mods.mods, sym);
         if let Some(action) = keys::get(&press) {
-            debug!("[key] Found an action for {:?}", press);
+            debug!("[key] Found an action for {}", press);
             match action {
                 KeyEvent::Command(func) => {
                     func();

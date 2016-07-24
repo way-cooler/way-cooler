@@ -1,6 +1,6 @@
 -- Lua configuration file for way-cooler.
-
-local utils = require("utils") -- Utilities, i.e. shell
+print("Reached config file")
+-- local utils = require("utils") -- Utilities, i.e. shell
 
 --
 -- Layouts
@@ -49,7 +49,7 @@ config.init_workspaces(workspace_settings)
 -- waiting until the keys are released to run again.
 
 -- Modifier key used in keybindings. Mod3 = Alt, Mod4 = Super/Logo key
-mod = "Mod4"
+mod = "Alt"
 local key = config.key -- Alias key so it's faster to type
 
 way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
@@ -58,23 +58,35 @@ local keys = {
   -- Open dmenu
   key({ mod }, "d", "launch_dmenu"),
   -- Open terminal
-  key({ mod }, "Enter", function()
-      util.exec.spawn(terminal)
-  end),
+  key({ mod }, "return", "launch_terminal"),
+
+  -- Some Lua dmenu stuff
+  key({ mod }, "l", "dmenu_eval"),
+  key({ mod, "Shift" }, "l", "dmenu_lua_dofile"),
 
   -- Switch workspaces L/R/previous
-  key({ mod }, "Left",      "workspace.switch_left"),
-  key({ mod }, "Right",     "workspace.switch_right"),
-  key({ mod }, "Backspace", "workspace.switch_previous"),
+  --key({ mod }, "Left",      "workspace.switch_left"),
+  --key({ mod }, "Right",     "workspace.switch_right"),
+  --key({ mod }, "Backspace", "workspace.switch_previous"),
 
   -- Send active to workspace L/R
-  key({ mod, "Shift" }, "Left",      "workspace.send_active_left", false),
-  key({ mod, "Shift" }, "Right",     "workspace.send_active_right", false),
-  key({ mod, "Shift" }, "Backspace", "workspace.send_active_previous", false),
+  --key({ mod, "Shift" }, "Left",      "workspace.send_active_left", false),
+  --key({ mod, "Shift" }, "Right",     "workspace.send_active_right", false),
+  --key({ mod, "Shift" }, "Backspace", "workspace.send_active_previous", false),
 
   -- Move focus
-  key({ mod }, "j", "layout.focus_left"),
-  key({ mod }, "k", "layout.focus_right"),
+  -- (if you're used to mod+arrow to switch workspaces you may wanna change them)
+  key({ mod }, "left", "layout.focus_left"),
+  key({ mod }, "right", "layout.focus_right"),
+  key({ mod }, "up", "layout.focus_up"),
+  key({ mod }, "down", "layout.focus_down"),
+
+  -- Split containers
+  key({ mod }, "h", "layout.split_horizontal"),
+  key({ mod }, "v", "layout.split_vertical"),
+  key({ mod, "Shift" }, "e", "layout.switch_horizontal_vertical"),
+  key({ mod }, "q", "layout.remove_active"),
+
 
   -- Quit
   key({ mod, "Shift" }, "q", "quit"),
@@ -82,15 +94,17 @@ local keys = {
 
 -- Add Mod + X bindings to switch to workspace X, Mod+Shift+X send active to X
 for i = 1, max_workspaces do
-  util.table.append_to(keys,
-    key({ mod          }, tostring(i), "workspace.switch_to" .. i),
-    key({ mod, "Shift" }, tostring(i), "workspace.send_active_to_" .. i)
-  )
+  table.insert(keys,
+               key({ mod          }, tostring(i), "switch_workspace_" .. i))
+  table.insert(keys,
+               key({ mod, "Shift" }, tostring(i), "move_to_workspace_" .. i))
 end
+
+print("Created all the keys")
 
 -- Register the keybindings.
 for _, key in pairs(keys) do
-    config.register_keybinding(key)
+    config.register_key(key)
 end
 
 -- To use plugins such as bars, or to start other programs on startup,
