@@ -1,15 +1,15 @@
+//! Contains methods for initializing the lua config
+
 use std::fs::{self, OpenOptions};
 use std::env;
 use std::path::Path;
 
 use std::io::Result as IOResult;
 
-//! Contains methods for initializing the lua config
-
 pub const INIT_FILE: &'static str = "init.lua";
 pub const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/";
 
-pub fn home_config_path() -> Path {
+fn home_config_path() -> Path {
     Path::new(env::var("HOME").expect("Unable to read HOME variable"))
         .join(".config")
         .join("way-cooler")
@@ -22,7 +22,7 @@ fn read_file<P: AsRef<Path>>(path: P) -> IOResult<File> {
 }
 
 /// Parses environment variables
-pub fn get_config_path() -> Result<File, &'static str> {
+pub fn get_config() -> Result<File, &'static str> {
     if let Ok(path_env) = env::var("WAY_COOLER_CONFIG") {
         if let Some(file) = read_file(Path::new(path_env).join(INIT_FILE)) {
             info!("Reading init file from $WAY_COOLER_INIT_FILE: {}", path_env);

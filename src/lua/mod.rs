@@ -6,6 +6,7 @@ mod tests;
 mod types;
 mod thread;
 mod init_rust;
+mod init;
 pub use self::types::{LuaQuery, LuaFunc, LuaResponse};
 
 pub use self::thread::{running, send, LuaSendError};

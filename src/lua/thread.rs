@@ -13,6 +13,7 @@ use hlua::{Lua, LuaError};
 
 use super::types::*;
 use super::init_rust;
+use super::init;
 
 lazy_static! {
     /// Sends requests to the Lua thread
@@ -100,12 +101,22 @@ pub fn init() {
     lua.openlibs();
     trace!("Loading way-cooler libraries...");
     init_rust::register_libraries(&mut lua);
-    // Only ready after loading libs
-    *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
-    debug!("Entering main loop...");
-    let _lua_handle = thread::Builder::new()
-        .name("Lua thread".to_string())
-        .spawn(move || { main_loop(receiver, &mut lua) });
+    if let Ok(init_file) = init::get_config() {
+        debug!("Found config file...");
+        lua.execute_from_reader(init_file);
+        debug!("Read config file");
+        // Only ready after loading libs
+        *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
+        debug!("Entering main loop...");
+        let _lua_handle = thread::Builder::new()
+            .name("Lua thread".to_string())
+            .spawn(move || { main_loop(receiver, &mut lua) });
+    }
+    else {
+        // TODO the default here should be to show an error with
+        // some minimal keybindings?
+        panic!("Unable to find a config file!")
+    }
 }
 
 /// Main loop of the Lua thread:

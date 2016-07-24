@@ -4,8 +4,8 @@ __rust = nil
 
 -- Initialize the workspaces
 config.init_workspaces = function(settings)
-    assert(type(count) == 'number', "count: expected number")
-    assert(type(settings) == 'table', "settings: expected table")
+  print("called init_workspaces with " .. settings)
+  assert(type(settings) == 'table', "settings: expected table")
     for ix, val in pairs(settings) do
         assert(type(ix) == 'number', "settings: expected number-indexed array")
         assert(type(val) == 'table', "settings: expected array of tables")
@@ -18,6 +18,7 @@ end
 
 -- Create a new keybinding to register with Rust
 config.key = function(mods, key, action, loop)
+    print("Creating a key with " .. mods .. ", " .. key .. ", " .. action)
     mods = assert(type(mods) == 'table', "modifiers: expected table")
     key = assert(type(key) == 'string', "key: expected string")
     if loop == nil then loop = true end

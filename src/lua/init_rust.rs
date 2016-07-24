@@ -18,8 +18,12 @@ use convert::serialize::ToTable;
 type OkayResult = Result<(), &'static str>;
 type ValueResult = Result<AnyLuaValue, &'static str>;
 
+/// We've `include!`d the code which initializes from the Lua side.
+const LUA_INIT_CODE: &'static str = include_str!("../../lib/lua/lua_init.lua");
+
 /// Register all the Rust functions for the lua libraries
 pub fn register_libraries(lua: &mut Lua) {
+    trace!("Registering Rust libraries...");
     {
         let mut rust_table: LuaTable<_> = lua.empty_array("__rust");
         rust_table.set("init_workspaces", hlua::function1(init_workspaces));
@@ -41,6 +45,10 @@ pub fn register_libraries(lua: &mut Lua) {
         let mut meta_config = config_table.get_or_create_metatable();
         meta_config.set("__metatable", "Turtles all the way down");
     }
+    trace!("Executing Lua init...");
+    let _: () = lua.execute::<_>(LUA_INIT_CODE)
+        .expect("Unable to execute Lua init code!");
+    trace!("Lua register_libraries complete");
 }
 
 
