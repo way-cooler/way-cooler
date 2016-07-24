@@ -12,8 +12,8 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use hlua::{Lua, LuaError};
 
 use super::types::*;
-use super::init_rust;
-use super::init;
+use super::rust_interop;
+use super::init_path;
 
 lazy_static! {
     /// Sends requests to the Lua thread
@@ -100,10 +100,12 @@ pub fn init() {
     debug!("Loading Lua libraries...");
     lua.openlibs();
     trace!("Loading way-cooler libraries...");
-    init_rust::register_libraries(&mut lua);
-    if let Ok(init_file) = init::get_config() {
+    rust_interop::register_libraries(&mut lua);
+    if let Ok(init_file) = init_path::get_config() {
         debug!("Found config file...");
-        lua.execute_from_reader(init_file);
+        // TODO defaults here are important
+        let _: () = lua.execute_from_reader(init_file)
+            .expect("Unable to load config file");
         debug!("Read config file");
         // Only ready after loading libs
         *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;

@@ -5,21 +5,8 @@ mod tests;
 
 mod types;
 mod thread;
-mod init_rust;
-mod init;
+mod rust_interop;
+mod init_path;
+
 pub use self::types::{LuaQuery, LuaFunc, LuaResponse};
-
-pub use self::thread::{running, send, LuaSendError};
-
-/// Initialize the lua thread
-pub fn init() {
-    trace!("Initializing...");
-
-    // The Lua thread will start the IPC thread
-    // after it initializes.
-    ::std::thread::spawn(move || {
-        thread::init();
-    });
-    trace!("Lua initialization finished.");
-}
-
+pub use self::thread::{init, running, send, LuaSendError};

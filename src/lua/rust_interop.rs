@@ -45,6 +45,9 @@ pub fn register_libraries(lua: &mut Lua) {
         let mut meta_config = config_table.get_or_create_metatable();
         meta_config.set("__metatable", "Turtles all the way down");
     }
+    {
+        let keypress_table: LuaTable<_> = lua.empty_array("__key_map");
+    }
     trace!("Executing Lua init...");
     let _: () = lua.execute::<_>(LUA_INIT_CODE)
         .expect("Unable to execute Lua init code!");
@@ -54,6 +57,7 @@ pub fn register_libraries(lua: &mut Lua) {
 
 /// Run a command
 fn ipc_run(command: String) -> Result<(), &'static str> {
+    trace!("Called ipc_run with {}", command);
     match commands::get(&command) {
         Some(com) => {
             com();
@@ -65,6 +69,7 @@ fn ipc_run(command: String) -> Result<(), &'static str> {
 
 /// IPC 'get' handler
 fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
+    trace!("Called ipc_get with {}", key);
     match registry::get_data(&key) {
         Ok(regdata) => {
             let (flags, arc_data) = regdata.resolve();
@@ -82,17 +87,20 @@ fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
 
 /// ipc 'set' handler
 fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
+    trace!("Called ipc_set with {}", key);
     let json = try!(lua_to_json(value).map_err(
         |_| "Unable to convert value to JSON!"));
-    match registry::set_json(key, json.clone()) {
+    match registry::set_json(key.clone(), json.clone()) {
         Ok(data) => {
             data.call(json);
             Ok(())
         }
         Err(RegistryError::InvalidOperation) =>
             Err("That value cannot be set!"),
-        Err(RegistryError::KeyNotFound) =>
-            Err("That key could not be found!")
+        Err(RegistryError::KeyNotFound) => {
+            registry::insert_json(key, AccessFlags::READ(), json.clone());
+            Ok(())
+        }
     }
 }
 
@@ -115,30 +123,37 @@ fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) ->  ValueResult {
 }
 
 fn init_workspaces(options: AnyLuaValue) -> OkayResult {
-    Err("Not yet implemented")
+    error!("Attempting to call `init_workspaces`, this is not implemented");
+    Ok(())
 }
 
 /// Registers a command keybinding.
-fn register_command_key(mods: String, command: String, _repeat: bool) -> OkayResult {
-    if let Some(press) = keypress_from_string(mods) {
+fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<(), String> {
+    trace!("Registering command key: {} => {}", mods, command);
+    if let Some(press) = keypress_from_string(mods.clone()) {
+        trace!("Got keypress: {:?}", press);
         if let Some(command) = commands::get(&command) {
             keys::register(vec![(press, KeyEvent::Command(command))]);
+            trace!("Registered command keypress");
             Ok(())
         }
         else {
-            Err("Command not found")
+            Err(format!("Command '{}' for keybinding '{:?}' not found", command, press))
         }
     }
     else {
-        Err("Invalid keypress")
+        Err(format!("Invalid keypress {}, {}", mods, command))
     }
 }
 
 /// Rust half of registering a Lua key: store the KeyPress in the keys table
 /// and send Lua back the index for __key_map.
 fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
+    trace!("Registering lua key: {}, {}", mods, repeat);
     if let Some(press) = keypress_from_string(mods) {
+        trace!("Got a keypress: {:?}", press);
         keys::register(vec![(press.clone(), KeyEvent::Lua)]);
+        trace!("Key registered!");
         Ok(press.get_lua_index_string())
     }
     else {
@@ -148,11 +163,14 @@ fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
 
 /// Parses a keypress from a string
 fn keypress_from_string(mods: String) -> Option<KeyPress> {
+    trace!("Parsing keypresses from a string: {}", mods);
     let parts: Vec<&str> = mods.split(',').collect();
     if let Some((ref key, mods)) = parts.split_last() {
+        trace!("Got {}, {:?} from the parts", key, mods);
         KeyPress::from_key_names(mods, &key).ok()
     }
     else {
+        trace!("Unable to parse key!");
         None
     }
 }
