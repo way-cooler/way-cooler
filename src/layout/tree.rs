@@ -165,19 +165,6 @@ impl LayoutTree {
         self.active_of_mut(ContainerType::Workspace)
     }
 
-    /// Gets the index of the workspace of this name
-    fn workspace_ix_by_name(&self, name: &str) -> Option<NodeIndex> {
-        for output in self.tree.children_of(self.tree.root_ix()) {
-            for workspace in self.tree.children_of(output) {
-                if self.tree[workspace].get_name()
-                    .expect("workspace_by_name: bad tree structure") == name {
-                    return Some(workspace)
-                }
-            }
-        }
-        return None
-    }
-
     /// Gets the index of the currently active container with the given type.
     /// Starts at the active container, moves up until either a container with
     /// that type is found or the root node is hit
@@ -210,7 +197,7 @@ impl LayoutTree {
     /// Determines if the active container is the root container
     pub fn active_is_root(&self) -> bool {
         if let Some(active_ix) = self.active_container {
-            self.is_root_container(active_ix)
+            self.tree.is_root_container(active_ix)
         } else {
             false
         }
@@ -301,10 +288,7 @@ impl LayoutTree {
             // Remove parent container if it is a non-root container and has no other children
             match self.tree[parent_ix].get_type() {
                 ContainerType::Container => {
-                    if self.is_root_container(parent_ix) {
-                        return;
-                    }
-                    if self.tree.children_of(parent_ix).len() == 0 {
+                    if self.tree.can_remove_empty_parent(parent_ix) {
                         self.remove_view_or_container(parent_ix);
                     }
                 }
@@ -318,7 +302,7 @@ impl LayoutTree {
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
         let active_index = self.active_ix_of(ContainerType::Output).expect("get_or_make_wksp: Couldn't get output");
-        let workspace_ix = self.workspace_ix_by_name(name).unwrap_or_else(|| {
+        let workspace_ix = self.tree.workspace_ix_by_name(name).unwrap_or_else(|| {
             let root_ix = self.init_workspace(name.to_string(), active_index);
             self.tree.parent_of(root_ix)
                 .expect("Workspace was not properly initialized with a root container")
@@ -352,20 +336,14 @@ impl LayoutTree {
     ///
     /// The new container has the same edge weight as the child that is passed in.
     fn add_container(&mut self, container: Container, child_ix: NodeIndex) {
-        let mut parent_ix = self.tree.parent_of(child_ix)
+        let parent_ix = self.tree.parent_of(child_ix)
             .expect("Node had no parent");
         let old_weight = *self.tree.get_edge_weight_between(parent_ix, child_ix)
             .expect("parent and children were not connected");
-        if self.tree.is_last_ix(parent_ix) {
-            // correct before removal
-            parent_ix = child_ix;
-        }
-        if let Some(child_container) = self.tree.remove(child_ix) {
-            let new_container_ix = self.tree.add_child(parent_ix, container);
-            let new_active_ix = self.tree.add_child(new_container_ix, child_container);
-            self.tree.set_child_pos(new_container_ix, old_weight);
-            self.active_container = Some(new_active_ix);
-        }
+        let new_container_ix = self.tree.add_child(parent_ix, container);
+        self.tree.move_node(child_ix, new_container_ix);
+        self.tree.set_child_pos(new_container_ix, old_weight);
+        self.active_container = Some(new_container_ix);
         self.validate();
     }
 
@@ -534,7 +512,7 @@ impl LayoutTree {
         if self.active_container.is_none() {
             return;
         }
-        if self.is_root_container(self.active_container.expect("No active container")) {
+        if self.tree.is_root_container(self.active_container.expect("No active container")) {
             match self.tree[self.active_container.unwrap()] {
                 Container::Container { ref mut layout, .. } =>
                     *layout = new_layout,
@@ -550,6 +528,8 @@ impl LayoutTree {
         new_container.set_layout(new_layout).ok();
         let active_ix = self.active_container.unwrap();
         self.add_container(new_container, active_ix);
+        // add_container sets the active container to be the new container
+        self.active_container = Some(active_ix);
         self.validate();
     }
 
@@ -627,6 +607,28 @@ impl LayoutTree {
             view.set_geometry(ResizeEdge::empty(), &new_geometry);
         }
         self.validate();
+    }
+
+    /// Normalizes the geometry of a view or a container of views so that
+    /// the view is the same size as its siblings.
+    ///
+    /// See `normalize_view` for more information
+    fn normalize_view_or_container(&mut self, node_ix: NodeIndex) {
+        match self.tree[node_ix].get_type() {
+            ContainerType::Container  => {
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.normalize_view_or_container(child_ix)
+                }
+            },
+            ContainerType::View  => {
+                let handle = match self.tree[node_ix] {
+                    Container::View { ref handle, .. } => handle.clone(),
+                    _ => unreachable!()
+                };
+                self.normalize_view(handle);
+            },
+            _ => panic!("Can only normalize the view on a view or container")
+        }
     }
 
     /// Given the index of some container in the tree, lays out the children of
@@ -941,7 +943,7 @@ impl LayoutTree {
                    .expect("Workspace had no name"));
             self.remove_container(old_worksp_ix);
         }
-        workspace_ix = self.workspace_ix_by_name(name)
+        workspace_ix = self.tree.workspace_ix_by_name(name)
             .expect("Workspace we just made was deleted!");
         self.focus_on_next_container(workspace_ix);
         self.validate();
@@ -983,13 +985,16 @@ impl LayoutTree {
             self.tree.move_node(active_ix, next_work_root_ix);
 
             // Update the active container
-            if let Some(parent) = maybe_active_parent {
-                let ctype = self.tree.node_type(parent).unwrap_or(ContainerType::Root);
+            if let Some(parent_ix) = maybe_active_parent {
+                let ctype = self.tree.node_type(parent_ix).unwrap_or(ContainerType::Root);
                 if ctype == ContainerType::Container {
-                    self.focus_on_next_container(parent);
+                    self.focus_on_next_container(parent_ix);
                 } else {
                     trace!("Send to container invalidated a NodeIndex: {:?} to {:?}",
-                    parent, ctype);
+                    parent_ix, ctype);
+                }
+                if self.tree.can_remove_empty_parent(parent_ix) {
+                    self.remove_view_or_container(parent_ix);
                 }
             }
             else {
@@ -997,10 +1002,12 @@ impl LayoutTree {
             }
 
             self.tree.set_family_visible(curr_work_ix, true);
-                self.validate();
+
+            self.normalize_view_or_container(active_ix);
         }
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
+        self.validate();
     }
 
     /// Validates the tree
@@ -1050,6 +1057,18 @@ impl LayoutTree {
                            self.tree[workspace_ix]);
                     trace!("The tree: {:#?}", self);
                     panic!()
+                }
+                for container_ix in self.tree.all_descendants_of(&workspace_ix) {
+                    match self.tree[container_ix] {
+                        Container::Container { .. } => {
+                            error!("Tree in invalid state. {:?} is an empty non-root container\n \
+                            {:#?}", container_ix, *self);
+                            assert!(! self.tree.can_remove_empty_parent(container_ix));
+                        },
+                        Container::View { .. } => {
+                        }
+                        _ => panic!("Non-view/container as descendant of a workspace!")
+                    }
                 }
             }
         }
@@ -1261,22 +1280,22 @@ mod tests {
     fn workspace_tests() {
         let mut tree = basic_tree();
         /* Simple workspace access tests */
-        let workspace_1_ix = tree.workspace_ix_by_name("1")
+        let workspace_1_ix = tree.tree.workspace_ix_by_name("1")
             .expect("Workspace 1 did not exist");
         assert_eq!(tree.tree[workspace_1_ix].get_type(), ContainerType::Workspace);
         assert_eq!(tree.tree[workspace_1_ix].get_name().unwrap(), "1");
-        let workspace_2_ix = tree.workspace_ix_by_name("2")
+        let workspace_2_ix = tree.tree.workspace_ix_by_name("2")
             .expect("Workspace 2 did not exist");
         assert_eq!(tree.tree[workspace_2_ix].get_type(), ContainerType::Workspace);
         assert_eq!(tree.tree[workspace_2_ix].get_name().unwrap(), "2");
-        assert!(tree.workspace_ix_by_name("3").is_none(),
+        assert!(tree.tree.workspace_ix_by_name("3").is_none(),
                 "Workspace three existed, expected it not to");
         /* init workspace tests */
         let output_ix = tree.active_ix_of(ContainerType::Output)
             .expect("No active output");
         let active_3_ix = tree.init_workspace("3".to_string(), output_ix);
         let workspace_3_ix = tree.tree.parent_of(active_3_ix).unwrap();
-        assert!(tree.workspace_ix_by_name("3").is_some(),
+        assert!(tree.tree.workspace_ix_by_name("3").is_some(),
                 "Workspace three still does not exist, even though we just initialized it");
         assert_eq!(tree.tree[workspace_3_ix].get_type(), ContainerType::Workspace);
         assert_eq!(tree.tree[workspace_3_ix].get_name().unwrap(), "3");
@@ -1356,7 +1375,7 @@ mod tests {
             let mut tree = basic_tree();
             let root_container = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
             tree.active_container = Some(root_container);
-            assert!(tree.is_root_container(root_container));
+            assert!(tree.tree.is_root_container(root_container));
             let layout = match tree.tree[root_container] {
                 Container::Container { ref layout, .. } => layout.clone(),
                 _ => panic!()
@@ -1420,6 +1439,7 @@ mod tests {
         // The view moved, since it was placed in the new container
         assert!(active_ix != new_active_ix);
         let new_container_ix = tree.tree.parent_of(new_active_ix).unwrap();
+        let parent_ix = tree.tree.parent_of(new_container_ix).unwrap();
         let new_edge_weight = *tree.tree.get_edge_weight_between(parent_ix, new_container_ix)
             .unwrap();
         assert_eq!(new_edge_weight, old_edge_weight);
@@ -1445,7 +1465,7 @@ mod tests {
         /* This should remove the other container,
         the count of the root container should be 0 */
         let active_ix = tree.active_container.unwrap();
-        assert!(tree.is_root_container(active_ix));
+        assert!(tree.tree.is_root_container(active_ix));
         let root_container = tree.tree.children_of(tree.active_ix_of(ContainerType::Workspace)
                                                    .expect("No active workspace"))[0];
         let num_children = tree.tree.children_of(root_container).len();
@@ -1465,7 +1485,7 @@ mod tests {
         // Trying to send the root container does nothing
         tree.send_active_to_workspace("3");
         let active_ix = tree.active_container.unwrap();
-        assert!(tree.is_root_container(active_ix));
+        assert!(tree.tree.is_root_container(active_ix));
         tree.switch_to_workspace("3");
         let active_ix = tree.active_container.unwrap();
         // Switch to new workspace, should be focused on the old view
@@ -1551,7 +1571,7 @@ mod tests {
         }
         // set to root container
         let root_container_ix = tree.tree.parent_of(old_active_ix.unwrap()).unwrap();
-        assert!(tree.is_root_container(root_container_ix));
+        assert!(tree.tree.is_root_container(root_container_ix));
         tree.active_container = Some(root_container_ix);
         for direction in &directions {
             tree.move_focus(*direction);
@@ -1564,14 +1584,14 @@ mod tests {
         let mut tree = basic_tree();
         tree.switch_to_workspace("2");
         // We are focused on the far left container
-        let old_ix = tree.active_container.unwrap();
+        let left_ix = tree.active_container.unwrap();
         // Get the next one
         tree.move_focus(Direction::Right);
         // Make sure we moved
-        let new_ix = tree.active_container.unwrap();
-        assert!(old_ix != new_ix);
+        let right_ix = tree.active_container.unwrap();
+        assert!(left_ix != right_ix);
         // make a vertical container here, try to move back to the original
-        let new_container = tree.tree[new_ix].clone();
+        let new_container = tree.tree[right_ix].clone();
         tree.toggle_active_layout(Layout::Vertical);
         assert_eq!(new_container, tree.tree[tree.active_container.unwrap()]);
         // Add a new view, it'll be below us
@@ -1584,7 +1604,7 @@ mod tests {
         assert_eq!(new_container, tree.tree[tree.active_container.unwrap()]);
         // Move left, be back on the very first one
         tree.move_focus(Direction::Left);
-        assert_eq!(old_ix, tree.active_container.unwrap());
+        assert_eq!(left_ix, tree.active_container.unwrap());
         // Move left, be back on the very first one
     }
 
