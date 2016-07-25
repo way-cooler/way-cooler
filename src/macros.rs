@@ -157,7 +157,7 @@ mod tests {
         use super::super::keys::KeyPress;
         use std::hash::{SipHasher, Hash};
 
-        let press = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"])
+        let press = KeyPress::from_key_names(&["Ctrl"], "p")
             .expect("Unable to construct regular keypress");
         let press_macro = keypress!("Ctrl", "p");
         let mut hasher = SipHasher::new();

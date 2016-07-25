@@ -101,24 +101,31 @@ pub fn init() {
     lua.openlibs();
     trace!("Loading way-cooler libraries...");
     rust_interop::register_libraries(&mut lua);
-    if let Ok(init_file) = init_path::get_config() {
-        debug!("Found config file...");
-        // TODO defaults here are important
-        let _: () = lua.execute_from_reader(init_file)
-            .expect("Unable to load config file");
-        debug!("Read config file");
-        // Only ready after loading libs
-        *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
-        debug!("Entering main loop...");
-        let _lua_handle = thread::Builder::new()
-            .name("Lua thread".to_string())
-            .spawn(move || { main_loop(receiver, &mut lua) });
+
+    if !cfg!(test) {
+        if let Ok(init_file) = init_path::get_config() {
+            debug!("Found config file...");
+            // TODO defaults here are important
+            let _: () = lua.execute_from_reader(init_file)
+                .expect("Unable to load config file");
+            debug!("Read config file");
+        }
+        else {
+            // TODO the default here should be to show an error with
+            // some minimal keybindings?
+            panic!("Unable to find a config file!")
+        }
     }
     else {
-        // TODO the default here should be to show an error with
-        // some minimal keybindings?
-        panic!("Unable to find a config file!")
+        trace!("Skipping config search for testing purposes");
     }
+
+    // Only ready after loading libs
+    *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
+    debug!("Entering main loop...");
+    let _lua_handle = thread::Builder::new()
+        .name("Lua thread".to_string())
+        .spawn(move || { main_loop(receiver, &mut lua) });
 }
 
 /// Main loop of the Lua thread:

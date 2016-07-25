@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn add_key() {
         require_rustwlc!();
-        register(vec![(keypress(), Arc::new(test_cmd))]);
+        register(keypress(), KeyEvent::Command(Arc::new(test_cmd)));
         assert!(get(&keypress()).is_some(), "Key not registered");
     }
 }
