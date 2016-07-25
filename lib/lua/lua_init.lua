@@ -2,11 +2,8 @@
 local rust = __rust
 __rust = nil
 
-print("Hid __rust.")
-
 -- Initialize the workspaces
 config.init_workspaces = function(settings)
-  print("called init_workspaces with " .. tostring(settings))
   assert(type(settings) == 'table', "settings: expected table")
     for ix, val in pairs(settings) do
         assert(type(ix) == 'number', "settings: expected number-indexed array")
@@ -20,7 +17,6 @@ end
 
 -- Create a new keybinding to register with Rust
 config.key = function(mods, key, action, loop)
-  print("Creating a key with (+" .. #mods .. "), " .. key .. ", " .. tostring(action))
     assert(type(mods) == 'table', "modifiers: expected table")
     assert(type(key) == 'string', "key: expected string")
     if loop == nil then loop = true end
@@ -36,7 +32,6 @@ local use_key = ", use the `key` or `config.key` method to create a keybinding"
 
 -- Converts a list of modifiers to a string
 local function keymods_to_string(mods, key)
-    print("keymods_to_string: Concatenating ", mods, key)
     table.insert(mods, key)
     local turn = table.concat(mods, ',')
     print(turn)
@@ -51,8 +46,6 @@ end
 
 -- Register a keybinding
 config.register_key = function(key)
-  print("Calling register_key with " .. tostring(key))
-  print("Calling it with ", key.mods, key.key, key.loop)
   assert(key.mods, "keybinding missing modifiers" .. use_key)
     assert(key.key, "keybinding missing modifiers" .. use_key)
     assert(key.action, "keybinding missing action" .. use_key)
@@ -73,7 +66,4 @@ config.register_key = function(key)
     else
         error("keybinding action: expected string or a function"..use_key, 2)
     end
-    print("Registered a key!")
 end
-
-print("Loaded lua_init!")

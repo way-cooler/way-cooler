@@ -131,10 +131,8 @@ fn init_workspaces(options: AnyLuaValue) -> OkayResult {
 fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<(), String> {
     trace!("Registering command key: {} => {}", mods, command);
     if let Some(press) = keypress_from_string(mods.clone()) {
-        trace!("Got keypress: {}", press);
         if let Some(command) = commands::get(&command) {
             keys::register(vec![(press, KeyEvent::Command(command))]);
-            trace!("Registered command keypress");
             Ok(())
         }
         else {
@@ -151,9 +149,7 @@ fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<
 fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
     trace!("Registering lua key: {}, {}", mods, repeat);
     if let Some(press) = keypress_from_string(mods) {
-        trace!("Got a keypress: {}", press);
         keys::register(vec![(press.clone(), KeyEvent::Lua)]);
-        trace!("Key registered!");
         Ok(press.get_lua_index_string())
     }
     else {
@@ -163,10 +159,8 @@ fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
 
 /// Parses a keypress from a string
 fn keypress_from_string(mods: String) -> Option<KeyPress> {
-    trace!("Parsing keypresses from a string: {}", mods);
     let parts: Vec<&str> = mods.split(',').collect();
     if let Some((ref key, mods)) = parts.split_last() {
-        trace!("Got {}, {:?} from the parts", key, mods);
         KeyPress::from_key_names(mods, &key).ok()
     }
     else {
