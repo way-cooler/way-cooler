@@ -18,6 +18,14 @@ pub use self::event::KeyEvent;
 lazy_static! {
     static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> =
         RwLock::new(HashMap::new());
+
+    static ref NAME_MAPPING: HashMap<&'static str, &'static str> = {
+        let mut map = HashMap::new();
+        map.insert("enter", "return");
+        map.insert("\n", "return");
+        map.insert("\t", "tab");
+        map
+    };
 }
 
 
@@ -39,7 +47,7 @@ pub fn keymod_from_names(keys: &[&str]) -> Result<KeyMod, String> {
             err => return Err(format!("Invalid modifier: {}", err))
         }
     }
-    return Ok(result);
+    return Ok(result)
 }
 
 /// Get a key mapping from the list.

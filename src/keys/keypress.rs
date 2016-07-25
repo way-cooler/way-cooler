@@ -22,6 +22,13 @@ impl KeyPress {
     /// Creates a new KeyPress struct from a list of modifier and key names
     pub fn from_key_names(mods: &[&str], key: &str) -> Result<KeyPress, String> {
         super::keymod_from_names(mods).and_then(|mods| {
+            let proper_key = if let Some(found_key) = super::NAME_MAPPING.get(key) {
+                found_key
+            }
+            else {
+                key
+            };
+
             // Parse a keysym for each given key
             let key_sym = try!(
                 if let Some(sym) = Keysym::from_name(key.to_string(),
