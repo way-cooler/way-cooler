@@ -1,12 +1,10 @@
 -- Lua configuration file for way-cooler.
-print("Reached config file")
--- local utils = require("utils") -- Utilities, i.e. shell
 
 --
 -- Layouts
 --
 
-local max_workspaces = 9
+--[[ Layout code is not implemented at this time, sorry.
 
 -- The default layout options are no names, mode = "default" (use keybindings).
 -- For a list of tiling options, see way-cooler docs or `man way-cooler-tiling`.
@@ -19,14 +17,9 @@ local workspace_settings = {
 }
 
 -- Create 9 workspaces with the given settings.
-config.init_workspaces(workspace_settings)
+config.init_workspaces(workspace_settings) -- Not implemented yet
 
---
--- Background
---
-
---way_cooler.background.path = "path/to/standard/background"
--- <options for folder, cycle, etc.>
+]]
 
 --
 -- Keybindings
@@ -64,16 +57,6 @@ local keys = {
   key({ mod }, "l", "dmenu_eval"),
   key({ mod, "Shift" }, "l", "dmenu_lua_dofile"),
 
-  -- Switch workspaces L/R/previous
-  --key({ mod }, "Left",      "workspace.switch_left"),
-  --key({ mod }, "Right",     "workspace.switch_right"),
-  --key({ mod }, "Backspace", "workspace.switch_previous"),
-
-  -- Send active to workspace L/R
-  --key({ mod, "Shift" }, "Left",      "workspace.send_active_left", false),
-  --key({ mod, "Shift" }, "Right",     "workspace.send_active_right", false),
-  --key({ mod, "Shift" }, "Backspace", "workspace.send_active_previous", false),
-
   -- Move focus
   -- (if you're used to mod+arrow to switch workspaces you may wanna change them)
   key({ mod }, "left", "layout.focus_left"),
@@ -99,8 +82,6 @@ for i = 1, max_workspaces do
   table.insert(keys,
                key({ mod, "Shift" }, tostring(i), "move_to_workspace_" .. i))
 end
-
-print("Created all the keys")
 
 -- Register the keybindings.
 for _, key in pairs(keys) do
