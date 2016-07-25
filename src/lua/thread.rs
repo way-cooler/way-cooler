@@ -234,8 +234,7 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
             trace!("Lua: handling keypress {}", &press);
             let press_ix = press.get_lua_index_string();
             // Access the index
-            let code = format!("__key_map[{}]()", press_ix);
-
+            let code = format!("__key_map['{}']()", press_ix);
             match lua.execute::<()>(&code) {
                 Err(error) => {
                     warn!("Error handling {}: {:?}", &press, error);

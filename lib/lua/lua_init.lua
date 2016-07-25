@@ -4,7 +4,7 @@ __rust = nil
 
 -- Initialize the workspaces
 config.init_workspaces = function(settings)
-  assert(type(settings) == 'table', "settings: expected table")
+    assert(type(settings) == 'table', "settings: expected table")
     for ix, val in pairs(settings) do
         assert(type(ix) == 'number', "settings: expected number-indexed array")
         assert(type(val) == 'table', "settings: expected array of tables")
@@ -41,12 +41,12 @@ end
 -- Save the action at the __key_map and tell Rust to register the Lua key
 local function register_lua_key(index, action, loop)
     local map_ix = rust.register_lua_key(index, loop)
-    __key_map[map_ix] = action
+    __key_map[rust.keypress_index(index)] = action
 end
 
 -- Register a keybinding
 config.register_key = function(key)
-  assert(key.mods, "keybinding missing modifiers" .. use_key)
+    assert(key.mods, "keybinding missing modifiers" .. use_key)
     assert(key.key, "keybinding missing modifiers" .. use_key)
     assert(key.action, "keybinding missing action" .. use_key)
     assert(key.loop, "keybinding missing repeat" .. use_key)

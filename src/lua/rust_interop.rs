@@ -29,6 +29,7 @@ pub fn register_libraries(lua: &mut Lua) {
         rust_table.set("init_workspaces", hlua::function1(init_workspaces));
         rust_table.set("register_lua_key", hlua::function2(register_lua_key));
         rust_table.set("register_command_key", hlua::function3(register_command_key));
+        rust_table.set("keypress_index", hlua::function1(keypress_index));
     }
     {
         let mut ipc_table: LuaTable<_> = lua.empty_array("way_cooler");
@@ -130,7 +131,7 @@ fn init_workspaces(options: AnyLuaValue) -> OkayResult {
 /// Registers a command keybinding.
 fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<(), String> {
     trace!("Registering command key: {} => {}", mods, command);
-    if let Some(press) = keypress_from_string(&mods) {
+    if let Ok(press) = keypress_from_string(&mods) {
         if let Some(command) = commands::get(&command) {
             keys::register(press, KeyEvent::Command(command));
             Ok(())
@@ -148,23 +149,26 @@ fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<
 /// and send Lua back the index for __key_map.
 fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
     trace!("Registering lua key: {}, {}", mods, repeat);
-    if let Some(press) = keypress_from_string(&mods) {
+    if let Ok(press) = keypress_from_string(&mods) {
         keys::register(press.clone(), KeyEvent::Lua);
         Ok(press.get_lua_index_string())
     }
     else {
-        Err("Invalid keypress".to_string())
+        Err(format!("Invalid keys '{}'", mods))
     }
 }
 
 /// Parses a keypress from a string
-fn keypress_from_string(mods: &str) -> Option<KeyPress> {
+fn keypress_from_string(mods: &str) -> Result<KeyPress, String> {
     let parts: Vec<&str> = mods.split(',').collect();
     if let Some((ref key, mods)) = parts.split_last() {
-        KeyPress::from_key_names(mods, &key).ok()
+        KeyPress::from_key_names(mods, &key)
     }
     else {
-        trace!("Unable to parse key!");
-        None
+        Err(format!("Invalid key '{}'", mods))
     }
+}
+
+fn keypress_index(press: String) -> Result<String, String> {
+    keypress_from_string(&press).map(|key| key.get_lua_index_string())
 }

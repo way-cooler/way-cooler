@@ -53,6 +53,9 @@ local keys = {
   -- Open terminal
   key({ mod }, "return", "launch_terminal"),
 
+  -- Lua methods can be bound as well
+  key({ mod, "Shift" }, "h", function () print("Hello world!") end),
+
   -- Some Lua dmenu stuff
   key({ mod }, "l", "dmenu_eval"),
   key({ mod, "Shift" }, "l", "dmenu_lua_dofile"),
