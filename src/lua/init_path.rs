@@ -34,7 +34,7 @@ pub fn get_config() -> Result<File, &'static str> {
     let dot_config = Path::new(&env::var("HOME")
                                .expect("HOME environment variable not defined!"))
         .join(".config").join("way-cooler").join(INIT_FILE);
-
+    trace!("Looking at {:?}", dot_config);
     if let Ok(file) = read_file(&dot_config) {
         info!("Reading init file from {:?}", &dot_config);
         return Ok(file)

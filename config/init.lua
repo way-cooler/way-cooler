@@ -76,7 +76,7 @@ local keys = {
 }
 
 -- Add Mod + X bindings to switch to workspace X, Mod+Shift+X send active to X
-for i = 1, max_workspaces do
+for i = 1, 9 do
   table.insert(keys,
                key({ mod          }, tostring(i), "switch_workspace_" .. i))
   table.insert(keys,

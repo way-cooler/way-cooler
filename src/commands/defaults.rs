@@ -7,6 +7,7 @@ use std::env;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
+use registry;
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
@@ -99,11 +100,22 @@ pub fn register_defaults() {
 #[deny(dead_code)]
 
 fn launch_terminal() {
-    let term = env::var("WAYLAND_TERMINAL")
-        .unwrap_or("weston-terminal".to_string());
+    warn!("Got {:?}", registry::get_data("terminal"));
+    let command: String;
+    if let Ok((flags, data)) = registry::get_data("terminal").map(|d| d.resolve()) {
+        if let Some(text) = data.as_string() {
+            command = text.to_string();
+        }
+        else {
+            command = "weston_terminal".to_string();
+        }
+    }
+    else {
+        command = "weston_terminal".to_string();
+    }
 
     Command::new("sh").arg("-c")
-        .arg(term)
+        .arg(command)
         .spawn().expect("Error launching terminal");
 }
 

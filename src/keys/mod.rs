@@ -49,7 +49,6 @@ pub fn keymod_from_names(keys: &[&str]) -> Result<KeyMod, String> {
 
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
-    trace!("Searching for {}", key);
     let bindings = BINDINGS.read()
         .expect("Keybindings/get: unable to lock keybindings");
     bindings.get(key).map(KeyEvent::clone)
