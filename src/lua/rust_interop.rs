@@ -130,13 +130,13 @@ fn init_workspaces(options: AnyLuaValue) -> OkayResult {
 /// Registers a command keybinding.
 fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<(), String> {
     trace!("Registering command key: {} => {}", mods, command);
-    if let Some(press) = keypress_from_string(mods.clone()) {
+    if let Some(press) = keypress_from_string(&mods) {
         if let Some(command) = commands::get(&command) {
-            keys::register(vec![(press, KeyEvent::Command(command))]);
+            keys::register(press, KeyEvent::Command(command));
             Ok(())
         }
         else {
-            Err(format!("Command '{}' for keybinding '{:?}' not found", command, press))
+            Err(format!("Command '{}' for keybinding '{}' not found", command, press))
         }
     }
     else {
@@ -148,8 +148,8 @@ fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<
 /// and send Lua back the index for __key_map.
 fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
     trace!("Registering lua key: {}, {}", mods, repeat);
-    if let Some(press) = keypress_from_string(mods) {
-        keys::register(vec![(press.clone(), KeyEvent::Lua)]);
+    if let Some(press) = keypress_from_string(&mods) {
+        keys::register(press.clone(), KeyEvent::Lua);
         Ok(press.get_lua_index_string())
     }
     else {
@@ -158,7 +158,7 @@ fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
 }
 
 /// Parses a keypress from a string
-fn keypress_from_string(mods: String) -> Option<KeyPress> {
+fn keypress_from_string(mods: &str) -> Option<KeyPress> {
     let parts: Vec<&str> = mods.split(',').collect();
     if let Some((ref key, mods)) = parts.split_last() {
         KeyPress::from_key_names(mods, &key).ok()
