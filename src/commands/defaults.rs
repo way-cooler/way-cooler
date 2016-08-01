@@ -6,7 +6,7 @@ use std::thread;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
-use registry;
+use registry::{self, RegistryError, RegistryGetData};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
@@ -99,19 +99,11 @@ pub fn register_defaults() {
 #[deny(dead_code)]
 
 fn launch_terminal() {
-    warn!("Got {:?}", registry::get_data("terminal"));
-    let command: String;
-    if let Ok((_flags, data)) = registry::get_data("terminal").map(|d| d.resolve()) {
-        if let Some(text) = data.as_string() {
-            command = text.to_string();
-        }
-        else {
-            command = "weston_terminal".to_string();
-        }
-    }
-    else {
-        command = "weston_terminal".to_string();
-    }
+    let command = registry::get_data("terminal")
+        .map(RegistryGetData::resolve).and_then(|(_, data)| {
+        data.as_string().map(str::to_string)
+            .ok_or(RegistryError::KeyNotFound)
+    }).unwrap_or("weston_terminal".to_string());
 
     Command::new("sh").arg("-c")
         .arg(command)

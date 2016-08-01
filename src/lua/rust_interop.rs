@@ -12,11 +12,9 @@ use commands;
 use keys::{self, KeyPress, KeyEvent};
 use convert::json::{json_to_lua, lua_to_json};
 
-type OkayResult = Result<(), &'static str>;
 type ValueResult = Result<AnyLuaValue, &'static str>;
 
 /// We've `include!`d the code which initializes from the Lua side.
-const LUA_INIT_CODE: &'static str = include_str!("../../lib/lua/lua_init.lua");
 
 /// Register all the Rust functions for the lua libraries
 pub fn register_libraries(lua: &mut Lua) {
@@ -47,7 +45,8 @@ pub fn register_libraries(lua: &mut Lua) {
         let _keypress_table: LuaTable<_> = lua.empty_array("__key_map");
     }
     trace!("Executing Lua init...");
-    let _: () = lua.execute::<_>(LUA_INIT_CODE)
+    let init_code = include_str!("../../lib/lua/lua_init.lua");
+    let _: () = lua.execute::<_>(init_code)
         .expect("Unable to execute Lua init code!");
     trace!("Lua register_libraries complete");
 }
@@ -56,13 +55,8 @@ pub fn register_libraries(lua: &mut Lua) {
 /// Run a command
 fn ipc_run(command: String) -> Result<(), &'static str> {
     trace!("Called ipc_run with {}", command);
-    match commands::get(&command) {
-        Some(com) => {
-            com();
-            Ok(())
-        },
-        None => Err("Command does not exist")
-    }
+    commands::get(&command).map(|com| com())
+        .ok_or("Command does not exist")
 }
 
 /// IPC 'get' handler
@@ -89,24 +83,24 @@ fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
 /// ipc 'set' handler
 fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
     trace!("Called ipc_set with {}", key);
-    let json = try!(lua_to_json(value).map_err(
-        |_| "Unable to convert value to JSON!"));
-    match registry::set_json(key.clone(), json.clone()) {
-        Ok(data) => {
-            data.call(json);
-            Ok(())
-        }
-        Err(RegistryError::InvalidOperation) =>
-            Err("That value cannot be set!"),
-        // Only the init file may add keys
-        Err(RegistryError::KeyNotFound) => {
-            registry::insert_json(key, AccessFlags::READ(), json.clone());
-            Ok(())
-        }
-    }
+    let json = try!(lua_to_json(value)
+                    .map_err(|_| "Unable to convert value to JSON!"));
+    registry::set_json(key.clone(), json.clone())
+        .map(|data| data.call(json.clone()))
+        .or_else(|err| {
+            match err {
+                RegistryError::InvalidOperation => {
+                    Err("That value can not be set!")
+                },
+                RegistryError::KeyNotFound => {
+                    registry::insert_json(key, AccessFlags::READ(), json.clone());
+                    Ok(())
+                }
+            }
+        })
 }
 
-fn new_index(_table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue) -> OkayResult {
+fn new_index(_table: AnyLuaValue, lua_key: AnyLuaValue, val: AnyLuaValue) -> Result<(), &'static str> {
     if let LuaString(key) = lua_key {
         ipc_set(key, val)
     }
@@ -124,7 +118,7 @@ fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) ->  ValueResult {
     }
 }
 
-fn init_workspaces(_options: AnyLuaValue) -> OkayResult {
+fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {
     error!("Attempting to call `init_workspaces`, this is not implemented");
     Ok(())
 }
@@ -133,13 +127,9 @@ fn init_workspaces(_options: AnyLuaValue) -> OkayResult {
 fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<(), String> {
     trace!("Registering command key: {} => {}", mods, command);
     if let Ok(press) = keypress_from_string(&mods) {
-        if let Some(command) = commands::get(&command) {
-            keys::register(press, KeyEvent::Command(command));
-            Ok(())
-        }
-        else {
-            Err(format!("Command '{}' for keybinding '{}' not found", command, press))
-        }
+        commands::get(&command)
+            .ok_or(format!("Command {} for keybinding {} not found", command, press))
+            .map(|command| { keys::register(press, KeyEvent::Command(command)); })
     }
     else {
         Err(format!("Invalid keypress {}, {}", mods, command))
@@ -150,14 +140,11 @@ fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<
 /// and send Lua back the index for __key_map.
 fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
     trace!("Registering lua key: {}, {}", mods, repeat);
-    if let Ok(press) = keypress_from_string(&mods) {
-        keys::register(press.clone(), KeyEvent::Lua);
-        Ok(press.get_lua_index_string())
-    }
-    else {
-        Err(format!("Invalid keys '{}'", mods))
-    }
-}
+    keypress_from_string(&mods)
+        .map(|press| {
+            keys::register(press.clone(), KeyEvent::Lua);
+            press.get_lua_index_string()
+        }).map_err(|_| format!("Invalid keys '{}'", mods))}
 
 /// Parses a keypress from a string
 fn keypress_from_string(mods: &str) -> Result<KeyPress, String> {

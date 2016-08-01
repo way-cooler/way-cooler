@@ -22,27 +22,12 @@ impl KeyPress {
     /// Creates a new KeyPress struct from a list of modifier and key names
     pub fn from_key_names(mods: &[&str], key: &str) -> Result<KeyPress, String> {
         super::keymod_from_names(mods).and_then(|mods| {
-            let proper_key = if let Some(found_key) = super::NAME_MAPPING.get(key) {
-                found_key
-            }
-            else {
-                key
-            };
+            let proper_key = *super::NAME_MAPPING.get(key).unwrap_or(&key);
 
-            // Parse a keysym for each given key
             let key_sym = try!(
-                if let Some(sym) = Keysym::from_name(proper_key.to_string(),
-                                                 NameFlags::None) {
-                    Ok(sym)
-                }
-                // If lowercase cannot be parsed, try case insensitive
-                else if let Some(sym) = Keysym::from_name(proper_key.to_string(),
-                                                      NameFlags::CaseInsensitive) {
-                    Ok(sym)
-                }
-                else {
-                    Err(format!("Invalid key: {}", key))
-                });
+                Keysym::from_name(proper_key.to_string(), NameFlags::None).or_else(||
+                    Keysym::from_name(proper_key.to_string(), NameFlags::CaseInsensitive))
+                    .ok_or(format!("Invalid key: {}", key)));
 
             Ok(KeyPress { modifiers: mods, key: key_sym })
         })
