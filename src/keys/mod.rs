@@ -43,6 +43,14 @@ pub fn keymod_from_names(keys: &[&str]) -> Result<KeyMod, String> {
     return Ok(result)
 }
 
+pub fn init() {
+    use rustwlc::xkb::keysyms;
+    use commands;
+    register(KeyPress::new(MOD_ALT | MOD_SHIFT, keysyms::KEY_Escape),
+             KeyEvent::Command(commands::get("quit")
+                               .expect("Error reading commands::quit")));
+}
+
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     let bindings = BINDINGS.read()
