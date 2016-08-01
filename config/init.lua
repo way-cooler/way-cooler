@@ -62,20 +62,19 @@ local keys = {
 
   -- Move focus
   -- (if you're used to mod+arrow to switch workspaces you may wanna change them)
-  key({ mod }, "left", "layout.focus_left"),
-  key({ mod }, "right", "layout.focus_right"),
-  key({ mod }, "up", "layout.focus_up"),
-  key({ mod }, "down", "layout.focus_down"),
+  key({ mod }, "left", "focus_left"),
+  key({ mod }, "right", "focus_right"),
+  key({ mod }, "up", "focus_up"),
+  key({ mod }, "down", "focus_down"),
 
   -- Split containers
-  key({ mod }, "h", "layout.split_horizontal"),
-  key({ mod }, "v", "layout.split_vertical"),
-  key({ mod, "Shift" }, "e", "layout.switch_horizontal_vertical"),
-  key({ mod }, "q", "layout.remove_active"),
+  key({ mod }, "h", "split_horizontal"),
+  key({ mod }, "v", "split_vertical"),
+  key({ mod, "Shift" }, "e", "horizontal_vertical_switch"),
+  key({ mod }, "q", "close_window"),
 
-
-  -- Quit
-  key({ mod, "Shift" }, "q", "quit"),
+  -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
+  -- This my be modifiable in the future
 }
 
 -- Add Mod + X bindings to switch to workspace X, Mod+Shift+X send active to X
