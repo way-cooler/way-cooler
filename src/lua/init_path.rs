@@ -16,7 +16,7 @@ fn read_file<P: AsRef<Path>>(path: P) -> IOResult<File> {
 
 #[cfg(test)]
 pub fn get_config() -> (bool, Result<File, &'static str>) {
-    (false, "Loading config should be ignored during tests for now")
+    (false, Err("Loading config should be ignored during tests for now"))
 }
 
 #[cfg(not(test))]
