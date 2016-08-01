@@ -101,22 +101,23 @@ pub fn init() {
     trace!("Loading way-cooler libraries...");
     rust_interop::register_libraries(&mut lua);
 
-    if !cfg!(test) {
-        if let Ok(init_file) = init_path::get_config() {
-            debug!("Found config file...");
-            // TODO defaults here are important
-            let _: () = lua.execute_from_reader(init_file)
-                .expect("Unable to load config file");
-            debug!("Read config file");
-        }
-        else {
-            // TODO the default here should be to show an error with
-            // some minimal keybindings?
-            panic!("Unable to find a config file!")
+    let (use_config, maybe_init_file) = init_path::get_config();
+    if use_config {
+        match maybe_init_file {
+            Ok(init_file) => {
+                debug!("Found config file...");
+                // TODO defaults here are important
+                let _: () = lua.execute_from_reader(init_file)
+                    .expect("Unable to load config file");
+                debug!("Read config file");
+            }
+            Err(reason) => {
+                panic!("Unable to load init file: {}", reason)
+            }
         }
     }
     else {
-        trace!("Skipping config search for testing purposes");
+        trace!("Skipping config search");
     }
 
     // Only ready after loading libs

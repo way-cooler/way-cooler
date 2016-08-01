@@ -14,8 +14,18 @@ fn read_file<P: AsRef<Path>>(path: P) -> IOResult<File> {
     OpenOptions::new().read(true).open(path)
 }
 
+#[cfg(test)]
+pub fn get_config() -> (bool, Result<File, &'static str>) {
+    (false, "Loading config should be ignored during tests for now")
+}
+
+#[cfg(not(test))]
+pub fn get_config() -> (bool, Result<File, &'static str>) {
+    (true, get_config_file())
+}
+
 /// Parses environment variables
-pub fn get_config() -> Result<File, &'static str> {
+fn get_config_file() -> Result<File, &'static str> {
     if let Ok(path_env) = env::var("WAY_COOLER_CONFIG") {
         if let Ok(file) = read_file(Path::new(&path_env).join(INIT_FILE)) {
             info!("Reading init file from $WAY_COOLER_INIT_FILE: {}", path_env);
