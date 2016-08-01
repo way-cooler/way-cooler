@@ -1,6 +1,6 @@
 //! Contains methods for initializing the lua config
 
-use std::fs::{self, OpenOptions, File};
+use std::fs::{OpenOptions, File};
 use std::env;
 use std::path::Path;
 

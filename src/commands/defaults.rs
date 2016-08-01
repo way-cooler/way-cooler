@@ -3,7 +3,6 @@
 use std::sync::Arc;
 use std::process::{Command, Stdio};
 use std::thread;
-use std::env;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
@@ -102,7 +101,7 @@ pub fn register_defaults() {
 fn launch_terminal() {
     warn!("Got {:?}", registry::get_data("terminal"));
     let command: String;
-    if let Ok((flags, data)) = registry::get_data("terminal").map(|d| d.resolve()) {
+    if let Ok((_flags, data)) = registry::get_data("terminal").map(|d| d.resolve()) {
         if let Some(text) = data.as_string() {
             command = text.to_string();
         }

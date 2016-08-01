@@ -135,8 +135,8 @@ impl Debug for RegistrySetData {
 impl ToJson for FieldType {
     fn to_json(&self) -> Json {
         match *self {
-            FieldType::Property => json!("Property"),
-            FieldType::Object => json!("Object")
+            FieldType::Property => Json::String("Property".to_string()),
+            FieldType::Object => Json::String("Object".to_string())
         }
     }
 }

@@ -1,19 +1,16 @@
 //! Rust code which is called from lua in the init file
-#![deny(unused_code)]
+#![deny(dead_code)]
 
-use std::sync::Arc;
 use std::ops::Deref;
 
 use hlua::{self, Lua, LuaTable};
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
-use rustc_serialize::json::Json;
 
-use registry::{self, RegistryField, RegistryError, AccessFlags};
+use registry::{self, RegistryError, AccessFlags};
 use commands;
 use keys::{self, KeyPress, KeyEvent};
 use convert::json::{json_to_lua, lua_to_json};
-use convert::serialize::ToTable;
 
 type OkayResult = Result<(), &'static str>;
 type ValueResult = Result<AnyLuaValue, &'static str>;
@@ -47,7 +44,7 @@ pub fn register_libraries(lua: &mut Lua) {
         meta_config.set("__metatable", "Turtles all the way down");
     }
     {
-        let keypress_table: LuaTable<_> = lua.empty_array("__key_map");
+        let _keypress_table: LuaTable<_> = lua.empty_array("__key_map");
     }
     trace!("Executing Lua init...");
     let _: () = lua.execute::<_>(LUA_INIT_CODE)
@@ -74,8 +71,11 @@ fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
     match registry::get_data(&key) {
         Ok(regdata) => {
             let (flags, arc_data) = regdata.resolve();
-
-            Ok(json_to_lua(arc_data.deref().clone()))
+            if flags.contains(AccessFlags::READ()) {
+                Ok(json_to_lua(arc_data.deref().clone()))
+            } else {
+                Err("Cannot read that key")
+            }
         },
         Err(err) => match err {
             RegistryError::InvalidOperation =>
@@ -98,6 +98,7 @@ fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
         }
         Err(RegistryError::InvalidOperation) =>
             Err("That value cannot be set!"),
+        // Only the init file may add keys
         Err(RegistryError::KeyNotFound) => {
             registry::insert_json(key, AccessFlags::READ(), json.clone());
             Ok(())
@@ -123,7 +124,7 @@ fn index(_table: AnyLuaValue, lua_key: AnyLuaValue) ->  ValueResult {
     }
 }
 
-fn init_workspaces(options: AnyLuaValue) -> OkayResult {
+fn init_workspaces(_options: AnyLuaValue) -> OkayResult {
     error!("Attempting to call `init_workspaces`, this is not implemented");
     Ok(())
 }

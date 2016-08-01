@@ -1,9 +1,7 @@
-use std::ops::Deref;
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
 use commands::CommandFn;
-use lua::{self, LuaQuery};
 
 // Actions which can be taken on a keypress
 #[derive(Clone)]

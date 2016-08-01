@@ -31,12 +31,12 @@ impl KeyPress {
 
             // Parse a keysym for each given key
             let key_sym = try!(
-                if let Some(sym) = Keysym::from_name(key.to_string(),
+                if let Some(sym) = Keysym::from_name(proper_key.to_string(),
                                                  NameFlags::None) {
                     Ok(sym)
                 }
                 // If lowercase cannot be parsed, try case insensitive
-                else if let Some(sym) = Keysym::from_name(key.to_string(),
+                else if let Some(sym) = Keysym::from_name(proper_key.to_string(),
                                                       NameFlags::CaseInsensitive) {
                     Ok(sym)
                 }

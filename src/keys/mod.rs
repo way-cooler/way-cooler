@@ -1,13 +1,9 @@
 //! Contains information for keybindings.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use std::hash::{Hash, Hasher};
+use std::sync::RwLock;
 
-use rustwlc::xkb::{Keysym, NameFlags};
 use rustwlc::types::*; // Need * for bitflags...
-
-use super::commands::{self, CommandFn};
 
 mod keypress;
 pub use self::keypress::KeyPress;
