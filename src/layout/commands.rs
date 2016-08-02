@@ -104,6 +104,7 @@ impl Tree {
         }
         view.set_mask(output.get_mask());
         let v_type = view.get_type();
+        let v_class = view.get_class();
         // If it is empty, don't add to tree
         if v_type != ViewType::empty() {
             // Now focused on something outside the tree,
@@ -112,6 +113,19 @@ impl Tree {
                 tree.unset_active_container();
             }
             return Ok(())
+        }
+        if v_class.as_str() == "Background" {
+            info!("Setting background");
+            view.send_to_back();
+            use rustwlc::types::{Geometry, Point, Size, ResizeEdge};
+            let output = view.get_output();
+            let resolution = output.get_resolution().clone();
+            let fullscreen = Geometry {
+                origin: Point { x: 0, y: 0 },
+                size: resolution
+            };
+            //view.set_geometry(ResizeEdge::empty(), &fullscreen);
+            return Ok(());
         }
         tree.add_view(view.clone());
         tree.normalize_view(view.clone());
