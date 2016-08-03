@@ -3,10 +3,13 @@ use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 
+use std::thread;
+
 use compositor;
 use super::keys::{self, KeyPress, KeyEvent};
 use super::layout::{try_lock_tree, ContainerType};
 use super::lua::{self, LuaQuery};
+use super::background;
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -178,6 +181,11 @@ pub extern fn touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
 pub extern fn compositor_ready() {
     info!("Preparing compositor!");
     info!("Initializing Lua...");
+    for output in WlcOutput::list() {
+        let color = background::Color::from_u32(0x000080);
+        // different thread for each output.
+        thread::spawn(move || {background::generate_solid_background(color, output.clone());});
+    }
     lua::init();
 }
 

@@ -28,6 +28,13 @@ extern crate petgraph;
 
 extern crate uuid;
 
+#[macro_use]
+extern crate wayland_client;
+
+extern crate tempfile;
+
+extern crate byteorder;
+
 use std::env;
 
 use log::LogLevel;
@@ -51,6 +58,7 @@ mod ipc;
 
 mod layout;
 mod compositor;
+mod background;
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
