@@ -107,6 +107,8 @@ fn main_background_loop(compositor: &WlCompositor, shell: &WlShell, shm: &WlShm,
     let cursor_buffer = cursor.frame_buffer(0).expect("Couldn't get frame_buffer");
     cursor_surface.attach(Some(&*cursor_buffer), 0, 0);
     pointer.set_event_iterator(&event_iter);
+
+    pointer.set_cursor(0/*??*/, Some(&cursor_surface), 0, 0);
     loop {
         for event in &mut event_iter {
             match event {
@@ -115,12 +117,10 @@ fn main_background_loop(compositor: &WlCompositor, shell: &WlShell, shm: &WlShm,
                         WaylandProtocolEvent::WlPointer(id, pointer_event) => {
                             match pointer_event {
                                 WlPointerEvent::Enter(serial, surface, surface_x, surface_y) => {
-                                    warn!("Enter event at ({}, {})", surface_x, surface_y);
                                     // Set the surface to use a cursor
-                                    //pointer.set_cursor(0/*??*/, Some(&cursor_surface), 0, 0);
+                                    pointer.set_cursor(0/*??*/, Some(&cursor_surface), 0, 0);
                                 },
                                 _ => {
-                                    pointer.set_cursor(0/*??*/, Some(&cursor_surface), 0, 0)
                                 }
                             }
                         },
