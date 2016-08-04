@@ -70,7 +70,7 @@ local keys = {
   -- Split containers
   key({ mod }, "h", "split_horizontal"),
   key({ mod }, "v", "split_vertical"),
-  key({ mod, "Shift" }, "e", "horizontal_vertical_switch"),
+  key({ mod }, "e", "horizontal_vertical_switch"),
   key({ mod }, "q", "close_window"),
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
