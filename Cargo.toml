@@ -22,7 +22,7 @@ unix_socket = "0.5.*"
 nix = "0.6.0"
 uuid = {version = "0.2", features = ["v4", "rustc-serialize"]}
 wayland-sys = { version = "^0.6.0", features = ["client"] }
-wayland-client = { version = "^0.6.0" }
+wayland-client = { version = "^0.6.0", features = ["cursor"] }
 tempfile = "2.1"
 byteorder = ">= 0.3, < 0.6"
 

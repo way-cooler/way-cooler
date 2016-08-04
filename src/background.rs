@@ -8,6 +8,7 @@ use wayland_client::wayland::get_display;
 use wayland_client::wayland::compositor::{WlCompositor, WlSurface};
 use wayland_client::wayland::shell::{WlShellSurface, WlShell};
 use wayland_client::wayland::shm::{WlBuffer, WlShm, WlShmFormat};
+use wayland_client::cursor::{CursorTheme, Cursor, load_theme};
 
 use rustwlc::WlcOutput;
 use tempfile;
@@ -41,6 +42,10 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
     let compositor = env.compositor.as_ref().map(|o| &o.0).unwrap();
     let shell = env.shell.as_ref().map(|o| &o.0).unwrap();
     let shm = env.shm.as_ref().map(|o| &o.0).unwrap();
+
+    let cursor_theme = load_theme(None, 16, shm);
+    let cursor = cursor_theme.get_cursor("default")
+        .expect("Couldn't load cursor from theme");
 
     // Create the surface we are going to write into
     let surface = compositor.create_surface();
