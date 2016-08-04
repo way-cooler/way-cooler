@@ -3,10 +3,10 @@
 use std::sync::Arc;
 use std::process::{Command, Stdio};
 use std::thread;
-use std::env;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
+use registry::{self, RegistryError, RegistryGetData};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
@@ -92,19 +92,21 @@ pub fn register_defaults() {
     register("focus_right", Arc::new(layout_cmds::focus_right));
     register("focus_up", Arc::new(layout_cmds::focus_up));
     register("focus_down", Arc::new(layout_cmds::focus_down));
-    register("remove_active", Arc::new(layout_cmds::remove_active))
-
+    register("close_window", Arc::new(layout_cmds::remove_active))
 }
 
 // All of the methods defined should be registered.
 #[deny(dead_code)]
 
 fn launch_terminal() {
-    let term = env::var("WAYLAND_TERMINAL")
-        .unwrap_or("weston-terminal".to_string());
+    let command = registry::get_data("terminal")
+        .map(RegistryGetData::resolve).and_then(|(_, data)| {
+        data.as_string().map(str::to_string)
+            .ok_or(RegistryError::KeyNotFound)
+    }).unwrap_or("weston_terminal".to_string());
 
     Command::new("sh").arg("-c")
-        .arg(term)
+        .arg(command)
         .spawn().expect("Error launching terminal");
 }
 

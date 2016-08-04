@@ -3,7 +3,7 @@
 use std::io::prelude::*;
 use std::collections::BTreeMap;
 
-use rustc_serialize::json::{encode, Json, ToJson, ParserError};
+use rustc_serialize::json::{encode, Json, ParserError};
 
 use super::channel::{self, ReceiveError};
 

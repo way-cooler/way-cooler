@@ -121,11 +121,10 @@ fn main() {
     commands::init();
     // Add API to registry
     registry::init();
+    // Register Alt+Esc keybinding
+    keys::init();
     // Start listening for clients
     let _ipc = ipc::init();
-    // And bind the defaults
-    keys::init();
-    //
 
     // Hand control over to wlc's event loop
     info!("Running wlc...");
