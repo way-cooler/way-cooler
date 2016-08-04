@@ -8,6 +8,7 @@ use wayland_client::wayland::get_display;
 use wayland_client::wayland::compositor::{WlCompositor, WlSurface};
 use wayland_client::wayland::shell::{WlShellSurface, WlShell};
 use wayland_client::wayland::shm::{WlBuffer, WlShm, WlShmFormat};
+use wayland_client::wayland::seat::WlSeat;
 use wayland_client::cursor::{CursorTheme, Cursor, load_theme};
 
 use rustwlc::WlcOutput;
@@ -16,9 +17,10 @@ use tempfile;
 use byteorder::{NativeEndian, WriteBytesExt};
 
 wayland_env!(WaylandEnv,
-                compositor: WlCompositor,
-                shell: WlShell,
-                shm: WlShm
+             compositor: WlCompositor,
+             shell: WlShell,
+             shm: WlShm,
+             seat: WlSeat
 );
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
@@ -42,8 +44,11 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
     let compositor = env.compositor.as_ref().map(|o| &o.0).unwrap();
     let shell = env.shell.as_ref().map(|o| &o.0).unwrap();
     let shm = env.shm.as_ref().map(|o| &o.0).unwrap();
+    let seat = env.seat.as_ref().map(|o| &o.0).unwrap();
+    let pointer = seat.get_pointer();
 
     let cursor_theme = load_theme(None, 16, shm);
+    // TODO Figure out why not working on Timidger's machine
     let cursor = cursor_theme.get_cursor("default")
         .expect("Couldn't load cursor from theme");
 
@@ -73,6 +78,8 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
     // Tell Way Cooler not to set put this in the tree, treat as background
     shell_surface.set_class("Background".into());
 
+    // Set the surface to use a cursor
+    pointer.set_cursor(0/*??*/, Some(&surface), 0, 0);
     // Attach the buffer to the surface
     surface.attach(Some(&buffer), 0, 0);
     surface.set_buffer_scale(4);
