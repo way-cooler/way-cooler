@@ -163,7 +163,6 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
             thread_send(request.reply, LuaResponse::Pong);
 
             info!("Lua thread terminating!");
-            panic!("Lua thread received termination request.");
         },
 
         LuaQuery::Restart => {
