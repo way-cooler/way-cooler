@@ -22,6 +22,13 @@ config.init_workspaces(workspace_settings) -- Not implemented yet
 ]]
 
 --
+-- Background
+--
+--
+-- A background can either be a 6 digit hex value or an image path (not yet supported)
+way_cooler.background = "0x672DE1"
+
+--
 -- Keybindings
 --
 -- Create an array of keybindings and call config.register_keys()
