@@ -115,7 +115,7 @@ impl Tree {
             return Ok(())
         }
         if v_class.as_str() == "Background" {
-            info!("Setting background");
+            info!("Setting background: {}", view.get_title());
             view.send_to_back();
             let output = view.get_output();
             let resolution = output.get_resolution().clone();
