@@ -46,6 +46,12 @@ Follow the development of these features in our [issues section] or checkout our
 
 # Installation
 
+If you would like to try out Way Cooler before properly installing it, then you can use the following docker command:
+```bash
+docker run --net=host --env="DISPLAY" --volume="$HOME/.Xauthority:/root/.Xauthority:rw" timidger/way-cooler
+```
+
+
 You will need the following dependencies installed on your machine to install Way Cooler:
 - Wayland
   * Including the server and client libraries
