@@ -26,7 +26,7 @@ config.init_workspaces(workspace_settings) -- Not implemented yet
 --
 --
 -- A background can either be a 6 digit hex value or an image path (not yet supported)
-way_cooler.background = "0x672DE1"
+way_cooler.background = "0x8A2ACA"
 
 --
 -- Keybindings
