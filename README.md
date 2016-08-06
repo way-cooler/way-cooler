@@ -44,13 +44,16 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 
 Follow the development of these features in our [issues section] or checkout our [contribution guidelines](#Contributing) if you want to help out.
 
-# Installation
+# Trying out Way Cooler
 
 If you would like to try out Way Cooler before properly installing it, then you can use the following docker command:
 ```bash
 docker run --net=host --env="DISPLAY" --volume="$HOME/.Xauthority:/root/.Xauthority:rw" timidger/way-cooler
 ```
 
+This allows you try out the Window Manager without having to install anything except Docker.
+
+# Installation
 
 You will need the following dependencies installed on your machine to install Way Cooler:
 - Wayland
