@@ -74,7 +74,7 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
     let buffer = pool.create_buffer(0, width, height, width, WlShmFormat::Argb8888);
     // Tell Way Cooler not to set put this in the tree, treat as background
     shell_surface.set_class("Background".into());
-    shell_surface.set_title(format!("{}", color.as_u32()));
+    shell_surface.set_title(format!("{:x}", color.as_u32()));
 
     // Attach the buffer to the surface
     surface.attach(Some(&buffer), 0, 0);

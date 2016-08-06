@@ -3,7 +3,7 @@ use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 
-use registry::{self, RegistryGetData, RegistryError};
+use registry::{self, RegistryGetData};
 
 use rustc_serialize::json::Json;
 use std::sync::Arc;
