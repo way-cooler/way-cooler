@@ -1,7 +1,5 @@
 use std::mem::transmute;
 use std::os::unix::io::AsRawFd;
-use std::time::Duration;
-use std::thread::sleep;
 use std::io::Write;
 
 use wayland_client::wayland::get_display;
@@ -9,8 +7,7 @@ use wayland_client::wayland::compositor::{WlCompositor, WlSurface};
 use wayland_client::wayland::shell::{WlShellSurface, WlShell};
 use wayland_client::wayland::shm::{WlBuffer, WlShm, WlShmFormat};
 use wayland_client::wayland::seat::{WlSeat, WlPointerEvent};
-use wayland_client::wayland::WlDisplay;
-use wayland_client::cursor::{CursorTheme, Cursor, load_theme};
+use wayland_client::cursor::load_theme;
 use wayland_client::{EventIterator, Proxy};
 
 use rustwlc::WlcOutput;
@@ -32,7 +29,7 @@ pub struct Color(pub [u8; 4]);
 
 impl Color {
     /// Generate a new color out of a u32.
-    /// E.G: 0xFFFFFFFF
+    /// E.G: 0xFFFFFF
     pub fn from_u32(color: u32) -> Self {
         unsafe { Color(transmute(color)) }
     }
@@ -42,7 +39,7 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
     // Get shortcuts to the globals.
     let (display, iter) = get_display()
         .expect("Unable to connect to a wayland compositor");
-    let (env, mut evt_iter) = WaylandEnv::init(display, iter);
+    let (env, evt_iter) = WaylandEnv::init(display, iter);
     let compositor = env.compositor.as_ref().map(|o| &o.0).unwrap();
     let shell = env.shell.as_ref().map(|o| &o.0).unwrap();
     let shm = env.shm.as_ref().map(|o| &o.0).unwrap();
@@ -76,7 +73,6 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
 
     // Attach the buffer to the surface
     surface.attach(Some(&buffer), 0, 0);
-    surface.set_buffer_scale(4);
 
     main_background_loop(compositor, shell, shm, seat, surface,
                          shell_surface, buffer, evt_iter);
@@ -99,9 +95,13 @@ fn main_background_loop(compositor: &WlCompositor, shell: &WlShell, shm: &WlShm,
     let cursor_surface = compositor.create_surface();
     let mut pointer = seat.get_pointer();
     let cursor_theme = load_theme(None, 16, shm);
-    // TODO Figure out why not working on Timidger's machine
-    let cursor = cursor_theme.get_cursor("default")
-        .expect("Couldn't load cursor from theme");
+    let maybe_cursor = cursor_theme.get_cursor("default");
+    if maybe_cursor.is_none() {
+        error!("Could not load cursor theme properly, cannot load background");
+        error!("Please consult the developers about this issue with your distro version, this is a known issue");
+        return;
+    }
+    let cursor = maybe_cursor.unwrap();
     let cursor_buffer = cursor.frame_buffer(0).expect("Couldn't get frame_buffer");
     cursor_surface.attach(Some(&*cursor_buffer), 0, 0);
     pointer.set_event_iterator(&event_iter);
@@ -116,7 +116,6 @@ fn main_background_loop(compositor: &WlCompositor, shell: &WlShell, shm: &WlShm,
                         WaylandProtocolEvent::WlPointer(id, pointer_event) => {
                             match pointer_event {
                                 WlPointerEvent::Enter(serial, surface, surface_x, surface_y) => {
-                                    // Set the surface to use a cursor
                                     pointer.set_cursor(0, Some(&cursor_surface), 0, 0);
                                 },
                                 _ => {
