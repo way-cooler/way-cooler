@@ -149,7 +149,8 @@ impl Tree {
 
     /// Sets the view to be the new active container. Never fails
     pub fn set_active_view(&mut self, view: WlcView) -> CommandResult {
-        self.0.set_active_container(view);
+        self.0.set_active_container(view.clone());
+        view.focus();
         Ok(())
     }
 
