@@ -85,8 +85,8 @@ macro_rules! json_convertible {
 #[macro_export]
 macro_rules! keypress {
     ($modifier:expr, $key:expr) => {
-        $crate::keys::KeyPress::from_key_names(vec![$modifier],
-                                 vec![$key])
+        $crate::keys::KeyPress::from_key_names(&[$modifier],
+                                 $key)
             .expect(concat!("Unable to create keypress from macro with ",
                             $modifier, " and ", $key))
     };
@@ -157,7 +157,7 @@ mod tests {
         use super::super::keys::KeyPress;
         use std::hash::{SipHasher, Hash};
 
-        let press = KeyPress::from_key_names(vec!["Ctrl"], vec!["p"])
+        let press = KeyPress::from_key_names(&["Ctrl"], "p")
             .expect("Unable to construct regular keypress");
         let press_macro = keypress!("Ctrl", "p");
         let mut hasher = SipHasher::new();

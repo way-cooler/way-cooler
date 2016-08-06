@@ -3,12 +3,12 @@
 use std::sync::Arc;
 use std::process::{Command, Stdio};
 use std::thread;
-use std::env;
 use std::io::prelude::*;
+use layout::commands as layout_cmds;
 
+use registry::{self, RegistryError, RegistryGetData};
 use commands::{self, CommandFn};
-use layout::tree::{Direction, try_lock_tree};
-use layout::container::{ContainerType, Layout};
+use layout::try_lock_tree;
 use lua::{self, LuaQuery};
 
 /// Register the default commands in the API.
@@ -36,7 +36,10 @@ pub fn register_defaults() {
             $(fn $b() {
                 trace!("Switching to workspace {}", $n);
                 if let Ok(mut tree) = try_lock_tree() {
-                    tree.switch_to_workspace(&$n.to_string());
+                    tree.switch_to_workspace(&$n.to_string())
+                        .unwrap_or_else(|_| {
+                            error!("Could not switch workspace");
+                        });
                 }
             }
             register(stringify!($b), Arc::new($b)); )+
@@ -49,7 +52,10 @@ pub fn register_defaults() {
             $(fn $b() {
                 trace!("Switching to workspace {}", $n);
                 if let Ok(mut tree) = try_lock_tree() {
-                    tree.send_active_to_workspace(&$n.to_string());
+                    tree.send_active_to_workspace(&$n.to_string())
+                        .unwrap_or_else(|_| {
+                            error!("Could not send to a different workspace");
+                        })
                 }
             }
               register(stringify!($b), Arc::new($b)); )+
@@ -79,75 +85,28 @@ pub fn register_defaults() {
                            move_to_workspace_9, "9";
                            move_to_workspace_0, "0");
 
-    register("horizontal_vertical_switch", Arc::new(tile_switch));
-    register("split_vertical", Arc::new(split_vertical));
-    register("split_horizontal", Arc::new(split_horizontal));
-    register("focus_left", Arc::new(focus_left));
-    register("focus_right", Arc::new(focus_right));
-    register("focus_up", Arc::new(focus_up));
-    register("focus_down", Arc::new(focus_down));
-    register("remove_active", Arc::new(remove_active))
-
+    register("horizontal_vertical_switch", Arc::new(layout_cmds::tile_switch));
+    register("split_vertical", Arc::new(layout_cmds::split_vertical));
+    register("split_horizontal", Arc::new(layout_cmds::split_horizontal));
+    register("focus_left", Arc::new(layout_cmds::focus_left));
+    register("focus_right", Arc::new(layout_cmds::focus_right));
+    register("focus_up", Arc::new(layout_cmds::focus_up));
+    register("focus_down", Arc::new(layout_cmds::focus_down));
+    register("close_window", Arc::new(layout_cmds::remove_active))
 }
 
 // All of the methods defined should be registered.
 #[deny(dead_code)]
 
-fn remove_active() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.remove_active();
-    }
-}
-
-fn tile_switch() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.toggle_active_horizontal();
-        tree.layout_active_of(ContainerType::Workspace);
-    }
-}
-
-fn split_vertical() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.toggle_active_layout(Layout::Vertical);
-    }
-}
-
-fn split_horizontal() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.toggle_active_layout(Layout::Horizontal);
-    }
-}
-
-fn focus_left() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Left);
-    }
-}
-
-fn focus_right() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Right);
-    }
-}
-
-fn focus_up() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Up);
-    }
-}
-
-fn focus_down() {
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.move_focus(Direction::Down);
-    }
-}
-
 fn launch_terminal() {
-    let term = env::var("WAYLAND_TERMINAL")
-        .unwrap_or("weston-terminal".to_string());
+    let command = registry::get_data("terminal")
+        .map(RegistryGetData::resolve).and_then(|(_, data)| {
+        data.as_string().map(str::to_string)
+            .ok_or(RegistryError::KeyNotFound)
+    }).unwrap_or("weston_terminal".to_string());
 
     Command::new("sh").arg("-c")
-        .arg(term)
+        .arg(command)
         .spawn().expect("Error launching terminal");
 }
 

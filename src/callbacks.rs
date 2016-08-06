@@ -3,13 +3,10 @@ use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 
-
 use compositor;
-use super::keys;
-use super::lua;
-use super::keys::KeyPress;
-use super::layout::tree;
-use super::layout::container::ContainerType;
+use super::keys::{self, KeyPress, KeyEvent};
+use super::layout::{try_lock_tree, ContainerType};
+use super::lua::{self, LuaQuery};
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -21,14 +18,12 @@ const EVENT_PASS_THROUGH: bool = false;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
-    {
-        if let Ok(mut tree) = tree::try_lock_tree() {
-            tree.add_output(output.clone());
-            tree.switch_to_workspace(&"1");
-            true
-        } else {
-            false
-        }
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.add_output(output).and_then(|_|{
+            tree.switch_to_workspace(&"1")
+        }).is_ok()
+    } else {
+        false
     }
 }
 
@@ -46,44 +41,18 @@ pub extern fn output_resolution(output: WlcOutput,
            output, *old_size_ptr, *new_size_ptr);
     // Update the resolution of the output and its children
     output.set_resolution(new_size_ptr.clone());
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.layout_active_of(ContainerType::Output);
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.layout_active_of(ContainerType::Output)
+            .expect("Could not layout active output");
     }
 }
-/*
-pub extern fn output_render_pre(output: WlcOutput) {
-    //println!("output_render_pre");
-}
 
-pub extern fn output_render_post(output: WlcOutput) {
-    //println!("output_render_post");
-}
-*/
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
-    let output = view.get_output();
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        if tree.get_active_container().is_none() {
-            warn!("Could not create view, so there is no focus and \
-                    way-cooler doesn't know where to put it");
-            return false
-        }
-        view.set_mask(output.get_mask());
-        let v_type = view.get_type();
-        if v_type != ViewType::empty() {
-            view.focus();
-            // Now focused on something outside the tree,
-            // have to unset the active container
-            if !tree.active_is_root() {
-                tree.unset_active_container();
-            }
-            return true
-        }
-        tree.add_view(view.clone());
-        tree.normalize_view(view.clone());
-        tree.layout_active_of(ContainerType::Container);
-        tree.set_active_container(view.clone());
-        return true
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.add_view(view.clone()).and_then(|_| {
+            tree.set_active_view(view)
+        }).is_ok()
     } else {
         false
     }
@@ -91,11 +60,14 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.remove_view(&view);
-        tree.layout_active_of(ContainerType::Workspace);
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.remove_view(view.clone()).and_then(|_| {
+            tree.layout_active_of(ContainerType::Workspace)
+        }).unwrap_or_else(|err| {
+            error!("Error in view_destroyed: {}", err);
+        });
     } else {
-        warn!("Could not delete view {:?}", view);
+        error!("Could not delete view {:?}", view);
     }
 }
 
@@ -103,11 +75,11 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
     trace!("view_focus: {:?} {}", current, focused);
     current.set_state(VIEW_ACTIVATED, focused);
     // set the focus view in the tree
-    {
-        // If tree is already grabbed,
-        // it should have the active container all set
-        if let Ok(mut tree) = tree::try_lock_tree() {
-            tree.set_active_container(current.clone());
+    // If tree is already grabbed,
+    // it should have the active container all set
+    if let Ok(mut tree) = try_lock_tree() {
+        if tree.set_active_view(current.clone()).is_err() {
+            error!("Could not layout {:?}", current);
         }
     }
 }
@@ -149,17 +121,32 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
         let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
-        let keys = vec![sym];
-
-        let press = KeyPress::new(mods.mods, keys);
+        let press = KeyPress::new(mods.mods, sym);
         if let Some(action) = keys::get(&press) {
-            debug!("[key] Found an action for {:?}", press);
-            action();
-            return EVENT_HANDLED;
+            debug!("[key] Found an action for {}", press);
+            match action {
+                KeyEvent::Command(func) => {
+                    func();
+                },
+                KeyEvent::Lua => {
+                    match lua::send(LuaQuery::HandleKey(press)) {
+                        Ok(_) => {},
+                        Err(err) => {
+                            // We may want to wait for Lua's reply from
+                            // keypresses; for example if the table is tampered
+                            // with or Lua is restarted or Lua has an error.
+                            // ATM Lua asynchronously logs this but in the future
+                            // an error popup/etc is a good idea.
+                            error!("Error sending keypress: {:?}", err);
+                        }
+                    }
+                }
+            }
+            return EVENT_HANDLED
         }
     }
 
-    return EVENT_PASS_THROUGH;
+    return EVENT_PASS_THROUGH
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
@@ -197,8 +184,10 @@ pub extern fn compositor_ready() {
 pub extern fn compositor_terminating() {
     info!("Compositor terminating!");
     lua::send(lua::LuaQuery::Terminate).ok();
-    if let Ok(mut tree) = tree::try_lock_tree() {
-        tree.destroy_tree();
+    if let Ok(mut tree) = try_lock_tree() {
+        if tree.destroy_tree().is_err() {
+            error!("Could not destroy tree");
+        }
     }
 
 }

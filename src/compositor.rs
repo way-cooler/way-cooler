@@ -5,14 +5,13 @@ use std::sync::RwLock;
 
 use rustwlc;
 use rustwlc::*;
-use layout::tree;
+use layout::try_lock_tree;
 
 lazy_static! {
     static ref COMPOSITOR: RwLock<Compositor> = RwLock::new(Compositor::new());
 }
 
 const ERR_LOCK: &'static str = "Unable to lock compositor!";
-const ERR_TREE: &'static str = "Unable to lock tree!";
 
 #[derive(Debug, PartialEq)]
 pub struct Compositor {
@@ -137,15 +136,16 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
         }
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
-        {
-            let mut tree = tree::try_lock_tree().expect(ERR_TREE);
-            tree.set_active_container(view.clone());
+        if let Ok(mut tree) = try_lock_tree() {
+            if let Err(err) = tree.set_active_view(view.clone()) {
+                error!("start_interactive_move error: {}", err);
+                return false
+            } else {
+                return true
+            }
         }
-        true
-    } else {
-        false
     }
-
+    return false
 }
 
 /// Performs an operation on a pointer button, to be used in the callback
@@ -154,8 +154,12 @@ pub fn on_pointer_button(view: WlcView, _time: u32, _mods: &KeyboardModifiers,
                          -> bool {
     if state == ButtonState::Pressed {
         if !view.is_root() {
-            let mut tree = tree::try_lock_tree().expect(ERR_TREE);
-            tree.set_active_container(view.clone());
+            if let Ok(mut tree) = try_lock_tree() {
+                tree.set_active_view(view.clone())
+                    .unwrap_or_else(|err| {
+                        error!("Could not set active container {:?}", err);
+                    });
+            }
         }
     }
     else {
@@ -187,12 +191,12 @@ fn start_interactive_action(view: &WlcView, origin: &Point) -> Result<(), &'stat
         }
         comp.grab = origin.clone();
         comp.view = Some(view.clone());
-        {
-            let mut tree = tree::try_lock_tree().expect(ERR_TREE);
-            tree.set_active_container(view.clone());
+        if let Ok(mut tree) = try_lock_tree() {
+            return Ok(try!(tree.set_active_view(view.clone()).map_err(|_| {
+                "start_interactive_action: Could not start move"
+            })));
         }
     }
-
     Ok(())
 }
 

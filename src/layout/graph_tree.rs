@@ -14,18 +14,18 @@ use layout::{Container, ContainerType};
 
 /// Layout tree implemented with petgraph.
 #[derive(Debug)]
-pub struct Tree {
+pub struct InnerTree {
     graph: Graph<Container, u32>, // Directed graph
     id_map: HashMap<Uuid, NodeIndex>,
     root: NodeIndex
 }
 
-impl Tree {
+impl InnerTree {
     /// Creates a new layout tree with a root node.
-    pub fn new() -> Tree {
+    pub fn new() -> InnerTree {
         let mut graph = Graph::new();
         let root_ix = graph.add_node(Container::Root);
-        Tree { graph: graph,
+        InnerTree { graph: graph,
                id_map: HashMap::new(),
                root: root_ix
         }
@@ -179,7 +179,6 @@ impl Tree {
         } else {
             false
         }
-
     }
 
     /// Moves a node between two indices
@@ -225,6 +224,15 @@ impl Tree {
             .collect::<Vec<(NodeIndex, &u32)>>();
         edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
         edges.into_iter().map(|(ix, _edge)| ix).collect()
+    }
+
+    /// Looks up a container by id
+    pub fn lookup_id(&self, id: Uuid) -> Option<NodeIndex> {
+        if let Some(node_ix) = self.id_map.get(&id) {
+            Some(*node_ix)
+        } else {
+            None
+        }
     }
 
     /// Gets the container of the given node.
@@ -369,7 +377,7 @@ impl Tree {
 
 use std::ops::{Index, IndexMut};
 
-impl Index<NodeIndex> for Tree {
+impl Index<NodeIndex> for InnerTree {
     type Output = Container;
     #[inline]
     fn index(&self, index: NodeIndex) -> &Self::Output {
@@ -377,7 +385,7 @@ impl Index<NodeIndex> for Tree {
     }
 }
 
-impl IndexMut<NodeIndex> for Tree {
+impl IndexMut<NodeIndex> for InnerTree {
     #[inline]
     fn index_mut(&mut self, index: NodeIndex) -> &mut Self::Output {
         self.get_mut(index).expect("graph_tree: node not found")
@@ -388,7 +396,7 @@ impl IndexMut<NodeIndex> for Tree {
 mod tests {
 
     use super::*;
-    use layout::container::*;
+    use super::super::container::*;
     use rustwlc::*;
 
     /// Makes a very basic tree.
@@ -400,8 +408,8 @@ mod tests {
     ///
     /// The active container is the only view in the first workspace
     #[allow(unused_variables)]
-    fn basic_tree() -> Tree {
-        let mut tree = Tree::new();
+    fn basic_tree() -> InnerTree {
+        let mut tree = InnerTree::new();
         let fake_view_1 = WlcView::root();
         let fake_output = fake_view_1.clone().as_output();
         let root_ix = tree.root_ix();
