@@ -77,8 +77,6 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
     // Attach the buffer to the surface
     surface.attach(Some(&buffer), 0, 0);
     surface.set_buffer_scale(4);
-    surface.commit();
-    evt_iter.sync_roundtrip().unwrap();
 
     main_background_loop(compositor, shell, shm, seat, surface,
                          shell_surface, buffer, evt_iter);
@@ -107,8 +105,9 @@ fn main_background_loop(compositor: &WlCompositor, shell: &WlShell, shm: &WlShm,
     let cursor_buffer = cursor.frame_buffer(0).expect("Couldn't get frame_buffer");
     cursor_surface.attach(Some(&*cursor_buffer), 0, 0);
     pointer.set_event_iterator(&event_iter);
-
-    pointer.set_cursor(0/*??*/, Some(&cursor_surface), 0, 0);
+    pointer.set_cursor(0, Some(&cursor_surface), 0, 0);
+    surface.commit();
+    event_iter.sync_roundtrip().unwrap();
     loop {
         for event in &mut event_iter {
             match event {
@@ -118,7 +117,7 @@ fn main_background_loop(compositor: &WlCompositor, shell: &WlShell, shm: &WlShm,
                             match pointer_event {
                                 WlPointerEvent::Enter(serial, surface, surface_x, surface_y) => {
                                     // Set the surface to use a cursor
-                                    pointer.set_cursor(0/*??*/, Some(&cursor_surface), 0, 0);
+                                    pointer.set_cursor(0, Some(&cursor_surface), 0, 0);
                                 },
                                 _ => {
                                 }
