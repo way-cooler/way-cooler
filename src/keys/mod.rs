@@ -20,7 +20,6 @@ lazy_static! {
         map.insert("enter", "return");
         map.insert("\n", "return");
         map.insert("\t", "tab");
-        //map.insert("del", "delete");
         map
     };
 }
@@ -60,7 +59,6 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
 
 /// Register a new set of key mappings
 pub fn register(key: KeyPress, event: KeyEvent) -> Option<KeyEvent> {
-    trace!("Registering {} to {:?}", key, event);
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
     bindings.insert(key, event)
