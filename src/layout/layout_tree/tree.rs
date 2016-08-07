@@ -431,17 +431,18 @@ impl LayoutTree {
 
     pub fn move_active(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
-        let new_parent_ix = try!(self.move_active_recurse(node_ix, direction));
+        let _new_parent_ix = try!(self.move_active_recurse(node_ix, direction));
         self.validate();
         Ok(())
     }
 
-    /// Returns the new parent of the active container if the move succeeds
+    /// Returns the new parent of the active container if the move succeeds,
+    /// Otherwise it signals what error occurred in the tree.
     fn move_active_recurse(&mut self, node_ix: NodeIndex,
                            direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_ix].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
-            c_type => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
+            _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
                                                           vec!(ContainerType::View,
                                                                ContainerType::Container)))
         }
@@ -1114,11 +1115,12 @@ mod tests {
         tree.add_view(WlcView::root());
         assert_eq!(tree.tree.children_of(parent_container).len(), 2);
         assert!(! (old_active_view == tree.active_ix_of(ContainerType::View).unwrap()));
-        tree.remove_view(&WlcView::root());
+        tree.remove_view(&WlcView::root())
+            .expect("Could not remove view");
         assert_eq!(tree.active_ix_of(ContainerType::View).unwrap(), old_active_view);
         assert_eq!(tree.tree.children_of(parent_container).len(), 1);
         for _ in 1..2 {
-            tree.remove_view(&WlcView::root());
+            tree.remove_view(&WlcView::root()).expect("Could not remove view");
         }
     }
 

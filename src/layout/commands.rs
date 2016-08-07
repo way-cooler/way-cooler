@@ -133,13 +133,11 @@ impl Tree {
                         .or_else(|| self.0.get_active_container()
                                  .and_then(|container| Some(container.get_id())))
                         .ok_or(TreeError::NoActiveContainer));
-        self.0.move_active(uuid, direction);
+        try!(self.0.move_active(uuid, direction));
         // NOTE Make this not layout the active, but actually the node index's workspace.
-        self.layout_active_of(ContainerType::Workspace);
+        try!(self.layout_active_of(ContainerType::Workspace));
         Ok(())
     }
-    /*pub fn move_active(&mut self, direction: Direction) {
-    }*/
 
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
