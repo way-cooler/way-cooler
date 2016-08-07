@@ -5,7 +5,7 @@ use super::{ContainerType, Direction, Handle, Layout};
 use super::Tree;
 
 use uuid::Uuid;
-use rustwlc::{WlcView, WlcOutput, ViewType};
+use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 
 pub type CommandResult = Result<(), String>;
 
@@ -104,6 +104,7 @@ impl Tree {
         }
         view.set_mask(output.get_mask());
         let v_type = view.get_type();
+        let v_class = view.get_class();
         // If it is empty, don't add to tree
         if v_type != ViewType::empty() {
             // Now focused on something outside the tree,
@@ -112,6 +113,18 @@ impl Tree {
                 tree.unset_active_container();
             }
             return Ok(())
+        }
+        if v_class.as_str() == "Background" {
+            info!("Setting background: {}", view.get_title());
+            view.send_to_back();
+            let output = view.get_output();
+            let resolution = output.get_resolution().clone();
+            let fullscreen = Geometry {
+                origin: Point { x: 0, y: 0 },
+                size: resolution
+            };
+            view.set_geometry(ResizeEdge::empty(), &fullscreen);
+            return Ok(());
         }
         tree.add_view(view.clone());
         tree.normalize_view(view.clone());
