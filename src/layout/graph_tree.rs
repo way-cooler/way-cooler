@@ -149,6 +149,20 @@ impl InnerTree {
         Ok(())
     }
 
+    /// Moves the node index at source so that it is a child of the target node.
+    /// If the node could be moved, the new parent of the source node is returned
+    /// (which is always the same as the target node).
+    pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex) -> Result<NodeIndex, GraphError>{
+        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let parent_source_edge = self.graph.find_edge(source_parent, source)
+            .expect("Source node and it's parent were not linked");
+        self.graph.remove_edge(parent_source_edge);
+        let highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing).max()
+            .map(|(_ix, weight)| *weight).expect("Could not get highest weighted child of target node");
+        self.graph.update_edge(target, source, highest_weight + 1);
+        Ok(target)
+    }
+
     /// Detaches a node from the tree (causing there to be two trees).
     /// This should only be done temporarily.
     fn detach(&mut self, node_ix: NodeIndex) {

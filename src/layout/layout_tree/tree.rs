@@ -37,7 +37,7 @@ pub enum TreeError {
     /// There was no active/focused container.
     NoActiveContainer,
     /// A container was the root container, which was not expected
-    WasRootContainer(Uuid),
+    InvalidOperationOnRootContainer(Uuid),
     /// There was an error in the graph, an invariant of one of the
     /// functions were not held, so this might be an issue in the Tree.
     PetGraphError(GraphError)
@@ -444,8 +444,8 @@ impl LayoutTree {
         match self.tree[node_ix].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
             _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
-                                                          vec!(ContainerType::View,
-                                                               ContainerType::Container)))
+                                                     vec!(ContainerType::View,
+                                                          ContainerType::Container)))
         }
         let parent_ix = self.tree.parent_of(node_ix)
             .expect("Container/View had no parent");
@@ -456,10 +456,10 @@ impl LayoutTree {
                     (Layout::Horizontal, Direction::Right) |
                     (Layout::Vertical, Direction::Up) |
                     (Layout::Vertical, Direction::Down) => {
-                        let siblings = self.tree.children_of(parent_ix);
-                        let cur_index = siblings.iter().position(|node| {
+                        let siblings_and_self = self.tree.children_of(parent_ix);
+                        let cur_index = siblings_and_self.iter().position(|node| {
                             *node == node_ix
-                        }).expect("Could not find self in parent");
+                        }).expect("Could not find self in parent's children");
                         let active_ix = try!(self.active_container.ok_or(TreeError::NoActiveContainer));
                         /* Moving within current parent container */
                         if active_ix == node_ix {
@@ -471,42 +471,26 @@ impl LayoutTree {
                                     cur_index.checked_sub(1)
                                 }
                             };
-                            if maybe_new_index.is_some() && maybe_new_index.unwrap() < siblings.len() {
+                            if maybe_new_index.is_some() && maybe_new_index.unwrap() < siblings_and_self.len() {
                                 // There is a sibling to swap with
                                 let swap_index = maybe_new_index.unwrap();
-                                let mut swap_ix = siblings[swap_index];
+                                let swap_ix = siblings_and_self[swap_index];
                                 match self.tree[swap_ix] {
                                     Container::View { .. } => {
                                         try!(self.tree.swap_node_order(active_ix, swap_ix)
                                              .map_err(|err| TreeError::PetGraphError(err)))
                                     },
                                     Container::Container { .. } => {
-                                        // normalize index for removal
-                                        if self.tree.is_last_ix(swap_ix) {
-                                            swap_ix = active_ix;
-                                        }
-                                        let mut old_parent_ix = self.tree.parent_of(active_ix)
-                                            .expect("Active ix had no parent");
-                                        // normalize index for removal of view container
-                                        if old_parent_ix == active_ix {
-                                            old_parent_ix = active_ix;
-                                        }
-                                        let active_c = self.tree.remove(active_ix)
-                                            .expect("Could not remove active container");
-                                        let mut new_active = self.tree.add_child(swap_ix, active_c);
-                                        self.active_container = Some(new_active);
-                                        if ! self.tree.is_root_container(old_parent_ix) &&
-                                            self.tree.children_of(old_parent_ix).len() == 0 {
-                                                // was just added, so it will be invalidated
-                                                new_active = old_parent_ix;
-                                                self.remove_view_or_container(old_parent_ix);
+                                        // TODO eventually we want to remember what to swap back to,
+                                        // which probably means having to give move_into more information,
+                                        // like which edge weight to use.
+                                        try!(self.tree.move_into(node_ix, swap_ix).map_err(|err| TreeError::PetGraphError(err)));
+                                        if let Some(handle) = self.tree[node_ix].get_handle() {
+                                            match handle {
+                                                Handle::View(view) => self.normalize_view(view),
+                                                _ => unreachable!()
                                             }
-                                        match self.tree[new_active].clone() {
-                                            Container::View { handle, .. } =>
-                                                self.normalize_view(handle),
-                                            _ => {},
-                                        };
-
+                                        }
                                     },
                                     _ => unreachable!()
                                 }
@@ -514,7 +498,7 @@ impl LayoutTree {
                                     .expect("Moved container had no new parent"))
                             } else {
                                 // Tried to move outside the limit
-                                // NOTE This should be changed, but I'm keeping it here for simplification
+                                // TODO This should be changed, but I'm keeping it here for simplification
                                 // This will be squashed and properly be moving OUT of the container's siblings,
                                 unimplemented!();
                             }
@@ -535,23 +519,23 @@ impl LayoutTree {
                             // both this and the view branch down below look similar
                             // Can I combine them by doing a saturate_sub/add above?
                             // (with add saturating on the len)
-                            if next_index < 0 || next_index as usize >= siblings.len() {
+                            if next_index < 0 || next_index as usize >= siblings_and_self.len() {
                                 if next_index < 0 {
                                     next_index = 0;
                                 } else {
-                                    next_index = (siblings.len() + 1) as i32;
+                                    next_index = (siblings_and_self.len() + 1) as i32;
                                 }
                                 let active_c = self.tree.remove(active_ix)
                                     .expect("Could not remove active container");
                                 // indices are invalidated, dropping to be safe
-                                drop(siblings);
+                                drop(siblings_and_self);
                                 let new_active_ix = self.tree.add_child(parent_ix, active_c);
                                 self.tree.set_child_pos(new_active_ix, next_index as u32);
                                 self.active_container = Some(new_active_ix);
                                 return Ok(self.tree.parent_of(new_active_ix)
                                     .expect("Moved container had no new parent"))
                             }
-                            let mut next_ix = siblings[next_index as usize];
+                            let mut next_ix = siblings_and_self[next_index as usize];
                             match self.tree[next_ix] {
                                 Container::View { .. } => {
                                     // NOTE need to add, make this edge weight the active container's
@@ -595,7 +579,7 @@ impl LayoutTree {
                 }
             },
             Container::Workspace { .. } => {
-                return Err(TreeError::WasRootContainer(self.tree[node_ix].get_id()));
+                return Err(TreeError::InvalidOperationOnRootContainer(self.tree[node_ix].get_id()));
             }
             _ => unreachable!()
         }
