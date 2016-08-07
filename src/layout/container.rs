@@ -62,7 +62,7 @@ pub enum Layout {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Container {
     /// Root node of the container
-    Root,
+    Root(Uuid),
     /// Output
     Output {
         /// Handle to the wlc
@@ -113,6 +113,10 @@ pub enum Container {
 }
 
 impl Container {
+    /// Creates a new root container.
+    pub fn new_root() -> Container {
+        Container::Root(Uuid::new_v4())
+    }
     /// Creates a new output container with the given output
     pub fn new_output(handle: WlcOutput) -> Container {
         Container::Output {
@@ -171,7 +175,7 @@ impl Container {
     /// Gets the type of this container
     pub fn get_type(&self) -> ContainerType {
         match *self {
-            Container::Root => ContainerType::Root,
+            Container::Root(_) => ContainerType::Root,
             Container::Output { .. } => ContainerType::Output,
             Container::Workspace { .. } => ContainerType::Workspace,
             Container::Container { .. } => ContainerType::Container,
@@ -225,7 +229,7 @@ impl Container {
     /// origin is the coordinates relative to the parent container.
     pub fn get_geometry(&self) -> Option<Geometry> {
         match *self {
-            Container::Root { .. } => None,
+            Container::Root(_)  => None,
             Container::Output { ref handle, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0 },
                 size: handle.get_resolution()
@@ -268,12 +272,12 @@ impl Container {
         Ok(())
     }
 
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         match *self {
-            Container::Root => None,
-            Container::Output { ref id, .. } | Container::Workspace { ref id, .. } |
-            Container::Container { ref id, .. } | Container::View { ref id, .. } => {
-                Some(*id)
+            Container::Root(id) | Container::Output { id, .. } |
+            Container::Workspace { id, .. } | Container::Container { id, .. } |
+            Container::View { id, .. } => {
+                id
             }
         }
     }

@@ -24,7 +24,7 @@ impl InnerTree {
     /// Creates a new layout tree with a root node.
     pub fn new() -> InnerTree {
         let mut graph = Graph::new();
-        let root_ix = graph.add_node(Container::Root);
+        let root_ix = graph.add_node(Container::new_root());
         InnerTree { graph: graph,
                id_map: HashMap::new(),
                root: root_ix
@@ -71,7 +71,7 @@ impl InnerTree {
     /// Adds a new child to a node at the index, returning the node index
     /// of the new child node.
     pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container) -> NodeIndex {
-        let id = val.get_id().unwrap();
+        let id = val.get_id();
         let child_ix = self.graph.add_node(val);
         self.attach_child(parent_ix, child_ix);
         self.id_map.insert(id, child_ix);
@@ -154,13 +154,13 @@ impl InnerTree {
     /// with an endpoint in a, and including the edges with an endpoint in
     /// the displaced node.
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
-        let id = self.graph[node_ix].get_id().unwrap();
+        let id = self.graph[node_ix].get_id();
         let last_ix: NodeIndex<u32> = NodeIndex::new(self.graph.node_count() - 1);
         if last_ix != node_ix {
             // The container at last_ix will now have node_ix as its index
             // Have to update the id map
             let last_container = &self.graph[last_ix];
-            let last_id = last_container.get_id().expect("Could not get container id");
+            let last_id = last_container.get_id();
             self.id_map.insert(last_id, node_ix);
         }
         self.id_map.remove(&id);
