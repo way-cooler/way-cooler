@@ -11,6 +11,10 @@ use super::super::LayoutTree;
 
 use super::super::container::{Container, Handle, ContainerType, Layout};
 
+use super::super::graph_tree::GraphError;
+
+use super::super::commands::CommandResult;
+
 #[derive(Clone, Copy)]
 pub enum Direction {
     Up,
@@ -32,6 +36,11 @@ pub enum TreeError {
     UuidWrongType(Uuid, Vec<ContainerType>),
     /// There was no active/focused container.
     NoActiveContainer,
+    /// A container was the root container, which was not expected
+    WasRootContainer(Uuid),
+    /// There was an error in the graph, an invariant of one of the
+    /// functions were not held, so this might be an issue in the Tree.
+    PetGraphError(GraphError)
 }
 
 impl LayoutTree {
@@ -419,6 +428,181 @@ impl LayoutTree {
             .expect("Node had no parent");
         return self.move_focus_recurse(parent_ix, direction);
     }
+
+    pub fn move_active(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
+        let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
+        let new_parent_ix = try!(self.move_active_recurse(node_ix, direction));
+        self.validate();
+        Ok(())
+    }
+
+    /// Returns the new parent of the active container if the move succeeds
+    fn move_active_recurse(&mut self, node_ix: NodeIndex,
+                           direction: Direction) -> Result<NodeIndex, TreeError> {
+        match self.tree[node_ix].get_type() {
+            ContainerType::View | ContainerType::Container => { /* continue */ },
+            c_type => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
+                                                          vec!(ContainerType::View,
+                                                               ContainerType::Container)))
+        }
+        let parent_ix = self.tree.parent_of(node_ix)
+            .expect("Container/View had no parent");
+        match self.tree[parent_ix] {
+            Container::Container { layout, .. } =>  {
+                match (layout, direction) {
+                    (Layout::Horizontal, Direction::Left) |
+                    (Layout::Horizontal, Direction::Right) |
+                    (Layout::Vertical, Direction::Up) |
+                    (Layout::Vertical, Direction::Down) => {
+                        let siblings = self.tree.children_of(parent_ix);
+                        let cur_index = siblings.iter().position(|node| {
+                            *node == node_ix
+                        }).expect("Could not find self in parent");
+                        let active_ix = try!(self.active_container.ok_or(TreeError::NoActiveContainer));
+                        /* Moving within current parent container */
+                        if active_ix == node_ix {
+                            let maybe_new_index = match direction {
+                                Direction::Right | Direction::Down => {
+                                    cur_index.checked_add(1)
+                                }
+                                Direction::Left  | Direction::Up => {
+                                    cur_index.checked_sub(1)
+                                }
+                            };
+                            if maybe_new_index.is_some() && maybe_new_index.unwrap() < siblings.len() {
+                                // There is a sibling to swap with
+                                let swap_index = maybe_new_index.unwrap();
+                                let mut swap_ix = siblings[swap_index];
+                                match self.tree[swap_ix] {
+                                    Container::View { .. } => {
+                                        try!(self.tree.swap_node_order(active_ix, swap_ix)
+                                             .map_err(|err| TreeError::PetGraphError(err)))
+                                    },
+                                    Container::Container { .. } => {
+                                        // normalize index for removal
+                                        if self.tree.is_last_ix(swap_ix) {
+                                            swap_ix = active_ix;
+                                        }
+                                        let mut old_parent_ix = self.tree.parent_of(active_ix)
+                                            .expect("Active ix had no parent");
+                                        // normalize index for removal of view container
+                                        if old_parent_ix == active_ix {
+                                            old_parent_ix = active_ix;
+                                        }
+                                        let active_c = self.tree.remove(active_ix)
+                                            .expect("Could not remove active container");
+                                        let mut new_active = self.tree.add_child(swap_ix, active_c);
+                                        self.active_container = Some(new_active);
+                                        if ! self.tree.is_root_container(old_parent_ix) &&
+                                            self.tree.children_of(old_parent_ix).len() == 0 {
+                                                // was just added, so it will be invalidated
+                                                new_active = old_parent_ix;
+                                                self.remove_view_or_container(old_parent_ix);
+                                            }
+                                        match self.tree[new_active].clone() {
+                                            Container::View { handle, .. } =>
+                                                self.normalize_view(handle),
+                                            _ => {},
+                                        };
+
+                                    },
+                                    _ => unreachable!()
+                                }
+                                return Ok(self.tree.parent_of(active_ix)
+                                    .expect("Moved container had no new parent"))
+                            } else {
+                                // Tried to move outside the limit
+                                // NOTE This should be changed, but I'm keeping it here for simplification
+                                // This will be squashed and properly be moving OUT of the container's siblings,
+                                unimplemented!();
+                            }
+                        } else {
+                            /* Moving between ancestor's siblings */
+                            // if sibling is container, add into it.
+                            // otherwise just throw in as a child to the ancestor's parent,
+                            // and then make the new container have the old one's edge weight,
+                            // increment that one onward?
+                            let mut next_index = match direction {
+                                Direction::Right | Direction::Down => {
+                                    cur_index as i32 + 1
+                                },
+                                Direction::Left | Direction::Up => {
+                                    cur_index as i32 - 1
+                                }
+                            };
+                            // both this and the view branch down below look similar
+                            // Can I combine them by doing a saturate_sub/add above?
+                            // (with add saturating on the len)
+                            if next_index < 0 || next_index as usize >= siblings.len() {
+                                if next_index < 0 {
+                                    next_index = 0;
+                                } else {
+                                    next_index = (siblings.len() + 1) as i32;
+                                }
+                                let active_c = self.tree.remove(active_ix)
+                                    .expect("Could not remove active container");
+                                // indices are invalidated, dropping to be safe
+                                drop(siblings);
+                                let new_active_ix = self.tree.add_child(parent_ix, active_c);
+                                self.tree.set_child_pos(new_active_ix, next_index as u32);
+                                self.active_container = Some(new_active_ix);
+                                return Ok(self.tree.parent_of(new_active_ix)
+                                    .expect("Moved container had no new parent"))
+                            }
+                            let mut next_ix = siblings[next_index as usize];
+                            match self.tree[next_ix] {
+                                Container::View { .. } => {
+                                    // NOTE need to add, make this edge weight the active container's
+                                    unimplemented!();
+                                },
+                                Container::Container { .. } => {
+                                    // normalize index for removal of view container
+                                    if self.tree.is_last_ix(next_ix) {
+                                        next_ix = active_ix;
+                                    }
+                                    let mut old_parent_ix = self.tree.parent_of(active_ix)
+                                        .expect("Active ix had no parent");
+                                    // normalize index for removal of view container
+                                    if old_parent_ix == active_ix {
+                                        old_parent_ix = active_ix;
+                                    }
+                                    let active_c = self.tree.remove(active_ix)
+                                        .expect("Could not remove active container");
+                                    let mut new_active = self.tree.add_child(next_ix, active_c);
+                                    self.active_container = Some(new_active);
+                                    if ! self.tree.is_root_container(old_parent_ix) &&
+                                        self.tree.children_of(old_parent_ix).len() == 0 {
+                                            // was just added, so it will be invalidated
+                                            new_active = old_parent_ix;
+                                            self.remove_view_or_container(old_parent_ix);
+                                    }
+                                    match self.tree[new_active].clone() {
+                                        Container::View { handle, .. } =>
+                                        self.normalize_view(handle),
+                                    _ => {},
+                                    };
+
+                                },
+                                _ => unreachable!()
+                            };
+                            return Ok(self.tree.parent_of(active_ix)
+                                .expect("Moved container had no new parent"))
+                        }
+                    },
+                    _ => { /* We are moving out of siblings, recurse */ }
+                }
+            },
+            Container::Workspace { .. } => {
+                return Err(TreeError::WasRootContainer(self.tree[node_ix].get_id()));
+            }
+            _ => unreachable!()
+        }
+        let parent_ix = self.tree.parent_of(node_ix)
+            .expect("Node had no parent");
+        return self.move_active_recurse(parent_ix, direction);
+}
+
+
 
     /// Updates the current active container to be the next container or view
     /// to focus on after the previous view/container was moved/removed.
