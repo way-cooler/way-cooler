@@ -429,7 +429,8 @@ impl LayoutTree {
         return self.move_focus_recurse(parent_ix, direction);
     }
 
-    pub fn move_active(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
+    /// Will attempt to move the container at the UUID in the given direction.
+    pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
         let _new_parent_ix = try!(self.move_active_recurse(node_ix, direction));
         self.validate();
