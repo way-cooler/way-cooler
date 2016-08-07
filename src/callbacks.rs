@@ -97,14 +97,10 @@ pub extern fn view_move_to_output(current: WlcView,
     trace!("view_move_to_output: {:?}, {:?}, {:?}", current, o1, o2);
 }
 
-pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
-    trace!("view_request_geometry: {:?} wants {:?}", view, geometry);
-    warn!("Denying view {} request for size", view.get_title());
+pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
 }
 
 pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
-    trace!("view_request_state: {}, {:?}, handled: {}",
-    view.get_title(), state, handled);
     view.set_state(state, handled);
 }
 
@@ -112,14 +108,11 @@ pub extern fn view_request_move(view: WlcView, dest: &Point) {
     // Called by views when they have a dang resize mouse thing, we should only
     // let it happen in view floating mode
     compositor::start_interactive_move(&view, dest);
-    trace!("view_request_move: to {}", *dest);
 }
 
 pub extern fn view_request_resize(view: WlcView,
                               edge: ResizeEdge, location: &Point) {
     compositor::start_interactive_resize(&view, edge, location);
-    trace!("view_request_resize: edge {:?}, to {}",
-             edge, location);
 }
 
 pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
@@ -166,8 +159,6 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
 pub extern fn pointer_scroll(_view: WlcView, _time: u32,
                          _mods_ptr: &KeyboardModifiers, axis: ScrollAxis,
                          heights: [f64; 2]) -> bool {
-    trace!("pointer_scroll: {:?} {:?}", axis,
-           heights.iter().map(|f| f.clone().round()).collect::<Vec<f64>>());
     false
 }
 
@@ -175,13 +166,6 @@ pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool 
     pointer::set_position(point);
     compositor::on_pointer_motion(_view, _time, point)
 }
-
-/*
-pub extern fn touch(view: WlcView, time: u32, mods_ptr: &KeyboardModifiers,
-               touch: TouchType, key: i32, point_ptr: &Point) -> bool {
-    false
-}
-*/
 
 pub extern fn compositor_ready() {
     info!("Preparing compositor!");
