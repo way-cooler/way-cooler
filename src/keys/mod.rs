@@ -4,16 +4,25 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use rustwlc::types::*; // Need * for bitflags...
+use rustwlc::xkb::keysyms;
 
 mod keypress;
 pub use self::keypress::KeyPress;
+
+use super::commands;
 
 mod event;
 pub use self::event::KeyEvent;
 
 lazy_static! {
-    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> =
-        RwLock::new(HashMap::new());
+    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> = {
+        let mut mapping = HashMap::new();
+        mapping.insert(KeyPress::new(KeyMod::from_bits(19).unwrap(),
+                                     keysyms::KEY_Escape),
+                       KeyEvent::Command(commands::read_lock().get("quit").unwrap().clone()));
+
+        RwLock::new(mapping)
+    };
 
     static ref NAME_MAPPING: HashMap<&'static str, &'static str> = {
         let mut map = HashMap::new();
