@@ -648,6 +648,14 @@ impl LayoutTree {
                 for container_ix in self.tree.all_descendants_of(&workspace_ix) {
                     match self.tree[container_ix] {
                         Container::Container { .. } => {
+                            let parent_ix = self.tree.parent_of(container_ix)
+                                .expect("Container had no parent");
+                            if self.tree.children_of(container_ix).len() == 0
+                                && self.tree[parent_ix].get_type() != ContainerType::Workspace {
+                                    error!("Tree in invalid state. {:?} is an empty non-root container\n \
+                                            {:#?}", container_ix, *self);
+                                    panic!();
+                            }
                             assert!(! self.tree.can_remove_empty_parent(container_ix));
                         },
                         Container::View { .. } => {
