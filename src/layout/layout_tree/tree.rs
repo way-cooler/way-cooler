@@ -482,8 +482,8 @@ impl LayoutTree {
                                     },
                                     Container::Container { .. } => {
                                         // TODO eventually we want to remember what to swap back to,
-                                        // which probably means having to give move_into more information,
-                                        // like which edge weight to use.
+                                        // This will change the code in move_into however, but it's best to have this
+                                        // note here for visibility
                                         try!(self.tree.move_into(node_ix, swap_ix).map_err(|err| TreeError::PetGraphError(err)));
                                         if let Some(handle) = self.tree[node_ix].get_handle() {
                                             match handle {
@@ -500,9 +500,12 @@ impl LayoutTree {
                                 // Tried to move outside the limit
                                 // TODO This should be changed, but I'm keeping it here for simplification
                                 // This will be squashed and properly be moving OUT of the container's siblings,
-                                unimplemented!();
+                                error!("HERE HERE HERE");
+                                //unimplemented!();
+                                return self.move_active_recurse(parent_ix, direction);
                             }
                         } else {
+                            // TODO Rewrite this logic to use saturating add/subtract
                             /* Moving between ancestor's siblings */
                             // if sibling is container, add into it.
                             // otherwise just throw in as a child to the ancestor's parent,
@@ -519,7 +522,9 @@ impl LayoutTree {
                             // both this and the view branch down below look similar
                             // Can I combine them by doing a saturate_sub/add above?
                             // (with add saturating on the len)
+                            // TODO Rewrite this to not use removal of nodes, but use graph_tree primitives (move_into)
                             if next_index < 0 || next_index as usize >= siblings_and_self.len() {
+                                error!("Edge case");
                                 if next_index < 0 {
                                     next_index = 0;
                                 } else {
@@ -539,7 +544,14 @@ impl LayoutTree {
                             match self.tree[next_ix] {
                                 Container::View { .. } => {
                                     // NOTE need to add, make this edge weight the active container's
-                                    unimplemented!();
+                                    let _parent_ix = try!(self.tree.place_node_at(active_ix, next_ix)
+                                                         .map_err(|err| TreeError::PetGraphError(err)));
+                                    if let Some(handle) = self.tree[node_ix].get_handle() {
+                                        match handle {
+                                            Handle::View(view) => self.normalize_view(view),
+                                            _ => unreachable!()
+                                        }
+                                    }
                                 },
                                 Container::Container { .. } => {
                                     // normalize index for removal of view container

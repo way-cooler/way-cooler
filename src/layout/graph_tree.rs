@@ -152,15 +152,52 @@ impl InnerTree {
     /// Moves the node index at source so that it is a child of the target node.
     /// If the node could be moved, the new parent of the source node is returned
     /// (which is always the same as the target node).
-    pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex) -> Result<NodeIndex, GraphError>{
+    pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex) -> Result<NodeIndex, GraphError> {
         let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
-        let parent_source_edge = self.graph.find_edge(source_parent, source)
+        let source_parent_edge = self.graph.find_edge(source_parent, source)
             .expect("Source node and it's parent were not linked");
-        self.graph.remove_edge(parent_source_edge);
+        self.graph.remove_edge(source_parent_edge);
         let highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing).max()
             .map(|(_ix, weight)| *weight).expect("Could not get highest weighted child of target node");
         self.graph.update_edge(target, source, highest_weight + 1);
         Ok(target)
+    }
+
+    /// Places the source node at the position where the target node. In other words, the edge weight between
+    /// the target node and the target node's parent becomes the source node's new weight after it
+    /// becomes a sibling to the target node.
+    ///
+    /// Each node that has a weight >= the source's new weight is shifted over by one.
+    ///
+    /// If the operation succeeds, the source's new parent (the target parent) is returned.
+    pub fn place_node_at(&mut self, source: NodeIndex, target: NodeIndex) -> Result<NodeIndex, GraphError> {
+        warn!("{:?}", self);
+        trace!("Placing source {:?} at target {:?}", source, target);
+        let target_parent = try!(self.parent_of(target).ok_or(GraphError::NoParent(target)));
+        let target_parent_edge = self.graph.find_edge(target_parent, target)
+            .expect("Target node and it's parent were not linked");
+        let target_weight = self.graph.edge_weight(target_parent_edge).map(|weight| *weight)
+            .expect("Could not get the weight of the edge between target and parent");
+        let bigger_target_siblings: Vec<NodeIndex> = self.graph.edges_directed(target_parent, EdgeDirection::Outgoing)
+            .filter(|&(_node_ix, sibling_weight)| *sibling_weight >= target_weight)
+            .map(|(node_ix, _)| node_ix).collect();
+        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent_edge = self.graph.find_edge(source_parent, source)
+            .expect("Source node and it's parent were not linked");
+        trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
+        for sibling_ix in bigger_target_siblings {
+            let sibling_edge = self.graph.find_edge(target_parent, sibling_ix)
+                .expect("Sibling to target was not linked to target's parent");
+            let weight = self.graph.edge_weight_mut(sibling_edge)
+                .expect("Could not get the weight of the edge between target sibling and target parent");
+            *weight = *weight + 1;
+            trace!("Sibling {:?}, edge weight to {:?} is now {}", sibling_ix, target_parent, weight);
+        }
+        self.graph.remove_edge(source_parent_edge);
+        trace!("Adding edge between child {:?} and parent {:?} w/ weight {}", source, target_parent, target_weight);
+        self.graph.update_edge(target_parent, source, target_weight);
+        error!("{:?}", self);
+        Ok(target_parent)
     }
 
     /// Detaches a node from the tree (causing there to be two trees).
@@ -247,6 +284,7 @@ impl InnerTree {
         if cfg!(debug_assertions) {
             let result = neighbors.next();
             if neighbors.next().is_some() {
+                error!("{:?}", self);
                 panic!("parent_of: node has multiple parents!")
             }
             result
