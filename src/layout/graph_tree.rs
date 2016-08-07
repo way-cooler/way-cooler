@@ -122,6 +122,25 @@ impl InnerTree {
         self.graph.update_edge(parent_ix, child_ix, child_pos);
     }
 
+    /// Swaps the edge weight of the two child nodes. The nodes must
+    /// be siblings of each other, otherwise this function will fail.
+    pub fn swap_node_order(&mut self, child1_ix: NodeIndex,
+                           child2_ix: NodeIndex) -> Result<(), ()> {
+        let parent1_ix = try!(self.parent_of(child1_ix).ok_or(()));
+        let parent2_ix = try!(self.parent_of(child2_ix).ok_or(()));
+        if parent2_ix != parent1_ix {
+            return Err(())
+        }
+        let parent_ix = parent2_ix;
+        let child1_weight = *self.get_edge_weight_between(parent_ix, child1_ix)
+            .expect("Could not get weight between parent and child");
+        let child2_weight = *self.get_edge_weight_between(parent_ix, child2_ix)
+            .expect("Could not get weight between parent and child");
+        self.graph.update_edge(parent_ix, child1_ix, child2_weight);
+        self.graph.update_edge(parent_ix, child2_ix, child1_weight);
+        Ok(())
+    }
+
     /// Detaches a node from the tree (causing there to be two trees).
     /// This should only be done temporarily.
     fn detach(&mut self, node_ix: NodeIndex) {
