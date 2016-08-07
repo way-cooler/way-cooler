@@ -27,9 +27,9 @@ pub enum TreeError {
     ViewNotFound(WlcView),
     /// A UUID was not associated with the this type of container.
     UuidNotAssociatedWith(ContainerType),
-    /// UUID was associated with this container,
+    /// UUID was associated with wrong container type,
     /// expected a container that had one of those other types.
-    UuuidWrongType(Container, Vec<ContainerType>),
+    UuidWrongType(Uuid, Vec<ContainerType>),
     /// There was no active/focused container.
     NoActiveContainer,
 }

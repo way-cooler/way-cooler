@@ -204,7 +204,7 @@ impl Tree {
                     Ok(())
                 },
                 _ => {
-                    Err(TreeError::UuuidWrongType(self.0.tree[node_ix].clone(),
+                    Err(TreeError::UuidWrongType(self.0.tree[node_ix].get_id(),
                                                   vec!(ContainerType::View,
                                                        ContainerType::Container)))
                 }
