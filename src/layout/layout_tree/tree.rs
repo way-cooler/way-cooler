@@ -21,7 +21,7 @@ pub enum Direction {
 
 #[derive(Clone, Debug)]
 pub enum TreeError {
-    /// A Node can nt be found in the tree with this Node Handle.
+    /// A Node can not be found in the tree with this Node Handle.
     NodeNotFound(Uuid),
     /// A WlcView handle could not be found in the tree.
     ViewNotFound(WlcView),
