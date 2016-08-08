@@ -432,7 +432,13 @@ impl LayoutTree {
     /// Will attempt to move the container at the UUID in the given direction.
     pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
+        let old_parent_ix = try!(self.tree.parent_of(node_ix)
+                                .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_ix))));
         let _new_parent_ix = try!(self.move_active_recurse(node_ix, direction));
+        if self.tree.can_remove_empty_parent(old_parent_ix) {
+            self.remove_container(old_parent_ix);
+            return self.move_container(uuid, direction);
+        }
         self.validate();
         Ok(())
     }
@@ -516,20 +522,26 @@ impl LayoutTree {
                                     cur_index as i32 + 1
                                 },
                                 Direction::Left | Direction::Up => {
-                                    let next_ix = siblings_and_self[cur_index];
-                                    match self.tree[next_ix] {
-                                        Container::View { .. } | Container::Container { .. } => {
-                                            let parent_ix = try!(self.tree.place_node_at(active_ix, next_ix)
-                                                 .map_err(|err| TreeError::PetGraphError(err)));
-                                            if let Some(handle) = self.tree[node_ix].get_handle() {
-                                                match handle {
-                                                    Handle::View(view) => self.normalize_view(view),
-                                                    _ => unreachable!()
+                                    let next_index = cur_index as i32 - 1;
+                                    let cur_ix = siblings_and_self.get(next_index as usize);
+                                    if cur_ix.is_some() && self.tree[*cur_ix.unwrap()].get_type() != ContainerType::Container {
+                                        let this_ix = siblings_and_self[cur_index];
+                                        match self.tree[this_ix] {
+                                            Container::View { .. } | Container::Container { .. } => {
+                                                let parent_ix = try!(self.tree.place_node_at(active_ix, this_ix)
+                                                    .map_err(|err| TreeError::PetGraphError(err)));
+                                                if let Some(handle) = self.tree[node_ix].get_handle() {
+                                                    match handle {
+                                                        Handle::View(view) => self.normalize_view(view),
+                                                        _ => unreachable!()
+                                                    }
                                                 }
+                                                return Ok(parent_ix)
                                             }
-                                            return Ok(parent_ix)
+                                            _ => unreachable!()
                                         }
-                                        _ => unreachable!()
+                                    } else {
+                                        next_index
                                     }
                                 }
                             };
