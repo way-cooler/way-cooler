@@ -81,7 +81,7 @@ This alpha version currently supports these hardcoded controls:
 if unset this defaults to `weston-terminal` which will require installing `weston`
 - `Alt+d` Opens `dmenu` to launch a program
 - `Alt+p` Sends expressions to be executed directly by the Lua thread
-- `Alt+Esc` Closes Way Cooler
+- `Alt+Shift+Esc` Closes Way Cooler
 - `Alt+v` Makes a new sub-container with a vertical layout
 - `Alt+h` Makes a new sub-container with a horizontal layout
 - `Alt+<arrow-key>` Switches focus to a window in that direction]
