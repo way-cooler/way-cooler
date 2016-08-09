@@ -26,6 +26,7 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
   * Horizontal/Vertical layouts
   * Nest containers with different layouts
 - Client application support via an IPC
+  * See an example application [here](https://github.com/Immington-Industries/Way-Cooler-Example-Clients). It displays the tree in a somewhat organized format, and is actually really help for both debugging the tree and understanding how subcontainers work.
   * Enables dynamic configuration at runtime, without having to reload a configuration file
   * Allows extensions of the window manager to exist as separate programs talking over the IPC
 - A Lua environment designed to make extending Way Cooler simple and easy
