@@ -52,8 +52,6 @@ impl LayoutTree {
         if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &handle) {
             self.active_container = Some(node_ix);
             handle.focus();
-        } else {
-            warn!("Could not find handle {:?}", handle);
         }
         info!("Active container is now: {:?}", self.active_container);
     }
