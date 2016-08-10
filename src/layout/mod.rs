@@ -4,7 +4,7 @@ mod container;
 pub mod commands;
 
 pub use self::container::{Container, ContainerType, Handle, Layout};
-pub use self::layout_tree::tree::{Direction};
+pub use self::layout_tree::tree::{Direction, TreeError};
 use self::graph_tree::InnerTree;
 
 use petgraph::graph::NodeIndex;

@@ -12,7 +12,7 @@ use std::thread;
 
 use compositor;
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, ContainerType};
+use super::layout::{try_lock_tree, ContainerType, TreeError};
 use super::lua::{self, LuaQuery};
 use super::background;
 
@@ -72,7 +72,12 @@ pub extern fn view_destroyed(view: WlcView) {
         tree.remove_view(view.clone()).and_then(|_| {
             tree.layout_active_of(ContainerType::Workspace)
         }).unwrap_or_else(|err| {
-            error!("Error in view_destroyed: {}", err);
+            match err {
+                TreeError::ViewNotFound(_) => {},
+                _ => {
+                    error!("Error in view_destroyed: {:?}", err);
+                }
+            }
         });
     } else {
         error!("Could not delete view {:?}", view);

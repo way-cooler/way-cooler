@@ -1,13 +1,13 @@
 //! Commands from the user to manipulate the tree
 
 use super::try_lock_tree;
-use super::{ContainerType, Direction, Handle, Layout};
+use super::{ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
 use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 
-pub type CommandResult = Result<(), String>;
+pub type CommandResult = Result<(), TreeError>;
 
 pub fn remove_active() {
     if let Ok(mut tree) = try_lock_tree() {
@@ -100,7 +100,7 @@ impl Tree {
         let tree = &mut self.0;
         let output = view.get_output();
         if tree.get_active_container().is_none() {
-            return Err(format!("No active container, cannot add view {:?} to output {:?}!", view, output))
+            return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
         let v_type = view.get_type();
@@ -152,11 +152,11 @@ impl Tree {
                     return self.remove_view(handle)
                 },
                 _ => {
-                    Err("That UUID was not associated with a view".into())
+                    Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
                 }
             }
         } else {
-            Err("Could not find container".into())
+            Err(TreeError::NodeNotFound(id))
         }
     }
 
@@ -179,13 +179,14 @@ impl Tree {
                     Ok(())
                 },
                 _ => {
-                    Err(format!("UUID did not point to view, it pointed to index {:?}, which points to {:?}",
-                                node_ix, self.0.tree[node_ix]))
+                    Err(TreeError::UuuidWrongType(self.0.tree[node_ix].clone(),
+                                                  vec!(ContainerType::View,
+                                                       ContainerType::Container)))
                 }
 
             }
         } else {
-            Err("Could not find container".into())
+            Err(TreeError::NodeNotFound(id))
         }
     }
 
