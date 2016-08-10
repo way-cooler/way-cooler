@@ -3,6 +3,8 @@
 
 use petgraph::graph::NodeIndex;
 
+use uuid::Uuid;
+
 use rustwlc::{WlcView, WlcOutput, Geometry, Point};
 
 use super::super::LayoutTree;
@@ -15,6 +17,21 @@ pub enum Direction {
     Down,
     Right,
     Left
+}
+
+#[derive(Clone, Debug)]
+pub enum TreeError {
+    /// A Node can not be found in the tree with this Node Handle.
+    NodeNotFound(Uuid),
+    /// A WlcView handle could not be found in the tree.
+    ViewNotFound(WlcView),
+    /// A UUID was not associated with the this type of container.
+    UuidNotAssociatedWith(ContainerType),
+    /// UUID was associated with this container,
+    /// expected a container that had one of those other types.
+    UuuidWrongType(Container, Vec<ContainerType>),
+    /// There was no active/focused container.
+    NoActiveContainer,
 }
 
 impl LayoutTree {
@@ -162,14 +179,14 @@ impl LayoutTree {
     }
 
     //// Remove a view container from the tree
-    pub fn remove_view(&mut self, view: &WlcView) -> Result<(), String> {
+    pub fn remove_view(&mut self, view: &WlcView) -> Result<(), TreeError> {
         if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), view) {
             self.remove_view_or_container(view_ix);
             self.validate();
             Ok(())
         } else {
             self.validate();
-            Err(format!("Could not find descendant with handle {:#?} to remove", view))
+            Err(TreeError::ViewNotFound(view.clone()))
         }
     }
 
