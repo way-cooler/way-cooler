@@ -26,19 +26,6 @@ const ERR_EXPECTING_KEY: &'static str =
     r#"{ "type": "error", "reason": "missing message field", "missing": "foo",
          "expected": "string" }"#;
 
-
-#[test]
-fn u32_coversion() {
-    let nums = [0u32, !2, 255, 256, 1024, 2048, 12, 4096, 1, 0xfffffffe,
-                0b11111111, 0xffefff, 0x11111111, 0x0101011, 0xffffffff];
-    for num in &nums {
-        let be_num = num.to_be();
-        let le_num = num.to_le();
-        assert_eq!(u32_to_bytes(be_num), u32_to_bytes(be_num));
-        assert_eq!(u32_from_bytes(u32_to_bytes(le_num)), le_num);
-    }
-}
-
 #[test]
 fn uniquesh_id_is_uniqueish() {
     let mut ids = Vec::with_capacity(15);
