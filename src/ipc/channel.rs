@@ -3,12 +3,11 @@
 use std::io::Error as IOError;
 use std::io::prelude::*;
 
-use std::mem::transmute;
-
 use std::collections::BTreeMap;
 
-use rustc_serialize::json::{Json, encode, ParserError, EncoderError};
+use byteorder::{NetworkEndian, ReadBytesExt, WriteBytesExt};
 
+use rustc_serialize::json::{Json, encode, ParserError, EncoderError};
 
 /// Errors which arise from sending a message
 #[derive(Debug)]
@@ -31,24 +30,10 @@ pub enum ReceiveError {
 pub type SendResult = Result<(), SendError>;
 pub type ReceiveResult = Result<Json, ReceiveError>;
 
-/// Converts a u32 to its byte representation
-#[inline]
-pub fn u32_to_bytes(input: u32) -> [u8; 4] {
-    unsafe { transmute(input.to_be()) }
-}
-
-/// Parses a set of bytes into a u32
-#[inline]
-pub fn u32_from_bytes(bytes: [u8; 4]) -> u32 {
-    u32::from_be(unsafe { transmute(bytes) })
-}
-
 /// Receives a packet from the given stream.
 pub fn read_packet(stream: &mut Read) -> ReceiveResult {
-    let mut buffer = [0u8; 4];
-    // Stream can blindly read "get a billion bytes" and will wait
-    try!(stream.read_exact(&mut buffer).map_err(ReceiveError::IO));
-    let len = u32_from_bytes(buffer);
+    let len = try!(stream.read_u32::<NetworkEndian>()
+                   .map_err(ReceiveError::IO));
     trace!("Listening for packet of length {}", len);
     return Json::from_reader(&mut stream.take(len as u64))
         .map_err(ReceiveError::InvalidJson);
@@ -61,9 +46,8 @@ pub fn write_packet(stream: &mut Write, packet: &Json) -> SendResult {
     if json_string.len() > ::std::u32::MAX as usize {
         panic!("Attempted to send reply too big for the channel!");
     }
-    let len = json_string.len() as u32;
-    let len_bytes = u32_to_bytes(len);
-    try!(stream.write_all(&len_bytes).map_err(SendError::IO));
+    try!(stream.write_u32::<NetworkEndian>(json_string.len() as u32)
+         .map_err(SendError::IO));
     stream.write_all(json_string.as_bytes()).map_err(SendError::IO)
 }
 
