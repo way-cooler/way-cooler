@@ -79,12 +79,16 @@ fn log_format(record: &log::LogRecord) -> String {
         LogLevel::Warn =>  "\x1B[33m",
         LogLevel::Error => "\x1B[31m",
     };
-    let mut location = record.location().module_path();
-    if let Some(index) = location.find("way_cooler::") {
+    let location = record.location();
+    let file = location.file();
+    let line = location.line();
+    let mut module_path = location.module_path();
+    if let Some(index) = module_path.find("way_cooler::") {
         let index = index + "way_cooler::".len();
-        location = &location[index..];
+        module_path = &module_path[index..];
     }
-    format!("{} {} [{}] {} \x1B[0m", color, record.level(), location, record.args())
+    format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m", 
+            color, record.level(), module_path, file, line, record.args())
 }
 
 /// Initializes the logging system.
