@@ -1,7 +1,7 @@
 [package]
 name = "way-cooler"
 description = "Customizeable Wayland compositor written in Rust"
-version = "0.2.0"
+version = "0.3.0"
 repository = "https://github.com/Immington-Industries/way-cooler/"
 keywords = ["Wayland", "compositor", "window", "manager", "wlc"]
 readme = "README.md"
@@ -9,18 +9,18 @@ license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
 
 [dependencies]
-rustwlc = "0.4.*"
-lazy_static = "0.2.*"
-log = "0.3.*"
-env_logger = "0.3.*"
-hlua = "0.1.*"
-bitflags = "0.6.*"
-petgraph = "0.2.*"
-rustc-serialize = "0.3.*"
-json_macro = "0.1.*"
-unix_socket = "0.5.*"
-nix = "0.6.0"
-uuid = {version = "0.2", features = ["v4", "rustc-serialize"]}
+rustwlc = "0.4"
+lazy_static = "0.2"
+log = "0.3"
+env_logger = "0.3"
+hlua = "0.1"
+bitflags = "0.6"
+petgraph = "0.2"
+rustc-serialize = "0.3"
+json_macro = "0.1"
+unix_socket = "0.5"
+nix = "0.6"
+uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
 wayland-sys = { version = "^0.6.0", features = ["client", "dlopen"] }
 wayland-client = { version = "^0.6.0", features = ["cursor", "dlopen"] }
 tempfile = "2.1"
