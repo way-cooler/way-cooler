@@ -18,15 +18,15 @@ We wanted to get experience with Rust and we found current X11 window managers t
 Currently there are very few fully-featured tiling window managers in the Wayland ecosystem, as most of the effort has been porting Gnome and KDE over. Although Wayland is still in early-stage development
 and is not backwards compatable with existing X11 tools, we wanted to put our stake in and provide for current tiling window manager users in the future.
 
-We take a lot of inspiration from current window managers (namely [i3][] and [awesome][]) but the goal is to exist as a unique alternative.
+We take a lot of inspiration from current window managers (namely [i3][] and [awesome][]) but our goal is to exist as a unique alternative.
 
 
 ## Current Features
 - i3-style tiling
-  * Horizontal/Vertical layouts
+  * Horizontal/vertical layouts
   * Nest containers with different layouts
 - Client application support via an IPC
-  * See an example application [here](https://github.com/Immington-Industries/Way-Cooler-Example-Clients). It displays the tree in a somewhat organized format, and is actually really help for both debugging the tree and understanding how subcontainers work.
+  * See an example application [here](https://github.com/Immington-Industries/Way-Cooler-Example-Clients). It displays the tree in a somewhat organized format, and is actually really helpful for both debugging the tree and understanding how subcontainers work.
   * Enables dynamic configuration at runtime, without having to reload a configuration file
   * Allows extensions of the window manager to exist as separate programs talking over the IPC
 - A Lua environment designed to make extending Way Cooler simple and easy
@@ -36,9 +36,9 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 
 ## Planned Features
 
-- i3 Tabbed/Stacked tiling
+- i3 tabbed/stacked tiling
 - Floating windows
-- Tiling window through configurable lua scripts (awesome-style)
+- Tiling window through configurable Lua scripts (awesome-style)
 - Server-side borders around window clients
 - An [Electron](http://electron.atom.io/) powered status bar
 - More customization settings
@@ -52,7 +52,7 @@ If you would like to try out Way Cooler before properly installing it, then you 
 docker run --net=host --env="DISPLAY" --volume="$HOME/.Xauthority:/root/.Xauthority:rw" timidger/way-cooler
 ```
 
-This allows you try out the Window Manager without having to install anything except Docker.
+This allows you try out the window manager without having to install anything except Docker.
 
 # Installation
 
@@ -62,7 +62,7 @@ You will need the following dependencies installed on your machine to install Wa
 - wlc
   * Installation instructions can be found on [their github page](https://github.com/Cloudef/wlc)
 - Weston (optional)
-  * `WAYLAND_TERMINAL` defaults to `weston-terminal` (until we have a config file)
+  * The init file defaults to using `weston-terminal` as the default terminal emulator
 - Cargo
   * The package manager / build system used by Rust
 
@@ -73,23 +73,23 @@ cargo install way-cooler
 ```
 
 You can try it out while running in an X environment, or switch to a TTY and run it as a standalone
-# Controls
 
-This alpha version currently supports these hardcoded controls: 
+# Init File
 
-- `Alt+Enter` Launches a terminal defined by the `WAYLAND_TERMINAL` environment variable - 
-if unset this defaults to `weston-terminal` which will require installing `weston`
+All keyboard shortcuts (except the command to exit Way Cooler) are configurable through the init file. The recommended strategy is to copy `config/init.lua` to `$HOME/.config/way-cooler/init.lua` and edit from there. The default keybindings are:
+
+- `Alt+Enter` Launches a terminal defined by the `way_cooler.terminal`
 - `Alt+d` Opens `dmenu` to launch a program
 - `Alt+p` Sends expressions to be executed directly by the Lua thread
 - `Alt+Shift+Esc` Closes Way Cooler
 - `Alt+v` Makes a new sub-container with a vertical layout
 - `Alt+h` Makes a new sub-container with a horizontal layout
-- `Alt+<arrow-key>` Switches focus to a window in that direction]
+- `Alt+<arrow-key>` Switches focus to a window in that direction
 - `Alt+<number-key>` Switches the current workspace
 - `Alt+shift+<number-key>` Moves the focused container to another workspace
 
 # Contributing
-If you would like to contribute code, please feel free to fork and branch off of `development` and submit a pull request.
+If you would like to contribute code, please feel free to fork and branch off of `master` and submit a pull request.
 
 If you find bugs or have questions about the code, please [submit an issue] or ping us on gitter.
 
