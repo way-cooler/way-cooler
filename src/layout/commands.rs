@@ -12,6 +12,7 @@ pub type CommandResult = Result<(), TreeError>;
 pub fn remove_active() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.0.remove_active();
+        tree.0.layout_active_of(ContainerType::Root);
     }
 }
 
