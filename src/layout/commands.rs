@@ -1,13 +1,13 @@
 //! Commands from the user to manipulate the tree
 
 use super::try_lock_tree;
-use super::{ContainerType, Direction, Handle, Layout};
+use super::{ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
-use rustwlc::{WlcView, WlcOutput, ViewType};
+use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 
-pub type CommandResult = Result<(), String>;
+pub type CommandResult = Result<(), TreeError>;
 
 pub fn remove_active() {
     if let Ok(mut tree) = try_lock_tree() {
@@ -100,10 +100,11 @@ impl Tree {
         let tree = &mut self.0;
         let output = view.get_output();
         if tree.get_active_container().is_none() {
-            return Err(format!("No active container, cannot add view {:?} to output {:?}!", view, output))
+            return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
         let v_type = view.get_type();
+        let v_class = view.get_class();
         // If it is empty, don't add to tree
         if v_type != ViewType::empty() {
             // Now focused on something outside the tree,
@@ -112,6 +113,18 @@ impl Tree {
                 tree.unset_active_container();
             }
             return Ok(())
+        }
+        if v_class.as_str() == "Background" {
+            info!("Setting background: {}", view.get_title());
+            view.send_to_back();
+            let output = view.get_output();
+            let resolution = output.get_resolution().clone();
+            let fullscreen = Geometry {
+                origin: Point { x: 0, y: 0 },
+                size: resolution
+            };
+            view.set_geometry(ResizeEdge::empty(), &fullscreen);
+            return Ok(());
         }
         tree.add_view(view.clone());
         tree.normalize_view(view.clone());
@@ -139,17 +152,18 @@ impl Tree {
                     return self.remove_view(handle)
                 },
                 _ => {
-                    Err("That UUID was not associated with a view".into())
+                    Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
                 }
             }
         } else {
-            Err("Could not find container".into())
+            Err(TreeError::NodeNotFound(id))
         }
     }
 
     /// Sets the view to be the new active container. Never fails
     pub fn set_active_view(&mut self, view: WlcView) -> CommandResult {
-        self.0.set_active_container(view);
+        self.0.set_active_container(view.clone());
+        view.focus();
         Ok(())
     }
 
@@ -165,13 +179,14 @@ impl Tree {
                     Ok(())
                 },
                 _ => {
-                    Err(format!("UUID did not point to view, it pointed to index {:?}, which points to {:?}",
-                                node_ix, self.0.tree[node_ix]))
+                    Err(TreeError::UuuidWrongType(self.0.tree[node_ix].clone(),
+                                                  vec!(ContainerType::View,
+                                                       ContainerType::Container)))
                 }
 
             }
         } else {
-            Err("Could not find container".into())
+            Err(TreeError::NodeNotFound(id))
         }
     }
 

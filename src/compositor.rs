@@ -138,7 +138,7 @@ pub fn start_interactive_move(view: &WlcView, origin: &Point) -> bool {
         comp.view = Some(view.clone());
         if let Ok(mut tree) = try_lock_tree() {
             if let Err(err) = tree.set_active_view(view.clone()) {
-                error!("start_interactive_move error: {}", err);
+                error!("start_interactive_move error: {:?}", err);
                 return false
             } else {
                 return true
