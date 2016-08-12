@@ -54,14 +54,12 @@ pub fn register_libraries(lua: &mut Lua) {
 
 /// Run a command
 fn ipc_run(command: String) -> Result<(), &'static str> {
-    trace!("Called ipc_run with {}", command);
     commands::get(&command).map(|com| com())
         .ok_or("Command does not exist")
 }
 
 /// IPC 'get' handler
 fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
-    trace!("Called ipc_get with {}", key);
     match registry::get_data(&key) {
         Ok(regdata) => {
             let (flags, arc_data) = regdata.resolve();
@@ -82,7 +80,6 @@ fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
 
 /// ipc 'set' handler
 fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
-    trace!("Called ipc_set with {}", key);
     let json = try!(lua_to_json(value)
                     .map_err(|_| "Unable to convert value to JSON!"));
     registry::set_json(key.clone(), json.clone())
@@ -125,7 +122,6 @@ fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {
 
 /// Registers a command keybinding.
 fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<(), String> {
-    trace!("Registering command key: {} => {}", mods, command);
     if let Ok(press) = keypress_from_string(&mods) {
         commands::get(&command)
             .ok_or(format!("Command {} for keybinding {} not found", command, press))
@@ -138,8 +134,7 @@ fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<
 
 /// Rust half of registering a Lua key: store the KeyPress in the keys table
 /// and send Lua back the index for __key_map.
-fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
-    trace!("Registering lua key: {}, {}", mods, repeat);
+fn register_lua_key(mods: String, _repeat: bool) -> Result<String, String> {
     keypress_from_string(&mods)
         .map(|press| {
             keys::register(press.clone(), KeyEvent::Lua);

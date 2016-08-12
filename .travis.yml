@@ -1,8 +1,6 @@
 language: rust
 rust:
   - stable
-  - beta
-  - nightly
 # necessary for `travis-cargo coveralls --no-sudo`
 addons:
   apt:
@@ -11,9 +9,6 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
-matrix:
-  allow_failures:
-    - rust: nightly
 notifications:
   slack:
     rooms:

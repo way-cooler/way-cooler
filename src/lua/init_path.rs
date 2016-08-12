@@ -27,11 +27,11 @@ pub fn get_config() -> (bool, Result<File, &'static str>) {
 /// Parses environment variables
 fn get_config_file() -> Result<File, &'static str> {
     if let Ok(path_env) = env::var("WAY_COOLER_CONFIG") {
-        if let Ok(file) = read_file(Path::new(&path_env).join(INIT_FILE)) {
+        if let Ok(file) = read_file(Path::new(&path_env)) {
             info!("Reading init file from $WAY_COOLER_INIT_FILE: {}", path_env);
             return Ok(file)
         }
-        warn!("Error reading from $WAY_COOLER_INIT_FILE, defaulting...");
+        warn!("$WAY_COOLER_INIT_FILE={}, was not a valid path to a config file. Defaulting ...", path_env);
     }
 
     if let Ok(xdg) = env::var("XDG_CONFIG_HOME") {
@@ -39,7 +39,7 @@ fn get_config_file() -> Result<File, &'static str> {
             info!("Reading init file from $XDG_CONFIG_HOME: {}", xdg);
             return Ok(file)
         }
-        warn!("Error reading from $XDG_CONFIG_HOME, defaulting...");
+        warn!("$XDG_CONFIG_HOME={}, was not a valid path to a config file. Defaulting ...", xdg);
     }
     let dot_config = Path::new(&env::var("HOME")
                                .expect("HOME environment variable not defined!"))

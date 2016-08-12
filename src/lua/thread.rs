@@ -105,7 +105,6 @@ pub fn init() {
     if use_config {
         match maybe_init_file {
             Ok(init_file) => {
-                debug!("Found config file...");
                 // TODO defaults here are important
                 let _: () = lua.execute_from_reader(init_file)
                     .expect("Unable to load config file");

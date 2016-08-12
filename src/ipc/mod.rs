@@ -144,7 +144,7 @@ fn unique_ish_id() -> u32 {
 }
 
 /// Initialize the IPC socket.
-pub fn init() -> Ipc{
+pub fn init() -> Ipc {
     Ipc::new()
 }
 
