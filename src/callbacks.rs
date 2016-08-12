@@ -162,8 +162,8 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
 }
 
 pub extern fn pointer_scroll(_view: WlcView, _time: u32,
-                         _mods_ptr: &KeyboardModifiers, axis: ScrollAxis,
-                         heights: [f64; 2]) -> bool {
+                         _mods_ptr: &KeyboardModifiers, _axis: ScrollAxis,
+                         _heights: [f64; 2]) -> bool {
     false
 }
 

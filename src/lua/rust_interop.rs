@@ -134,7 +134,7 @@ fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<
 
 /// Rust half of registering a Lua key: store the KeyPress in the keys table
 /// and send Lua back the index for __key_map.
-fn register_lua_key(mods: String, repeat: bool) -> Result<String, String> {
+fn register_lua_key(mods: String, _repeat: bool) -> Result<String, String> {
     keypress_from_string(&mods)
         .map(|press| {
             keys::register(press.clone(), KeyEvent::Lua);
