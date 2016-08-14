@@ -45,7 +45,7 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 - Tiling window through configurable Lua scripts (awesome-style)
 - Server-side borders around window clients
 - Swappable status bars/docs/menus
-  * An awesome/osx status bar using Rust and Lua
+  * An awesome/osx style status bar using Rust and Lua
   * An [Electron](http://electron.atom.io/) powered status bar/dock
 - More customization settings
 
@@ -61,6 +61,16 @@ docker run --net=host --env="DISPLAY" --volume="$HOME/.Xauthority:/root/.Xauthor
 This allows you try out the window manager without having to install anything except Docker.
 
 # Installation
+
+## On the AUR
+
+@vinipsmaker was kind enough to provide AUR packages:
+
+[way-cooler][way-cooler-aur]
+
+[way-cooler-git][way-cooler-git-aur]
+
+## Build from source
 
 You will need the following dependencies installed on your machine to install Way Cooler:
 - Wayland
@@ -97,7 +107,7 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 # Contributing
 If you would like to contribute code, please feel free to fork and branch off of `master` and submit a pull request.
 
-If you find bugs or have questions about the code, please [submit an issue] or ping us on gitter.
+If you find bugs or have questions about the code, please [submit an issue] or [ping us on gitter][gitter].
 
 [Rust]: https://www.rust-lang.org
 [wayland]: https://wayland.freedesktop.org/
@@ -107,3 +117,5 @@ If you find bugs or have questions about the code, please [submit an issue] or p
 [issues section]: https://github.com/Immington-Industries/way-cooler/labels/features
 [submit an issue]: https://github.com/Immington-Industries/way-cooler/issues/new
 [gitter]: https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+[way-cooler-aur]: https://aur.archlinux.org/packages/way-cooler/
+[way-cooler-git-aur]: https://aur.archlinux.org/packages/way-cooler-git/
