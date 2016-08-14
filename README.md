@@ -13,7 +13,7 @@ Way Cooler is a customizeable tiling window manager written in [Rust][] for [Way
 Way Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to 
 make it user friendly.
 
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/I2FO5dnOBb0/0.jpg)](https://www.youtube.com/watch?v=I2FO5dnOBb0) 
+[![way-cooler demonstration](https://img.youtube.com/vi/I2FO5dnOBb0/0.jpg)](https://www.youtube.com/watch?v=I2FO5dnOBb0) 
 
 ## Motivation
 
@@ -44,7 +44,9 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 - Floating windows
 - Tiling window through configurable Lua scripts (awesome-style)
 - Server-side borders around window clients
-- An [Electron](http://electron.atom.io/) powered status bar
+- Swappable status bars/docs/menus
+  * An awesome/osx status bar using Rust and Lua
+  * An [Electron](http://electron.atom.io/) powered status bar/dock
 - More customization settings
 
 Follow the development of these features in our [issues section] or checkout our [contribution guidelines](#Contributing) if you want to help out.
