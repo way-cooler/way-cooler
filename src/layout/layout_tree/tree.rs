@@ -43,6 +43,15 @@ pub enum TreeError {
     PetGraphError(GraphError)
 }
 
+pub enum ContainerMovementError {
+    /// Attempted to move the node behind the UUID in the given direction,
+    /// which would cause it to leave its siblings.
+    MoveOutsideSiblings(Uuid, Direction),
+    /// There was a tree error, generally should abort operation and pass this
+    /// up back through the caller.
+    InternalTreeError(TreeError)
+}
+
 impl LayoutTree {
     /// Drops every node in the tree, essentially invalidating it
     pub fn destroy_tree(&mut self) {
@@ -469,46 +478,14 @@ impl LayoutTree {
                         let active_ix = try!(self.active_container.ok_or(TreeError::NoActiveContainer));
                         /* Moving within current parent container */
                         if active_ix == node_ix {
-                            let maybe_new_index = match direction {
-                                Direction::Right | Direction::Down => {
-                                    cur_index.checked_add(1)
+                            match self.move_within_container(node_ix, direction) {
+                                Ok(_) => return Ok(parent_ix),
+                                Err(ContainerMovementError::MoveOutsideSiblings(_,_)) => {
+                                    return self.move_active_recurse(parent_ix, direction);
+                                },
+                                Err(ContainerMovementError::InternalTreeError(err)) => {
+                                    return Err(err)
                                 }
-                                Direction::Left  | Direction::Up => {
-                                    cur_index.checked_sub(1)
-                                }
-                            };
-                            if maybe_new_index.is_some() && maybe_new_index.unwrap() < siblings_and_self.len() {
-                                // There is a sibling to swap with
-                                let swap_index = maybe_new_index.unwrap();
-                                let swap_ix = siblings_and_self[swap_index];
-                                match self.tree[swap_ix] {
-                                    Container::View { .. } => {
-                                        try!(self.tree.swap_node_order(active_ix, swap_ix)
-                                             .map_err(|err| TreeError::PetGraphError(err)))
-                                    },
-                                    Container::Container { .. } => {
-                                        // TODO eventually we want to remember what to swap back to,
-                                        // This will change the code in move_into however, but it's best to have this
-                                        // note here for visibility
-                                        try!(self.tree.move_into(node_ix, swap_ix).map_err(|err| TreeError::PetGraphError(err)));
-                                        if let Some(handle) = self.tree[node_ix].get_handle() {
-                                            match handle {
-                                                Handle::View(view) => self.normalize_view(view),
-                                                _ => unreachable!()
-                                            }
-                                        }
-                                    },
-                                    _ => unreachable!()
-                                }
-                                return Ok(self.tree.parent_of(active_ix)
-                                    .expect("Moved container had no new parent"))
-                            } else {
-                                // Tried to move outside the limit
-                                // TODO This should be changed, but I'm keeping it here for simplification
-                                // This will be squashed and properly be moving OUT of the container's siblings,
-                                error!("HERE HERE HERE");
-                                //unimplemented!();
-                                return self.move_active_recurse(parent_ix, direction);
                             }
                         } else {
                             // TODO Rewrite this logic to use saturating add/subtract
@@ -625,6 +602,59 @@ impl LayoutTree {
         let parent_ix = self.tree.parent_of(node_ix)
             .expect("Node had no parent");
         return self.move_active_recurse(parent_ix, direction);
+    }
+
+    /// Attempt to move a container at the node index in the given direction.
+    ///
+    /// If the node would move outside of its current container by moving in that
+    /// direction, then ContainerMovementError::MoveOutsideSiblings is returned.
+    /// If the tree state is invalid, an appropriate wrapped up error is returned.
+    ///
+    /// If successful, the parent index of the node is returned.
+    fn move_within_container(&mut self, node_ix: NodeIndex, direction: Direction)
+                             -> Result<NodeIndex, ContainerMovementError> {
+        let parent_ix = try!(self.tree.parent_of(node_ix)
+            .ok_or(ContainerMovementError::InternalTreeError(TreeError::PetGraphError(GraphError::NoParent(node_ix)))));
+        let siblings_and_self = self.tree.children_of(parent_ix);
+        let cur_index = try!(siblings_and_self.iter().position(|node| {
+            *node == node_ix
+        }).ok_or(ContainerMovementError::InternalTreeError(TreeError::NodeNotFound(self.tree[node_ix].get_id()))));
+        let maybe_new_index = match direction {
+            Direction::Right | Direction::Down => {
+                cur_index.checked_add(1)
+            }
+            Direction::Left  | Direction::Up => {
+                cur_index.checked_sub(1)
+            }
+        };
+        if maybe_new_index.is_some() && maybe_new_index.unwrap() < siblings_and_self.len() {
+            // There is a sibling to swap with
+            let swap_index = maybe_new_index.unwrap();
+            let swap_ix = siblings_and_self[swap_index];
+            match self.tree[swap_ix] {
+                Container::View { .. } => {
+                    try!(self.tree.swap_node_order(node_ix, swap_ix)
+                            .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))))
+                },
+                Container::Container { .. } => {
+                    try!(self.tree.move_into(node_ix, swap_ix).map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
+                    if let Some(handle) = self.tree[node_ix].get_handle() {
+                        match handle {
+                            Handle::View(view) => self.normalize_view(view),
+                            _ => unreachable!()
+                        }
+                    }
+                },
+                _ => return Err(ContainerMovementError::InternalTreeError(
+                    TreeError::UuidWrongType(self.tree[swap_ix].get_id(),
+                                             vec!(ContainerType::View, ContainerType::Container))))
+            };
+            Ok(self.tree.parent_of(node_ix)
+               .expect("Moved container had no new parent"))
+        } else {
+            // Tried to move outside the limit
+            Err(ContainerMovementError::MoveOutsideSiblings(self.tree[node_ix].get_id(), direction))
+        }
 }
 
 
