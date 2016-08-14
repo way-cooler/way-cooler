@@ -44,7 +44,9 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 - Floating windows
 - Tiling window through configurable Lua scripts (awesome-style)
 - Server-side borders around window clients
-- An [Electron](http://electron.atom.io/) powered status bar
+- A swappable status bar
+  * An [Electron](http://electron.atom.io/) powered status bar
+  * An awesome-style bar using Rust and Lua
 - More customization settings
 
 Follow the development of these features in our [issues section] or checkout our [contribution guidelines](#Contributing) if you want to help out.
