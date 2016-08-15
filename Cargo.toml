@@ -27,4 +27,4 @@ tempfile = "2.1"
 byteorder = ">= 0.3, < 0.6"
 
 [dev-dependencies]
-dummy-rustwlc = "0.3.*"
+dummy-rustwlc = "0.4.*"
