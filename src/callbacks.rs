@@ -48,7 +48,7 @@ pub extern fn output_resolution(output: WlcOutput,
     trace!("output_resolution: {:?} from  {:?} to {:?}",
            output, *old_size_ptr, *new_size_ptr);
     // Update the resolution of the output and its children
-    output.set_resolution(new_size_ptr.clone());
+    output.set_resolution(*new_size_ptr, 1);
     if let Ok(mut tree) = try_lock_tree() {
         tree.layout_active_of(ContainerType::Output)
             .expect("Could not layout active output");
@@ -126,7 +126,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
         // TODO this function will throw an error in Rustwlc right now
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
-        let sym = keyboard::get_keysym_for_key(key, &KeyMod::empty());
+        let sym = keyboard::get_keysym_for_key(key, KeyMod::empty());
         let press = KeyPress::new(mods.mods, sym);
         if let Some(action) = keys::get(&press) {
             debug!("[key] Found an action for {}", press);

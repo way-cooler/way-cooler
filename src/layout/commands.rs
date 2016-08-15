@@ -119,12 +119,13 @@ impl Tree {
             info!("Setting background: {}", view.get_title());
             view.send_to_back();
             let output = view.get_output();
-            let resolution = output.get_resolution().clone();
+            let resolution = output.get_resolution()
+                .expect("Couldn't get output resolution");
             let fullscreen = Geometry {
                 origin: Point { x: 0, y: 0 },
                 size: resolution
             };
-            view.set_geometry(ResizeEdge::empty(), &fullscreen);
+            view.set_geometry(ResizeEdge::empty(), fullscreen);
             return Ok(());
         }
         tree.add_view(view.clone());

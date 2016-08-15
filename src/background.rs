@@ -55,7 +55,8 @@ pub fn generate_solid_background(color: Color, output: WlcOutput) {
     let mut tmp = tempfile::tempfile().ok().expect("Unable to create a tempfile.");
 
     // Calculate how big the buffer needs to be from the output resolution
-    let resolution = output.get_resolution().clone();
+    let resolution = output.get_resolution()
+        .expect("Couldn't get output resolution");
     let (width, height) = (resolution.w as i32, resolution.h as i32);
     let size = (resolution.w * resolution.h) as i32;
 
