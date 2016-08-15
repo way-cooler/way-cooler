@@ -22,7 +22,8 @@ impl LayoutTree {
                     Container::Output { ref handle, .. } => handle.clone(),
                     _ => unreachable!()
                 };
-                let size = handle.get_resolution().clone();
+                let size = handle.get_resolution()
+                    .expect("Couldn't get resolution");
                 let geometry = Geometry {
                     origin: Point { x: 0, y: 0 },
                     size: size
@@ -41,7 +42,8 @@ impl LayoutTree {
                 };
                 let output_geometry = Geometry {
                     origin: Point { x: 0, y: 0},
-                    size: handle.get_resolution().clone()
+                    size: handle.get_resolution()
+                        .expect("Couldn't get resolution")
                 };
                 trace!("layout: Laying out workspace, using size of the screen output {:?}", handle);
                 self.layout_helper(node_ix, output_geometry);
@@ -193,7 +195,7 @@ impl LayoutTree {
                 };
                 trace!("layout_helper: Laying out view {:?} with geometry constraints {:?}",
                        handle, geometry);
-                handle.set_geometry(ResizeEdge::empty(), &geometry);
+                handle.set_geometry(ResizeEdge::empty(), geometry);
             }
         }
         self.validate();
@@ -352,7 +354,7 @@ impl LayoutTree {
                 };
                 trace!("Setting view {:?} to geometry: {:?}",
                     self.tree[node_ix], new_geometry);
-                handle.set_geometry(ResizeEdge::empty(), &new_geometry);
+                handle.set_geometry(ResizeEdge::empty(), new_geometry);
             },
             _ => panic!("Can only normalize the view on a view or container")
         }

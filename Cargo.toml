@@ -9,7 +9,7 @@ license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
 
 [dependencies]
-rustwlc = "0.4"
+rustwlc = "0.5"
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
@@ -27,4 +27,4 @@ tempfile = "2.1"
 byteorder = ">= 0.3, < 0.6"
 
 [dev-dependencies]
-dummy-rustwlc = "0.3.*"
+dummy-rustwlc = "0.4.*"

@@ -218,7 +218,8 @@ impl Container {
             Container::Root { .. } => None,
             Container::Output { ref handle, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0 },
-                size: handle.get_resolution().clone(),
+                size: handle.get_resolution()
+                    .expect("Couldn't get output resolution")
             }),
             Container::Workspace { ref size, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0},
@@ -241,7 +242,7 @@ impl Container {
             Container::Workspace { ref mut size, .. } => *size = new_geometry.size,
             Container::Container { ref mut geometry, .. } => *geometry = new_geometry,
             Container::View { ref handle, .. } =>
-                handle.set_geometry(ResizeEdge::empty(), &new_geometry),
+                handle.set_geometry(ResizeEdge::empty(), new_geometry),
             _ => { return Err(format!("Could not set geometry on {:?}", self))}
         };
         return Ok(())
