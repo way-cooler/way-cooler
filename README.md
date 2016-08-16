@@ -46,8 +46,7 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 - Tiling window through configurable Lua scripts (awesome-style)
 - Server-side borders around window clients
 - Swappable status bars/docs/menus
-  * An awesome/osx style status bar using Rust and Lua
-  * An [Electron](http://electron.atom.io/) powered status bar/dock
+  * A status bar built with [Conrod](https://github.com/PistonDevelopers/conrod) and Lua
 - More customization settings
 
 Follow the development of these features in our [issues section] or checkout our [contribution guidelines](#Contributing) if you want to help out.
