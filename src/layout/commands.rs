@@ -11,7 +11,9 @@ pub type CommandResult = Result<(), TreeError>;
 
 pub fn remove_active() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.0.remove_active();
+        if let Some(view) = tree.0.remove_active() {
+            view.close()
+        }
         tree.0.layout_active_of(ContainerType::Root);
     }
 }
@@ -134,14 +136,21 @@ impl Tree {
         Ok(())
     }
 
-    /// Attempts to remove a view from the tree. If it is not in the tree it fails
+    /// Attempts to remove a view from the tree. If it is not in the tree it fails.
+    ///
+    /// This will NOT close the handle behind the view, and should only be called
+    /// on views that have already been slated for removal from the wlc pool.
+    /// Otherwise you leak a `WlcView`
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
-        self.0.remove_view(&view)
+        self.0.remove_view(&view).map(|_| ())
     }
 
     #[allow(dead_code)]
     /// Attempts to remove a container based on UUID. Fails if the container
     /// cannot be removed or if the container does not exist.
+    ///
+    /// This WILL close the view, and should never be called from the
+    /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
         if let Some(node_ix) = self.0.tree.lookup_id(id) {
             match self.0.tree[node_ix].get_type() {

@@ -177,11 +177,12 @@ impl LayoutTree {
     }
 
     //// Remove a view container from the tree
-    pub fn remove_view(&mut self, view: &WlcView) -> Result<(), TreeError> {
+    pub fn remove_view(&mut self, view: &WlcView) -> Result<WlcView, TreeError> {
         if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), view) {
-            self.remove_view_or_container(view_ix);
+            let view = self.remove_view_or_container(view_ix)
+                .expect("Somehow node was not a view");
             self.validate();
-            Ok(())
+            Ok(view)
         } else {
             self.validate();
             Err(TreeError::ViewNotFound(view.clone()))
@@ -189,17 +190,20 @@ impl LayoutTree {
     }
 
     /// Removes the current active container
-    pub fn remove_active(&mut self) {
+    pub fn remove_active(&mut self) -> Option<WlcView> {
         if let Some(active_ix) = self.active_container {
-            self.remove_view_or_container(active_ix);
+            self.remove_view_or_container(active_ix)
+        } else {
+            None
         }
     }
 
     /// Special code to handle removing a View or Container.
     /// We have to ensure that we aren't invalidating the active container
     /// when we remove a view or container.
-    fn remove_view_or_container(&mut self, node_ix: NodeIndex) {
+    fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Option<WlcView> {
         // Only the root container has a non-container parent, and we can't remove that
+        let mut result = None;
         if let Some(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
                                                                     ContainerType::Container) {
             // If it'll move, fix that before that happens
@@ -218,7 +222,7 @@ impl LayoutTree {
                 .expect("Could not remove container");
             match container {
                 Container::View { ref handle, .. } => {
-                    handle.close();
+                    result = Some(*handle);
                 },
                 Container::Container { .. } => {},
                 _ => unreachable!()
@@ -236,6 +240,7 @@ impl LayoutTree {
             trace!("Removed container {:?}, index {:?}", container, node_ix);
         }
         self.validate();
+        result
     }
 
     /// Gets a workspace by name or creates it
