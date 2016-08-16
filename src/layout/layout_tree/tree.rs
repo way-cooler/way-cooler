@@ -48,10 +48,17 @@ impl LayoutTree {
 
     /// Sets the active container by finding the node with the WlcView
     pub fn set_active_container(&mut self, handle: WlcView) {
-        info!("Active container was: {:?}", self.active_container);
         if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &handle) {
-            self.active_container = Some(node_ix);
-            handle.focus();
+            self.set_active_node(node_ix);
+        }
+    }
+
+    fn set_active_node(&mut self, node_ix: NodeIndex) {
+        info!("Active container was {:?}", self.active_container);
+        self.active_container = Some(node_ix);
+        match self.tree[node_ix] {
+            Container::View { ref handle, .. } => handle.focus(),
+            _ => {}
         }
         info!("Active container is now: {:?}", self.active_container);
     }
@@ -171,7 +178,7 @@ impl LayoutTree {
             let view_ix = self.tree.add_child(active_ix,
                                               Container::new_view(view));
             self.tree.set_child_pos(view_ix, prev_pos);
-            self.active_container = Some(view_ix);
+            self.set_active_node(view_ix)
         }
         self.validate();
     }
@@ -215,7 +222,7 @@ impl LayoutTree {
             // (i.e: if it is the last index)
             if self.active_container.map(|c| c != node_ix).unwrap_or(false) {
                 if self.tree.is_last_ix(self.active_container.unwrap()) {
-                    self.active_container = Some(node_ix);
+                    self.set_active_node(node_ix);
                 }
             }
             let container = self.tree.remove(node_ix)
@@ -285,7 +292,7 @@ impl LayoutTree {
         let new_container_ix = self.tree.add_child(parent_ix, container);
         self.tree.move_node(child_ix, new_container_ix);
         self.tree.set_child_pos(new_container_ix, old_weight);
-        self.active_container = Some(new_container_ix);
+        self.set_active_node(new_container_ix);
         self.validate();
     }
 
@@ -322,8 +329,9 @@ impl LayoutTree {
     /// but moves between ancestor siblings.
     pub fn move_focus(&mut self, direction: Direction) {
         if let Some(prev_active_ix) = self.active_container {
-            self.active_container = Some(self.move_focus_recurse(prev_active_ix, direction)
-                .unwrap_or(prev_active_ix));
+            let new_active_ix = self.move_focus_recurse(prev_active_ix, direction)
+                .unwrap_or(prev_active_ix);
+            self.set_active_node(new_active_ix);
             match self.tree[self.active_container.unwrap()] {
                 Container::View { ref handle, .. } => handle.focus(),
                 _ => warn!("move_focus returned a non-view, cannot focus")
@@ -412,7 +420,7 @@ impl LayoutTree {
                     _ => panic!("View had an output handle")
                 }
                 trace!("Active container set to view at {:?}", view_ix);
-                self.active_container = Some(view_ix);
+                self.set_active_node(view_ix);
                 return;
             }
             parent_ix = self.tree.ancestor_of_type(parent_ix,
@@ -429,7 +437,7 @@ impl LayoutTree {
             let new_active_ix = self.tree.descendant_of_type(root_c_children[0],
                                                              ContainerType::View)
                 .unwrap_or(root_c_children[0]);
-            self.active_container = Some(new_active_ix);
+            self.set_active_node(new_active_ix);
             match self.tree[new_active_ix] {
                 Container::View { ref handle, .. } => handle.focus(),
                 _ => {}
@@ -437,7 +445,7 @@ impl LayoutTree {
             return;
         }
         trace!("Active container set to container {:?}", container_ix);
-        self.active_container = Some(container_ix);
+        self.set_active_node(container_ix);
 
         // Update focus to new container
         self.get_active_container().map(|con| match *con {
@@ -471,7 +479,7 @@ impl LayoutTree {
             new_container.set_layout(new_layout).ok();
             self.add_container(new_container, active_ix);
             // add_container sets the active container to be the new container
-            self.active_container = Some(active_ix);
+            self.set_active_node(active_ix);
         }
         self.validate();
     }
