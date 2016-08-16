@@ -10,14 +10,14 @@ Way Cooler is a customizeable tiling window manager written in [Rust][] for [Way
 
 # Development
 
-Way Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to 
+Way Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to
 make it user friendly.
 
-[![way-cooler demonstration](https://img.youtube.com/vi/I2FO5dnOBb0/0.jpg)](https://www.youtube.com/watch?v=I2FO5dnOBb0) 
+[![way-cooler demonstration](https://img.youtube.com/vi/I2FO5dnOBb0/0.jpg)](https://www.youtube.com/watch?v=I2FO5dnOBb0)
 
 ## Motivation
 
-We wanted to get experience with Rust and we found current X11 window managers to not have all the features we wanted. 
+We wanted to get experience with Rust and we found current X11 window managers to not have all the features we wanted.
 
 Currently there are very few fully-featured tiling window managers in the Wayland ecosystem, as most of the effort has been porting Gnome and KDE over. Although Wayland is still in early-stage development
 and is not backwards compatable with existing X11 tools, we wanted to put our stake in and provide for current tiling window manager users in the future.
