@@ -197,14 +197,24 @@ impl Container {
     }
 
     /// Determines if the container is focused or not
-    #[allow(dead_code)]
     pub fn is_focused(&self) -> bool {
         match *self {
             Container::Root { .. } => false,
-            Container::Output { ref focused, .. } => *focused,
-            Container::Workspace { ref focused, .. } => *focused,
-            Container::Container { ref focused, .. } => *focused,
-            Container::View { ref focused, .. } =>*focused,
+            Container::Output { ref focused, .. } |
+            Container::Workspace { ref focused, .. } |
+            Container::Container { ref focused, .. } |
+            Container::View { ref focused, .. } => *focused,
+        }
+    }
+
+    /// Sets the focused value of the container
+    pub fn set_focused(&mut self, new_focused: bool) {
+        match *self {
+            Container::Root { .. } => {},
+            Container::Output { ref mut focused, .. } |
+            Container::Workspace { ref mut focused, .. } |
+            Container::Container { ref mut focused, .. } |
+            Container::View { ref mut focused, .. } => *focused = new_focused,
         }
     }
 
