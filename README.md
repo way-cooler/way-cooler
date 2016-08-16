@@ -13,7 +13,8 @@ Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayl
 Way Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to
 make it user friendly.
 
-[![way-cooler demonstration](https://img.youtube.com/vi/I2FO5dnOBb0/0.jpg)](https://www.youtube.com/watch?v=I2FO5dnOBb0)
+
+[![way-cooler demonstration](http://i.imgur.com/UiJbpiv.png)](https://www.youtube.com/watch?v=I2FO5dnOBb0)
 
 ## Motivation
 
