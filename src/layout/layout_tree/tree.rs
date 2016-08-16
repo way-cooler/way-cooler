@@ -177,12 +177,12 @@ impl LayoutTree {
     }
 
     //// Remove a view container from the tree
-    pub fn remove_view(&mut self, view: &WlcView) -> Result<WlcView, TreeError> {
+    pub fn remove_view(&mut self, view: &WlcView) -> Result<Container, TreeError> {
         if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), view) {
-            let view = self.remove_view_or_container(view_ix)
-                .expect("Somehow node was not a view");
+            let container = self.remove_view_or_container(view_ix)
+                .expect("Could not remove node we just verified exists!");
             self.validate();
-            Ok(view)
+            Ok(container)
         } else {
             self.validate();
             Err(TreeError::ViewNotFound(view.clone()))
@@ -190,7 +190,7 @@ impl LayoutTree {
     }
 
     /// Removes the current active container
-    pub fn remove_active(&mut self) -> Option<WlcView> {
+    pub fn remove_active(&mut self) -> Option<Container> {
         if let Some(active_ix) = self.active_container {
             self.remove_view_or_container(active_ix)
         } else {
@@ -201,7 +201,7 @@ impl LayoutTree {
     /// Special code to handle removing a View or Container.
     /// We have to ensure that we aren't invalidating the active container
     /// when we remove a view or container.
-    fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Option<WlcView> {
+    fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Option<Container> {
         // Only the root container has a non-container parent, and we can't remove that
         let mut result = None;
         if let Some(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
@@ -221,12 +221,10 @@ impl LayoutTree {
             let container = self.tree.remove(node_ix)
                 .expect("Could not remove container");
             match container {
-                Container::View { ref handle, .. } => {
-                    result = Some(*handle);
-                },
-                Container::Container { .. } => {},
+                Container::View { .. } | Container::Container { .. } => {},
                 _ => unreachable!()
             };
+            result = Some(container);
             self.focus_on_next_container(parent_ix);
             // Remove parent container if it is a non-root container and has no other children
             match self.tree[parent_ix].get_type() {
@@ -237,7 +235,7 @@ impl LayoutTree {
                 }
                 _ => {},
             }
-            trace!("Removed container {:?}, index {:?}", container, node_ix);
+            trace!("Removed container {:?}, index {:?}", result, node_ix);
         }
         self.validate();
         result

@@ -1,7 +1,7 @@
 //! Commands from the user to manipulate the tree
 
 use super::try_lock_tree;
-use super::{ContainerType, Direction, Handle, Layout, TreeError};
+use super::{Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
@@ -11,8 +11,13 @@ pub type CommandResult = Result<(), TreeError>;
 
 pub fn remove_active() {
     if let Ok(mut tree) = try_lock_tree() {
-        if let Some(view) = tree.0.remove_active() {
-            view.close()
+        if let Some(container) = tree.0.remove_active() {
+            match container {
+                Container::View { ref handle, .. } => {
+                    handle.close()
+                },
+                _ => {}
+            }
         }
         tree.0.layout_active_of(ContainerType::Root);
     }
