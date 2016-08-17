@@ -358,6 +358,7 @@ impl InnerTree {
 
     /// Sets the node and its children's visibility
     pub fn set_family_visible(&mut self, node_ix: NodeIndex, visible: bool) {
+        trace!("Setting {:?} to {}", node_ix, if visible {"visible"} else {"invisible"});
         self.get_mut(node_ix).map(|c| c.set_visibility(visible));
         for child in self.children_of(node_ix) {
             self.set_family_visible(child, visible);
@@ -440,6 +441,7 @@ mod tests {
                                                 Container::new_view(fake_view_1.clone()));
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone()));
+        tree[workspace_1_ix].set_focused(true);
         tree
     }
 
