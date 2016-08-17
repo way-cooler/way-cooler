@@ -104,7 +104,7 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 - `Alt+shift+<number-key>` Moves the focused container to another workspace
 
 # Contributors
-These fine people have helped us make Way Cooler:
+Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
 
 - @vinisniper created (and maintains) AUR packages
 - @paulmenzel fixed a typo
