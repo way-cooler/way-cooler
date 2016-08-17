@@ -565,18 +565,16 @@ impl LayoutTree {
             return;
         }
         let active_ix = maybe_active_ix.unwrap();
-        // Set old workspace to be invisible
+        // Get the old (current) workspace
         let old_worksp_ix: NodeIndex;
         if let Some(index) = self.tree.ancestor_of_type(active_ix, ContainerType::Workspace) {
             old_worksp_ix = index;
             trace!("Switching to workspace {}", name);
-            self.tree.set_family_visible(old_worksp_ix, false);
         } else {
             match self.tree[active_ix].get_type() {
                 ContainerType::Workspace => {
                     old_worksp_ix = active_ix;
                     trace!("Switching to workspace {}", name);
-                    self.tree.set_family_visible(old_worksp_ix, false);
                 },
                 _ => {
                     warn!("Could not find old workspace, could not set invisible");
@@ -589,6 +587,8 @@ impl LayoutTree {
         if old_worksp_ix == workspace_ix {
             return;
         }
+        // Set the old one to invisible
+        self.tree.set_family_visible(old_worksp_ix, false);
         // Set the new one to visible
         self.tree.set_family_visible(workspace_ix, true);
         // Delete the old workspace if it has no views on it
