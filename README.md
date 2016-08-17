@@ -103,8 +103,16 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 - `Alt+<number-key>` Switches the current workspace
 - `Alt+shift+<number-key>` Moves the focused container to another workspace
 
+# Contributors
+These fine people have helped us make Way Cooler:
+
+- @vinisniper created (and maintains) AUR packages
+- @paulmenzel fixed a typo
+
+And of course, thanks to the Rust community and the developers of [wlc].
+
 # Contributing
-If you would like to contribute code, please feel free to fork and branch off of `master` and submit a pull request.
+Check out [Contributing](contributing.md) for more information.
 
 If you find bugs or have questions about the code, please [submit an issue] or [ping us on gitter][gitter].
 
