@@ -203,7 +203,7 @@ impl Container {
     /// Determines if the container is focused or not
     pub fn is_focused(&self) -> bool {
         match *self {
-            Container::Root { .. } => false,
+            Container::Root(_)  => false,
             Container::Output { ref focused, .. } |
             Container::Workspace { ref focused, .. } |
             Container::Container { ref focused, .. } |
@@ -214,7 +214,7 @@ impl Container {
     /// Sets the focused value of the container
     pub fn set_focused(&mut self, new_focused: bool) {
         match *self {
-            Container::Root { .. } => {},
+            Container::Root(_) => {},
             Container::Output { ref mut focused, .. } |
             Container::Workspace { ref mut focused, .. } |
             Container::Container { ref mut focused, .. } |
