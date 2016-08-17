@@ -147,7 +147,16 @@ impl Tree {
     /// on views that have already been slated for removal from the wlc pool.
     /// Otherwise you leak a `WlcView`
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
-        self.0.remove_view(&view).map(|_| ())
+        match self.0.remove_view(&view) {
+            Err(err)  => {
+                warn!("Remove view error: {:?}\n {:#?}", err, *self.0);
+                Err(err)
+            },
+            Ok(container) => {
+                trace!("Removed container {:?}", container);
+                Ok(())
+            }
+        }
     }
 
     #[allow(dead_code)]

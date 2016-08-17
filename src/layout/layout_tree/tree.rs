@@ -53,6 +53,7 @@ impl LayoutTree {
         }
     }
 
+    /// Sets the active container to be the given node.
     fn set_active_node(&mut self, node_ix: NodeIndex) {
         info!("Active container was {:?}", self.active_container);
         self.active_container = Some(node_ix);
@@ -550,6 +551,7 @@ impl LayoutTree {
                 let workspaces: Vec<NodeIndex> = self.tree.all_descendants_of(&self.tree.root_ix())
                     .into_iter().filter(|ix| self.tree[*ix].get_type() == ContainerType::Workspace)
                     .collect();
+                warn!("workspaces: {:?}", workspaces);
                 for workspace_ix in workspaces {
                     if self.tree[workspace_ix].is_focused() {
                         return Some(workspace_ix);
@@ -558,6 +560,7 @@ impl LayoutTree {
                 None
             });
         if maybe_active_ix.is_none() {
+            warn!("{:#?}", self);
             warn!("No active container, cannot switch");
             return;
         }
@@ -590,6 +593,7 @@ impl LayoutTree {
         self.tree.set_family_visible(workspace_ix, true);
         // Delete the old workspace if it has no views on it
         self.active_container = None;
+        self.tree[old_worksp_ix].set_focused(false);
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_none() {
             trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
                    .expect("Workspace had no name"));
