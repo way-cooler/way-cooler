@@ -61,6 +61,13 @@ impl LayoutTree {
             _ => {}
         }
         info!("Active container is now: {:?}", self.active_container);
+        // NOTE Active workspace hack, remove when paths are added
+        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+            .expect("Container was not associated with a workspace");
+        let mut workspace = &mut self.tree[workspace_ix];
+        trace!("Setting {} to be the active workspace", workspace.get_name()
+               .expect("Workspace had no name"));
+        workspace.set_focused(true);
     }
 
     /// Unsets the active container. This should be used when focusing on
@@ -124,8 +131,18 @@ impl LayoutTree {
                 return Some(ix)
             }
             return self.tree.ancestor_of_type(ix, ctype)
+        } else {
+            let workspaces: Vec<NodeIndex> = self.tree.all_descendants_of(&self.tree.root_ix())
+                .into_iter().filter(|ix| self.tree[*ix].get_type() == ContainerType::Workspace)
+                .collect();
+            for workspace_ix in workspaces {
+                if self.tree[workspace_ix].is_focused() {
+                    return self.tree.ancestor_of_type(workspace_ix, ctype)
+                }
+            }
         }
         return None
+
     }
 
     /// Gets the active container if there is a currently focused container
@@ -528,19 +545,41 @@ impl LayoutTree {
 
     /// Switch to the specified workspace
     pub fn switch_to_workspace(&mut self, name: &str) {
-        if self.active_container.is_none() {
+        let maybe_active_ix = self.active_container
+            .or_else(|| {
+                let workspaces: Vec<NodeIndex> = self.tree.all_descendants_of(&self.tree.root_ix())
+                    .into_iter().filter(|ix| self.tree[*ix].get_type() == ContainerType::Workspace)
+                    .collect();
+                for workspace_ix in workspaces {
+                    if self.tree[workspace_ix].is_focused() {
+                        return Some(workspace_ix);
+                    }
+                }
+                None
+            });
+        if maybe_active_ix.is_none() {
             warn!("No active container, cannot switch");
             return;
         }
+        let active_ix = maybe_active_ix.unwrap();
         // Set old workspace to be invisible
         let old_worksp_ix: NodeIndex;
-        if let Some(index) = self.active_ix_of(ContainerType::Workspace) {
+        if let Some(index) = self.tree.ancestor_of_type(active_ix, ContainerType::Workspace) {
             old_worksp_ix = index;
             trace!("Switching to workspace {}", name);
             self.tree.set_family_visible(old_worksp_ix, false);
         } else {
-            warn!("Could not find old workspace, could not set invisible");
-            return;
+            match self.tree[active_ix].get_type() {
+                ContainerType::Workspace => {
+                    old_worksp_ix = active_ix;
+                    trace!("Switching to workspace {}", name);
+                    self.tree.set_family_visible(old_worksp_ix, false);
+                },
+                _ => {
+                    warn!("Could not find old workspace, could not set invisible");
+                    return;
+                }
+            }
         }
         // Get the new workspace, or create one if it doesn't work
         let mut workspace_ix = self.get_or_make_workspace(name);
