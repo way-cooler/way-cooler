@@ -792,6 +792,7 @@ mod tests {
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone()));
 
+        tree[workspace_1_ix].set_focused(true);
         let layout_tree = LayoutTree {
             tree: tree,
             active_container: Some(wkspc_1_view)
@@ -874,8 +875,12 @@ mod tests {
         assert_eq!(tree.active_ix_of(ContainerType::View), None);
         assert_eq!(tree.active_ix_of(ContainerType::Container), None);
         assert_eq!(tree.active_ix_of(ContainerType::Workspace), None);
-        assert_eq!(tree.active_ix_of(ContainerType::Output), None);
-        assert_eq!(tree.active_ix_of(ContainerType::Root), None);
+        /* These are true because we know the workspace was the last used
+         * Eventually they should all be true because of paths, but because
+         * of a hack these are now Some(_)
+         */
+        assert!(tree.active_ix_of(ContainerType::Output).is_some());
+        assert!(tree.active_ix_of(ContainerType::Root).is_some());
         tree.set_active_container(WlcView::root());
         let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(), &WlcView::root()).unwrap();
         assert_eq!(tree.active_container, Some(view_ix));
@@ -1238,5 +1243,38 @@ mod tests {
         assert_eq!(tree.active_is_root(), false);
         tree.remove_active();
         assert_eq!(tree.active_is_root(), true);
+    }
+
+    #[test]
+    fn can_move_workspaces_with_no_active() {
+        let mut tree = basic_tree();
+        let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
+            .expect("Active container wasn't set properly in basic_tree!");
+        assert_eq!(tree.tree[workspace_ix].get_name(), Some("1"));
+        assert!(tree.tree[workspace_ix].is_focused(),
+                "Workspace needs to be focused to be able to switch");
+        tree.active_container = None;
+        tree.switch_to_workspace("2");
+        let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
+            .expect("The new workspace was not set!");
+        assert_eq!(tree.tree[workspace_ix].get_name(), Some("2"));
+        assert!(tree.tree[workspace_ix].is_focused(),
+                "Switching to a workspace should make it focused");
+    }
+
+    #[test]
+    fn setting_container_active_sets_workspace_active() {
+        let mut tree = basic_tree();
+        let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
+            .expect("Active container wasn't set properly in basic_tree!");
+        assert_eq!(tree.tree[workspace_ix].get_name(), Some("1"));
+        assert!(tree.tree[workspace_ix].is_focused(),
+                "Workspace needs to be focused to be able to switch");
+        tree.switch_to_workspace("2");
+        let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
+            .expect("Active container wasn't set properly in basic_tree!");
+        assert_eq!(tree.tree[workspace_ix].get_name(), Some("2"));
+        assert!(tree.tree[workspace_ix].is_focused(),
+                "Switching to a workspace should make it focused");
     }
 }

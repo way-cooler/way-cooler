@@ -441,6 +441,7 @@ mod tests {
                                                 Container::new_view(fake_view_1.clone()));
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone()));
+        tree[workspace_1_ix].set_focused(true);
         tree
     }
 
