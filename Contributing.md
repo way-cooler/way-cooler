@@ -2,6 +2,8 @@
 
 We are always looking for more help to improve Way Cooler. Even if you don't know how to write any Rust code, we always need better documentation, detailed bug reports, and suggestions for more features.
 
+Every pull request that adds new functionality / fixes a bug should have tests ensuring that the feature works / the bug can't happen again. If this isn't possible (for example it would require mocking wlc, something that is currently very difficult), exceptions can be made.
+
 ## Documentation
 * Our current API documentation makes sense to us, but that's only because we've been staring at it for months. Any improvements or questions about what a function or module does is greatly appreciated.
 
