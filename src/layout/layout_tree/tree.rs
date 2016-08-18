@@ -617,15 +617,11 @@ impl LayoutTree {
             } else {
                 next_index = (siblings_and_self.len() + 1) as i32;
             }
-            let active_c = self.tree.remove(active_ix)
-                .expect("Could not remove active container");
-            // indices are invalidated, dropping to be safe
-            drop(siblings_and_self);
-            let new_active_ix = self.tree.add_child(parent_ix, active_c);
-            self.tree.set_child_pos(new_active_ix, next_index as u32);
-            self.active_container = Some(new_active_ix);
-            return Ok(self.tree.parent_of(new_active_ix)
-                .expect("Moved container had no new parent"))
+            self.tree.set_parent_of(active_ix, parent_ix, next_index as u32)
+                .expect("Could not set the new parent");
+            let new_parent = self.tree.parent_of(active_ix)
+                .expect("Could not get new parent");
+            return Ok(new_parent);
         }
         let mut next_ix = siblings_and_self[next_index as usize];
         match self.tree[next_ix] {

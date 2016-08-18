@@ -149,6 +149,17 @@ impl InnerTree {
         Ok(())
     }
 
+    pub fn set_parent_of(&mut self, child_ix: NodeIndex, parent_ix: NodeIndex, weight: u32)
+                         -> Result<(), GraphError> {
+        let child_parent_ix = try!(self.parent_of(child_ix)
+                                   .ok_or(GraphError::NoParent(child_ix)));
+        let parent_edge = self.graph.find_edge(child_parent_ix, child_ix)
+            .expect("No edge connection between parent and child");
+        self.graph.remove_edge(parent_edge);
+        self.graph.update_edge(parent_ix, child_ix, weight);
+        Ok(())
+    }
+
     /// Moves the node index at source so that it is a child of the target node.
     /// If the node could be moved, the new parent of the source node is returned
     /// (which is always the same as the target node).
