@@ -122,6 +122,7 @@ fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {
 
 /// Registers a command keybinding.
 fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<(), String> {
+    warn!("register {} => {}", mods, command);
     if let Ok(press) = keypress_from_string(&mods) {
         commands::get(&command)
             .ok_or(format!("Command {} for keybinding {} not found", command, press))
@@ -135,6 +136,7 @@ fn register_command_key(mods: String, command: String, _repeat: bool) -> Result<
 /// Rust half of registering a Lua key: store the KeyPress in the keys table
 /// and send Lua back the index for __key_map.
 fn register_lua_key(mods: String, _repeat: bool) -> Result<String, String> {
+    warn!("{} => lua", mods);
     keypress_from_string(&mods)
         .map(|press| {
             keys::register(press.clone(), KeyEvent::Lua);

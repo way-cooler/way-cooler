@@ -17,9 +17,10 @@ lazy_static! {
 
     static ref NAME_MAPPING: HashMap<&'static str, &'static str> = {
         let mut map = HashMap::new();
-        map.insert("enter", "return");
-        map.insert("\n", "return");
-        map.insert("\t", "tab");
+        map.insert("enter", "Return");
+        map.insert("return", "Return");
+        map.insert("\n", "Return");
+        map.insert("\t", "Tab");
         map
     };
 }
@@ -54,11 +55,14 @@ pub fn init() {
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     let bindings = BINDINGS.read()
         .expect("Keybindings/get: unable to lock keybindings");
-    bindings.get(key).map(KeyEvent::clone)
+    let found = bindings.get(key).map(KeyEvent::clone);
+    warn!("get {} => {:?}", key, found);
+    found
 }
 
 /// Register a new set of key mappings
 pub fn register(key: KeyPress, event: KeyEvent) -> Option<KeyEvent> {
+    warn!("set {} => {:?}", key, event);
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
     bindings.insert(key, event)

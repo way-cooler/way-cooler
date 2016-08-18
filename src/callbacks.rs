@@ -121,11 +121,14 @@ pub extern fn view_request_resize(view: WlcView,
 }
 
 pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
-                       key: u32, state: KeyState) -> bool {
+                           key: u32, state: KeyState) -> bool {
+    use rustwlc::xkb::Keysym;
     if state == KeyState::Pressed {
         // TODO this function will throw an error in Rustwlc right now
         // let mut keys = keyboard::get_current_keys().into_iter()
         //      .map(|&k| Keysym::from(k)).collect();
+        let raw_sym = Keysym::from(key);
+        trace!("Got {:?} ({:?}) for a key", raw_sym, raw_sym.get_name());
         let sym = keyboard::get_keysym_for_key(key, KeyMod::empty());
         let press = KeyPress::new(mods.mods, sym);
         if let Some(action) = keys::get(&press) {

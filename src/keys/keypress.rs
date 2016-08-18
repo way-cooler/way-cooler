@@ -21,15 +21,19 @@ pub struct KeyPress {
 impl KeyPress {
     /// Creates a new KeyPress struct from a list of modifier and key names
     pub fn from_key_names(mods: &[&str], key: &str) -> Result<KeyPress, String> {
+        trace!("Parsing {:?}+{}", mods, key);
         super::keymod_from_names(mods).and_then(|mods| {
             let proper_key = *super::NAME_MAPPING.get(key).unwrap_or(&key);
 
-            let key_sym = try!(
-                Keysym::from_name(proper_key.to_string(), NameFlags::None).or_else(||
-                    Keysym::from_name(proper_key.to_string(), NameFlags::CaseInsensitive))
-                    .ok_or(format!("Invalid key: {}", key)));
-
-            Ok(KeyPress { modifiers: mods, key: key_sym })
+            let key_sym = Keysym::from_name(proper_key.to_string(), NameFlags::None);
+            trace!("Got {}, {:?}", proper_key, key_sym);
+            match key_sym {
+                Some(sym) => {
+                    info!("parsed {} ({:?}) for {}", sym.raw(), sym.get_name(), key);
+                    Ok(KeyPress { modifiers: mods, key: sym })
+                }
+                None => Err(format!("Invalid key {}", key))
+            }
         })
     }
 
