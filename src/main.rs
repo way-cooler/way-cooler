@@ -20,7 +20,6 @@ extern crate hlua;
 extern crate rustc_serialize;
 #[macro_use]
 extern crate json_macro;
-extern crate unix_socket;
 
 extern crate nix;
 

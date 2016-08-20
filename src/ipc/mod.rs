@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::fs;
 
 use nix::unistd::getuid;
-use unix_socket::UnixListener;
+use std::os::unix::net::UnixListener;
 
 mod channel;
 mod command;
