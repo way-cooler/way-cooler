@@ -443,7 +443,7 @@ impl LayoutTree {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
         let old_parent_ix = try!(self.tree.parent_of(node_ix)
                                 .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_ix))));
-        let _new_parent_ix = try!(self.move_active_recurse(node_ix, None, direction));
+        let _new_parent_ix = try!(self.move_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
             self.remove_container(old_parent_ix);
             return self.move_container(uuid, direction);
@@ -455,7 +455,7 @@ impl LayoutTree {
     /// Returns the new parent of the active container if the move succeeds,
     /// Otherwise it signals what error occurred in the tree.
     // NOTE rename
-    fn move_active_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
+    fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
                            direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_to_move].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
@@ -482,7 +482,7 @@ impl LayoutTree {
                                     Ok(new_parent_ix)
                                 },
                                 Err(ContainerMovementError::MoveOutsideSiblings(_,_)) => {
-                                    self.move_active_recurse(node_to_move, Some(parent_ix), direction)
+                                    self.move_recurse(node_to_move, Some(parent_ix), direction)
                                 },
                                 Err(ContainerMovementError::InternalTreeError(err)) => {
                                     Err(err)
@@ -501,7 +501,7 @@ impl LayoutTree {
                             }
                         }
                     },
-                    _ => { self.move_active_recurse(node_to_move, Some(parent_ix), direction) }
+                    _ => { self.move_recurse(node_to_move, Some(parent_ix), direction) }
                 }
             },
             Container::Workspace { .. } => {
@@ -629,7 +629,7 @@ impl LayoutTree {
                 .expect("Could not get new parent");
             return Ok(new_parent);
         }
-        let mut next_ix = siblings_and_self[next_index as usize];
+        let next_ix = siblings_and_self[next_index as usize];
         match self.tree[next_ix] {
             Container::View { .. } => {
                 // NOTE need to add, make this edge weight the active container's
@@ -644,29 +644,11 @@ impl LayoutTree {
                 return Ok(parent_ix);
             },
             Container::Container { .. } => {
-                // normalize index for removal of view container
-                if self.tree.is_last_ix(next_ix) {
-                    next_ix = active_ix;
-                }
-                let mut old_parent_ix = self.tree.parent_of(active_ix)
-                    .expect("Active ix had no parent");
-                // normalize index for removal of view container
-                if old_parent_ix == active_ix {
-                    old_parent_ix = active_ix;
-                }
-                let active_c = self.tree.remove(active_ix)
-                    .expect("Could not remove active container");
-                let mut new_active = self.tree.add_child(next_ix, active_c);
-                self.active_container = Some(new_active);
-                if ! self.tree.is_root_container(old_parent_ix) &&
-                    self.tree.children_of(old_parent_ix).len() == 0 {
-                        // was just added, so it will be invalidated
-                        new_active = old_parent_ix;
-                        self.remove_view_or_container(old_parent_ix);
-                }
-                match self.tree[new_active].clone() {
+                try!(self.tree.move_into(active_ix, next_ix)
+                     .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
+                match self.tree[active_ix] {
                     Container::View { handle, .. } => self.normalize_view(handle),
-                _ => {},
+                    _ => {},
                 };
 
             },

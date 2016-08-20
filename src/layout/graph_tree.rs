@@ -161,7 +161,7 @@ impl InnerTree {
     }
 
     /// Moves the node index at source so that it is a child of the target node.
-    /// If the node could be moved, the new parent of the source node is returned
+    /// If the node was moved, the new parent of the source node is returned
     /// (which is always the same as the target node).
     pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex) -> Result<NodeIndex, GraphError> {
         let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
