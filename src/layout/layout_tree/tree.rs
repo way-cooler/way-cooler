@@ -15,7 +15,7 @@ use super::super::graph_tree::GraphError;
 
 use super::super::commands::CommandResult;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Direction {
     Up,
     Down,
@@ -454,7 +454,6 @@ impl LayoutTree {
 
     /// Returns the new parent of the active container if the move succeeds,
     /// Otherwise it signals what error occurred in the tree.
-    // NOTE rename
     fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
                            direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_to_move].get_type() {
@@ -482,7 +481,11 @@ impl LayoutTree {
                                     error!("Tree error moving between ancestors: {:?}", err);
                                     Err(err)
                                 }
-                                Err(_) => panic!("Shouldn't have gotten here, I messed up")
+                                Err(ContainerMovementError::MoveOutsideSiblings(node, dir)) => {
+                                    error!("Trying to move {:#?} in the {:?} direction somehow moved out of siblings",
+                                           node, dir);
+                                    panic!("Moving between ancestors failed in an unexpected way")
+                                }
                             }
                         } else { /* Moving within current parent container */
                             match self.move_within_container(node_to_move, direction) {
@@ -610,8 +613,11 @@ impl LayoutTree {
                 }
             }
         };
-        // Replace ancestor location with the node we are moving,
-        // shifts the others over
+        // TODO Move this up, duplicate it in each addition/subtraction branch.
+        // If we use different ways to move things over, we might be able to eliminate that
+        // extra sub-branch in left/up.
+
+        // Beyond the bounds, just stick it on one of the ends.
         if next_index < 0 || next_index as usize >= siblings_and_self.len() {
             if next_index < 0 {
                 next_index = 0;
@@ -625,9 +631,10 @@ impl LayoutTree {
             return Ok(new_parent);
         }
         let next_ix = siblings_and_self[next_index as usize];
+        // Replace ancestor location with the node we are moving,
+        // shifts the others over
         match self.tree[next_ix] {
             Container::View { .. } => {
-                // NOTE need to add, make this edge weight the active container's
                 let parent_ix = try!(self.tree.place_node_at(node_to_move, next_ix)
                                         .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
                 if let Some(handle) = self.tree[move_ancestor].get_handle() {
@@ -636,21 +643,20 @@ impl LayoutTree {
                         _ => unreachable!()
                     }
                 }
-                return Ok(parent_ix);
+                Ok(parent_ix)
             },
             Container::Container { .. } => {
-                try!(self.tree.move_into(node_to_move, next_ix)
-                     .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
+                let parent_ix = try!(self.tree.move_into(node_to_move, next_ix)
+                                    .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
                 match self.tree[node_to_move] {
                     Container::View { handle, .. } => self.normalize_view(handle),
                     _ => {},
                 };
+                Ok(parent_ix)
 
             },
             _ => unreachable!()
-        };
-        return Ok(self.tree.parent_of(node_to_move)
-            .expect("Moved container had no new parent"))
+        }
     }
 
     /// Updates the current active container to be the next container or view

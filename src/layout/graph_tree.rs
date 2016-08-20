@@ -149,6 +149,9 @@ impl InnerTree {
         Ok(())
     }
 
+    /// Child's parent now becomes the new parent, with a certain weight.
+    ///
+    /// NOTE This function makes no guarantees on the uniqueness of the weight
     pub fn set_parent_of(&mut self, child_ix: NodeIndex, parent_ix: NodeIndex, weight: u32)
                          -> Result<(), GraphError> {
         let child_parent_ix = try!(self.parent_of(child_ix)
