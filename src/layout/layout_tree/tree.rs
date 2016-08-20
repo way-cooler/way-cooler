@@ -561,6 +561,9 @@ impl LayoutTree {
         }
     }
 
+    /// Moves the node in the direction, outside to ancestor siblings.
+    ///
+    /// This should only be called by the recursive function.
     fn move_between_ancestors(&mut self, node_ix: NodeIndex, direction: Direction)
                                  -> Result<NodeIndex, ContainerMovementError> {
         // TODO Abstract and pass in so we don't do duplicate work
@@ -606,12 +609,9 @@ impl LayoutTree {
                 }
             }
         };
-        // both this and the view branch down below look similar
-        // Can I combine them by doing a saturate_sub/add above?
-        // (with add saturating on the len)
-        // TODO Rewrite this to not use removal of nodes, but use graph_tree primitives (move_into)
+        // Replace ancestor location with the node we are moving,
+        // shifts the others over
         if next_index < 0 || next_index as usize >= siblings_and_self.len() {
-            error!("Edge case");
             if next_index < 0 {
                 next_index = 0;
             } else {
