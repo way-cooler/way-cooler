@@ -443,7 +443,7 @@ impl LayoutTree {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
         let old_parent_ix = try!(self.tree.parent_of(node_ix)
                                 .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_ix))));
-        let _new_parent_ix = try!(self.move_active_recurse(node_ix, direction));
+        let _new_parent_ix = try!(self.move_active_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
             self.remove_container(old_parent_ix);
             return self.move_container(uuid, direction);
@@ -454,16 +454,20 @@ impl LayoutTree {
 
     /// Returns the new parent of the active container if the move succeeds,
     /// Otherwise it signals what error occurred in the tree.
-    fn move_active_recurse(&mut self, node_ix: NodeIndex,
+    // NOTE rename
+    fn move_active_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
                            direction: Direction) -> Result<NodeIndex, TreeError> {
-        match self.tree[node_ix].get_type() {
+        match self.tree[node_to_move].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
-            _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
+            _ => return Err(TreeError::UuidWrongType(self.tree[node_to_move].get_id(),
                                                      vec!(ContainerType::View,
                                                           ContainerType::Container)))
         }
-        let parent_ix = self.tree.parent_of(node_ix)
-            .expect("Container/View had no parent");
+        let parent_ix = try!(
+            move_ancestor.and_then(|node| {
+                self.tree.parent_of(node)
+            }).or(self.tree.parent_of(node_to_move))
+                .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_to_move))));
         match self.tree[parent_ix] {
             Container::Container { layout, .. } =>  {
                 match (layout, direction) {
@@ -471,24 +475,23 @@ impl LayoutTree {
                     (Layout::Horizontal, Direction::Right) |
                     (Layout::Vertical, Direction::Up) |
                     (Layout::Vertical, Direction::Down) => {
-                        let active_ix = try!(self.active_container.ok_or(TreeError::NoActiveContainer));
                         /* Moving within current parent container */
-                        if active_ix == node_ix {
-                            match self.move_within_container(node_ix, direction) {
-                                Ok(_) => {
-                                    Ok(parent_ix)
+                        if move_ancestor.is_none() {
+                            match self.move_within_container(node_to_move, direction) {
+                                Ok(new_parent_ix) => {
+                                    Ok(new_parent_ix)
                                 },
                                 Err(ContainerMovementError::MoveOutsideSiblings(_,_)) => {
-                                    self.move_active_recurse(parent_ix, direction)
+                                    self.move_active_recurse(node_to_move, Some(parent_ix), direction)
                                 },
                                 Err(ContainerMovementError::InternalTreeError(err)) => {
                                     Err(err)
                                 }
                             }
                         } else {
-                            match self.move_between_ancestors(node_ix, direction) {
-                                Ok(_) => {
-                                    Ok(parent_ix)
+                            match self.move_between_ancestors(move_ancestor.unwrap(), direction) {
+                                Ok(new_parent_ix) => {
+                                    Ok(new_parent_ix)
                                 },
                                 Err(ContainerMovementError::InternalTreeError(err)) => {
                                     error!("Tree error moving between ancestors: {:?}", err);
@@ -498,11 +501,11 @@ impl LayoutTree {
                             }
                         }
                     },
-                    _ => { self.move_active_recurse(parent_ix, direction) }
+                    _ => { self.move_active_recurse(node_to_move, Some(parent_ix), direction) }
                 }
             },
             Container::Workspace { .. } => {
-                Err(TreeError::InvalidOperationOnRootContainer(self.tree[node_ix].get_id()))
+                Err(TreeError::InvalidOperationOnRootContainer(self.tree[node_to_move].get_id()))
             }
             _ => unreachable!()
         }
@@ -541,7 +544,8 @@ impl LayoutTree {
                             .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))))
                 },
                 Container::Container { .. } => {
-                    try!(self.tree.move_into(node_ix, swap_ix).map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
+                    try!(self.tree.move_into(node_ix, swap_ix)
+                         .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
                     if let Some(handle) = self.tree[node_ix].get_handle() {
                         match handle {
                             Handle::View(view) => self.normalize_view(view),
@@ -563,12 +567,13 @@ impl LayoutTree {
 
     /// Moves the node in the direction, outside to ancestor siblings.
     ///
+    /// Returns the new parent of the node on success
+    ///
     /// This should only be called by the recursive function.
     fn move_between_ancestors(&mut self, node_ix: NodeIndex, direction: Direction)
                                  -> Result<NodeIndex, ContainerMovementError> {
-        // TODO Abstract and pass in so we don't do duplicate work
         let parent_ix = try!(self.tree.parent_of(node_ix)
-                             .ok_or(ContainerMovementError::InternalTreeError(TreeError::PetGraphError(GraphError::NoParent(node_ix)))));
+            .ok_or(ContainerMovementError::InternalTreeError(TreeError::PetGraphError(GraphError::NoParent(node_ix)))));
         let siblings_and_self = self.tree.children_of(parent_ix);
         let cur_index = try!(siblings_and_self.iter().position(|node| {
             *node == node_ix
@@ -586,6 +591,7 @@ impl LayoutTree {
                 cur_index as i32 + 1
             },
             Direction::Left | Direction::Up => {
+                // TODO Fix this up so that I don't have to do this here?
                 let next_index = cur_index as i32 - 1;
                 let cur_ix = siblings_and_self.get(next_index as usize);
                 if cur_ix.is_some() && self.tree[*cur_ix.unwrap()].get_type() != ContainerType::Container {
@@ -659,8 +665,7 @@ impl LayoutTree {
                         self.remove_view_or_container(old_parent_ix);
                 }
                 match self.tree[new_active].clone() {
-                    Container::View { handle, .. } =>
-                    self.normalize_view(handle),
+                    Container::View { handle, .. } => self.normalize_view(handle),
                 _ => {},
                 };
 
