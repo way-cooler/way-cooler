@@ -18,7 +18,6 @@ bitflags = "0.6"
 petgraph = "0.2"
 rustc-serialize = "0.3"
 json_macro = "0.1"
-unix_socket = "0.5"
 nix = "0.6"
 uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
 wayland-sys = { version = "^0.6.0", features = ["client", "dlopen"] }
