@@ -2,6 +2,7 @@
 //! layout.
 
 use std::iter::Iterator;
+use std::ops::Add;
 use std::collections::HashMap;
 
 use petgraph::EdgeDirection;
@@ -26,6 +27,13 @@ pub struct InnerTree {
     graph: Graph<Container, u32>, // Directed graph
     id_map: HashMap<Uuid, NodeIndex>,
     root: NodeIndex
+}
+
+/// The direction to shift sibling nodes when doing a tree transformation
+#[derive(Clone, Copy, Debug)]
+pub enum ShiftDirection {
+    Left,
+    Right
 }
 
 impl InnerTree {
@@ -177,21 +185,40 @@ impl InnerTree {
         Ok(target)
     }
 
-    /// Places the source node at the position where the target node. In other words, the edge weight between
-    /// the target node and the target node's parent becomes the source node's new weight after it
-    /// becomes a sibling to the target node.
+    /// Places the source node at the position where the target node is.
     ///
-    /// Each node that has a weight >= the source's new weight is shifted over by one.
+    /// If shifting the other nodes to the left,
+    /// then the weight becomes the weight of the target node.
+    ///
+    /// If shifting the other nodes to the right,
+    /// then the weight becomes the weight of the target + 1
+    ///
+    /// Each node that has a weight >= the source's new weight is shifted over
+    /// by either one if shifting left or two if shifting right.
     ///
     /// If the operation succeeds, the source's new parent (the target parent) is returned.
-    pub fn place_node_at(&mut self, source: NodeIndex, target: NodeIndex) -> Result<NodeIndex, GraphError> {
-        warn!("{:?}", self);
-        trace!("Placing source {:?} at target {:?}", source, target);
+    pub fn place_node_at(&mut self, source: NodeIndex, target: NodeIndex, dir: ShiftDirection)
+                         -> Result<NodeIndex, GraphError> {
+        trace!("Placing source {:?} at target {:?}. Shifting to {:?}",
+               source, target, dir);
         let target_parent = try!(self.parent_of(target).ok_or(GraphError::NoParent(target)));
         let target_parent_edge = self.graph.find_edge(target_parent, target)
             .expect("Target node and it's parent were not linked");
-        let target_weight = self.graph.edge_weight(target_parent_edge).map(|weight| *weight)
-            .expect("Could not get the weight of the edge between target and parent");
+        let target_weight = match dir {
+            ShiftDirection::Left => {
+                self.graph.edge_weight(target_parent_edge).map(|weight| *weight)
+            },
+            ShiftDirection::Right=> {
+                self.graph.edge_weight(target_parent_edge).map(|weight| *weight + 1)
+            }
+        }.expect("Could not get the weight of the edge between target and parent");
+        fn add_two(a: u32, b: u32) -> u32 {
+            a + b + b
+        };
+        let math_op = match dir {
+            ShiftDirection::Left  => u32::add,
+            ShiftDirection::Right => add_two
+        };
         let bigger_target_siblings: Vec<NodeIndex> = self.graph.edges_directed(target_parent, EdgeDirection::Outgoing)
             .filter(|&(_node_ix, sibling_weight)| *sibling_weight >= target_weight)
             .map(|(node_ix, _)| node_ix).collect();
@@ -204,13 +231,13 @@ impl InnerTree {
                 .expect("Sibling to target was not linked to target's parent");
             let weight = self.graph.edge_weight_mut(sibling_edge)
                 .expect("Could not get the weight of the edge between target sibling and target parent");
-            *weight = *weight + 1;
+            trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
+            *weight = math_op(*weight, 1);
             trace!("Sibling {:?}, edge weight to {:?} is now {}", sibling_ix, target_parent, weight);
         }
         self.graph.remove_edge(source_parent_edge);
         trace!("Adding edge between child {:?} and parent {:?} w/ weight {}", source, target_parent, target_weight);
         self.graph.update_edge(target_parent, source, target_weight);
-        error!("{:?}", self);
         Ok(target_parent)
     }
 
