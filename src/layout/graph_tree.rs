@@ -157,20 +157,6 @@ impl InnerTree {
         Ok(())
     }
 
-    /// Child's parent now becomes the new parent, with a certain weight.
-    ///
-    /// NOTE This function makes no guarantees on the uniqueness of the weight
-    pub fn set_parent_of(&mut self, child_ix: NodeIndex, parent_ix: NodeIndex, weight: u32)
-                         -> Result<(), GraphError> {
-        let child_parent_ix = try!(self.parent_of(child_ix)
-                                   .ok_or(GraphError::NoParent(child_ix)));
-        let parent_edge = self.graph.find_edge(child_parent_ix, child_ix)
-            .expect("No edge connection between parent and child");
-        self.graph.remove_edge(parent_edge);
-        self.graph.update_edge(parent_ix, child_ix, weight);
-        Ok(())
-    }
-
     /// Moves the node index at source so that it is a child of the target node.
     /// If the node was moved, the new parent of the source node is returned
     /// (which is always the same as the target node).
@@ -187,14 +173,7 @@ impl InnerTree {
 
     /// Places the source node at the position where the target node is.
     ///
-    /// If shifting the other nodes to the left,
-    /// then the weight becomes the weight of the target node.
-    ///
-    /// If shifting the other nodes to the right,
-    /// then the weight becomes the weight of the target + 1
-    ///
-    /// Each node that has a weight >= the source's new weight is shifted over
-    /// by either one if shifting left or two if shifting right.
+    /// Each node that has a weight >= the source's new weight is shifted over 1
     ///
     /// If the operation succeeds, the source's new parent (the target parent) is returned.
     pub fn place_node_at(&mut self, source: NodeIndex, target: NodeIndex, dir: ShiftDirection)
@@ -212,13 +191,6 @@ impl InnerTree {
                 self.graph.edge_weight(target_parent_edge).map(|weight| *weight + 1)
             }
         }.expect("Could not get the weight of the edge between target and parent");
-        fn add_two(a: u32, b: u32) -> u32 {
-            a + b + b
-        };
-        let math_op = match dir {
-            ShiftDirection::Left  => u32::add,
-            ShiftDirection::Right => add_two
-        };
         let bigger_target_siblings: Vec<NodeIndex> = self.graph.edges_directed(target_parent, EdgeDirection::Outgoing)
             .filter(|&(_node_ix, sibling_weight)| *sibling_weight >= target_weight)
             .map(|(node_ix, _)| node_ix).collect();
@@ -232,7 +204,7 @@ impl InnerTree {
             let weight = self.graph.edge_weight_mut(sibling_edge)
                 .expect("Could not get the weight of the edge between target sibling and target parent");
             trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
-            *weight = math_op(*weight, 1);
+            *weight = *weight + 1;
             trace!("Sibling {:?}, edge weight to {:?} is now {}", sibling_ix, target_parent, weight);
         }
         self.graph.remove_edge(source_parent_edge);
