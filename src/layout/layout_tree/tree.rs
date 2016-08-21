@@ -520,11 +520,13 @@ impl LayoutTree {
     fn move_within_container(&mut self, node_ix: NodeIndex, direction: Direction)
                              -> Result<NodeIndex, ContainerMovementError> {
         let parent_ix = try!(self.tree.parent_of(node_ix)
-            .ok_or(ContainerMovementError::InternalTreeError(TreeError::PetGraphError(GraphError::NoParent(node_ix)))));
+                             .ok_or(ContainerMovementError::InternalTreeError(
+                                 TreeError::PetGraphError(GraphError::NoParent(node_ix)))));
         let siblings_and_self = self.tree.children_of(parent_ix);
         let cur_index = try!(siblings_and_self.iter().position(|node| {
             *node == node_ix
-        }).ok_or(ContainerMovementError::InternalTreeError(TreeError::NodeNotFound(self.tree[node_ix].get_id()))));
+        }).ok_or(ContainerMovementError::InternalTreeError(
+            TreeError::NodeNotFound(self.tree[node_ix].get_id()))));
         let maybe_new_index = match direction {
             Direction::Right | Direction::Down => {
                 cur_index.checked_add(1)
@@ -540,11 +542,13 @@ impl LayoutTree {
             match self.tree[swap_ix] {
                 Container::View { .. } => {
                     try!(self.tree.swap_node_order(node_ix, swap_ix)
-                            .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))))
+                         .map_err(|err| ContainerMovementError::InternalTreeError(
+                             TreeError::PetGraphError(err))))
                 },
                 Container::Container { .. } => {
                     try!(self.tree.move_into(node_ix, swap_ix)
-                         .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err))));
+                         .map_err(|err| ContainerMovementError::InternalTreeError(
+                             TreeError::PetGraphError(err))));
                     if let Some(handle) = self.tree[node_ix].get_handle() {
                         match handle {
                             Handle::View(view) => self.normalize_view(view),
