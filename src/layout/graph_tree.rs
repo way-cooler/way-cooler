@@ -254,8 +254,7 @@ impl InnerTree {
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
         let id = self.graph[node_ix].get_id();
         let last_ix = NodeIndex::new(self.graph.node_count() - 1);
-        let mut parent_ix = self.parent_of(node_ix)
-            .expect("No parent of the node index we are trying to remove");
+        let maybe_parent_ix = self.parent_of(node_ix);
         if last_ix != node_ix {
             // The container at last_ix will now have node_ix as its index
             // Have to update the id map
@@ -263,15 +262,20 @@ impl InnerTree {
             let last_id = last_container.get_id();
             self.id_map.insert(last_id, node_ix);
         }
-        if parent_ix == last_ix {
-            parent_ix = node_ix;
+        if let Some(mut parent_ix) = maybe_parent_ix {
+            if parent_ix == last_ix {
+                parent_ix = node_ix;
+            }
+            self.id_map.remove(&id);
+            let result = self.graph.remove_node(node_ix);
+            // Fix the edge weights of the siblings of this node,
+            // so we don't leave a gap
+            self.normalize_edge_weights(parent_ix);
+            result
+        } else {
+            self.id_map.remove(&id);
+            self.graph.remove_node(node_ix)
         }
-        self.id_map.remove(&id);
-        let result = self.graph.remove_node(node_ix);
-        // Fix the edge weights of the siblings of this node,
-        // so we don't leave a gap
-        self.normalize_edge_weights(parent_ix);
-        result
     }
 
     /// Normalizes the edge weights of the children of a node so that there are no gaps
