@@ -443,10 +443,9 @@ impl LayoutTree {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
         let old_parent_ix = try!(self.tree.parent_of(node_ix)
                                 .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_ix))));
-        let _new_parent_ix = try!(self.move_recurse(node_ix, None, direction));
+        try!(self.move_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
             self.remove_container(old_parent_ix);
-            return self.move_container(uuid, direction);
         }
         self.validate();
         Ok(())
@@ -582,7 +581,12 @@ impl LayoutTree {
             Direction::Right | Direction::Down => {
                 let next_index = cur_index + 1;
                 if next_index as usize >= siblings_and_self.len() {
-                    siblings_and_self[siblings_and_self.len() - 1]
+                    return self.tree.place_node_at(node_to_move,
+                                                   siblings_and_self[siblings_and_self.len() - 1],
+                                                   ShiftDirection::Left)
+                        .and_then(|_| self.tree.parent_of(node_to_move)
+                             .ok_or(GraphError::NoParent(node_to_move)))
+                        .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err)))
                 } else {
                     siblings_and_self[next_index]
                 }
@@ -591,26 +595,13 @@ impl LayoutTree {
                 if let Some(next_index) = cur_index.checked_sub(1) {
                     siblings_and_self[next_index]
                 } else {
-                    siblings_and_self[0]
+                    return self.tree.place_node_at(node_to_move, siblings_and_self[0], ShiftDirection::Right)
+                        .and_then(|_| self.tree.parent_of(node_to_move)
+                                  .ok_or(GraphError::NoParent(node_to_move)))
+                        .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err)))
                 }
             }
         };
-        // TODO Move this up, duplicate it in each addition/subtraction branch.
-        // If we use different ways to move things over, we might be able to eliminate that
-        // extra sub-branch in left/up.
-
-        /*if next_index < 0 || next_index as usize >= siblings_and_self.len() {
-            if next_index < 0 {
-                next_index = 0;
-            } else {
-                next_index = (siblings_and_self.len() + 1) as i32;
-            }
-            self.tree.set_parent_of(node_to_move, parent_ix, next_index as u32)
-                .expect("Could not set the new parent");
-            let new_parent = self.tree.parent_of(node_to_move)
-                .expect("Could not get new parent");
-            return Ok(new_parent);
-        }*/
         // Replace ancestor location with the node we are moving,
         // shifts the others over
         let parent_ix = try!(match self.tree[next_ix] {
@@ -635,7 +626,7 @@ impl LayoutTree {
                 Ok(parent_ix)
             },
             _ => {
-                return Err(ContainerMovementError::InternalTreeError(
+                Err(ContainerMovementError::InternalTreeError(
                     TreeError::UuidWrongType(self.tree[node_to_move].get_id(), vec!(ContainerType::View))))
             },
         }
@@ -733,7 +724,6 @@ impl LayoutTree {
         if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
             self.normalize_container(view_ix);
         }
-        self.validate();
     }
 
     /// Gets the active container and toggles it based on the following rules:
@@ -955,6 +945,31 @@ impl LayoutTree {
                 }
             }
         }
+
+        // Ensure that edge weights are always monotonically increasing
+        fn validate_edge_count(this: &LayoutTree, parent_ix: NodeIndex) {
+            // note that the weight should never actually be 0
+            let mut cur_weight = 0;
+            for child_ix in this.tree.children_of(parent_ix) {
+                let weight = *this.tree.get_edge_weight_between(parent_ix, child_ix)
+                    .expect("Could not get edge weights between child and parent");
+                // Ensure increasing
+                if weight <= cur_weight {
+                    error!("Weights were not monotonically increasing for children of {:?}", parent_ix);
+                    error!("{:#?}", this);
+                    panic!("{:?} <= {:?}!", weight, cur_weight);
+                }
+                // Ensure no holes
+                if weight != cur_weight + 1 {
+                    error!("Weights have a hole (no child with weight {}) for children of {:?}", cur_weight + 1, parent_ix);
+                    error!("{:#?}", this);
+                    panic!("Hole in children weights");
+                }
+                cur_weight = weight;
+                validate_edge_count(this, child_ix);
+            }
+        }
+        validate_edge_count(self, self.tree.root_ix());
     }
 
     #[cfg(not(debug_assertions))]

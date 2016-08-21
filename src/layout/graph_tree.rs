@@ -2,7 +2,6 @@
 //! layout.
 
 use std::iter::Iterator;
-use std::ops::Add;
 use std::collections::HashMap;
 
 use petgraph::EdgeDirection;
@@ -113,7 +112,9 @@ impl InnerTree {
                    parent_type, child_type);
         }
         let (_ix, biggest_child) = self.largest_child(parent_ix);
-        self.graph.update_edge(parent_ix, child_ix, biggest_child + 1)
+        let result = self.graph.update_edge(parent_ix, child_ix, biggest_child + 1);
+        self.normalize_edge_weights(parent_ix);
+        result
     }
 
     /// Finds the index of the container at the child index's parent,
@@ -136,6 +137,7 @@ impl InnerTree {
             counter += 1;
         }
         self.graph.update_edge(parent_ix, child_ix, child_pos);
+        self.normalize_edge_weights(parent_ix);
     }
 
     /// Swaps the edge weight of the two child nodes. The nodes must
@@ -154,6 +156,7 @@ impl InnerTree {
             .expect("Could not get weight between parent and child");
         self.graph.update_edge(parent_ix, child1_ix, child2_weight);
         self.graph.update_edge(parent_ix, child2_ix, child1_weight);
+        self.normalize_edge_weights(parent1_ix);
         Ok(())
     }
 
@@ -168,6 +171,7 @@ impl InnerTree {
         let highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing).max()
             .map(|(_ix, weight)| *weight).expect("Could not get highest weighted child of target node");
         self.graph.update_edge(target, source, highest_weight + 1);
+        self.normalize_edge_weights(source_parent);
         Ok(target)
     }
 
@@ -210,6 +214,8 @@ impl InnerTree {
         self.graph.remove_edge(source_parent_edge);
         trace!("Adding edge between child {:?} and parent {:?} w/ weight {}", source, target_parent, target_weight);
         self.graph.update_edge(target_parent, source, target_weight);
+        self.normalize_edge_weights(target_parent);
+        self.normalize_edge_weights(source_parent);
         Ok(target_parent)
     }
 
@@ -221,6 +227,7 @@ impl InnerTree {
                 .expect("detatch: Node has parent but edge cannot be found!");
 
             self.graph.remove_edge(edge);
+            self.normalize_edge_weights(parent_ix);
         }
         else {
             trace!("detach: Detached a floating node");
@@ -246,7 +253,9 @@ impl InnerTree {
     /// the displaced node.
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
         let id = self.graph[node_ix].get_id();
-        let last_ix: NodeIndex<u32> = NodeIndex::new(self.graph.node_count() - 1);
+        let last_ix = NodeIndex::new(self.graph.node_count() - 1);
+        let mut parent_ix = self.parent_of(node_ix)
+            .expect("No parent of the node index we are trying to remove");
         if last_ix != node_ix {
             // The container at last_ix will now have node_ix as its index
             // Have to update the id map
@@ -254,8 +263,33 @@ impl InnerTree {
             let last_id = last_container.get_id();
             self.id_map.insert(last_id, node_ix);
         }
+        if parent_ix == last_ix {
+            parent_ix = node_ix;
+        }
         self.id_map.remove(&id);
-        self.graph.remove_node(node_ix)
+        let result = self.graph.remove_node(node_ix);
+        // Fix the edge weights of the siblings of this node,
+        // so we don't leave a gap
+        self.normalize_edge_weights(parent_ix);
+        result
+    }
+
+    /// Normalizes the edge weights of the children of a node so that there are no gaps
+    // NOTE This should not be public, only this module should worry about this thing!
+    fn normalize_edge_weights(&mut self, parent_ix: NodeIndex) {
+        let mut weight = 0;
+        for child_ix in self.children_of(parent_ix) {
+            let edge = self.graph.find_edge(parent_ix, child_ix)
+                .expect("Child was not linked to it's parent");
+            let edge_weight = self.graph.edge_weight_mut(edge)
+                .expect("Could not get the weight of the edge between target sibling and target parent");
+            if *edge_weight != weight + 1 {
+                trace!("Normalizing edge {:?} to {:?}", edge_weight, *edge_weight + 1);
+                *edge_weight = weight + 1;
+            }
+            weight = *edge_weight;
+        }
+        trace!("Normalized edge weights for: {:?}", parent_ix);
     }
 
     /// Determines if the container node can be removed because it is empty.
@@ -307,7 +341,7 @@ impl InnerTree {
         }
     }
 
-    /// Gets an iterator to the children of a node.
+    /// Gets an iterator to the children of a node, sorted by weight.
     ///
     /// Will return an empty iterator if the node has no children or
     /// if the node does not exist.
