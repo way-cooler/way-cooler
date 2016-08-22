@@ -2,15 +2,14 @@
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
-
-use registry::{self, RegistryGetData};
+use rustwlc::xkb::Keysym;
 
 use rustc_serialize::json::Json;
 use std::sync::Arc;
-
 use std::thread;
 
 use compositor;
+use registry::{self, RegistryGetData};
 use super::keys::{self, KeyPress, KeyEvent};
 use super::layout::{try_lock_tree, ContainerType, TreeError};
 use super::lua::{self, LuaQuery};
@@ -122,15 +121,18 @@ pub extern fn view_request_resize(view: WlcView,
 
 pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
                            key: u32, state: KeyState) -> bool {
-    use rustwlc::xkb::Keysym;
-    if state == KeyState::Pressed {
-        // TODO this function will throw an error in Rustwlc right now
-        // let mut keys = keyboard::get_current_keys().into_iter()
-        //      .map(|&k| Keysym::from(k)).collect();
+
+
         let raw_sym = Keysym::from(key);
         trace!("Got {:?} ({:?}) for a key", raw_sym, raw_sym.get_name());
-        let sym = keyboard::get_keysym_for_key(key, KeyMod::empty());
+        let EMPTY_MODS: KeyboardModifiers = KeyboardModifiers {
+            mods: KeyMod::empty(),
+            leds: KeyboardLed::empty()
+        };
+        let sym = keyboard::get_keysym_for_key(key, EMPTY_MODS);
         let press = KeyPress::new(mods.mods, sym);
+
+    if state == KeyState::Pressed {
         if let Some(action) = keys::get(&press) {
             debug!("[key] Found an action for {}", press);
             match action {
@@ -171,7 +173,7 @@ pub extern fn pointer_scroll(_view: WlcView, _time: u32,
 }
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
-    pointer::set_position(point);
+    pointer::set_position(*point);
     compositor::on_pointer_motion(_view, _time, point)
 }
 
