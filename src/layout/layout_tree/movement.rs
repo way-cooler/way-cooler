@@ -350,12 +350,8 @@ mod tests {
 
 
         // Do it to the left now
-        println!("active: {:?}\ntree: {:?}", tree.active_container.unwrap(), tree);
         assert!(tree.move_container(active_id, Direction::Left).is_ok());
-        println!("active: {:?}\ntree: {:?}", tree.active_container.unwrap(), tree);
         assert!(tree.move_container(active_id, Direction::Left).is_ok());
-        println!("active: {:?}\ntree: {:?}", tree.active_container.unwrap(), tree);
-        assert!(false);
         let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         let children = tree.tree.children_of(active_parent);
 
