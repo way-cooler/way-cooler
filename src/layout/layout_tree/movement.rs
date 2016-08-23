@@ -211,3 +211,39 @@ impl LayoutTree {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::tree::tests::basic_tree;
+    use super::super::super::{Direction, Layout};
+    use rustwlc::*;
+
+    #[test]
+    fn test_basic_move() {
+        let mut tree = basic_tree();
+        tree.add_view(WlcView::root());
+        let active_uuid = tree.get_active_container().unwrap().get_id();
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(children[1], tree.active_container.unwrap());
+        // These should do nothing, moving in wrong direction
+        assert!(tree.move_container(active_uuid, Direction::Up).is_err());
+        assert!(tree.move_container(active_uuid, Direction::Down).is_err());
+        assert!(tree.move_container(active_uuid, Direction::Right).is_err());
+        // test going left and right works
+        assert!(tree.move_container(active_uuid, Direction::Left).is_ok());
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(children[0], tree.active_container.unwrap());
+        assert!(tree.move_container(active_uuid, Direction::Right).is_ok());
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(children[1], tree.active_container.unwrap());
+        // test going up and down works
+        tree.toggle_active_horizontal();
+        assert!(tree.move_container(active_uuid, Direction::Up).is_ok());
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(children[0], tree.active_container.unwrap());
+        assert!(tree.move_container(active_uuid, Direction::Down).is_ok());
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(children[1], tree.active_container.unwrap());
+    }
+}
