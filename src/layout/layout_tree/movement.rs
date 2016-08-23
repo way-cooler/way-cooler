@@ -214,6 +214,7 @@ impl LayoutTree {
 
 #[cfg(test)]
 mod tests {
+    use uuid::Uuid;
     use super::super::tree::tests::basic_tree;
     use super::super::super::{Direction, Container, ContainerType, Layout};
     use rustwlc::*;
@@ -263,16 +264,45 @@ mod tests {
         // make sure the first container is the sub container, second is the view
         assert_eq!(tree.tree[children[0]].get_type(), ContainerType::Container);
         assert_eq!(tree.tree[children[1]].get_type(), ContainerType::View);
-        println!("Active is {:?}, tree: \n {:#?}", tree.tree[tree.active_container.unwrap()],tree);
         assert!(tree.move_container(active_uuid, Direction::Left).is_ok());
         let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         let children = tree.tree.children_of(active_parent);
         // we should all be in the same container now, in the vertical one
-        println!("Active is {:?}, tree: \n {:#?}", tree.tree[tree.active_container.unwrap()],tree);
         assert_eq!(children.len(), 2);
         match tree.tree[active_parent] {
             Container::Container { ref layout, .. } => {
                 assert_eq!(*layout, Layout::Vertical);
+            }
+            _ => panic!("Parent of active was not a vertical container")
+        }
+    }
+
+    #[test]
+    fn test_move_into_sub_container_same_layout() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("2");
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(Some(children[0]), tree.active_container);
+        // make the first view have a vertical layout
+        tree.toggle_active_layout(Layout::Horizontal);
+        let horizontal_id = tree.tree[tree.tree.parent_of(tree.active_container.unwrap()).unwrap()].get_id();
+        tree.active_container = Some(children[1]);
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        let active_uuid = tree.get_active_container().unwrap().get_id();
+        // make sure the first container is the sub container, second is the view
+        assert_eq!(tree.tree[children[0]].get_type(), ContainerType::Container);
+        assert_eq!(tree.tree[children[1]].get_type(), ContainerType::View);
+        assert!(tree.move_container(active_uuid, Direction::Left).is_ok());
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        // we should all be in the same container now, in the sub horizontal one
+        assert_eq!(children.len(), 2);
+        match tree.tree[active_parent] {
+            Container::Container { ref layout, ref id, .. } => {
+                assert_eq!(*layout, Layout::Horizontal);
+                assert_eq!(*id, horizontal_id);
             }
             _ => panic!("Parent of active was not a vertical container")
         }
