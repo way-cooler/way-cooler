@@ -307,4 +307,65 @@ mod tests {
             _ => panic!("Parent of active was not a vertical container")
         }
     }
+
+    #[test]
+    fn test_move_against_edges() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("2");
+        // move the containers into one sub-vertical container, so we can test moving
+        // to the right and left outside this container
+        {
+            let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+            let children = tree.tree.children_of(active_parent);
+            assert_eq!(Some(children[0]), tree.active_container);
+            // make the first view have a vertical layout
+            tree.toggle_active_layout(Layout::Horizontal);
+            tree.active_container = Some(children[1]);
+            let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+            let children = tree.tree.children_of(active_parent);
+            let active_uuid = tree.get_active_container().unwrap().get_id();
+            // make sure the first container is the sub container, second is the view
+            assert_eq!(tree.tree[children[0]].get_type(), ContainerType::Container);
+            assert_eq!(tree.tree[children[1]].get_type(), ContainerType::View);
+            assert!(tree.move_container(active_uuid, Direction::Left).is_ok());
+        }
+        let active_ix = tree.active_container.unwrap();
+        let active_id = tree.tree[active_ix].get_id();
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(Some(children[1]), tree.active_container);
+        assert!(tree.move_container(active_id, Direction::Right).is_ok());
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        // Should only be the moved child here and the vertical container
+        assert_eq!(tree.tree[children[0]].get_type(), ContainerType::Container);
+        assert_eq!(tree.tree[children[1]].get_type(), ContainerType::View);
+
+        // move it back
+        assert!(tree.move_container(active_id, Direction::Left).is_ok());
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(tree.tree[children[0]].get_type(), ContainerType::View);
+        assert_eq!(tree.tree[children[1]].get_type(), ContainerType::View);
+
+
+        // Do it to the left now
+        println!("active: {:?}\ntree: {:?}", tree.active_container.unwrap(), tree);
+        assert!(tree.move_container(active_id, Direction::Left).is_ok());
+        println!("active: {:?}\ntree: {:?}", tree.active_container.unwrap(), tree);
+        assert!(tree.move_container(active_id, Direction::Left).is_ok());
+        println!("active: {:?}\ntree: {:?}", tree.active_container.unwrap(), tree);
+        assert!(false);
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+
+        // Should only be the moved child here and the vertical container
+        assert_eq!(tree.tree[children[0]].get_type(), ContainerType::View);
+        assert_eq!(tree.tree[children[1]].get_type(), ContainerType::Container);
+        assert!(tree.move_container(active_id, Direction::Right).is_ok());
+        let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        let children = tree.tree.children_of(active_parent);
+        assert_eq!(tree.tree[children[0]].get_type(), ContainerType::View);
+        assert_eq!(tree.tree[children[1]].get_type(), ContainerType::View);
+    }
 }
