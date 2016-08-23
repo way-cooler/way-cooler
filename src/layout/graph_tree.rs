@@ -29,7 +29,7 @@ pub struct InnerTree {
 }
 
 /// The direction to shift sibling nodes when doing a tree transformation
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShiftDirection {
     Left,
     Right
@@ -204,7 +204,6 @@ impl InnerTree {
         let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
         let source_parent_edge = self.graph.find_edge(source_parent, source)
             .expect("Source node and it's parent were not linked");
-        trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
         for sibling_ix in bigger_target_siblings {
             let sibling_edge = self.graph.find_edge(target_parent, sibling_ix)
                 .expect("Sibling to target was not linked to target's parent");
@@ -214,12 +213,55 @@ impl InnerTree {
             *weight = *weight + 1;
             trace!("Sibling {:?}, edge weight to {:?} is now {}", sibling_ix, target_parent, weight);
         }
+        trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
         self.graph.remove_edge(source_parent_edge);
         trace!("Adding edge between child {:?} and parent {:?} w/ weight {}", source, target_parent, target_weight);
         self.graph.update_edge(target_parent, source, target_weight);
         self.normalize_edge_weights(target_parent);
         self.normalize_edge_weights(source_parent);
         Ok(target_parent)
+    }
+
+
+    /// Adds the source node to the end of the target's siblings.
+    /// If dir is Left, then it is added to the right (all shifted left) and vice versa.
+    ///
+    /// Returns the new parent of the source after the transformation, if no error occurred.
+    pub fn add_to_end(&mut self, source: NodeIndex, target: NodeIndex, dir: ShiftDirection)
+                      -> Result<NodeIndex, GraphError> {
+        let target_parent = try!(self.parent_of(target).ok_or(GraphError::NoParent(target)));
+        let siblings = self.children_of(target_parent);
+        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent_edge = self.graph.find_edge(source_parent, source)
+            .expect("Source node and it's parent were not linked");
+        match dir {
+            ShiftDirection::Left => {
+                trace!("place_node edge case: placing in the last place of the sibling list");
+                self.graph.remove_edge(source_parent_edge);
+                self.graph.update_edge(target_parent, source, siblings.len() as u32 + 1);
+                self.normalize_edge_weights(target_parent);
+                self.normalize_edge_weights(source_parent);
+                Ok(target_parent)
+            }
+            ShiftDirection::Right => {
+                trace!("place_node edge case: placing in the first place of the sibling list");
+                // shift all of them over, place source node in the first place
+                for sibling_ix in siblings {
+                    let sibling_edge = self.graph.find_edge(target_parent, sibling_ix)
+                        .expect("Sibling to target was not linked to target's parent");
+                    let weight = self.graph.edge_weight_mut(sibling_edge)
+                        .expect("Could not get the weight of the edge between target sibling and target parent");
+                    trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
+                    *weight = *weight + 1;
+                    trace!("Sibling {:?}, edge weight to {:?} is now {}", sibling_ix, target_parent, weight);
+                }
+                self.graph.remove_edge(source_parent_edge);
+                self.graph.update_edge(target_parent, source, 1);
+                self.normalize_edge_weights(target_parent);
+                self.normalize_edge_weights(source_parent);
+                Ok(target_parent)
+            }
+        }
     }
 
     /// Detaches a node from the tree (causing there to be two trees).

@@ -573,24 +573,31 @@ impl LayoutTree {
     /// Returns the new parent of the node on success
     ///
     /// This should only be called by the recursive function.
-    fn move_between_ancestors(&mut self, node_to_move: NodeIndex, move_ancestor: NodeIndex, direction: Direction)
+    fn move_between_ancestors(&mut self,
+                              node_to_move: NodeIndex,
+                              move_ancestor: NodeIndex,
+                              direction: Direction)
                                  -> Result<NodeIndex, ContainerMovementError> {
         let cur_parent_ix = try!(self.tree.parent_of(move_ancestor)
-            .ok_or(ContainerMovementError::InternalTreeError(TreeError::PetGraphError(GraphError::NoParent(move_ancestor)))));
+                                 .ok_or(ContainerMovementError::InternalTreeError(
+                                     TreeError::PetGraphError(
+                                         GraphError::NoParent(move_ancestor)))));
         let siblings_and_self = self.tree.children_of(cur_parent_ix);
         let cur_index = try!(siblings_and_self.iter().position(|node| {
             *node == move_ancestor
-        }).ok_or(ContainerMovementError::InternalTreeError(TreeError::NodeNotFound(self.tree[move_ancestor].get_id()))));
+        }).ok_or(ContainerMovementError::InternalTreeError(
+            TreeError::NodeNotFound(self.tree[move_ancestor].get_id()))));
         let next_ix = match direction {
             Direction::Right | Direction::Down => {
                 let next_index = cur_index + 1;
                 if next_index as usize >= siblings_and_self.len() {
-                    return self.tree.place_node_at(node_to_move,
-                                                   siblings_and_self[siblings_and_self.len() - 1],
-                                                   ShiftDirection::Left)
+                    return self.tree.add_to_end(node_to_move,
+                                                siblings_and_self[siblings_and_self.len() - 1],
+                                                ShiftDirection::Left)
                         .and_then(|_| self.tree.parent_of(node_to_move)
                              .ok_or(GraphError::NoParent(node_to_move)))
-                        .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err)))
+                        .map_err(|err| ContainerMovementError::InternalTreeError(
+                            TreeError::PetGraphError(err)))
                 } else {
                     siblings_and_self[next_index]
                 }
@@ -599,10 +606,13 @@ impl LayoutTree {
                 if let Some(next_index) = cur_index.checked_sub(1) {
                     siblings_and_self[next_index]
                 } else {
-                    return self.tree.place_node_at(node_to_move, siblings_and_self[0], ShiftDirection::Right)
+                    return self.tree.add_to_end(node_to_move,
+                                                siblings_and_self[0],
+                                                ShiftDirection::Right)
                         .and_then(|_| self.tree.parent_of(node_to_move)
                                   .ok_or(GraphError::NoParent(node_to_move)))
-                        .map_err(|err| ContainerMovementError::InternalTreeError(TreeError::PetGraphError(err)))
+                        .map_err(|err| ContainerMovementError::InternalTreeError(
+                            TreeError::PetGraphError(err)))
                 }
             }
         };
