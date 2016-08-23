@@ -113,7 +113,7 @@ Way Cooler was started by @Timidger and @SnirkImmington, but these fine people h
 And of course, thanks to the Rust community and the developers of [wlc].
 
 # Contributing
-Check out [Contributing](contributing.md) for more information.
+Check out [Contributing](Contributing.md) for more information.
 
 If you find bugs or have questions about the code, please [submit an issue] or [ping us on gitter][gitter].
 
