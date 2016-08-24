@@ -1,3 +1,5 @@
+#![allow(deprecated)] // keysyms
+
 //! Callback methods for rustwlc
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
@@ -119,18 +121,16 @@ pub extern fn view_request_resize(view: WlcView,
     compositor::start_interactive_resize(&view, edge, location);
 }
 
+#[allow(non_snake_case)] // EMPTY_MODS will be a static once we have KEY_LED_NONE
 pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
                            key: u32, state: KeyState) -> bool {
-
-
-        let raw_sym = Keysym::from(key);
-        trace!("Got {:?} ({:?}) for a key", raw_sym, raw_sym.get_name());
-        let EMPTY_MODS: KeyboardModifiers = KeyboardModifiers {
-            mods: KeyMod::empty(),
+    let raw_sym = Keysym::from(key);
+    let EMPTY_MODS: KeyboardModifiers = KeyboardModifiers {
+            mods: MOD_NONE,
             leds: KeyboardLed::empty()
-        };
-        let sym = keyboard::get_keysym_for_key(key, EMPTY_MODS);
-        let press = KeyPress::new(mods.mods, sym);
+    };
+    let sym = keyboard::get_keysym_for_key(key, EMPTY_MODS);
+    let press = KeyPress::new(mods.mods, sym);
 
     if state == KeyState::Pressed {
         if let Some(action) = keys::get(&press) {
