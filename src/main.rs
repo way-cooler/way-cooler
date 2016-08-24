@@ -8,6 +8,8 @@ extern crate bitflags;
 #[cfg(not(test))]
 extern crate rustwlc;
 
+extern crate getopts;
+
 #[cfg(test)]
 extern crate dummy_rustwlc as rustwlc;
 
@@ -35,7 +37,7 @@ extern crate tempfile;
 extern crate byteorder;
 
 use std::env;
-
+use getopts::Options;
 use log::LogLevel;
 
 use nix::sys::signal::{SigHandler, SigSet, SigAction, SaFlags};
@@ -58,6 +60,8 @@ mod ipc;
 mod layout;
 mod compositor;
 mod background;
+
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
@@ -86,7 +90,7 @@ fn log_format(record: &log::LogRecord) -> String {
         let index = index + "way_cooler::".len();
         module_path = &module_path[index..];
     }
-    format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m", 
+    format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
             color, record.level(), module_path, file, line, record.args())
 }
 
@@ -110,6 +114,22 @@ extern "C" fn sig_handle(_: nix::libc::c_int) {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    let mut opts = Options::new();
+    opts.optflag("", "version", "show version information");
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(f) => {
+            println!("{}", f.to_string());
+            std::process::exit(1);
+        }
+    };
+    if matches.opt_present("version") {
+        println!("Way Cooler {}", VERSION);
+        println!("Way Cooler IPC version {}", ipc::VERSION);
+        return
+    }
     println!("Launching way-cooler...");
 
     let sig_action = SigAction::new(SigHandler::Handler(sig_handle), SaFlags::empty(), SigSet::empty());

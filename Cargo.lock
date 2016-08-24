@@ -6,6 +6,7 @@ dependencies = [
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "dummy-rustwlc 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hlua 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "json_macro 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -92,6 +93,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gcc"
 version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "getopts"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
