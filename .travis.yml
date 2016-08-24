@@ -19,8 +19,10 @@ notifications:
 # load travis-cargo
 before_script:
   - |
-      pip install 'travis-cargo<0.2' --user &&
-      export PATH=$HOME/.local/bin:$PATH
+      git clone git@github.com:Timidger/travis-cargo.git
+      (cd travi-cargo;
+      pip install -e . --user &&
+      export PATH=$HOME/.local/bin:$PATH)
 script:
   - cargo test --verbose
 
