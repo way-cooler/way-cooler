@@ -28,6 +28,7 @@ pub fn tile_switch() {
         tree.0.toggle_active_horizontal();
         tree.layout_active_of(ContainerType::Workspace)
             .unwrap_or_else(|_| {
+                error!("Could not tile workspace");
             });
     }
 }
@@ -48,6 +49,7 @@ pub fn focus_left() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Left)
             .unwrap_or_else(|_| {
+                error!("Could not focus left");
             });
     }
 }
@@ -56,6 +58,7 @@ pub fn focus_right() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Right)
             .unwrap_or_else(|_| {
+                error!("Could not focus right");
             });
     }
 }
@@ -64,6 +67,7 @@ pub fn focus_up() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Up)
             .unwrap_or_else(|_| {
+                error!("Could not focus up");
             });
     }
 }
@@ -72,6 +76,7 @@ pub fn focus_down() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Down)
             .unwrap_or_else(|_| {
+                error!("Could not focus down");
             });
     }
 }
@@ -118,6 +123,7 @@ impl Tree {
             return Ok(())
         }
         if v_class.as_str() == "Background" {
+            info!("Setting background: {}", view.get_title());
             view.send_to_back();
             let output = view.get_output();
             let resolution = output.get_resolution()
@@ -143,9 +149,11 @@ impl Tree {
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         match self.0.remove_view(&view) {
             Err(err)  => {
+                warn!("Remove view error: {:?}\n {:#?}", err, *self.0);
                 Err(err)
             },
             Ok(container) => {
+                trace!("Removed container {:?}", container);
                 Ok(())
             }
         }

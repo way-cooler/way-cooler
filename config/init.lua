@@ -49,7 +49,7 @@ way_cooler.background = 0x5E4055
 -- waiting until the keys are released to run again.
 
 -- Modifier key used in keybindings. Mod3 = Alt, Mod4 = Super/Logo key
-mod = "Mod4"
+mod = "Alt"
 local key = config.key -- Alias key so it's faster to type
 
 way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
@@ -64,16 +64,16 @@ local keys = {
   key({ mod, "Shift" }, "h", function () print("Hello world!") end),
 
   -- Some Lua dmenu stuff
-  key({ mod }, "L", "dmenu_eval"),
-  key({ mod, "Shift" }, "L", "dmenu_lua_dofile"),
---[[
+  key({ mod }, "l", "dmenu_eval"),
+  key({ mod, "Shift" }, "l", "dmenu_lua_dofile"),
+
   -- Move focus
   -- (if you're used to mod+arrow to switch workspaces you may wanna change them)
   key({ mod }, "left", "focus_left"),
   key({ mod }, "right", "focus_right"),
   key({ mod }, "up", "focus_up"),
   key({ mod }, "down", "focus_down"),
-]]
+
   -- Split containers
   key({ mod }, "h", "split_horizontal"),
   key({ mod }, "v", "split_vertical"),
