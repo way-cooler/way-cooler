@@ -90,7 +90,7 @@ fn log_format(record: &log::LogRecord) -> String {
         let index = index + "way_cooler::".len();
         module_path = &module_path[index..];
     }
-    format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m", 
+    format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
             color, record.level(), module_path, file, line, record.args())
 }
 
@@ -117,7 +117,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut opts = Options::new();
-    opts.optflag("", "version", "get the version of Way Cooler");
+    opts.optflag("", "version", "show version information");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => {
@@ -126,7 +126,8 @@ fn main() {
         }
     };
     if matches.opt_present("version") {
-        println!("{}", VERSION);
+        println!("Way Cooler {}", VERSION);
+        println!("Way Cooler IPC version {}", ipc::VERSION);
         return
     }
     println!("Launching way-cooler...");
