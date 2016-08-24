@@ -5,8 +5,6 @@
 [![Build Status](https://travis-ci.org/Immington-Industries/way-cooler.svg?branch=master)](https://travis-ci.org/Immington-Industries/way-cooler)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Immington-Industries/way-cooler/)
 
-(Our build status is failing right now because Travis doesn't like Wayland. We're working on a nicer solution than what we had before.)
-
 Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayland][wayland].
 
 
