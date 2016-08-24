@@ -15,7 +15,7 @@ use layout::{Container, ContainerType};
 #[derive(Clone, Copy, Debug)]
 pub enum GraphError {
     /// These nodes were not siblings.
-    NotSiblingsError(NodeIndex, NodeIndex),
+    NotSiblings(NodeIndex, NodeIndex),
     /// This node had no parent
     NoParent(NodeIndex)
 }
@@ -147,7 +147,7 @@ impl InnerTree {
         let parent1_ix = try!(self.parent_of(child1_ix).ok_or(GraphError::NoParent(child1_ix)));
         let parent2_ix = try!(self.parent_of(child2_ix).ok_or(GraphError::NoParent(child2_ix)));
         if parent2_ix != parent1_ix {
-            return Err(GraphError::NotSiblingsError(child1_ix, child2_ix))
+            return Err(GraphError::NotSiblings(child1_ix, child2_ix))
         }
         let parent_ix = parent2_ix;
         let child1_weight = *self.get_edge_weight_between(parent_ix, child1_ix)
