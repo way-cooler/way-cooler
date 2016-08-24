@@ -42,6 +42,7 @@ pub fn keymod_from_names(keys: &[&str]) -> Result<KeyMod, String> {
     return Ok(result)
 }
 
+#[allow(deprecated)] // keysyms
 pub fn init() {
     use rustwlc::xkb::keysyms;
     use commands;
