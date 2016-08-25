@@ -9,7 +9,7 @@ use rustwlc::{WlcView, WlcOutput, Geometry, Point};
 
 use super::super::LayoutTree;
 
-use super::super::container::{Container, Handle, ContainerType, Layout};
+use super::super::tree::container::{Container, Handle, ContainerType, Layout};
 
 use super::super::graph_tree::GraphError;
 
