@@ -20,7 +20,7 @@ notifications:
 before_script:
   - |
       git clone git@github.com:Timidger/travis-cargo.git
-      (cd travi-cargo;
+      (cd travis-cargo;
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
 script:
