@@ -1,10 +1,10 @@
 mod actions;
-mod tree;
+mod core;
 pub mod commands;
 
-pub use self::tree::container::{Container, ContainerType, Handle, Layout};
-pub use self::tree::tree::{Direction, TreeError};
-use self::tree::InnerTree;
+pub use self::core::container::{Container, ContainerType, Handle, Layout};
+pub use self::core::tree::{Direction, TreeError};
+use self::core::InnerTree;
 
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
