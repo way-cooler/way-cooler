@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 //! Module contianing the KeyPress struct.
 //! KeyPress is used to index keybindings.
 

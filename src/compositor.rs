@@ -172,7 +172,7 @@ pub fn on_pointer_button(view: WlcView, _time: u32, _mods: &KeyboardModifiers,
 
 /// Performs an operation on a pointer motion, to be used in the callback
 pub fn on_pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
-    rustwlc::input::pointer::set_position(point);
+    rustwlc::input::pointer::set_position(*point);
     if let Ok(mut comp) = COMPOSITOR.write() {
         comp.grab = point.clone();
         comp.view.is_some()
