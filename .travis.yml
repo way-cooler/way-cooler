@@ -1,6 +1,7 @@
 language: rust
 rust:
   - stable
+cache: cargo
 # necessary for `travis-cargo coveralls --no-sudo`
 addons:
   apt:
