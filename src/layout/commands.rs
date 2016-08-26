@@ -11,19 +11,15 @@ pub type CommandResult = Result<(), TreeError>;
 
 pub fn remove_active() {
     if let Ok(mut tree) = try_lock_tree() {
-        if let Some(container) = tree.0.get_active_container_mut() {
-            match *container {
+        if let Some(container) = tree.0.remove_active() {
+            match container {
                 Container::View { ref handle, .. } => {
-                    handle.close();
-                    // Thanks borrowck
-                    // Views shouldn't be removed from tree, that's handled by
-                    // view_destroyed callback
-                    return
+                    handle.close()
                 },
                 _ => {}
             }
         }
-        tree.0.remove_active();
+        tree.0.layout_active_of(ContainerType::Root);
     }
 }
 
@@ -151,20 +147,16 @@ impl Tree {
     /// on views that have already been slated for removal from the wlc pool.
     /// Otherwise you leak a `WlcView`
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
-        let result;
         match self.0.remove_view(&view) {
             Err(err)  => {
                 warn!("Remove view error: {:?}\n {:#?}", err, *self.0);
-                result = Err(err)
+                Err(err)
             },
             Ok(container) => {
                 trace!("Removed container {:?}", container);
-                result = Ok(())
+                Ok(())
             }
         }
-        let root_ix = self.0.tree.root_ix();
-        self.0.layout(root_ix);
-        result
     }
 
     #[allow(dead_code)]
