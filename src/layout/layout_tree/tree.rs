@@ -91,9 +91,8 @@ impl LayoutTree {
         self.active_container.and_then(|ix| self.tree.get(ix))
     }
 
-    #[allow(dead_code)]
     /// Gets the currently active container.
-    fn get_active_container_mut(&mut self) -> Option<&mut Container> {
+    pub fn get_active_container_mut(&mut self) -> Option<&mut Container> {
         self.active_container.and_then(move |ix| self.tree.get_mut(ix))
     }
 
