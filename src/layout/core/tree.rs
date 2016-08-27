@@ -11,7 +11,7 @@ use super::super::LayoutTree;
 
 use super::container::{Container, Handle, ContainerType, Layout};
 
-use super::super::graph_tree::GraphError;
+use super::super::core::graph_tree::GraphError;
 
 use super::super::commands::CommandResult;
 

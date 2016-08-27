@@ -1,9 +1,10 @@
 use uuid::Uuid;
 use petgraph::graph::NodeIndex;
 
-use super::super::{LayoutTree, Direction, TreeError};
-use super::super::graph_tree::{GraphError, ShiftDirection};
-use super::super::container::{Container, ContainerType, Handle, Layout};
+use super::super::LayoutTree;
+use super::super::core::{Direction, TreeError};
+use super::super::core::{GraphError, ShiftDirection};
+use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
 pub enum ContainerMovementError {
     /// Attempted to move the node behind the UUID in the given direction,
