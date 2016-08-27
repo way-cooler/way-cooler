@@ -100,6 +100,13 @@ impl LayoutTree {
         }
         // If this is reached, parent is workspace
         let container_ix = self.tree.children_of(parent_ix)[0];
+        // set the workspace to be active
+        match self.tree[parent_ix] {
+            Container::Workspace {ref mut focused, .. }=> {
+                *focused = true;
+            },
+            _ => unreachable!()
+        }
         let root_c_children = self.tree.children_of(container_ix);
         if root_c_children.len() > 0 {
             let new_active_ix = self.tree.descendant_of_type(root_c_children[0],
