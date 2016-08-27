@@ -9,6 +9,11 @@ use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 
 pub type CommandResult = Result<(), TreeError>;
 
+/* These commands are exported to take nothing and return nothing,
+ * since they are the commands actually registered and usable over
+ * the IPC/Lua thread.
+ */
+
 pub fn remove_active() {
     if let Ok(mut tree) = try_lock_tree() {
         if let Some(container) = tree.0.get_active_container_mut() {
@@ -32,7 +37,7 @@ pub fn tile_switch() {
         tree.0.toggle_active_horizontal();
         tree.layout_active_of(ContainerType::Workspace)
             .unwrap_or_else(|_| {
-                error!("Could not tile workspace");
+                warn!("Could not tile workspace");
             });
     }
 }
@@ -53,7 +58,7 @@ pub fn focus_left() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Left)
             .unwrap_or_else(|_| {
-                error!("Could not focus left");
+                warn!("Could not focus left");
             });
     }
 }
@@ -62,7 +67,7 @@ pub fn focus_right() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Right)
             .unwrap_or_else(|_| {
-                error!("Could not focus right");
+                warn!("Could not focus right");
             });
     }
 }
@@ -71,7 +76,7 @@ pub fn focus_up() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Up)
             .unwrap_or_else(|_| {
-                error!("Could not focus up");
+                warn!("Could not focus up");
             });
     }
 }
@@ -80,14 +85,63 @@ pub fn focus_down() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Down)
             .unwrap_or_else(|_| {
-                error!("Could not focus down");
+                warn!("Could not focus down");
             });
     }
 }
 
-/* Commands that can be chained together with a locked tree */
+pub fn move_active_left() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_active(None, Direction::Left)
+            .unwrap_or_else(|_| {
+                warn!("Could not focus right");
+            })
+    }
+}
+
+pub fn move_active_right() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_active(None, Direction::Right)
+            .unwrap_or_else(|_| {
+                error!("Could not focus right");
+            })
+    }
+}
+
+pub fn move_active_up() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_active(None, Direction::Up)
+            .unwrap_or_else(|_| {
+                warn!("Could not focus right");
+            })
+    }
+}
+
+pub fn move_active_down() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.move_active(None, Direction::Down)
+            .unwrap_or_else(|_| {
+                warn!("Could not focus right");
+            })
+    }
+}
+
+/* These commands are the interface that the rest of Way Cooler has to the
+ * tree. Any action done, whether through a callback, or from the IPC/Lua thread
+ * it will have to go through one of these methods.
+ */
 
 impl Tree {
+    pub fn move_active(&mut self, maybe_uuid: Option<Uuid>, direction: Direction) -> CommandResult {
+        let uuid = try!(maybe_uuid
+                        .or_else(|| self.0.get_active_container()
+                                 .and_then(|container| Some(container.get_id())))
+                        .ok_or(TreeError::NoActiveContainer));
+        try!(self.0.move_container(uuid, direction));
+        // NOTE Make this not layout the active, but actually the node index's workspace.
+        try!(self.layout_active_of(ContainerType::Workspace));
+        Ok(())
+    }
 
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
@@ -212,7 +266,7 @@ impl Tree {
                     Ok(())
                 },
                 _ => {
-                    Err(TreeError::UuuidWrongType(self.0.tree[node_ix].clone(),
+                    Err(TreeError::UuidWrongType(self.0.tree[node_ix].get_id(),
                                                   vec!(ContainerType::View,
                                                        ContainerType::Container)))
                 }

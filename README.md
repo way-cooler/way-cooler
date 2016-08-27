@@ -101,6 +101,7 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 - `Alt+v` Makes a new sub-container with a vertical layout
 - `Alt+h` Makes a new sub-container with a horizontal layout
 - `Alt+<arrow-key>` Switches focus to a window in that direction
+- `Alt+Shift+<arrow-key>` Moves active container in that direction
 - `Alt+<number-key>` Switches the current workspace
 - `Alt+shift+<number-key>` Moves the focused container to another workspace
 

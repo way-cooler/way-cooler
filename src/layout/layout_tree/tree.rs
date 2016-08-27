@@ -11,7 +11,11 @@ use super::super::LayoutTree;
 
 use super::super::container::{Container, Handle, ContainerType, Layout};
 
-#[derive(Clone, Copy)]
+use super::super::graph_tree::GraphError;
+
+use super::super::commands::CommandResult;
+
+#[derive(Clone, Copy, Debug)]
 pub enum Direction {
     Up,
     Down,
@@ -27,11 +31,16 @@ pub enum TreeError {
     ViewNotFound(WlcView),
     /// A UUID was not associated with the this type of container.
     UuidNotAssociatedWith(ContainerType),
-    /// UUID was associated with this container,
+    /// UUID was associated with wrong container type,
     /// expected a container that had one of those other types.
-    UuuidWrongType(Container, Vec<ContainerType>),
+    UuidWrongType(Uuid, Vec<ContainerType>),
     /// There was no active/focused container.
     NoActiveContainer,
+    /// A container was the root container, which was not expected
+    InvalidOperationOnRootContainer(Uuid),
+    /// There was an error in the graph, an invariant of one of the
+    /// functions were not held, so this might be an issue in the Tree.
+    PetGraphError(GraphError)
 }
 
 impl LayoutTree {
@@ -336,6 +345,19 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Will attempt to move the container at the UUID in the given direction.
+    pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
+        let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
+        let old_parent_ix = try!(self.tree.parent_of(node_ix)
+                                 .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_ix))));
+        try!(self.move_recurse(node_ix, None, direction));
+        if self.tree.can_remove_empty_parent(old_parent_ix) {
+            self.remove_container(old_parent_ix);
+        }
+        self.validate();
+        Ok(())
+    }
+
     /// Focus on the container relative to the active container.
     ///
     /// If Horizontal, left and right will move within siblings.
@@ -511,7 +533,6 @@ impl LayoutTree {
         if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
             self.normalize_container(view_ix);
         }
-        self.validate();
     }
 
     /// Gets the active container and toggles it based on the following rules:
@@ -733,16 +754,39 @@ impl LayoutTree {
                 }
             }
         }
+
+        // Ensure that edge weights are always monotonically increasing
+        fn validate_edge_count(this: &LayoutTree, parent_ix: NodeIndex) {
+            // note that the weight should never actually be 0
+            let mut cur_weight = 0;
+            for child_ix in this.tree.children_of(parent_ix) {
+                let weight = *this.tree.get_edge_weight_between(parent_ix, child_ix)
+                    .expect("Could not get edge weights between child and parent");
+                // Ensure increasing
+                if weight <= cur_weight {
+                    error!("Weights were not monotonically increasing for children of {:?}", parent_ix);
+                    error!("{:#?}", this);
+                    panic!("{:?} <= {:?}!", weight, cur_weight);
+                }
+                // Ensure no holes
+                if weight != cur_weight + 1 {
+                    error!("Weights have a hole (no child with weight {}) for children of {:?}", cur_weight + 1, parent_ix);
+                    error!("{:#?}", this);
+                    panic!("Hole in children weights");
+                }
+                cur_weight = weight;
+                validate_edge_count(this, child_ix);
+            }
+        }
+        validate_edge_count(self, self.tree.root_ix());
     }
 
     #[cfg(not(debug_assertions))]
     pub fn validate(&self) {}
-
 }
 
-
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::super::super::LayoutTree;
     use super::super::super::container::*;
     use super::super::super::graph_tree::InnerTree;
@@ -758,7 +802,7 @@ mod tests {
     ///
     /// The active container is the only view in the first workspace
     #[allow(unused_variables)]
-    fn basic_tree() -> LayoutTree {
+    pub fn basic_tree() -> LayoutTree {
         let mut tree = InnerTree::new();
         let fake_view_1 = WlcView::root();
         let fake_output = fake_view_1.clone().as_output();
@@ -929,11 +973,12 @@ mod tests {
         tree.add_view(WlcView::root());
         assert_eq!(tree.tree.children_of(parent_container).len(), 2);
         assert!(! (old_active_view == tree.active_ix_of(ContainerType::View).unwrap()));
-        tree.remove_view(&WlcView::root());
+        tree.remove_view(&WlcView::root())
+            .expect("Could not remove view");
         assert_eq!(tree.active_ix_of(ContainerType::View).unwrap(), old_active_view);
         assert_eq!(tree.tree.children_of(parent_container).len(), 1);
         for _ in 1..2 {
-            tree.remove_view(&WlcView::root());
+            tree.remove_view(&WlcView::root()).expect("Could not remove view");
         }
     }
 

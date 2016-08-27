@@ -92,6 +92,10 @@ pub fn register_defaults() {
     register("focus_right", Arc::new(layout_cmds::focus_right));
     register("focus_up", Arc::new(layout_cmds::focus_up));
     register("focus_down", Arc::new(layout_cmds::focus_down));
+    register("move_active_left", Arc::new(layout_cmds::move_active_left));
+    register("move_active_right", Arc::new(layout_cmds::move_active_right));
+    register("move_active_up", Arc::new(layout_cmds::move_active_up));
+    register("move_active_down", Arc::new(layout_cmds::move_active_down));
     register("close_window", Arc::new(layout_cmds::remove_active))
 }
 
