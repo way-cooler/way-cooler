@@ -4,6 +4,7 @@ version = "0.3.1"
 dependencies = [
  "bitflags 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dbus 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "dummy-rustwlc 0.5.1 (git+https://github.com/SnirkImmington/dummy-rustwlc.git)",
  "env_logger 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -53,6 +54,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "cfg-if"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "dbus"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "dlib"
