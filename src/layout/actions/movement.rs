@@ -216,7 +216,7 @@ impl LayoutTree {
 #[cfg(test)]
 mod tests {
     use uuid::Uuid;
-    use super::super::tree::tests::basic_tree;
+    use super::super::super::core::tree::tests::basic_tree;
     use super::super::super::{Direction, Container, ContainerType, Layout};
     use rustwlc::*;
 
