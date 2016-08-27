@@ -1,9 +1,10 @@
 use uuid::Uuid;
 use petgraph::graph::NodeIndex;
 
-use super::super::{LayoutTree, Direction, TreeError};
-use super::super::graph_tree::{GraphError, ShiftDirection};
-use super::super::container::{Container, ContainerType, Handle, Layout};
+use super::super::LayoutTree;
+use super::super::core::{Direction, TreeError};
+use super::super::core::{GraphError, ShiftDirection};
+use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
 pub enum ContainerMovementError {
     /// Attempted to move the node behind the UUID in the given direction,
@@ -214,8 +215,7 @@ impl LayoutTree {
 
 #[cfg(test)]
 mod tests {
-    use uuid::Uuid;
-    use super::super::tree::tests::basic_tree;
+    use super::super::super::core::tree::tests::basic_tree;
     use super::super::super::{Direction, Container, ContainerType, Layout};
     use rustwlc::*;
 
