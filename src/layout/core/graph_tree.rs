@@ -3,6 +3,7 @@
 
 use std::iter::Iterator;
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use petgraph::EdgeDirection;
 use petgraph::graph::{Graph, NodeIndex, EdgeIndex};
@@ -10,12 +11,14 @@ use uuid::Uuid;
 
 use rustwlc::WlcView;
 
+use super::path::{Path, PathBuilder};
+
 use layout::{Container, ContainerType};
 
 /// Layout tree implemented with petgraph.
 #[derive(Debug)]
 pub struct InnerTree {
-    graph: Graph<Container, u32>, // Directed graph
+    graph: Graph<Container, Path>, // Directed graph
     id_map: HashMap<Uuid, NodeIndex>,
     root: NodeIndex
 }
@@ -49,22 +52,22 @@ impl InnerTree {
 
     /// Gets the weight of a possible edge between two notes
     pub fn get_edge_weight_between(&self, parent_ix: NodeIndex,
-                                   child_ix: NodeIndex) -> Option<&u32> {
+                                   child_ix: NodeIndex) -> Option<&Path> {
         self.graph.find_edge(parent_ix, child_ix)
             .and_then(|edge_ix| self.graph.edge_weight(edge_ix))
     }
 
     /// Gets the edge value of the largest child of the node
-    fn largest_child(&self, node: NodeIndex) -> (NodeIndex, u32) {
+    fn largest_child(&self, node: NodeIndex) -> (NodeIndex, Path) {
         use std::cmp::{Ord, Ordering};
         self.graph.edges_directed(node, EdgeDirection::Outgoing)
-            .fold((node, 0), |(old_node, old_edge), (new_node, new_edge)|
+            .fold((node, Path::zero()), |(old_node, old_edge), (new_node, new_edge)|
                   match <u32 as Ord>::cmp(&old_edge, new_edge) {
                       Ordering::Less => (new_node, *new_edge),
                       Ordering::Greater => (old_node, old_edge),
                       Ordering::Equal =>
-                          panic!("largest_child: Node {:?} had two equal children {}",
-                          node, old_edge)
+                          panic!("largest_child: Node {:?} had two equal children {:#?} and {:#?}",
+                          node, old_edge, new_edge)
                   })
     }
 
@@ -96,8 +99,9 @@ impl InnerTree {
             panic!("Attempted to give a {:?} a {:?} child!",
                    parent_type, child_type);
         }
-        let (_ix, biggest_child) = self.largest_child(parent_ix);
-        self.graph.update_edge(parent_ix, child_ix, biggest_child + 1)
+        let (_ix, mut biggest_child) = self.largest_child(parent_ix);
+        *biggest_child += 1;
+        self.graph.update_edge(parent_ix, child_ix, biggest_child)
     }
 
     /// Finds the index of the container at the child index's parent,
@@ -111,15 +115,17 @@ impl InnerTree {
         }
         let mut counter = child_pos + 1;
         for sibling_ix in siblings {
-            let edge_weight = *self.get_edge_weight_between(parent_ix, sibling_ix)
+            let mut edge_weight = *self.get_edge_weight_between(parent_ix, sibling_ix)
                 .expect("Sibling had no edge weight");
-            if edge_weight < child_pos {
+            if *edge_weight < child_pos {
                 continue;
             }
-            self.graph.update_edge(parent_ix, sibling_ix, counter);
+            *edge_weight = counter;
+            self.graph.update_edge(parent_ix, sibling_ix, edge_weight);
             counter += 1;
         }
-        self.graph.update_edge(parent_ix, child_ix, child_pos);
+        let last_pos = PathBuilder::new(child_pos).active(true).build();
+        self.graph.update_edge(parent_ix, child_ix, last_pos);
     }
 
     /// Detaches a node from the tree (causing there to be two trees).
@@ -221,7 +227,7 @@ impl InnerTree {
     /// if the node does not exist.
     pub fn children_of(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
-            .collect::<Vec<(NodeIndex, &u32)>>();
+            .collect::<Vec<(NodeIndex, &Path)>>();
         edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
         edges.into_iter().map(|(ix, _edge)| ix).collect()
     }

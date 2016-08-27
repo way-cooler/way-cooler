@@ -1,14 +1,11 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
+use std::ops::Deref;
 use petgraph::graph::NodeIndex;
-
 use uuid::Uuid;
-
 use rustwlc::{WlcView, WlcOutput, Geometry, Point};
-
 use super::super::LayoutTree;
-
 use super::container::{Container, Handle, ContainerType, Layout};
 
 #[derive(Clone, Copy)]
@@ -186,8 +183,8 @@ impl LayoutTree {
             let parent_ix = self.tree.parent_of(active_ix)
                 .expect("Active container had no parent");
             // Get the previous position before correcting the container
-            let prev_pos = *self.tree.get_edge_weight_between(parent_ix, active_ix)
-                .expect("Could not get edge weight between active and active parent")
+            let prev_pos = (*self.tree.get_edge_weight_between(parent_ix, active_ix)
+                .expect("Could not get edge weight between active and active parent")).deref()
                 + 1;
             if self.tree[active_ix].get_type() == ContainerType::View {
                 active_ix = self.tree.parent_of(active_ix)
@@ -309,7 +306,7 @@ impl LayoutTree {
             .expect("parent and children were not connected");
         let new_container_ix = self.tree.add_child(parent_ix, container);
         self.tree.move_node(child_ix, new_container_ix);
-        self.tree.set_child_pos(new_container_ix, old_weight);
+        self.tree.set_child_pos(new_container_ix, *old_weight);
         self.set_active_node(new_container_ix);
         self.validate();
     }
@@ -1044,7 +1041,7 @@ mod tests {
         let old_edge_weight = *tree.tree.get_edge_weight_between(parent_ix, active_ix)
             .unwrap();
         // First and only child, so the edge weight is 1
-        assert_eq!(old_edge_weight, 1);
+        assert_eq!(*old_edge_weight, 1);
         let geometry = Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h: 0}
