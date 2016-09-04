@@ -649,11 +649,6 @@ mod tests {
     fn test_id() {
         let mut tree = basic_tree();
         let root_ix = tree.root_ix();
-        {
-            // Root container should not have a UUID associated with it
-            let root = &tree[root_ix];
-            assert_eq!(root.get_id(), None);
-        }
         // This is the uuid of the view, we will invalidate it in the next block
         let view_id;
         {
