@@ -3,7 +3,7 @@
 
 use std::iter::Iterator;
 use std::collections::HashMap;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use petgraph::EdgeDirection;
 use petgraph::graph::{Graph, NodeIndex, EdgeIndex};
@@ -15,6 +15,14 @@ use super::path::{Path, PathBuilder};
 
 use layout::{Container, ContainerType};
 
+#[derive(Clone, Copy, Debug)]
+pub enum GraphError {
+    /// These nodes were not siblings.
+    NotSiblings(NodeIndex, NodeIndex),
+    /// This node had no parent
+    NoParent(NodeIndex)
+}
+
 /// Layout tree implemented with petgraph.
 #[derive(Debug)]
 pub struct InnerTree {
@@ -23,11 +31,18 @@ pub struct InnerTree {
     root: NodeIndex
 }
 
+/// The direction to shift sibling nodes when doing a tree transformation
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShiftDirection {
+    Left,
+    Right
+}
+
 impl InnerTree {
     /// Creates a new layout tree with a root node.
     pub fn new() -> InnerTree {
         let mut graph = Graph::new();
-        let root_ix = graph.add_node(Container::Root);
+        let root_ix = graph.add_node(Container::new_root());
         InnerTree { graph: graph,
                id_map: HashMap::new(),
                root: root_ix
@@ -74,7 +89,7 @@ impl InnerTree {
     /// Adds a new child to a node at the index, returning the node index
     /// of the new child node.
     pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container) -> NodeIndex {
-        let id = val.get_id().unwrap();
+        let id = val.get_id();
         let child_ix = self.graph.add_node(val);
         self.attach_child(parent_ix, child_ix);
         self.id_map.insert(id, child_ix);
@@ -101,7 +116,9 @@ impl InnerTree {
         }
         let (_ix, mut biggest_child) = self.largest_child(parent_ix);
         *biggest_child += 1;
-        self.graph.update_edge(parent_ix, child_ix, biggest_child)
+        let result = self.graph.update_edge(parent_ix, child_ix, biggest_child);
+        self.normalize_edge_weights(parent_ix);
+        result
     }
 
     /// Finds the index of the container at the child index's parent,
@@ -124,8 +141,140 @@ impl InnerTree {
             self.graph.update_edge(parent_ix, sibling_ix, edge_weight);
             counter += 1;
         }
-        let last_pos = PathBuilder::new(child_pos).active(true).build();
+	let last_pos = PathBuilder::new(child_pos).active(true).build();
         self.graph.update_edge(parent_ix, child_ix, last_pos);
+        self.normalize_edge_weights(parent_ix);
+    }
+
+    /// Swaps the edge weight of the two child nodes. The nodes must
+    /// be siblings of each other, otherwise this function will fail.
+    pub fn swap_node_order(&mut self, child1_ix: NodeIndex,
+                           child2_ix: NodeIndex) -> Result<(), GraphError> {
+        let parent1_ix = try!(self.parent_of(child1_ix).ok_or(GraphError::NoParent(child1_ix)));
+        let parent2_ix = try!(self.parent_of(child2_ix).ok_or(GraphError::NoParent(child2_ix)));
+        if parent2_ix != parent1_ix {
+            return Err(GraphError::NotSiblings(child1_ix, child2_ix))
+        }
+        let parent_ix = parent2_ix;
+        let child1_weight = *self.get_edge_weight_between(parent_ix, child1_ix)
+            .expect("Could not get weight between parent and child");
+        let child2_weight = *self.get_edge_weight_between(parent_ix, child2_ix)
+            .expect("Could not get weight between parent and child");
+        self.graph.update_edge(parent_ix, child1_ix, child2_weight);
+        self.graph.update_edge(parent_ix, child2_ix, child1_weight);
+        self.normalize_edge_weights(parent1_ix);
+        Ok(())
+    }
+
+    /// Moves the node index at source so that it is a child of the target node.
+    /// If the node was moved, the new parent of the source node is returned
+    /// (which is always the same as the target node).
+    pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex)
+                     -> Result<NodeIndex, GraphError> {
+        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent_edge = self.graph.find_edge(source_parent, source)
+            .expect("Source node and it's parent were not linked");
+        self.graph.remove_edge(source_parent_edge);
+        let mut highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing)
+            .map(|(_ix, weight)| *weight).max()
+            .expect("Could not get highest weighted child of target node");
+        highest_weight.weight = *highest_weight + 1;
+        self.graph.update_edge(target, source, highest_weight);
+        self.normalize_edge_weights(source_parent);
+        self.normalize_edge_weights(target);
+        Ok(target)
+    }
+
+    /// Places the source node at the position where the target node is.
+    ///
+    /// Each node that has a weight >= the source's new weight is shifted over 1
+    ///
+    /// If the operation succeeds, the source's new parent (the target parent) is returned.
+    pub fn place_node_at(&mut self, source: NodeIndex, target: NodeIndex, dir: ShiftDirection)
+                         -> Result<NodeIndex, GraphError> {
+        trace!("Placing source {:?} at target {:?}. Shifting to {:?}",
+               source, target, dir);
+        let target_parent = try!(self.parent_of(target).ok_or(GraphError::NoParent(target)));
+        let target_parent_edge = self.graph.find_edge(target_parent, target)
+            .expect("Target node and it's parent were not linked");
+        let target_weight = match dir {
+            ShiftDirection::Left => {
+                self.graph.edge_weight(target_parent_edge).map(|weight| *weight)
+            },
+            ShiftDirection::Right=> {
+                self.graph.edge_weight(target_parent_edge).map(|weight| {
+                    let mut new_weight = *weight;
+                    *new_weight = *new_weight + 1;
+                    new_weight
+                })
+            }
+        }.expect("Could not get the weight of the edge between target and parent");
+        let bigger_target_siblings: Vec<NodeIndex> = self.graph.edges_directed(target_parent, EdgeDirection::Outgoing)
+            .filter(|&(_node_ix, sibling_weight)| *sibling_weight >= target_weight)
+            .map(|(node_ix, _)| node_ix).collect();
+        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent_edge = self.graph.find_edge(source_parent, source)
+            .expect("Source node and it's parent were not linked");
+        for sibling_ix in bigger_target_siblings {
+            let sibling_edge = self.graph.find_edge(target_parent, sibling_ix)
+                .expect("Sibling to target was not linked to target's parent");
+            let weight = self.graph.edge_weight_mut(sibling_edge)
+                .expect("Could not get the weight of the edge between target sibling and target parent");
+            trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
+            **weight = **weight + 1;
+            trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
+        }
+        trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
+        self.graph.remove_edge(source_parent_edge);
+        trace!("Adding edge between child {:?} and parent {:?} w/ weight {:?}", source, target_parent, target_weight);
+        self.graph.update_edge(target_parent, source, target_weight);
+        self.normalize_edge_weights(target_parent);
+        self.normalize_edge_weights(source_parent);
+        Ok(target_parent)
+    }
+
+
+    /// Adds the source node to the end of the target's siblings.
+    /// If dir is Left, then it is added to the right (all shifted left) and vice versa.
+    ///
+    /// Returns the new parent of the source after the transformation, if no error occurred.
+    pub fn add_to_end(&mut self, source: NodeIndex, target: NodeIndex, dir: ShiftDirection)
+                      -> Result<NodeIndex, GraphError> {
+        let target_parent = try!(self.parent_of(target).ok_or(GraphError::NoParent(target)));
+        let siblings = self.children_of(target_parent);
+        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent_edge = self.graph.find_edge(source_parent, source)
+            .expect("Source node and it's parent were not linked");
+        match dir {
+            ShiftDirection::Left => {
+                trace!("place_node edge case: placing in the last place of the sibling list");
+                self.graph.remove_edge(source_parent_edge);
+                let new_weight = PathBuilder::new(siblings.len() as u32 + 1).build();
+                self.graph.update_edge(target_parent, source, new_weight);
+                self.normalize_edge_weights(target_parent);
+                self.normalize_edge_weights(source_parent);
+                Ok(target_parent)
+            }
+            ShiftDirection::Right => {
+                trace!("place_node edge case: placing in the first place of the sibling list");
+                // shift all of them over, place source node in the first place
+                for sibling_ix in siblings {
+                    let sibling_edge = self.graph.find_edge(target_parent, sibling_ix)
+                        .expect("Sibling to target was not linked to target's parent");
+                    let weight = self.graph.edge_weight_mut(sibling_edge)
+                        .expect("Could not get the weight of the edge between target sibling and target parent");
+                    trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
+                    **weight = **weight + 1;
+                    trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
+                }
+                self.graph.remove_edge(source_parent_edge);
+                let new_weight = PathBuilder::new(1u32).build();
+                self.graph.update_edge(target_parent, source, new_weight);
+                self.normalize_edge_weights(target_parent);
+                self.normalize_edge_weights(source_parent);
+                Ok(target_parent)
+            }
+        }
     }
 
     /// Detaches a node from the tree (causing there to be two trees).
@@ -136,6 +285,7 @@ impl InnerTree {
                 .expect("detatch: Node has parent but edge cannot be found!");
 
             self.graph.remove_edge(edge);
+            self.normalize_edge_weights(parent_ix);
         }
         else {
             trace!("detach: Detached a floating node");
@@ -160,17 +310,48 @@ impl InnerTree {
     /// with an endpoint in a, and including the edges with an endpoint in
     /// the displaced node.
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
-        let id = self.graph[node_ix].get_id().unwrap();
-        let last_ix: NodeIndex<u32> = NodeIndex::new(self.graph.node_count() - 1);
+        let id = self.graph[node_ix].get_id();
+        let last_ix = NodeIndex::new(self.graph.node_count() - 1);
+        let maybe_parent_ix = self.parent_of(node_ix);
         if last_ix != node_ix {
             // The container at last_ix will now have node_ix as its index
             // Have to update the id map
             let last_container = &self.graph[last_ix];
-            let last_id = last_container.get_id().expect("Could not get container id");
+            let last_id = last_container.get_id();
             self.id_map.insert(last_id, node_ix);
         }
-        self.id_map.remove(&id);
-        self.graph.remove_node(node_ix)
+        if let Some(mut parent_ix) = maybe_parent_ix {
+            if parent_ix == last_ix {
+                parent_ix = node_ix;
+            }
+            self.id_map.remove(&id);
+            let result = self.graph.remove_node(node_ix);
+            // Fix the edge weights of the siblings of this node,
+            // so we don't leave a gap
+            self.normalize_edge_weights(parent_ix);
+            result
+        } else {
+            self.id_map.remove(&id);
+            self.graph.remove_node(node_ix)
+        }
+    }
+
+    /// Normalizes the edge weights of the children of a node so that there are no gaps
+    // NOTE This should not be public, only this module should worry about this thing!
+    fn normalize_edge_weights(&mut self, parent_ix: NodeIndex) {
+        let mut weight = Path::zero();
+        for child_ix in self.children_of(parent_ix) {
+            let edge = self.graph.find_edge(parent_ix, child_ix)
+                .expect("Child was not linked to it's parent");
+            let edge_weight = self.graph.edge_weight_mut(edge)
+                .expect("Could not get the weight of the edge between target sibling and target parent");
+            if **edge_weight != *weight + 1 {
+                trace!("Normalizing edge {:?} to {:?}", edge_weight, **edge_weight.deref() + 1);
+                *edge_weight.deref_mut() = *weight + 1;
+            }
+            weight = *edge_weight;
+        }
+        trace!("Normalized edge weights for: {:?}", parent_ix);
     }
 
     /// Determines if the container node can be removed because it is empty.
@@ -212,6 +393,7 @@ impl InnerTree {
         if cfg!(debug_assertions) {
             let result = neighbors.next();
             if neighbors.next().is_some() {
+                error!("{:?}", self);
                 panic!("parent_of: node has multiple parents!")
             }
             result
@@ -221,7 +403,7 @@ impl InnerTree {
         }
     }
 
-    /// Gets an iterator to the children of a node.
+    /// Gets an iterator to the children of a node, sorted by weight.
     ///
     /// Will return an empty iterator if the node has no children or
     /// if the node does not exist.
@@ -475,29 +657,31 @@ mod tests {
         // This is the uuid of the view, we will invalidate it in the next block
         let view_id;
         {
-            let view_ix = tree.descendant_of_type(root_ix, ContainerType::View).unwrap();
+            let view_ix = tree.descendant_of_type(root_ix, ContainerType::View)
+                .expect("Had no descendant of type ContainerType View");
             let view_container = &tree[view_ix];
-            view_id = view_container.get_id().unwrap();
-            assert_eq!(*tree.id_map.get(&view_id).unwrap(), view_ix);
+            view_id = view_container.get_id();
+            assert_eq!(tree.id_map.get(&view_id), Some(&view_ix));
         }
         {
-            let view_ix = *tree.id_map.get(&view_id).unwrap();
+            let view_ix = *tree.id_map.get(&view_id)
+                .expect("View with a uuid did not exist");
             tree.remove(view_ix);
             assert_eq!(tree.id_map.get(&view_id), None);
         }
         let fake_view = WlcView::root();
         let root_container_ix = tree.descendant_of_type(root_ix, ContainerType::Container).unwrap();
         let container = Container::new_view(fake_view);
-        let container_uuid = container.get_id().unwrap();
+        let container_uuid = container.get_id();
         tree.add_child(root_container_ix, container.clone());
         let only_view = &tree[tree.descendant_of_type(root_ix, ContainerType::View).unwrap()];
         assert_eq!(*only_view, container);
-        assert_eq!(only_view.get_id(), Some(container_uuid));
+        assert_eq!(only_view.get_id(), container_uuid);
 
         // Generic test where we make sure all of them have the right ids in the map
         for container_ix in tree.all_descendants_of(&root_ix) {
             let container = &tree[container_ix];
-            let container_id = container.get_id().unwrap();
+            let container_id = container.get_id();
             assert_eq!(*tree.id_map.get(&container_id).unwrap(), container_ix);
         }
     }

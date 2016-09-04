@@ -207,7 +207,7 @@ impl LayoutTree {
     pub fn layout_active_of(&mut self, c_type: ContainerType) {
         if let Some(container_ix) = self.active_ix_of(c_type) {
             match self.tree[container_ix].clone() {
-                Container::Root { .. } |
+                Container::Root(_)  |
                 Container::Output { .. } |
                 Container::Workspace { .. } => {
                     self.layout(container_ix);

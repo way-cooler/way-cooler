@@ -1,7 +1,7 @@
 # Way Cooler
 
 [![Gitter](https://badges.gitter.im/Immington-Industries/way-cooler.svg)](https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-[![Crates.io](https://img.shields.io/badge/crates.io-v0.3.1-orange.svg)](https://crates.io/crate/way-cooler)
+[![Crates.io](https://img.shields.io/badge/crates.io-v0.3.2-orange.svg)](https://crates.io/crate/way-cooler)
 [![Build Status](https://travis-ci.org/Immington-Industries/way-cooler.svg?branch=master)](https://travis-ci.org/Immington-Industries/way-cooler)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Immington-Industries/way-cooler/)
 
@@ -101,6 +101,7 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 - `Alt+v` Makes a new sub-container with a vertical layout
 - `Alt+h` Makes a new sub-container with a horizontal layout
 - `Alt+<arrow-key>` Switches focus to a window in that direction
+- `Alt+Shift+<arrow-key>` Moves active container in that direction
 - `Alt+<number-key>` Switches the current workspace
 - `Alt+shift+<number-key>` Moves the focused container to another workspace
 
@@ -108,6 +109,7 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
 
 - @vinipsmaker created (and maintains) AUR packages
+- @toogley fixed a link
 - @paulmenzel fixed a typo
 
 And of course, thanks to the Rust community and the developers of [wlc].
