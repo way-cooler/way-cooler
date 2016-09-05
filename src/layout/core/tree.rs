@@ -770,7 +770,7 @@ pub mod tests {
             }
         }
         {
-            let active_workspace_mut = simple_tree.active_of(ContainerType::Workspace).unwrap();
+            let active_workspace_mut = simple_tree.active_of_mut(ContainerType::Workspace).unwrap();
             match *active_workspace_mut {
                 Container::Workspace { ref name, .. } => {
                 assert_eq!(name.as_str(), "1")
@@ -1021,6 +1021,7 @@ pub mod tests {
                                                    .expect("No active workspace"))[0];
         let num_children = tree.tree.children_of(root_container).len();
         assert_eq!(num_children, 0);
+        assert!(tree.remove_view_or_container(active_view_ix).is_none());
     }
 
     #[test]
@@ -1178,6 +1179,9 @@ pub mod tests {
         assert_eq!(tree.active_is_root(), false);
         tree.remove_active();
         assert_eq!(tree.active_is_root(), true);
+        tree.active_container = None;
+        assert_eq!(tree.active_is_root(), false);
+        assert!(tree.remove_active().is_none());
     }
 
     #[test]
