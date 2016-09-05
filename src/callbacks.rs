@@ -113,7 +113,7 @@ pub extern fn view_request_move(view: WlcView, _dest: &Point) {
     }
 }
 
-pub extern fn view_request_resize(view: WlcView, edge: ResizeEdge, location: &Point) {
+pub extern fn view_request_resize(_view: WlcView, _edge: ResizeEdge, _location: &Point) {
 
 }
 
