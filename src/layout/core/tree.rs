@@ -726,6 +726,14 @@ pub mod tests {
     }
 
     #[test]
+    fn destroy_tree_test() {
+        let mut tree = basic_tree();
+        tree.destroy_tree();
+        let root_ix = tree.tree.root_ix();
+        assert!(tree.tree.children_of(root_ix).len() == 0);
+    }
+
+    #[test]
     /// Ensures that getting the active container always returns either
     /// a view, a container, or nothing.
     fn active_container_tests() {
