@@ -3,7 +3,7 @@
 use uuid::Uuid;
 
 use rustwlc::handle::{WlcView, WlcOutput};
-use rustwlc::{Geometry, Point, Size, ResizeEdge};
+use rustwlc::{Geometry, Point, Size};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,23 +39,13 @@ impl ContainerType {
             View => false
         }
     }
-
-    /// Whether this container can have a parent of type other
-    #[allow(dead_code)]
-    pub fn can_have_parent(self, other: ContainerType) -> bool {
-        other.can_have_child(self)
-    }
 }
 
 /// Layout mode for a container
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum Layout {
     Horizontal,
-    Vertical,
-    Stacked,
-    Tabbed,
-    Floating
+    Vertical
 }
 
 /// Represents an item in the container tree.
@@ -245,23 +235,6 @@ impl Container {
         }
     }
 
-    /// Sets the geometry of the container, if it supports that operation.
-    /// Only Views, Containers, and Workspaces support this operation,
-    /// all others will return an Err with an appropriate error message.
-    ///
-    /// If setting a workspace, only the size of the geometry is set.
-    #[allow(dead_code)]
-    pub fn set_geometry(&mut self, new_geometry: Geometry) -> Result<(), String> {
-        match *self {
-            Container::Workspace { ref mut size, .. } => *size = new_geometry.size,
-            Container::Container { ref mut geometry, .. } => *geometry = new_geometry,
-            Container::View { ref handle, .. } =>
-                handle.set_geometry(ResizeEdge::empty(), new_geometry),
-            _ => { return Err(format!("Could not set geometry on {:?}", self))}
-        };
-        return Ok(())
-    }
-
     pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), String>{
         match *self {
             Container::Container { ref mut layout, .. } => *layout = new_layout,
@@ -342,12 +315,8 @@ mod tests {
         };
         let mut root = Container::new_root();
         assert!(root.get_geometry().is_none());
-        assert!(root.set_geometry(test_geometry1.clone()).is_err());
 
         let mut output = Container::new_output(WlcView::root().as_output());
-        // NOTE Segfaults, because tries to get the geometry from dummy Wlc output
-        //assert!(output.get_geometry().is_none());
-        assert!(output.set_geometry(test_geometry1.clone()).is_err());
 
         let mut workspace = Container::new_workspace("1".to_string(),
                                                      Size { w: 500, h: 500 });
@@ -355,23 +324,6 @@ mod tests {
             size: Size { w: 500, h: 500},
             origin: Point { x: 0, y: 0}
         }));
-        workspace.set_geometry(test_geometry1.clone())
-            .expect("Can't set geometry on workspace");
-        // Workspace only grabs the Size, so point will be 0 0.
-        let workspace_geometry = Geometry {
-            size: test_geometry1.size.clone(),
-            origin: Point { x: 0, y: 0}
-        };
-        assert_eq!(workspace.get_geometry(), Some(workspace_geometry.clone()));
-
-        let mut container = Container::new_container(test_geometry1.clone());
-        assert_eq!(container.get_geometry(), Some(test_geometry1.clone()));
-        container.set_geometry(test_geometry2.clone())
-            .expect("Could not set geometry on container");
-        assert_eq!(container.get_geometry(), Some(test_geometry2.clone()));
-
-        // NOTE Can't test view, because that will just segfault as well
-        //let mut view = Container::new_view(WlcView::root());
     }
 
     #[test]
@@ -392,8 +344,7 @@ mod tests {
             _ => panic!()
         };
         assert_eq!(layout, Layout::Horizontal);
-        let layouts = [Layout::Vertical, Layout::Horizontal,
-                       Layout::Tabbed, Layout::Stacked];
+        let layouts = [Layout::Vertical, Layout::Horizontal];
         for new_layout in &layouts {
             container.set_layout(*new_layout).ok();
             let layout = match container {

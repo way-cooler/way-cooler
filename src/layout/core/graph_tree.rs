@@ -362,7 +362,7 @@ impl InnerTree {
     }
 
     /// Whether a node has a parent
-    #[allow(dead_code)]
+    #[cfg(debug_assertions)]
     pub fn has_parent(&self, node_ix: NodeIndex) -> bool {
         let neighbors = self.graph
             .neighbors_directed(node_ix, EdgeDirection::Incoming);

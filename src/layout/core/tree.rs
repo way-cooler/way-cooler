@@ -115,8 +115,8 @@ impl LayoutTree {
         self.active_container.and_then(move |ix| self.tree.get_mut(ix))
     }
 
-    #[allow(dead_code)]
     /// Gets the parent of the active container
+    #[cfg(test)]
     fn get_active_parent(&self) -> Option<&Container> {
         if let Some(container_ix) = self.active_container {
             if let Some(parent_ix) = self.tree.parent_of(container_ix) {
@@ -124,30 +124,6 @@ impl LayoutTree {
             }
         }
         return None
-    }
-
-    #[allow(dead_code)]
-    /// Gets the active output. This contains the WlcOutput
-    fn get_active_output(&self) -> Option<&Container> {
-        self.active_of(ContainerType::Output)
-    }
-
-    #[allow(dead_code)]
-    /// Gets the active output. This contains the WlcOutput
-    fn get_active_output_mut(&mut self) -> Option<&mut Container> {
-        self.active_of_mut(ContainerType::Output)
-    }
-
-    #[allow(dead_code)]
-    /// Gets the workspace the active container is located on
-    fn get_active_workspace(&self) -> Option<&Container> {
-        self.active_of(ContainerType::Workspace)
-    }
-
-    #[allow(dead_code)]
-    /// Gets the workspace the active container is located on
-    fn get_active_workspace_mut(&mut self) -> Option<&mut Container> {
-        self.active_of_mut(ContainerType::Workspace)
     }
 
     /// Gets the index of the currently active container with the given type.
@@ -773,7 +749,7 @@ pub mod tests {
         }
         /* Active workspace getters */
         {
-            let active_workspace = simple_tree.get_active_workspace().unwrap();
+            let active_workspace = simple_tree.active_of(ContainerType::Workspace).unwrap();
             let workspace_ancestor_ix = simple_tree.active_ix_of(ContainerType::Workspace).unwrap();
             assert_eq!(*active_workspace, simple_tree.tree[workspace_ancestor_ix]);
             match *active_workspace {
@@ -784,7 +760,7 @@ pub mod tests {
             }
         }
         {
-            let active_workspace_mut = simple_tree.get_active_workspace_mut().unwrap();
+            let active_workspace_mut = simple_tree.active_of(ContainerType::Workspace).unwrap();
             match *active_workspace_mut {
                 Container::Workspace { ref name, .. } => {
                 assert_eq!(name.as_str(), "1")
@@ -794,7 +770,7 @@ pub mod tests {
         }
         /* Active output getters */
         {
-            let active_output = simple_tree.get_active_output().unwrap();
+            let active_output = simple_tree.active_of(ContainerType::Output).unwrap();
             let output_ancestor_ix = simple_tree.active_ix_of(ContainerType::Output).unwrap();
             assert_eq!(*active_output, simple_tree.tree[output_ancestor_ix]);
             match *active_output {
@@ -805,7 +781,7 @@ pub mod tests {
             }
         }
         {
-            let active_output_mut = simple_tree.get_active_output_mut().unwrap();
+            let active_output_mut = simple_tree.active_of(ContainerType::Output).unwrap();
             match *active_output_mut {
                 Container::Output { ref handle, .. } => {
                     assert_eq!(*handle, WlcView::root().as_output());
@@ -948,8 +924,7 @@ pub mod tests {
             };
             // default layout
             assert_eq!(layout, Layout::Horizontal);
-            for new_layout in &[Layout::Vertical, Layout::Horizontal,
-                            Layout::Tabbed, Layout::Stacked] {
+            for new_layout in &[Layout::Vertical, Layout::Horizontal] {
                 tree.toggle_active_layout(*new_layout);
                 let layout = match tree.tree[root_container] {
                     Container::Container { ref layout, .. } => layout.clone(),
