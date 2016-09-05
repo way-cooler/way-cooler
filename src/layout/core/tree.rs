@@ -150,11 +150,13 @@ impl LayoutTree {
     }
 
     /// Gets the active container if there is a currently focused container
+    #[allow(dead_code)]
     fn active_of(&self, ctype: ContainerType) -> Option<&Container> {
         self.active_ix_of(ctype).and_then(|ix| self.tree.get(ix))
     }
 
     /// Gets the active container mutably, if there is a currently focused container
+    #[allow(dead_code)]
     fn active_of_mut(&mut self, ctype: ContainerType) -> Option<&mut Container> {
         self.active_ix_of(ctype).and_then(move |ix| self.tree.get_mut(ix))
     }

@@ -302,6 +302,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_variables)]
     /// Tests set and get geometry
     fn geometry_test() {
         use rustwlc::*;
@@ -313,12 +314,12 @@ mod tests {
             origin: Point { x: 1024, y: 2048},
             size: Size { w: 500, h: 700}
         };
-        let mut root = Container::new_root();
+        let root = Container::new_root();
         assert!(root.get_geometry().is_none());
 
-        let mut output = Container::new_output(WlcView::root().as_output());
+        let output = Container::new_output(WlcView::root().as_output());
 
-        let mut workspace = Container::new_workspace("1".to_string(),
+        let workspace = Container::new_workspace("1".to_string(),
                                                      Size { w: 500, h: 500 });
         assert_eq!(workspace.get_geometry(), Some(Geometry {
             size: Size { w: 500, h: 500},
