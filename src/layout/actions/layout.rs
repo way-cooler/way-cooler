@@ -180,11 +180,6 @@ impl LayoutTree {
                                               new_size_f, remaining_size_f, new_point_f);
                         }
                     }
-                    Layout::Floating => {
-                        trace!("Layout was floating, throwing the views on the screen {}",
-                               "like I'm Jackson Pollock");
-                    }
-                    _ => unimplemented!()
                 }
             }
 
@@ -347,7 +342,6 @@ impl LayoutTree {
                                     }
                                 };
                             }
-                            _ => unimplemented!()
                         }
                     },
                     _ => unreachable!()
