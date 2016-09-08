@@ -3,12 +3,15 @@
 
 use std::iter::Iterator;
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 
 use petgraph::EdgeDirection;
 use petgraph::graph::{Graph, NodeIndex, EdgeIndex};
 use uuid::Uuid;
 
 use rustwlc::WlcView;
+
+use super::path::{Path, PathBuilder};
 
 use layout::{Container, ContainerType};
 
@@ -23,7 +26,7 @@ pub enum GraphError {
 /// Layout tree implemented with petgraph.
 #[derive(Debug)]
 pub struct InnerTree {
-    graph: Graph<Container, u32>, // Directed graph
+    graph: Graph<Container, Path>, // Directed graph
     id_map: HashMap<Uuid, NodeIndex>,
     root: NodeIndex
 }
@@ -64,22 +67,22 @@ impl InnerTree {
 
     /// Gets the weight of a possible edge between two notes
     pub fn get_edge_weight_between(&self, parent_ix: NodeIndex,
-                                   child_ix: NodeIndex) -> Option<&u32> {
+                                   child_ix: NodeIndex) -> Option<&Path> {
         self.graph.find_edge(parent_ix, child_ix)
             .and_then(|edge_ix| self.graph.edge_weight(edge_ix))
     }
 
     /// Gets the edge value of the largest child of the node
-    fn largest_child(&self, node: NodeIndex) -> (NodeIndex, u32) {
+    fn largest_child(&self, node: NodeIndex) -> (NodeIndex, Path) {
         use std::cmp::{Ord, Ordering};
         self.graph.edges_directed(node, EdgeDirection::Outgoing)
-            .fold((node, 0), |(old_node, old_edge), (new_node, new_edge)|
+            .fold((node, Path::zero()), |(old_node, old_edge), (new_node, new_edge)|
                   match <u32 as Ord>::cmp(&old_edge, new_edge) {
                       Ordering::Less => (new_node, *new_edge),
                       Ordering::Greater => (old_node, old_edge),
                       Ordering::Equal =>
-                          panic!("largest_child: Node {:?} had two equal children {}",
-                          node, old_edge)
+                          panic!("largest_child: Node {:?} had two equal children {:#?} and {:#?}",
+                          node, old_edge, new_edge)
                   })
     }
 
@@ -111,8 +114,9 @@ impl InnerTree {
             panic!("Attempted to give a {:?} a {:?} child!",
                    parent_type, child_type);
         }
-        let (_ix, biggest_child) = self.largest_child(parent_ix);
-        let result = self.graph.update_edge(parent_ix, child_ix, biggest_child + 1);
+        let (_ix, mut biggest_child) = self.largest_child(parent_ix);
+        *biggest_child += 1;
+        let result = self.graph.update_edge(parent_ix, child_ix, biggest_child);
         self.normalize_edge_weights(parent_ix);
         result
     }
@@ -128,15 +132,17 @@ impl InnerTree {
         }
         let mut counter = child_pos + 1;
         for sibling_ix in siblings {
-            let edge_weight = *self.get_edge_weight_between(parent_ix, sibling_ix)
+            let mut edge_weight = *self.get_edge_weight_between(parent_ix, sibling_ix)
                 .expect("Sibling had no edge weight");
-            if edge_weight < child_pos {
+            if *edge_weight < child_pos {
                 continue;
             }
-            self.graph.update_edge(parent_ix, sibling_ix, counter);
+            *edge_weight = counter;
+            self.graph.update_edge(parent_ix, sibling_ix, edge_weight);
             counter += 1;
         }
-        self.graph.update_edge(parent_ix, child_ix, child_pos);
+	let last_pos = PathBuilder::new(child_pos).active(true).build();
+        self.graph.update_edge(parent_ix, child_ix, last_pos);
         self.normalize_edge_weights(parent_ix);
     }
 
@@ -169,10 +175,11 @@ impl InnerTree {
         let source_parent_edge = self.graph.find_edge(source_parent, source)
             .expect("Source node and it's parent were not linked");
         self.graph.remove_edge(source_parent_edge);
-        let highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing)
+        let mut highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing)
             .map(|(_ix, weight)| *weight).max()
             .expect("Could not get highest weighted child of target node");
-        self.graph.update_edge(target, source, highest_weight + 1);
+        highest_weight.weight = *highest_weight + 1;
+        self.graph.update_edge(target, source, highest_weight);
         self.normalize_edge_weights(source_parent);
         self.normalize_edge_weights(target);
         Ok(target)
@@ -195,7 +202,11 @@ impl InnerTree {
                 self.graph.edge_weight(target_parent_edge).map(|weight| *weight)
             },
             ShiftDirection::Right=> {
-                self.graph.edge_weight(target_parent_edge).map(|weight| *weight + 1)
+                self.graph.edge_weight(target_parent_edge).map(|weight| {
+                    let mut new_weight = *weight;
+                    *new_weight = *new_weight + 1;
+                    new_weight
+                })
             }
         }.expect("Could not get the weight of the edge between target and parent");
         let bigger_target_siblings: Vec<NodeIndex> = self.graph.edges_directed(target_parent, EdgeDirection::Outgoing)
@@ -210,12 +221,12 @@ impl InnerTree {
             let weight = self.graph.edge_weight_mut(sibling_edge)
                 .expect("Could not get the weight of the edge between target sibling and target parent");
             trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
-            *weight = *weight + 1;
-            trace!("Sibling {:?}, edge weight to {:?} is now {}", sibling_ix, target_parent, weight);
+            **weight = **weight + 1;
+            trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
         }
         trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
         self.graph.remove_edge(source_parent_edge);
-        trace!("Adding edge between child {:?} and parent {:?} w/ weight {}", source, target_parent, target_weight);
+        trace!("Adding edge between child {:?} and parent {:?} w/ weight {:?}", source, target_parent, target_weight);
         self.graph.update_edge(target_parent, source, target_weight);
         self.normalize_edge_weights(target_parent);
         self.normalize_edge_weights(source_parent);
@@ -238,7 +249,8 @@ impl InnerTree {
             ShiftDirection::Left => {
                 trace!("place_node edge case: placing in the last place of the sibling list");
                 self.graph.remove_edge(source_parent_edge);
-                self.graph.update_edge(target_parent, source, siblings.len() as u32 + 1);
+                let new_weight = PathBuilder::new(siblings.len() as u32 + 1).build();
+                self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
                 self.normalize_edge_weights(source_parent);
                 Ok(target_parent)
@@ -252,11 +264,12 @@ impl InnerTree {
                     let weight = self.graph.edge_weight_mut(sibling_edge)
                         .expect("Could not get the weight of the edge between target sibling and target parent");
                     trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
-                    *weight = *weight + 1;
-                    trace!("Sibling {:?}, edge weight to {:?} is now {}", sibling_ix, target_parent, weight);
+                    **weight = **weight + 1;
+                    trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
                 }
                 self.graph.remove_edge(source_parent_edge);
-                self.graph.update_edge(target_parent, source, 1);
+                let new_weight = PathBuilder::new(1u32).build();
+                self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
                 self.normalize_edge_weights(source_parent);
                 Ok(target_parent)
@@ -326,15 +339,15 @@ impl InnerTree {
     /// Normalizes the edge weights of the children of a node so that there are no gaps
     // NOTE This should not be public, only this module should worry about this thing!
     fn normalize_edge_weights(&mut self, parent_ix: NodeIndex) {
-        let mut weight = 0;
+        let mut weight = Path::zero();
         for child_ix in self.children_of(parent_ix) {
             let edge = self.graph.find_edge(parent_ix, child_ix)
                 .expect("Child was not linked to it's parent");
             let edge_weight = self.graph.edge_weight_mut(edge)
                 .expect("Could not get the weight of the edge between target sibling and target parent");
-            if *edge_weight != weight + 1 {
-                trace!("Normalizing edge {:?} to {:?}", edge_weight, *edge_weight + 1);
-                *edge_weight = weight + 1;
+            if **edge_weight != *weight + 1 {
+                trace!("Normalizing edge {:?} to {:?}", edge_weight, **edge_weight.deref() + 1);
+                *edge_weight.deref_mut() = *weight + 1;
             }
             weight = *edge_weight;
         }
@@ -396,7 +409,7 @@ impl InnerTree {
     /// if the node does not exist.
     pub fn children_of(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
-            .collect::<Vec<(NodeIndex, &u32)>>();
+            .collect::<Vec<(NodeIndex, &Path)>>();
         edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
         edges.into_iter().map(|(ix, _edge)| ix).collect()
     }
