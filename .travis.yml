@@ -17,7 +17,7 @@ notifications:
     on_success: :change
     on_failure: :change
   email: false
-# load travis-cargo
+# install travis-cargo
 before_script:
   - |
       git clone https://github.com/Timidger/travis-cargo
@@ -30,7 +30,11 @@ script:
   - cargo test --verbose
 
 after_success:
-  # measure code coverage and upload to coveralls.io (the verify
-  # argument mitigates kcov crashes due to malformed debuginfo, at the
-  # cost of some speed <https://github.com/huonw/travis-cargo/issues/12>)
+  # Test and upload coverage to coveralls
+  # Justification of excluded files:
+  # main.rs: just initialization of logging, sigkill handler, and initializing lazy static objects. (Arg parsing should be moved into a different module and tested)
+  # mod.rs: although at the moment we have too much code in various mod.rs's these are not really testable either way
+  # tests.rs: should not be running on our tests themselves
+  # wayland_client_api.rs: we really don't have a good way of testing any of this. At the moment it's simple enough that if it didn't work it would be obvious in user testing.
+  # callbacks.rs: we don't have any integration tests for callbacks right now. They'd need to deal with the lazy statics that the other components of the program live in.
   - travis-cargo coveralls --no-sudo --verify --exclude-pattern="main.rs,mod.rs,tests.rs,wayland_client_api.rs,callbacks.rs"
