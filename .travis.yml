@@ -25,7 +25,6 @@ before_script:
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
 script:
-  - cargo install cargo-check
   - cargo check
   - cargo test --verbose
 
