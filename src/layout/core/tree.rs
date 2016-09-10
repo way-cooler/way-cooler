@@ -736,8 +736,6 @@ pub mod tests {
                                                 Container::new_view(fake_view_1.clone()));
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone()));
-
-        tree[workspace_1_ix].set_focused(true);
         let layout_tree = LayoutTree {
             tree: tree,
             active_container: Some(wkspc_1_view)
@@ -1204,15 +1202,11 @@ pub mod tests {
         let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
             .expect("Active container wasn't set properly in basic_tree!");
         assert_eq!(tree.tree[workspace_ix].get_name(), Some("1"));
-        assert!(tree.tree[workspace_ix].is_focused(),
-                "Workspace needs to be focused to be able to switch");
         tree.active_container = None;
         tree.switch_to_workspace("2");
         let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
             .expect("The new workspace was not set!");
         assert_eq!(tree.tree[workspace_ix].get_name(), Some("2"));
-        assert!(tree.tree[workspace_ix].is_focused(),
-                "Switching to a workspace should make it focused");
     }
 
     #[test]
@@ -1221,13 +1215,9 @@ pub mod tests {
         let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
             .expect("Active container wasn't set properly in basic_tree!");
         assert_eq!(tree.tree[workspace_ix].get_name(), Some("1"));
-        assert!(tree.tree[workspace_ix].is_focused(),
-                "Workspace needs to be focused to be able to switch");
         tree.switch_to_workspace("2");
         let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
             .expect("Active container wasn't set properly in basic_tree!");
         assert_eq!(tree.tree[workspace_ix].get_name(), Some("2"));
-        assert!(tree.tree[workspace_ix].is_focused(),
-                "Switching to a workspace should make it focused");
     }
 }
