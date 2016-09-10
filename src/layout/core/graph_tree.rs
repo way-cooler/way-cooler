@@ -594,6 +594,29 @@ impl InnerTree {
             self.graph.node_count() - 1 == node_ix.index()
         }
     }
+
+    /// Modifies the ancestor paths so that the only complete path from the root
+    /// goes to this node.
+    ///
+    /// If a divergent path is detected, that edge is deactivated in favor of
+    /// the one that leads to this node.
+    pub fn set_ancestor_paths_active(&mut self, mut node_ix: NodeIndex) {
+        while let Some(parent_ix) = self.parent_of(node_ix) {
+            for child_ix in self.children_of(parent_ix) {
+                let edge_ix = self.graph.find_edge(parent_ix, child_ix)
+                    .expect("Could not get edge index between parent and child");
+                let edge = self.graph.edge_weight_mut(edge_ix)
+                    .expect("Could not associate edge index with an edge weight");
+                edge.active = false;
+            }
+            let edge_ix = self.graph.find_edge(parent_ix, node_ix)
+                .expect("Could not get edge index between parent and child");
+            let edge = self.graph.edge_weight_mut(edge_ix)
+                .expect("Could not associate edge index with an edge weight");
+            edge.active = true;
+            node_ix = parent_ix;
+        }
+    }
 }
 
 use std::ops::{Index, IndexMut};

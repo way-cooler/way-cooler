@@ -62,6 +62,8 @@ impl LayoutTree {
 
     /// Sets the active container associated with the UUID to be the active container.
     ///
+    /// Updates the active path accordingly
+    ///
     /// If the container was not a view or container, or the UUID was invalid,
     /// then an error is returned.
     pub fn set_active_container(&mut self, id: Uuid) -> Result<(), TreeError>{
@@ -70,6 +72,7 @@ impl LayoutTree {
         match self.tree[node_ix].get_type() {
             ContainerType::View { .. } | ContainerType::Container { .. } => {
                 self.active_container = Some(node_ix);
+                self.tree.set_ancestor_paths_active(node_ix);
                 Ok(())
             },
             _ => {
