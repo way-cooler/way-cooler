@@ -533,11 +533,6 @@ impl InnerTree {
     /// Attempts to get an ancestor matching the matching type
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Option<NodeIndex> {
-        if let Some(container) = self.get(node_ix) {
-            if container.get_type() == container_type {
-                return Some(node_ix)
-            }
-        }
         let mut curr_ix = node_ix;
         while let Some(parent_ix) = self.parent_of(curr_ix) {
             let parent = self.graph.node_weight(parent_ix)
