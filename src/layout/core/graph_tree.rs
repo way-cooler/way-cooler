@@ -189,7 +189,7 @@ impl InnerTree {
             self.graph.update_edge(parent_ix, sibling_ix, edge_weight);
             counter += 1;
         }
-	let last_pos = PathBuilder::new(child_pos).active(true).build();
+        let last_pos = PathBuilder::new(child_pos).active(true).build();
         self.graph.update_edge(parent_ix, child_ix, last_pos);
         self.normalize_edge_weights(parent_ix);
     }
