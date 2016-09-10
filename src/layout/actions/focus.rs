@@ -41,7 +41,7 @@ impl LayoutTree {
                                 match self.tree[new_active_ix].get_type() {
                                     ContainerType::Container => {
                                         let path_ix = self.tree.follow_path(new_active_ix);
-                                        // If the pat wasn't complete, find the first view and focus on that
+                                        // If the path wasn't complete, find the first view and focus on that
                                         let node_ix = (self.tree.descendant_of_type(path_ix, ContainerType::View)).unwrap();
                                         let parent_ix = (self.tree.parent_of(node_ix)).unwrap();
                                         match self.tree[node_ix].get_type() {
