@@ -97,6 +97,22 @@ impl InnerTree {
         result
     }
 
+    /// Follows the active path beneath the node until it ends.
+    /// Returns the last node in the chain.
+    pub fn follow_path(&self, node_ix: NodeIndex) -> NodeIndex {
+        let mut next_ix = Some(node_ix);
+        while let Some(cur_ix) = next_ix {
+            let maybe_edge = self.graph.edges_directed(cur_ix, EdgeDirection::Outgoing)
+                .find(|&(_, weight): &(_, &Path)| weight.active);
+            if let Some(edge) = maybe_edge {
+                next_ix = Some(edge.0);
+            } else {
+                return cur_ix
+            }
+        }
+        node_ix
+    }
+
     /// Gets the weight of a possible edge between two notes
     pub fn get_edge_weight_between(&self, parent_ix: NodeIndex,
                                    child_ix: NodeIndex) -> Option<&Path> {

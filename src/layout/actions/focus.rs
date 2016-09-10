@@ -40,12 +40,17 @@ impl LayoutTree {
                                 let new_active_ix = siblings[new_index];
                                 match self.tree[new_active_ix].get_type() {
                                     ContainerType::Container => {
-                                        // Get the first view we can find in the container
-                                        let first_view = self.tree.descendant_of_type(new_active_ix, ContainerType::View)
-                                            .expect("Could not find view in ancestor sibling container");
+                                        let path_ix = self.tree.follow_path(new_active_ix);
+                                        // If the pat wasn't complete, find the first view and focus on that
+                                        let node_ix = (self.tree.descendant_of_type(path_ix, ContainerType::View)).unwrap();
+                                        let parent_ix = (self.tree.parent_of(node_ix)).unwrap();
+                                        match self.tree[node_ix].get_type() {
+                                            ContainerType::View | ContainerType::Container => {},
+                                            _ => panic!("Following path did not lead to a container or a view!")
+                                        }
                                         trace!("Moving to different view {:?} in container {:?}",
-                                                self.tree[first_view], self.tree[new_active_ix]);
-                                        return Ok(first_view);
+                                                self.tree[node_ix], self.tree[parent_ix]);
+                                        return Ok(node_ix);
                                     },
                                     ContainerType::View => {
                                         trace!("Moving to other view {:?}", self.tree[new_active_ix]);
