@@ -123,28 +123,24 @@ impl LayoutTree {
 
     /// Gets the index of the currently active container with the given type.
     /// Starts at the active container, moves up until either a container with
-    /// that type is found or the root node is hit.
-    ///
-    /// If the active_container is not set, the active path is used
-    /// to find the active container.
+    /// that type is found or the root node is hit
     pub fn active_ix_of(&self, ctype: ContainerType) -> Option<NodeIndex> {
         if let Some(ix) = self.active_container {
             if self.tree[ix].get_type() == ctype {
-                Some(ix)
-            } else {
-                self.tree.ancestor_of_type(ix, ctype)
+                return Some(ix)
             }
+            return self.tree.ancestor_of_type(ix, ctype)
         } else {
-            // follow path to find the active container
-            let active_ix = self.tree.follow_path(self.tree.root_ix());
-            println!("active_ix: {:?}", active_ix);
-            println!("tree: {:#?}", self);
-            if self.tree[active_ix].get_type() == ctype {
-                Some(active_ix)
-            } else {
-                self.tree.ancestor_of_type(active_ix, ctype)
+            let workspaces: Vec<NodeIndex> = self.tree.all_descendants_of(&self.tree.root_ix())
+                .into_iter().filter(|ix| self.tree[*ix].get_type() == ContainerType::Workspace)
+                .collect();
+            for workspace_ix in workspaces {
+                if self.tree[workspace_ix].is_focused() {
+                    return self.tree.ancestor_of_type(workspace_ix, ctype)
+                }
             }
         }
+        return None
 
     }
 
@@ -822,13 +818,15 @@ pub mod tests {
     fn active_container_test() {
         let mut tree = basic_tree();
         tree.active_container = None;
-        // These will be None, because the pointer is None
-        assert!(tree.get_active_container().is_none());
-        assert!(tree.get_active_parent().is_none());
-        // These will be Some, because the path still leads there
-        assert!(tree.active_ix_of(ContainerType::View).is_some());
-        assert!(tree.active_ix_of(ContainerType::Container).is_some());
-        assert!(tree.active_ix_of(ContainerType::Workspace).is_some());
+        assert_eq!(tree.get_active_container(), None);
+        assert_eq!(tree.get_active_parent(), None);
+        assert_eq!(tree.active_ix_of(ContainerType::View), None);
+        assert_eq!(tree.active_ix_of(ContainerType::Container), None);
+        assert_eq!(tree.active_ix_of(ContainerType::Workspace), None);
+        /* These are true because we know the workspace was the last used
+         * Eventually they should all be true because of paths, but because
+         * of a hack these are now Some(_)
+         */
         assert!(tree.active_ix_of(ContainerType::Output).is_some());
         assert!(tree.active_ix_of(ContainerType::Root).is_some());
         tree.set_active_view(WlcView::root());
