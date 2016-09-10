@@ -204,10 +204,14 @@ impl InnerTree {
             return Err(GraphError::NotSiblings(child1_ix, child2_ix))
         }
         let parent_ix = parent2_ix;
-        let child1_weight = *self.get_edge_weight_between(parent_ix, child1_ix)
+        let mut child1_weight = *self.get_edge_weight_between(parent_ix, child1_ix)
             .expect("Could not get weight between parent and child");
-        let child2_weight = *self.get_edge_weight_between(parent_ix, child2_ix)
+        let mut child2_weight = *self.get_edge_weight_between(parent_ix, child2_ix)
             .expect("Could not get weight between parent and child");
+        // We don't want to swap the active flag
+        child1_weight.active = child1_weight.active ^ child2_weight.active;
+        child2_weight.active = child1_weight.active ^ child2_weight.active;
+        child1_weight.active = child1_weight.active ^ child2_weight.active;
         self.graph.update_edge(parent_ix, child1_ix, child2_weight);
         self.graph.update_edge(parent_ix, child2_ix, child1_weight);
         self.normalize_edge_weights(parent1_ix);
