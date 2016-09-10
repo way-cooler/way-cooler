@@ -531,6 +531,8 @@ impl InnerTree {
     }
 
     /// Attempts to get an ancestor matching the matching type
+    ///
+    /// Note this does *NOT* check the given node.
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Option<NodeIndex> {
         let mut curr_ix = node_ix;
@@ -547,6 +549,8 @@ impl InnerTree {
 
     /// Attempts to get a descendant of the matching type
     /// Looks down the left side of the tree first
+    ///
+    /// Note this *DOES* check the given node.
     pub fn descendant_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Option<NodeIndex> {
         if let Some(container) = self.get(node_ix) {
