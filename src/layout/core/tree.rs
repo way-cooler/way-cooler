@@ -7,6 +7,7 @@ use uuid::Uuid;
 use rustwlc::{WlcView, WlcOutput, Geometry, Point};
 use super::super::LayoutTree;
 use super::container::{Container, ContainerType, Layout};
+use super::super::actions::focus::FocusError;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -38,7 +39,9 @@ pub enum TreeError {
     InvalidOperationOnRootContainer(Uuid),
     /// There was an error in the graph, an invariant of one of the
     /// functions were not held, so this might be an issue in the Tree.
-    PetGraphError(GraphError)
+    PetGraphError(GraphError),
+    /// An error occured while trying to focus on a container
+    Focus(FocusError)
 }
 
 impl LayoutTree {
@@ -108,7 +111,7 @@ impl LayoutTree {
     #[cfg(test)]
     fn get_active_parent(&self) -> Option<&Container> {
         if let Some(container_ix) = self.active_container {
-            if let Some(parent_ix) = self.tree.parent_of(container_ix) {
+            if let Ok(parent_ix) = self.tree.parent_of(container_ix) {
                 return Some(&self.tree[parent_ix]);
             }
         }
@@ -342,8 +345,7 @@ impl LayoutTree {
     /// Will attempt to move the container at the UUID in the given direction.
     pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
-        let old_parent_ix = try!(self.tree.parent_of(node_ix)
-                                 .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_ix))));
+        let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraphError(err)));
         try!(self.move_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
             self.remove_container(old_parent_ix);
@@ -544,7 +546,7 @@ impl LayoutTree {
             self.tree.move_node(active_ix, next_work_root_ix);
 
             // Update the active container
-            if let Some(parent_ix) = maybe_active_parent {
+            if let Ok(parent_ix) = maybe_active_parent {
                 let ctype = self.tree.node_type(parent_ix).unwrap_or(ContainerType::Root);
                 if ctype == ContainerType::Container {
                     self.focus_on_next_container(parent_ix);

@@ -2,15 +2,24 @@ use petgraph::graph::NodeIndex;
 
 use rustwlc::WlcView;
 
-use super::super::LayoutTree;
+#[derive(Clone, Copy, Debug)]
+pub enum FocusError {
+    /// Reached a container where we can keep climbing the tree no longer.
+    ///
+    /// Usually this is a workspace, because it doesn't make sense to move a
+    /// container out of a workspace
+    ReachedLimit(NodeIndex)
+}
+
+use super::super::{LayoutTree, TreeError};
 use super::super::core::Direction;
 use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
 impl LayoutTree {
-    pub fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, ()> {
+    pub fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_ix].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
-            _ => return Err(())
+            _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(), vec!(ContainerType::View, ContainerType::Container)))
         }
         let parent_ix = self.tree.parent_of(node_ix)
             .expect("Active ix had no parent");
@@ -43,7 +52,7 @@ impl LayoutTree {
                                         let path_ix = self.tree.follow_path(new_active_ix);
                                         // If the pat wasn't complete, find the first view and focus on that
                                         let node_ix = (self.tree.descendant_of_type(path_ix, ContainerType::View)).unwrap();
-                                        let parent_ix = (self.tree.parent_of(node_ix)).unwrap();
+                                        let parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraphError(err)));
                                         match self.tree[node_ix].get_type() {
                                             ContainerType::View | ContainerType::Container => {},
                                             _ => panic!("Following path did not lead to a container or a view!")
@@ -64,7 +73,7 @@ impl LayoutTree {
                 }
             }
             Container::Workspace { .. } => {
-                return Err(());
+                return Err(TreeError::Focus(FocusError::ReachedLimit(parent_ix)));
             }
             _ => unreachable!()
         }

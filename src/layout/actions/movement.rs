@@ -2,8 +2,7 @@ use uuid::Uuid;
 use petgraph::graph::NodeIndex;
 
 use super::super::LayoutTree;
-use super::super::core::{Direction, TreeError};
-use super::super::core::{GraphError, ShiftDirection};
+use super::super::core::{Direction, ShiftDirection, TreeError};
 use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
 pub enum ContainerMovementError {
@@ -28,10 +27,10 @@ impl LayoutTree {
                                                           ContainerType::Container)))
         }
         let parent_ix = try!(
-            move_ancestor.and_then(|node| {
-                self.tree.parent_of(node)
-            }).or(self.tree.parent_of(node_to_move))
-                .ok_or(TreeError::PetGraphError(GraphError::NoParent(node_to_move))));
+            match move_ancestor {
+                Some(node) => self.tree.parent_of(node),
+                None => self.tree.parent_of(node_to_move)
+            }.map_err(|err| TreeError::PetGraphError(err)));
         match self.tree[parent_ix] {
             Container::Container { layout, .. } =>  {
                 match (layout, direction) {
@@ -86,8 +85,8 @@ impl LayoutTree {
     fn move_within_container(&mut self, node_ix: NodeIndex, direction: Direction)
                              -> Result<NodeIndex, ContainerMovementError> {
         let parent_ix = try!(self.tree.parent_of(node_ix)
-                             .ok_or(ContainerMovementError::InternalTreeError(
-                                 TreeError::PetGraphError(GraphError::NoParent(node_ix)))));
+                             .map_err(|err| ContainerMovementError::InternalTreeError(
+                                 TreeError::PetGraphError(err))));
         let siblings_and_self = self.tree.children_of(parent_ix);
         let cur_index = try!(siblings_and_self.iter().position(|node| {
             *node == node_ix
@@ -145,9 +144,8 @@ impl LayoutTree {
                               direction: Direction)
                                  -> Result<NodeIndex, ContainerMovementError> {
         let cur_parent_ix = try!(self.tree.parent_of(move_ancestor)
-                                 .ok_or(ContainerMovementError::InternalTreeError(
-                                     TreeError::PetGraphError(
-                                         GraphError::NoParent(move_ancestor)))));
+                                 .map_err(|err| ContainerMovementError::InternalTreeError(
+                                     TreeError::PetGraphError(err))));
         let siblings_and_self = self.tree.children_of(cur_parent_ix);
         let cur_index = try!(siblings_and_self.iter().position(|node| {
             *node == move_ancestor
@@ -160,8 +158,7 @@ impl LayoutTree {
                     return self.tree.add_to_end(node_to_move,
                                                 siblings_and_self[siblings_and_self.len() - 1],
                                                 ShiftDirection::Left)
-                        .and_then(|_| self.tree.parent_of(node_to_move)
-                             .ok_or(GraphError::NoParent(node_to_move)))
+                        .and_then(|_| self.tree.parent_of(node_to_move))
                         .map_err(|err| ContainerMovementError::InternalTreeError(
                             TreeError::PetGraphError(err)))
                 } else {
@@ -175,8 +172,7 @@ impl LayoutTree {
                     return self.tree.add_to_end(node_to_move,
                                                 siblings_and_self[0],
                                                 ShiftDirection::Right)
-                        .and_then(|_| self.tree.parent_of(node_to_move)
-                                  .ok_or(GraphError::NoParent(node_to_move)))
+                        .and_then(|_| self.tree.parent_of(node_to_move))
                         .map_err(|err| ContainerMovementError::InternalTreeError(
                             TreeError::PetGraphError(err)))
                 }
