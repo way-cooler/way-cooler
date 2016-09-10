@@ -687,15 +687,6 @@ impl LayoutTree {
                 }
             }
         }
-
-        // Ensure the root path points to the active container (if there is one)
-        if let Some(active_ix) = self.active_container {
-            if active_ix != self.tree.follow_path(self.tree.root_ix()) {
-                error!("Path did not lead to the active container!");
-                trace!("Tree: {:#?}", self);
-                panic!("Path did not lead to the active container!");
-            }
-        }
     }
 
     #[cfg(not(debug_assertions))]
