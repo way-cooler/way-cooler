@@ -159,11 +159,15 @@ impl InnerTree {
 
     /// Adds a new child to a node at the index, returning the node index
     /// of the new child node.
-    pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container) -> NodeIndex {
+    ///
+    /// If active is true, the path to the new node is made active.
+    pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container, active: bool) -> NodeIndex {
         let id = val.get_id();
         let child_ix = self.graph.add_node(val);
         self.attach_child(parent_ix, child_ix);
-        self.set_ancestor_paths_active(child_ix);
+        if active {
+            self.set_ancestor_paths_active(child_ix);
+        }
         self.id_map.insert(id, child_ix);
         child_ix
     }
@@ -450,7 +454,6 @@ impl InnerTree {
     pub fn move_node(&mut self, node_ix: NodeIndex, new_parent: NodeIndex) {
         self.detach(node_ix);
         self.attach_child(new_parent, node_ix);
-        self.set_ancestor_paths_active(node_ix);
     }
 
     /// Whether a node has a parent
@@ -722,27 +725,27 @@ mod tests {
             origin: Point { x: 0, y: 0 }
         };
 
-        let output_ix = tree.add_child(root_ix, Container::new_output(fake_output));
+        let output_ix = tree.add_child(root_ix, Container::new_output(fake_output), false);
         let workspace_1_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("1".to_string(),
-                                                                   fake_size.clone()));
+                                                                   fake_size.clone()), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
-                                                Container::new_container(fake_geometry.clone()));
+                                                Container::new_container(fake_geometry.clone()), false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
-                                                                     fake_size.clone()));
+                                                                     fake_size.clone()), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
-                                                Container::new_container(fake_geometry.clone()));
+                                                Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
-                                                Container::new_view(fake_view_1.clone()));
+                                                Container::new_view(fake_view_1.clone()), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
-                                                Container::new_container(fake_geometry.clone()));
+                                                Container::new_container(fake_geometry.clone()), false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()));
+                                                Container::new_view(fake_view_1.clone()), false);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()));
+                                                Container::new_view(fake_view_1.clone()), false);
         tree
     }
 
@@ -781,7 +784,7 @@ mod tests {
         let root_container_ix = tree.descendant_of_type(root_ix, ContainerType::Container).unwrap();
         let container = Container::new_view(fake_view);
         let container_uuid = container.get_id();
-        tree.add_child(root_container_ix, container.clone());
+        tree.add_child(root_container_ix, container.clone(), false);
         let only_view = &tree[tree.descendant_of_type(root_ix, ContainerType::View).unwrap()];
         assert_eq!(*only_view, container);
         assert_eq!(only_view.get_id(), container_uuid);
