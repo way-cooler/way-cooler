@@ -493,10 +493,16 @@ impl LayoutTree {
         workspace_ix = self.tree.workspace_ix_by_name(name)
             .expect("Workspace we just made was deleted!");
         let active_ix = self.tree.follow_path(workspace_ix);
-        match self.tree[active_ix] {
-            Container::View { ref handle, .. } => {
+        match self.tree[active_ix].get_type() {
+            ContainerType::View  => {
+                match self.tree[active_ix] {
+                    Container::View { ref handle, ..} => {
+                        handle.focus();
+                    },
+                    _ => unreachable!()
+                }
                 self.active_container = Some(active_ix);
-                handle.focus();
+                self.tree.set_ancestor_paths_active(active_ix);
                 self.validate();
                 return;
             },
