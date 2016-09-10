@@ -442,16 +442,14 @@ impl LayoutTree {
     pub fn switch_to_workspace(&mut self, name: &str) {
         let maybe_active_ix = self.active_container
             .or_else(|| {
-                let workspaces: Vec<NodeIndex> = self.tree.all_descendants_of(&self.tree.root_ix())
-                    .into_iter().filter(|ix| self.tree[*ix].get_type() == ContainerType::Workspace)
-                    .collect();
-                warn!("workspaces: {:?}", workspaces);
-                for workspace_ix in workspaces {
-                    if self.tree[workspace_ix].is_focused() {
-                        return Some(workspace_ix);
-                    }
+                let new_active = self.tree.follow_path(self.tree.root_ix());
+                match self.tree[new_active].get_type() {
+                    ContainerType::View | ContainerType::Container => {
+                        Some(new_active)
+                    },
+                    // else try and get the root container
+                    _ => self.tree.descendant_of_type(new_active, ContainerType::Container)
                 }
-                None
             });
         if maybe_active_ix.is_none() {
             warn!("{:#?}", self);
@@ -487,7 +485,6 @@ impl LayoutTree {
         self.tree.set_family_visible(workspace_ix, true);
         // Delete the old workspace if it has no views on it
         self.active_container = None;
-        self.tree[old_worksp_ix].set_focused(false);
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_none() {
             trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
                    .expect("Workspace had no name"));
@@ -495,6 +492,19 @@ impl LayoutTree {
         }
         workspace_ix = self.tree.workspace_ix_by_name(name)
             .expect("Workspace we just made was deleted!");
+        let active_ix = self.tree.follow_path(workspace_ix);
+        match self.tree[active_ix] {
+            Container::View { ref handle, .. } => {
+                self.active_container = Some(active_ix);
+                handle.focus();
+                self.validate();
+                return;
+            },
+            _ => {
+                self.active_container = self.tree.descendant_of_type(active_ix,
+                                                                     ContainerType::Container);
+            }
+        }
         self.focus_on_next_container(workspace_ix);
         self.validate();
     }
