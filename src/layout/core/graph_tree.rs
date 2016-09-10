@@ -4,6 +4,8 @@
 use std::iter::Iterator;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+use std::fmt::{Debug, Formatter};
+use std::fmt::Result as FmtResult;
 
 use petgraph::EdgeDirection;
 use petgraph::graph::{Graph, NodeIndex, EdgeIndex};
@@ -24,7 +26,6 @@ pub enum GraphError {
 }
 
 /// Layout tree implemented with petgraph.
-#[derive(Debug)]
 pub struct InnerTree {
     graph: Graph<Container, Path>, // Directed graph
     id_map: HashMap<Uuid, NodeIndex>,
@@ -36,6 +37,20 @@ pub struct InnerTree {
 pub enum ShiftDirection {
     Left,
     Right
+}
+
+impl Debug for InnerTree {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        let active_path: String = self.active_path().iter().fold("0".into(), |acc, &(node_ix, _)| {
+            format!("{} -> {}", acc, node_ix.index())
+        });
+        f.debug_struct("InnerTree")
+            .field("graph", &self.graph as &Debug)
+            .field("id_map", &self.id_map as &Debug)
+            .field("root", &self.root as &Debug)
+            .field("active_path", &active_path as &Debug)
+            .finish()
+    }
 }
 
 impl InnerTree {
@@ -63,6 +78,23 @@ impl InnerTree {
     /// Gets the index of the tree's root node
     pub fn root_ix(&self) -> NodeIndex {
         self.root
+    }
+
+    /// Gets the active path, starting at the root node.
+    pub fn active_path(&self) -> Vec<(NodeIndex, &Path)> {
+        let mut result = Vec::with_capacity(self.graph.raw_edges().len());
+        let mut next_ix = Some(self.root);
+        while let Some(cur_ix) = next_ix {
+            let maybe_edge = self.graph.edges_directed(cur_ix, EdgeDirection::Outgoing)
+                .find(|&(_, weight): &(_, &Path)| weight.active);
+            if let Some(edge) = maybe_edge {
+                result.push(edge);
+                next_ix = Some(edge.0);
+            } else {
+                next_ix = None;
+            }
+        }
+        result
     }
 
     /// Gets the weight of a possible edge between two notes
