@@ -652,6 +652,14 @@ impl InnerTree {
     /// If a divergent path is detected, that edge is deactivated in favor of
     /// the one that leads to this node.
     pub fn set_ancestor_paths_active(&mut self, mut node_ix: NodeIndex) {
+        // Make sure that any children of this node are inactive
+        for child_ix in self.children_of(node_ix) {
+            let edge_ix = self.graph.find_edge(node_ix, child_ix)
+                .expect("Could not get edge index between parent and child");
+            let edge = self.graph.edge_weight_mut(edge_ix)
+                .expect("Could not associate edge index with an edge weight");
+            edge.active = false;
+        }
         while let Some(parent_ix) = self.parent_of(node_ix) {
             for child_ix in self.children_of(parent_ix) {
                 let edge_ix = self.graph.find_edge(parent_ix, child_ix)
@@ -735,7 +743,6 @@ mod tests {
                                                 Container::new_view(fake_view_1.clone()));
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone()));
-        tree[workspace_1_ix].set_focused(true);
         tree
     }
 
