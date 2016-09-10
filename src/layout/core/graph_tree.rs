@@ -8,7 +8,7 @@ use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
 use petgraph::EdgeDirection;
-use petgraph::graph::{Graph, NodeIndex, EdgeIndex};
+use petgraph::graph::{Graph, NodeIndex};
 use uuid::Uuid;
 
 use rustwlc::WlcView;
@@ -146,8 +146,7 @@ impl InnerTree {
 
     /// Add an existing node (detached in the graph) to the tree.
     /// Note that floating nodes shouldn't exist for too long.
-    pub fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex)
-                     -> EdgeIndex {
+    pub fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex) {
         // Make sure the child doesn't have a parent
         if cfg!(debug_assertions) && self.has_parent(child_ix) {
             panic!("attach_child: child had a parent!")
@@ -164,9 +163,8 @@ impl InnerTree {
         }
         let (_ix, mut biggest_child) = self.largest_child(parent_ix);
         *biggest_child += 1;
-        let result = self.graph.update_edge(parent_ix, child_ix, biggest_child);
+        self.graph.update_edge(parent_ix, child_ix, biggest_child);
         self.normalize_edge_weights(parent_ix);
-        result
     }
 
     /// Finds the index of the container at the child index's parent,
