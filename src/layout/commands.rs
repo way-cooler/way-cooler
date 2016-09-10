@@ -44,13 +44,13 @@ pub fn tile_switch() {
 
 pub fn split_vertical() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.0.toggle_active_layout(Layout::Vertical);
+        tree.0.toggle_active_layout(Layout::Vertical).ok();
     }
 }
 
 pub fn split_horizontal() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.0.toggle_active_layout(Layout::Horizontal);
+        tree.0.toggle_active_layout(Layout::Horizontal).ok();
     }
 }
 
@@ -193,8 +193,8 @@ impl Tree {
             view.set_geometry(ResizeEdge::empty(), fullscreen);
             return Ok(());
         }
-        tree.add_view(view.clone());
-        tree.normalize_view(view.clone());
+        try!(tree.add_view(view));
+        tree.normalize_view(view);
         tree.layout_active_of(ContainerType::Container);
         Ok(())
     }
@@ -249,7 +249,7 @@ impl Tree {
 
     /// Sets the view to be the new active container. Never fails
     pub fn set_active_view(&mut self, view: WlcView) -> CommandResult {
-        self.0.set_active_view(view.clone());
+        try!(self.0.set_active_view(view.clone()));
         view.focus();
         Ok(())
     }
@@ -284,7 +284,7 @@ impl Tree {
     }
 
     pub fn move_focus(&mut self, dir: Direction) -> CommandResult {
-        self.0.move_focus(dir);
+        try!(self.0.move_focus(dir));
         Ok(())
     }
 

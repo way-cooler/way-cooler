@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn test_basic_move() {
         let mut tree = basic_tree();
-        tree.add_view(WlcView::root());
+        tree.add_view(WlcView::root()).unwrap();
         let active_uuid = tree.get_active_container().unwrap().get_id();
         let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         let children = tree.tree.children_of(active_parent);
@@ -256,7 +256,7 @@ mod tests {
         let children = tree.tree.children_of(active_parent);
         assert_eq!(Some(children[0]), tree.active_container);
         // make the first view have a vertical layout
-        tree.toggle_active_layout(Layout::Vertical);
+        tree.toggle_active_layout(Layout::Vertical).unwrap();
         tree.active_container = Some(children[1]);
         let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         let children = tree.tree.children_of(active_parent);
@@ -285,7 +285,7 @@ mod tests {
         let children = tree.tree.children_of(active_parent);
         assert_eq!(Some(children[0]), tree.active_container);
         // make the first view have a vertical layout
-        tree.toggle_active_layout(Layout::Horizontal);
+        tree.toggle_active_layout(Layout::Horizontal).unwrap();
         let horizontal_id = tree.tree[tree.tree.parent_of(tree.active_container.unwrap()).unwrap()].get_id();
         tree.active_container = Some(children[1]);
         let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
@@ -319,7 +319,7 @@ mod tests {
             let children = tree.tree.children_of(active_parent);
             assert_eq!(Some(children[0]), tree.active_container);
             // make the first view have a vertical layout
-            tree.toggle_active_layout(Layout::Horizontal);
+            tree.toggle_active_layout(Layout::Horizontal).unwrap();
             tree.active_container = Some(children[1]);
             let active_parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
             let children = tree.tree.children_of(active_parent);
