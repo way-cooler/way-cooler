@@ -140,6 +140,7 @@ impl InnerTree {
         let id = val.get_id();
         let child_ix = self.graph.add_node(val);
         self.attach_child(parent_ix, child_ix);
+        self.set_ancestor_paths_active(child_ix);
         self.id_map.insert(id, child_ix);
         child_ix
     }
