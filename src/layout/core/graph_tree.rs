@@ -258,6 +258,7 @@ impl InnerTree {
                 self.graph.edge_weight(target_parent_edge).map(|weight| {
                     let mut new_weight = *weight;
                     *new_weight = *new_weight + 1;
+                    new_weight.active = true;
                     new_weight
                 })
             }
@@ -275,6 +276,7 @@ impl InnerTree {
                 .expect("Could not get the weight of the edge between target sibling and target parent");
             trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
             **weight = **weight + 1;
+            weight.active = false;
             trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
         }
         trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
