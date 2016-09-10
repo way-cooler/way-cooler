@@ -127,20 +127,13 @@ impl LayoutTree {
     pub fn active_ix_of(&self, ctype: ContainerType) -> Option<NodeIndex> {
         if let Some(ix) = self.active_container {
             if self.tree[ix].get_type() == ctype {
-                return Some(ix)
+                Some(ix)
+            } else {
+                self.tree.ancestor_of_type(ix, ctype)
             }
-            return self.tree.ancestor_of_type(ix, ctype)
         } else {
-            let workspaces: Vec<NodeIndex> = self.tree.all_descendants_of(&self.tree.root_ix())
-                .into_iter().filter(|ix| self.tree[*ix].get_type() == ContainerType::Workspace)
-                .collect();
-            for workspace_ix in workspaces {
-                if self.tree[workspace_ix].is_focused() {
-                    return self.tree.ancestor_of_type(workspace_ix, ctype)
-                }
-            }
+            None
         }
-        return None
 
     }
 
@@ -268,7 +261,9 @@ impl LayoutTree {
 
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
-        let active_index = self.active_ix_of(ContainerType::Output).expect("get_or_make_wksp: Couldn't get output");
+        let active_index = self.active_ix_of(ContainerType::Output)
+            .or_else(|| self.tree.follow_path_until(self.tree.root_ix(), ContainerType::Output).ok())
+            .expect("get_or_make_wksp: Couldn't get output");
         let workspace_ix = self.tree.workspace_ix_by_name(name).unwrap_or_else(|| {
             let root_ix = self.init_workspace(name.to_string(), active_index);
             self.tree.parent_of(root_ix)
@@ -823,12 +818,8 @@ pub mod tests {
         assert_eq!(tree.active_ix_of(ContainerType::View), None);
         assert_eq!(tree.active_ix_of(ContainerType::Container), None);
         assert_eq!(tree.active_ix_of(ContainerType::Workspace), None);
-        /* These are true because we know the workspace was the last used
-         * Eventually they should all be true because of paths, but because
-         * of a hack these are now Some(_)
-         */
-        assert!(tree.active_ix_of(ContainerType::Output).is_some());
-        assert!(tree.active_ix_of(ContainerType::Root).is_some());
+        assert!(tree.active_ix_of(ContainerType::Output).is_none());
+        assert!(tree.active_ix_of(ContainerType::Root).is_none());
         tree.set_active_view(WlcView::root());
         let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(), &WlcView::root()).unwrap();
         assert_eq!(tree.active_container, Some(view_ix));

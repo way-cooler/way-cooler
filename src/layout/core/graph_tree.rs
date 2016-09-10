@@ -113,6 +113,29 @@ impl InnerTree {
         node_ix
     }
 
+    /// Follows the active path beneath the node until a container with the
+    /// given type is found, or the path ends. If the path ends, the last node
+    /// found is returned.
+    ///
+    /// Note that if there is no active path beneath the start node, that node
+    /// is the node that is returned in the error.
+    pub fn follow_path_until(&self, node_ix: NodeIndex, c_type: ContainerType) -> Result<NodeIndex, NodeIndex> {
+        let mut next_ix = Some(node_ix);
+        while let Some(cur_ix) = next_ix {
+            if self[cur_ix].get_type() == c_type {
+                return Ok(cur_ix);
+            }
+            let maybe_edge = self.graph.edges_directed(cur_ix, EdgeDirection::Outgoing)
+                .find(|&(_, weight): &(_, &Path)| weight.active);
+            if let Some(edge) = maybe_edge {
+                next_ix = Some(edge.0);
+            } else {
+                return Err(cur_ix)
+            }
+        }
+        Err(node_ix)
+    }
+
     /// Gets the weight of a possible edge between two notes
     pub fn get_edge_weight_between(&self, parent_ix: NodeIndex,
                                    child_ix: NodeIndex) -> Option<&Path> {
