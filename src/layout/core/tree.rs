@@ -658,6 +658,24 @@ impl LayoutTree {
             }
         }
         validate_edge_count(self, self.tree.root_ix());
+
+        // Ensure there is only one active path from the root
+        let mut next_ix = Some(self.tree.root_ix());
+        while let Some(cur_ix) = next_ix {
+            next_ix = None;
+            let mut flipped = false;
+            for child_ix in self.tree.children_of(cur_ix) {
+                let weight = *self.tree.get_edge_weight_between(cur_ix, child_ix)
+                    .expect("Could not get edge weights between child and parent");
+                if weight.active && flipped {
+                    error!("Divergent paths detected!");
+                    trace!("Tree: {:#?}", self);
+                    panic!("Divergent paths detected!");
+                }  else if weight.active {
+                    flipped = true;
+                }
+            }
+        }
     }
 
     #[cfg(not(debug_assertions))]
