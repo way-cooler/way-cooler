@@ -91,13 +91,7 @@ impl LayoutTree {
             _ => {}
         }
         info!("Active container is now: {:?}", self.active_container);
-        // NOTE Active workspace hack, remove when paths are added
-        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
-            .expect("Container was not associated with a workspace");
-        let mut workspace = &mut self.tree[workspace_ix];
-        trace!("Setting {} to be the active workspace", workspace.get_name()
-               .expect("Workspace had no name"));
-        workspace.set_focused(true);
+        self.tree.set_ancestor_paths_active(node_ix);
     }
 
     /// Unsets the active container. This should be used when focusing on
