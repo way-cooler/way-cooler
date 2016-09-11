@@ -58,7 +58,7 @@ impl LayoutTree {
         let active_ix = maybe_active_ix.unwrap();
         // Get the old (current) workspace
         let old_worksp_ix: NodeIndex;
-        if let Some(index) = self.tree.ancestor_of_type(active_ix, ContainerType::Workspace) {
+        if let Ok(index) = self.tree.ancestor_of_type(active_ix, ContainerType::Workspace) {
             old_worksp_ix = index;
             trace!("Switching to workspace {}", name);
         } else {

@@ -557,17 +557,17 @@ impl InnerTree {
     ///
     /// Note this does *NOT* check the given node.
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
-                           container_type: ContainerType) -> Option<NodeIndex> {
+                           container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         let mut curr_ix = node_ix;
         while let Ok(parent_ix) = self.parent_of(curr_ix) {
             let parent = self.graph.node_weight(parent_ix)
                 .expect("ancestor_of_type: parent_of invalid");
             if parent.get_type() == container_type {
-                return Some(parent_ix)
+                return Ok(parent_ix)
             }
             curr_ix = parent_ix;
         }
-        return None;
+        return Err(GraphError::NotFound(container_type, node_ix));
     }
 
     /// Attempts to get a descendant of the matching type

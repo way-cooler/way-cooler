@@ -117,7 +117,7 @@ impl LayoutTree {
             if self.tree[ix].get_type() == ctype {
                 Some(ix)
             } else {
-                self.tree.ancestor_of_type(ix, ctype)
+                self.tree.ancestor_of_type(ix, ctype).ok()
             }
         } else {
             None
@@ -234,7 +234,7 @@ impl LayoutTree {
     pub fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Option<Container> {
         // Only the root container has a non-container parent, and we can't remove that
         let mut result = None;
-        if let Some(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
+        if let Ok(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
                                                                     ContainerType::Container) {
             // If it'll move, fix that before that happens
             if self.tree.is_last_ix(parent_ix) {
@@ -313,7 +313,7 @@ impl LayoutTree {
                     _ => panic!("Active container was not view or container")
                 }
                 // Check active container in tree
-                if self.tree.ancestor_of_type(active_ix, ContainerType::Root).is_none() {
+                if self.tree.ancestor_of_type(active_ix, ContainerType::Root).is_err() {
                     error!("Active container @ {:?} is not part of tree!", active_ix);
                     error!("Active container is {:?}", active);
                     trace!("The tree: {:#?}", self);

@@ -134,7 +134,7 @@ impl LayoutTree {
             }
             parent_ix = self.tree.ancestor_of_type(parent_ix,
                                                     ContainerType::Container)
-                .unwrap_or_else(|| {
+                .unwrap_or_else(|_| {
                     self.tree.ancestor_of_type(parent_ix, ContainerType::Workspace)
                         .expect("Container was not part of a workspace")
                 });
