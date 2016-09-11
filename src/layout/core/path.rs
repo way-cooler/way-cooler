@@ -23,7 +23,7 @@ impl PathBuilder {
     ///
     /// Active is set to false automatically
     pub fn new(weight: u32) -> Self {
-        PathBuilder { path: Path { weight: weight, active: true } }
+        PathBuilder { path: Path { weight: weight, active: false } }
     }
 
     pub fn active(mut self, value: bool) -> Self {
