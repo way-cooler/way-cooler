@@ -85,6 +85,9 @@ local keys = {
   key({ mod }, "e", "horizontal_vertical_switch"),
   key({ mod }, "q", "close_window"),
 
+  -- Window Floating
+  key({ mod, "Shift" }, "space", "float_window"),
+
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
   -- This my be modifiable in the future
 }

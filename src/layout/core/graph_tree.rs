@@ -100,6 +100,11 @@ impl InnerTree {
         result
     }
 
+    pub fn root_path(&self) -> NodeIndex {
+        let ix = self.root_ix();
+        self.follow_path(ix)
+    }
+
     /// Follows the active path beneath the node until it ends.
     /// Returns the last node in the chain.
     pub fn follow_path(&self, node_ix: NodeIndex) -> NodeIndex {
@@ -150,6 +155,7 @@ impl InnerTree {
     fn largest_child(&self, node: NodeIndex) -> (NodeIndex, Path) {
         use std::cmp::{Ord, Ordering};
         self.graph.edges_directed(node, EdgeDirection::Outgoing)
+            .filter(|&(node, _)| !self[node].floating())
             .fold((node, Path::zero()), |(old_node, old_edge), (new_node, new_edge)|
                   match <u32 as Ord>::cmp(&old_edge, new_edge) {
                       Ordering::Less => (new_node, *new_edge),
@@ -263,7 +269,7 @@ impl InnerTree {
         self.graph.remove_edge(source_parent_edge);
         let mut highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing)
             .map(|(_ix, weight)| *weight).max()
-            .expect("Could not get highest weighted child of target node").clone();
+            .unwrap_or(PathBuilder::new(0).build());
         highest_weight.weight = *highest_weight + 1;
         self.graph.update_edge(target, source, highest_weight);
         self.set_ancestor_paths_active(source);
@@ -448,7 +454,9 @@ impl InnerTree {
     /// If it is a non-root container then it can never be removed.
     pub fn can_remove_empty_parent(&self, container_ix: NodeIndex) -> bool {
         if self.graph[container_ix].get_type() != ContainerType::Container
-        || self.is_root_container(container_ix) {
+            || self.is_root_container(container_ix)
+            || self.has_floating(container_ix)
+        {
             return false
         }
         if self.children_of(container_ix).len() == 0 {
@@ -591,6 +599,8 @@ impl InnerTree {
 
     /// Attempts to get a descendant of the matching type.
     /// Looks down the right side of the tree first
+    ///
+    /// Note this *DOES* check the given node.
     pub fn descendant_of_type_right(&self, node_ix: NodeIndex,
                                     container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         if let Some(container) = self.get(node_ix) {
@@ -630,10 +640,20 @@ impl InnerTree {
         })
     }
 
+    /// Determines if the node has any floating descendants.
+    pub fn has_floating(&self, node_ix: NodeIndex) -> bool {
+        for descendant_ix in self.all_descendants_of(node_ix) {
+            if self[descendant_ix].floating() {
+                return true
+            }
+        }
+        return false
+    }
+
     /// Returns the node indices of any node that is a descendant of a node
-    pub fn all_descendants_of(&self, node_ix: &NodeIndex) -> Vec<NodeIndex> {
+    pub fn all_descendants_of(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut index: usize = 0;
-        let mut nodes: Vec<NodeIndex> = self.graph.edges_directed(*node_ix,
+        let mut nodes: Vec<NodeIndex> = self.graph.edges_directed(node_ix,
                                                       EdgeDirection::Outgoing)
             .map(|(ix, _)| ix).collect();
         while index != nodes.len() {
@@ -654,7 +674,9 @@ impl InnerTree {
     pub fn set_family_visible(&mut self, node_ix: NodeIndex, visible: bool) {
         trace!("Setting {:?} to {}", node_ix, if visible {"visible"} else {"invisible"});
         self.get_mut(node_ix).map(|c| c.set_visibility(visible));
-        for child in self.children_of(node_ix) {
+        let mut children = self.children_of(node_ix);
+        children.append(&mut self.floating_children(node_ix));
+        for child in children {
             self.set_family_visible(child, visible);
         }
     }
@@ -676,7 +698,9 @@ impl InnerTree {
     /// the one that leads to this node.
     pub fn set_ancestor_paths_active(&mut self, mut node_ix: NodeIndex) {
         // Make sure that any children of this node are inactive
-        for child_ix in self.children_of(node_ix) {
+        let mut children = self.children_of(node_ix);
+        children.append(&mut self.floating_children(node_ix));
+        for child_ix in children {
             let edge_ix = self.graph.find_edge(node_ix, child_ix)
                 .expect("Could not get edge index between parent and child");
             let edge = self.graph.edge_weight_mut(edge_ix)
@@ -684,7 +708,9 @@ impl InnerTree {
             edge.active = false;
         }
         while let Ok(parent_ix) = self.parent_of(node_ix) {
-            for child_ix in self.children_of(parent_ix) {
+            let mut children = self.children_of(parent_ix);
+            children.append(&mut self.floating_children(parent_ix));
+            for child_ix in children {
                 let edge_ix = self.graph.find_edge(parent_ix, child_ix)
                     .expect("Could not get edge index between parent and child");
                 let edge = self.graph.edge_weight_mut(edge_ix)

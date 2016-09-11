@@ -48,7 +48,7 @@ impl LayoutTree {
     /// Drops every node in the tree, essentially invalidating it
     pub fn destroy_tree(&mut self) {
         let root_ix = self.tree.root_ix();
-        let mut nodes = self.tree.all_descendants_of(&root_ix);
+        let mut nodes = self.tree.all_descendants_of(root_ix);
         nodes.sort_by(|a, b| b.cmp(a));
         for node in nodes {
             self.tree.remove(node);
@@ -61,6 +61,14 @@ impl LayoutTree {
         if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &handle) {
             self.set_active_node(node_ix)
         } else {
+            // Check floating
+            if let Some(root_c_ix) = self.root_container_ix() {
+                for child_ix in self.tree.floating_children(root_c_ix) {
+                    if let Some(view_ix) = self.tree.descendant_with_handle(child_ix, &handle) {
+                        return self.set_active_node(view_ix)
+                    }
+                }
+            }
             Err(TreeError::ViewNotFound(handle))
         }
     }
@@ -97,6 +105,28 @@ impl LayoutTree {
     /// a view that is not a part of the tree.
     pub fn unset_active_container(&mut self) {
         self.active_container = None;
+    }
+
+    /// Gets the root container of the active container.
+    ///
+    /// If there is no active container, searches the path.
+    pub fn root_container_ix(&self) -> Option<NodeIndex> {
+        if let Some(active_ix) = self.active_container {
+            let mut cur_ix = active_ix;
+            while let Ok(parent_ix) = self.tree.parent_of(cur_ix) {
+                if self.tree[cur_ix].get_type() == ContainerType::Container
+                    && self.tree[parent_ix].get_type() == ContainerType::Workspace {
+                        return Some(cur_ix)
+                    } else {
+                    cur_ix = parent_ix;
+                }
+            }
+            None
+        } else {
+            // Check the path
+            let root_ix = self.tree.root_ix();
+            self.tree.follow_path_until(root_ix, ContainerType::Container).ok()
+        }
     }
 
     /// Gets the currently active container.
@@ -137,6 +167,10 @@ impl LayoutTree {
     /// Add a new view container with the given WlcView to the active container
     pub fn add_view(&mut self, view: WlcView) -> CommandResult {
         if let Some(mut active_ix) = self.active_container {
+            // Correct using the path
+            if self.tree[active_ix].floating() {
+                active_ix = self.tree.root_path();
+            }
             let parent_ix = self.tree.parent_of(active_ix)
                 .expect("Active container had no parent");
             // Get the previous position before correcting the container
@@ -213,7 +247,7 @@ impl LayoutTree {
     /// number of descendants of the container), any node indices should be
     /// considered invalid after this operation (except for the active_container)
     pub fn remove_container(&mut self, container_ix: NodeIndex) {
-        let mut children = self.tree.all_descendants_of(&container_ix);
+        let mut children = self.tree.all_descendants_of(container_ix);
         // add current container to the list as well
         children.push(container_ix);
         for node_ix in children {
@@ -294,7 +328,6 @@ impl LayoutTree {
                 if child_parent != parent_ix {
                     error!("Child at {:?} has parent {:?}, expected {:?}",
                            child_ix, child_parent, parent_ix);
-                    trace!("The tree: {:#?}", this);
                     panic!()
                 }
                 validate_node_connections(this, child_ix);
@@ -331,7 +364,7 @@ impl LayoutTree {
                     trace!("The tree: {:#?}", self);
                     panic!()
                 }
-                for container_ix in self.tree.all_descendants_of(&workspace_ix) {
+                for container_ix in self.tree.all_descendants_of(workspace_ix) {
                     match self.tree[container_ix] {
                         Container::Container { .. } => {
                             let parent_ix = self.tree.parent_of(container_ix)

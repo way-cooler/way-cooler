@@ -1,9 +1,8 @@
 use std::cmp;
-
 use petgraph::graph::NodeIndex;
+use uuid::Uuid;
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
-
-use super::super::LayoutTree;
+use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
 
@@ -90,8 +89,12 @@ impl LayoutTree {
                     self.layout_helper(child_ix, geometry.clone());
                 }
                 // place floating children above everything else
-                for child_ix in self.tree.floating_children(node_ix) {
-                    self.place_floating(child_ix);
+                if let Some(root_ix) = self.root_container_ix() {
+                    for child_ix in self.tree.floating_children(root_ix) {
+                        self.place_floating(child_ix);
+                    }
+                } else {
+                    warn!("No root container, will not tile floating views...");
                 }
             },
             ContainerType::Container => {
@@ -199,6 +202,26 @@ impl LayoutTree {
             }
         }
         self.validate();
+    }
+
+    /// Attempts to set the node behind the id to be floating.
+    ///
+    /// This removes the container from its parent and makes its new parent-
+    /// the workspace it resides in.
+    ///
+    /// This will change the active container, but **not** the active path,
+    /// it will remain pointing at the previous parent container.
+    pub fn float_container(&mut self, id: Uuid) -> CommandResult {
+        let node_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
+        try!(self.tree[node_ix].set_floating(true)
+             .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                                 ContainerType::Container))));
+        let root_ix = self.tree.root_ix();
+        let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
+                             .map_err(|_| TreeError::NoActiveContainer));
+        try!(self.tree.move_into(node_ix, root_c_ix)
+             .map_err(|err| TreeError::PetGraph(err)));
+        Ok(())
     }
 
     /// If the node is floating, places it at its reported position, above all
@@ -384,6 +407,10 @@ impl LayoutTree {
     ///
     /// See `normalize_view` for more information
     pub fn normalize_container(&mut self, node_ix: NodeIndex) {
+        // If floating, do not normalize
+        if self.tree[node_ix].floating() {
+            return;
+        }
         match self.tree[node_ix].get_type() {
             ContainerType::Container  => {
                 for child_ix in self.tree.children_of(node_ix) {
@@ -397,10 +424,13 @@ impl LayoutTree {
                 };
                 let parent_ix = self.tree.ancestor_of_type(node_ix,
                                                         ContainerType::Container)
+                    .or_else(|_| self.tree.ancestor_of_type(self.tree.root_path(),
+                                                            ContainerType::Container))
                     .expect("View had no container parent");
                 let new_geometry: Geometry;
-                let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
-                    as u32;
+                let num_siblings = cmp::max(1,
+                                            self.tree.children_of(parent_ix).len().checked_sub(1)
+                                            .unwrap_or(0)) as u32;
                 let parent_geometry = self.tree[parent_ix].get_geometry()
                     .expect("Parent container had no geometry");
                 match self.tree[parent_ix] {
