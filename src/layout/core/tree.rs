@@ -842,7 +842,7 @@ pub mod tests {
         assert_eq!(tree.active_ix_of(ContainerType::Workspace), None);
         assert!(tree.active_ix_of(ContainerType::Output).is_none());
         assert!(tree.active_ix_of(ContainerType::Root).is_none());
-        tree.set_active_view(WlcView::root());
+        tree.set_active_view(WlcView::root()).unwrap();
         let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(), &WlcView::root()).unwrap();
         assert_eq!(tree.active_container, Some(view_ix));
         tree.unset_active_container();
