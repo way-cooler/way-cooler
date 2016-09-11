@@ -2,7 +2,7 @@ use super::super::commands::CommandResult;
 use petgraph::graph::NodeIndex;
 use rustwlc::WlcView;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum FocusError {
     /// Reached a container where we can keep climbing the tree no longer.
     ///
@@ -76,14 +76,10 @@ impl LayoutTree {
                                     ContainerType::Container => {
                                         let path_ix = self.tree.follow_path(new_active_ix);
                                         // If the path wasn't complete, find the first view and focus on that
-                                        let node_ix = match self.tree.descendant_of_type(path_ix, ContainerType::View) {
-                                            Some(ix) => ix,
-                                            None => {
-                                                warn!("Could not find view while changing focus in a container");
-                                                return Err(())
-                                            }
-                                        };
-                                        let parent_ix = (self.tree.parent_of(node_ix)).unwrap();
+                                        let node_ix = try!(self.tree.descendant_of_type(path_ix, ContainerType::View)
+                                                           .map_err(|err| TreeError::PetGraph(err)));
+                                        let parent_ix = try!(self.tree.parent_of(node_ix)
+                                                             .map_err(|err| TreeError::PetGraph(err)));
                                         match self.tree[node_ix].get_type() {
                                             ContainerType::View | ContainerType::Container => {},
                                             _ => panic!("Following path did not lead to a container or a view!")
@@ -123,7 +119,7 @@ impl LayoutTree {
     pub fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
         while self.tree.node_type(parent_ix)
             .expect("Node not part of the tree") != ContainerType::Workspace {
-            if let Some(view_ix) = self.tree.descendant_of_type_right(parent_ix,
+            if let Ok(view_ix) = self.tree.descendant_of_type_right(parent_ix,
                                                             ContainerType::View) {
                 match self.tree[view_ix]
                                     .get_handle().expect("view had no handle") {

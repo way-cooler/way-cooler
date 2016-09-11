@@ -22,7 +22,10 @@ pub enum GraphError {
     /// These nodes were not siblings.
     NotSiblings(NodeIndex, NodeIndex),
     /// This node had no parent
-    NoParent(NodeIndex)
+    NoParent(NodeIndex),
+    /// A node could not be found in the tree with this type.
+    /// Gives the node where the search was started
+    NotFound(ContainerType, NodeIndex)
 }
 
 /// Layout tree implemented with petgraph.
@@ -557,35 +560,35 @@ impl InnerTree {
     ///
     /// Note this *DOES* check the given node.
     pub fn descendant_of_type(&self, node_ix: NodeIndex,
-                           container_type: ContainerType) -> Option<NodeIndex> {
+                              container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         if let Some(container) = self.get(node_ix) {
             if container.get_type() == container_type {
-                return Some(node_ix)
+                return Ok(node_ix)
             }
         }
         for child in self.children_of(node_ix) {
-            if let Some(desc) = self.descendant_of_type(child, container_type) {
-                return Some(desc)
+            if let Ok(desc) = self.descendant_of_type(child, container_type) {
+                return Ok(desc)
             }
         }
-        return None
+        return Err(GraphError::NotFound(container_type, node_ix))
     }
 
     /// Attempts to get a descendant of the matching type.
     /// Looks down the right side of the tree first
     pub fn descendant_of_type_right(&self, node_ix: NodeIndex,
-                              container_type: ContainerType) -> Option<NodeIndex> {
+                                    container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         if let Some(container) = self.get(node_ix) {
             if container.get_type() == container_type {
-                return Some(node_ix)
+                return Ok(node_ix)
             }
         }
         for child in self.children_of(node_ix).iter().rev() {
-            if let Some(desc) = self.descendant_of_type(*child, container_type) {
-                return Some(desc)
+            if let Ok(desc) = self.descendant_of_type(*child, container_type) {
+                return Ok(desc)
             }
         }
-        return None
+        return Err(GraphError::NotFound(container_type, node_ix))
     }
 
     /// Finds a node by the view handle.
