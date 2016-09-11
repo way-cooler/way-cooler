@@ -89,6 +89,10 @@ impl LayoutTree {
                 for child_ix in self.tree.children_of(node_ix) {
                     self.layout_helper(child_ix, geometry.clone());
                 }
+                // place floating children above everything else
+                for child_ix in self.tree.floating_children(node_ix) {
+                    self.place_floating(child_ix);
+                }
             },
             ContainerType::Container => {
                 {
@@ -195,6 +199,24 @@ impl LayoutTree {
             }
         }
         self.validate();
+    }
+
+    /// If the node is floating, places it at its reported position, above all
+    /// other nodes.
+    fn place_floating(&mut self, node_ix: NodeIndex) {
+        if !self.tree[node_ix].floating() {
+            return;
+        }
+        match self.tree[node_ix] {
+            Container::Container { .. } => {},
+            Container::View { ref handle, .. } => {
+                handle.bring_to_front();
+            },
+            _ => unreachable!()
+        }
+        for child_ix in self.tree.children_of(node_ix) {
+            self.place_floating(child_ix);
+        }
     }
 
     /// Changes the layout of the active container to the given layout.

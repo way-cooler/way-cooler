@@ -189,13 +189,13 @@ impl Container {
                 size: handle.get_resolution()
                     .expect("Couldn't get output resolution")
             }),
-            Container::Workspace { ref size, .. } => Some(Geometry {
+            Container::Workspace { size, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0},
-                size: size.clone()
+                size: size
             }),
-            Container::Container { ref geometry, .. } => Some(geometry.clone()),
+            Container::Container { geometry, .. } => Some(geometry),
             Container::View { ref handle, ..} =>
-                handle.get_geometry().map(|geo| geo.clone()),
+                handle.get_geometry(),
         }
     }
 
