@@ -6,7 +6,7 @@ use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use rustwlc::{WlcView, WlcOutput, Geometry, Point};
 use super::super::LayoutTree;
-use super::container::{Container, ContainerType, Layout};
+use super::container::{Container, ContainerType};
 use super::super::actions::focus::FocusError;
 
 
@@ -78,7 +78,7 @@ impl LayoutTree {
     }
 
     /// Sets the active container to be the given node.
-    fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
+    pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
         info!("Active container was {:?}", self.active_container);
         self.active_container = Some(node_ix);
         match self.tree[node_ix] {
@@ -301,7 +301,7 @@ impl LayoutTree {
     /// made a child of the new container node.
     ///
     /// The new container has the same edge weight as the child that is passed in.
-    fn add_container(&mut self, container: Container, child_ix: NodeIndex) -> CommandResult {
+    pub fn add_container(&mut self, container: Container, child_ix: NodeIndex) -> CommandResult {
         let parent_ix = self.tree.parent_of(child_ix)
             .expect("Node had no parent");
         let old_weight = *self.tree.get_edge_weight_between(parent_ix, child_ix)
@@ -321,7 +321,7 @@ impl LayoutTree {
     /// Note that because this causes N indices to be changed (where N is the
     /// number of descendants of the container), any node indices should be
     /// considered invalid after this operation (except for the active_container)
-    fn remove_container(&mut self, container_ix: NodeIndex) {
+    pub fn remove_container(&mut self, container_ix: NodeIndex) {
         let mut children = self.tree.all_descendants_of(&container_ix);
         // add current container to the list as well
         children.push(container_ix);
@@ -337,72 +337,6 @@ impl LayoutTree {
         self.validate();
     }
 
-    /// Will attempt to move the container at the UUID in the given direction.
-    pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
-        let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
-        let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraph(err)));
-        try!(self.move_recurse(node_ix, None, direction));
-        if self.tree.can_remove_empty_parent(old_parent_ix) {
-            self.remove_container(old_parent_ix);
-        }
-        self.validate();
-        Ok(())
-    }
-
-    /// Focus on the container relative to the active container.
-    ///
-    /// If Horizontal, left and right will move within siblings.
-    /// If Vertical, up and down will move within siblings.
-    /// Other wise, it moves to the next sibling of the parent container.
-    ///
-    /// If the edge of the children is hit, it does not wrap around,
-    /// but moves between ancestor siblings.
-    pub fn move_focus(&mut self, direction: Direction) -> CommandResult {
-        if let Some(prev_active_ix) = self.active_container {
-            let new_active_ix = self.move_focus_recurse(prev_active_ix, direction)
-                .unwrap_or(prev_active_ix);
-            try!(self.set_active_node(new_active_ix));
-            match self.tree[self.active_container.unwrap()] {
-                Container::View { ref handle, .. } => handle.focus(),
-                _ => warn!("move_focus returned a non-view, cannot focus")
-            }
-        } else {
-            warn!("Cannot move active focus when not there is no active container");
-        }
-        self.validate();
-        Ok(())
-    }
-
-    /// Changes the layout of the active container to the given layout.
-    /// If the active container is a view, a new container is added with the given
-    /// layout type.
-    pub fn toggle_active_layout(&mut self, new_layout: Layout) -> CommandResult {
-        if let Some(active_ix) = self.active_container {
-            let parent_ix = self.tree.parent_of(active_ix)
-                .expect("Active container had no parent");
-            if self.tree.is_root_container(active_ix) {
-                self.set_layout(active_ix, new_layout);
-                return Ok(())
-            }
-            if self.tree.children_of(parent_ix).len() == 1 {
-                self.set_layout(parent_ix, new_layout);
-                return Ok(())
-            }
-
-            let active_geometry = self.get_active_container()
-                .expect("Could not get the active container")
-                .get_geometry().expect("Active container had no geometry");
-
-            let mut new_container = Container::new_container(active_geometry);
-            new_container.set_layout(new_layout).ok();
-            try!(self.add_container(new_container, active_ix));
-            // add_container sets the active container to be the new container
-            try!(self.set_active_node(active_ix));
-        }
-        self.validate();
-        Ok(())
-    }
-
     /// Normalizes the geometry of a view to be the same size as it's siblings,
     /// based on the parent container's layout, at the 0 point of the parent container.
     /// Note this does not auto-tile, only modifies this one view.
@@ -413,35 +347,6 @@ impl LayoutTree {
         if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
             self.normalize_container(view_ix);
         }
-    }
-
-    /// Gets the active container and toggles it based on the following rules:
-    /// * If horizontal, make it vertical
-    /// * else, make it horizontal
-    /// This method does *NOT* update the actual views geometry, that needs to be
-    /// done separately by the caller
-    pub fn toggle_active_horizontal(&mut self) {
-        if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
-            trace!("Toggling {:?} to be horizontal or vertical...", self.tree[active_ix]);
-            match self.tree[active_ix] {
-                Container::Container { ref mut layout, .. } => {
-                    match *layout {
-                        Layout::Horizontal => {
-                            trace!("Toggling to be vertical");
-                            *layout = Layout::Vertical
-                        }
-                        _ => {
-                            trace!("Toggling to be horizontal");
-                            *layout = Layout::Horizontal
-                        }
-                    }
-                },
-                _ => unreachable!()
-            }
-        } else {
-            error!("No active container")
-        }
-        self.validate();
     }
 
     /// Switch to the specified workspace
@@ -666,7 +571,8 @@ impl LayoutTree {
                 }
                 // Ensure no holes
                 if weight != cur_weight + 1 {
-                    error!("Weights have a hole (no child with weight {}) for children of {:?}", cur_weight + 1, parent_ix);
+                    error!("Weights have a hole (no child with weight {}) for children of {:?}",
+                           cur_weight + 1, parent_ix);
                     error!("{:#?}", this);
                     panic!("Hole in children weights");
                 }

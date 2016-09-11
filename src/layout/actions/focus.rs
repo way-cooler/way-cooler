@@ -1,5 +1,5 @@
+use super::super::commands::CommandResult;
 use petgraph::graph::NodeIndex;
-
 use rustwlc::WlcView;
 
 #[derive(Clone, Copy, Debug)]
@@ -16,10 +16,35 @@ use super::super::core::Direction;
 use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
 impl LayoutTree {
+/// Focus on the container relative to the active container.
+    ///
+    /// If Horizontal, left and right will move within siblings.
+    /// If Vertical, up and down will move within siblings.
+    /// Other wise, it moves to the next sibling of the parent container.
+    ///
+    /// If the edge of the children is hit, it does not wrap around,
+    /// but moves between ancestor siblings.
+    pub fn move_focus(&mut self, direction: Direction) -> CommandResult {
+        if let Some(prev_active_ix) = self.active_container {
+            let new_active_ix = self.move_focus_recurse(prev_active_ix, direction)
+                .unwrap_or(prev_active_ix);
+            try!(self.set_active_node(new_active_ix));
+            match self.tree[self.active_container.unwrap()] {
+                Container::View { ref handle, .. } => handle.focus(),
+                _ => warn!("move_focus returned a non-view, cannot focus")
+            }
+        } else {
+            warn!("Cannot move active focus when not there is no active container");
+        }
+        self.validate();
+        Ok(())
+    }
+
     pub fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_ix].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
-            _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(), vec!(ContainerType::View, ContainerType::Container)))
+            _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
+                                                     vec!(ContainerType::View, ContainerType::Container)))
         }
         let parent_ix = self.tree.parent_of(node_ix)
             .expect("Active ix had no parent");

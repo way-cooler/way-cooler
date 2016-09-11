@@ -2,6 +2,7 @@ use uuid::Uuid;
 use petgraph::graph::NodeIndex;
 
 use super::super::LayoutTree;
+use super::super::commands::CommandResult;
 use super::super::core::{Direction, ShiftDirection, TreeError};
 use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
@@ -16,6 +17,18 @@ pub enum MovementError {
 
 
 impl LayoutTree {
+    /// Will attempt to move the container at the UUID in the given direction.
+    pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
+        let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
+        let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraph(err)));
+        try!(self.move_recurse(node_ix, None, direction));
+        if self.tree.can_remove_empty_parent(old_parent_ix) {
+            self.remove_container(old_parent_ix);
+        }
+        self.validate();
+        Ok(())
+    }
+
     /// Returns the new parent of the active container if the move succeeds,
     /// Otherwise it signals what error occurred in the tree.
     pub fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
