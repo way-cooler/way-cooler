@@ -490,12 +490,27 @@ impl InnerTree {
         result
     }
 
-    /// Gets an iterator to the children of a node, sorted by weight.
+    /// Gets an iterator to the **non-floating** children of a node, sorted by weight.
     ///
     /// Will return an empty iterator if the node has no children or
     /// if the node does not exist.
+    ///
+    /// For floating children, use `floating_children`
     pub fn children_of(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
+            .filter(|&(node_ix, _)| !self[node_ix].floating())
+            .collect::<Vec<(NodeIndex, &Path)>>();
+        edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
+        edges.into_iter().map(|(ix, _edge)| ix).collect()
+    }
+
+    /// Gets an iterator to the **non-floating** children of a node, sorted by weight.
+    ///
+    /// Will return an empty iterator if the node has no floating children or
+    /// if the node does not exist.
+    pub fn floating_children(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
+        let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
+            .filter(|&(node_ix, _)| self[node_ix].floating())
             .collect::<Vec<(NodeIndex, &Path)>>();
         edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
         edges.into_iter().map(|(ix, _edge)| ix).collect()
@@ -800,5 +815,31 @@ mod tests {
             let container_id = container.get_id();
             assert_eq!(*tree.id_map.get(&container_id).unwrap(), container_ix);
         }
+    }
+
+    #[test]
+    fn children_of_no_floating() {
+        let mut tree = basic_tree();
+        let root_ix = tree.root_ix();
+        let root_c = tree.descendant_of_type(root_ix, ContainerType::Container)
+            .expect("No containers in basic tree");
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 1);
+        let floating_children = tree.floating_children(root_c);
+        assert_eq!(floating_children.len(), 0);
+        for child_ix in children {
+            tree[child_ix].set_floating(true).unwrap();
+        }
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 0);
+        let floating_children = tree.floating_children(root_c);
+        assert_eq!(floating_children.len(), 1);
+        for child_ix in floating_children {
+            tree[child_ix].set_floating(false).unwrap();
+        }
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 1);
+        let floating_children = tree.floating_children(root_c);
+        assert_eq!(floating_children.len(), 0);
     }
 }

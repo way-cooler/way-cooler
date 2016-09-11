@@ -274,12 +274,12 @@ mod tests {
 
         assert!(!workspace.can_have_child(root),      "! Workspace > root");
         assert!(!workspace.can_have_child(output),    "! Workspace > output");
-        assert!(!workspace.can_have_child(workspace), "! Workspace > worksp");
+        assert!(!workspace.can_have_child(workspace), "! Workspace > workspace");
         assert!(!workspace.can_have_child(view),      "! Workspace > view");
 
         assert!(!container.can_have_child(root),      "! Container > root");
-        assert!(!container.can_have_child(workspace), "! Container > worksp");
-        assert!(!container.can_have_child(output),    "! Container > contanr");
+        assert!(!container.can_have_child(workspace), "! Container > workspace");
+        assert!(!container.can_have_child(output),    "! Container > container");
 
         assert!(!view.can_have_child(root),      "! View > root");
         assert!(!view.can_have_child(output),    "! View > output");
