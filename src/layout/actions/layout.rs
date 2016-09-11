@@ -209,13 +209,47 @@ impl LayoutTree {
     /// This removes the container from its parent and makes its new parent-
     /// the workspace it resides in.
     ///
+    /// The view will have a geometry of 1/3 the height/width, and set right in the
+    /// middle of the screen.
+    ///
     /// This will change the active container, but **not** the active path,
     /// it will remain pointing at the previous parent container.
     pub fn float_container(&mut self, id: Uuid) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
-        try!(self.tree[node_ix].set_floating(true)
-             .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
-                                                                 ContainerType::Container))));
+        let output_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Output)
+                             .map_err(|err| TreeError::PetGraph(err)));
+        let output_size = match self.tree[output_ix] {
+            Container::Output { handle, .. } => {
+                handle.get_resolution().expect("Output had no resolution")
+            },
+            _ => unreachable!()
+        };
+        {
+            let container = &mut self.tree[node_ix];
+            try!(container.set_floating(true)
+                .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                                ContainerType::Container))));
+            let new_geometry = Geometry {
+                    size: Size {
+                        h: output_size.h / 2,
+                        w: output_size.w / 2
+                    },
+                    origin: Point {
+                        x: (output_size.w / 2 - output_size.w / 4) as i32 ,
+                        y: (output_size.h / 2 - output_size.h / 4) as i32
+                    }
+                };
+            match *container {
+                Container::View { handle, .. } => {
+                    handle.set_geometry(ResizeEdge::empty(), new_geometry);
+                },
+                Container::Container { ref mut geometry, .. } => {
+                    *geometry = new_geometry
+                },
+                _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                                  ContainerType::Container)))
+            }
+        }
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
                              .map_err(|_| TreeError::NoActiveContainer));
@@ -391,7 +425,7 @@ impl LayoutTree {
     }
 
     pub fn set_layout(&mut self, node_ix: NodeIndex, new_layout: Layout) {
-        match  self.tree[node_ix] {
+        match self.tree[node_ix] {
             Container::Container { ref mut layout, .. } => {
                 *layout = new_layout;
             },

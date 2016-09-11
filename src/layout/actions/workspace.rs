@@ -97,6 +97,7 @@ impl LayoutTree {
             ContainerType::View  => {
                 match self.tree[active_ix] {
                     Container::View { ref handle, ..} => {
+                        trace!("View found, focusing on {:?}", handle);
                         handle.focus();
                     },
                     _ => unreachable!()
@@ -108,9 +109,11 @@ impl LayoutTree {
             },
             _ => {
                 self.active_container = self.tree.descendant_of_type(active_ix, ContainerType::View)
-                    .or_else(|_| self.tree.descendant_of_type(active_ix, ContainerType::Container)).ok();
+                    .or_else(|_| self.tree.descendant_of_type(active_ix,
+                                                              ContainerType::Container)).ok();
             }
         }
+        trace!("Focusing on next container");
         self.focus_on_next_container(workspace_ix);
         self.validate();
     }

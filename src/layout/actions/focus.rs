@@ -150,10 +150,36 @@ impl LayoutTree {
             self.set_active_container(id)
                 .expect("Could not set active container");
             match self.tree[new_active_ix] {
-                Container::View { ref handle, .. } => handle.focus(),
-                _ => {}
+                Container::View { ref handle, .. } => {
+                    info!("Focusing on {:?}", handle);
+                    handle.focus();
+                },
+                Container::Container { .. } => {
+                    info!("No view found, focusing on nothing in workspace {:?}", parent_ix);
+                    WlcView::root().focus();
+                }
+                _ => unreachable!()
             };
             return;
+        } else {
+            let floating_children = self.tree.floating_children(container_ix);
+            if floating_children.len() > 0 {
+                for child_ix in floating_children {
+                    if let Ok(view_ix) = self.tree.descendant_of_type(child_ix,
+                                                                      ContainerType::View) {
+                        match self.tree[view_ix] {
+                            Container::View { handle, id, .. } => {
+                                info!("Floating view found, focusing on {:#?}", handle);
+                                handle.focus();
+                                self.set_active_container(id)
+                                    .expect("Could not set active container");
+                                return;
+                            },
+                            _ => unreachable!()
+                        };
+                    }
+                }
+            }
         }
         trace!("Active container set to container {:?}", container_ix);
         let id = self.tree[container_ix].get_id();

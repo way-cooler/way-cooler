@@ -798,12 +798,12 @@ mod tests {
     #[test]
     fn test_descendents_of() {
         let basic_tree = basic_tree();
-        let children_of_root = basic_tree.all_descendants_of(&basic_tree.root);
+        let children_of_root = basic_tree.all_descendants_of(basic_tree.root);
         assert_eq!(children_of_root.len(), 9);
         let simple_view = basic_tree.descendant_of_type(basic_tree.root,
                                                         ContainerType::View)
             .expect("No view in the basic test tree");
-        let children_of_view = basic_tree.all_descendants_of(&simple_view);
+        let children_of_view = basic_tree.all_descendants_of(simple_view);
         assert_eq!(children_of_view.len(), 0);
     }
 
@@ -836,7 +836,7 @@ mod tests {
         assert_eq!(only_view.get_id(), container_uuid);
 
         // Generic test where we make sure all of them have the right ids in the map
-        for container_ix in tree.all_descendants_of(&root_ix) {
+        for container_ix in tree.all_descendants_of(root_ix) {
             let container = &tree[container_ix];
             let container_id = container.get_id();
             assert_eq!(*tree.id_map.get(&container_id).unwrap(), container_ix);

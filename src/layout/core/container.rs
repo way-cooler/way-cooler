@@ -34,7 +34,7 @@ impl ContainerType {
         match self {
             Root => other == Output,
             Output => other == Workspace,
-            Workspace => other == Container || other == View,
+            Workspace => other == Container,
             Container => other == Container || other == View,
             View => false
         }
