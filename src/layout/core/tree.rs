@@ -39,7 +39,7 @@ pub enum TreeError {
     InvalidOperationOnRootContainer(Uuid),
     /// There was an error in the graph, an invariant of one of the
     /// functions were not held, so this might be an issue in the Tree.
-    PetGraphError(GraphError),
+    PetGraph(GraphError),
     /// An error occured while trying to focus on a container
     Focus(FocusError)
 }
@@ -340,7 +340,7 @@ impl LayoutTree {
     /// Will attempt to move the container at the UUID in the given direction.
     pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
-        let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraphError(err)));
+        let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraph(err)));
         try!(self.move_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
             self.remove_container(old_parent_ix);
