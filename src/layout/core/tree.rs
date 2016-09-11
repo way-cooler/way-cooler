@@ -107,17 +107,6 @@ impl LayoutTree {
         self.active_container.and_then(move |ix| self.tree.get_mut(ix))
     }
 
-    /// Gets the parent of the active container
-    #[cfg(test)]
-    fn get_active_parent(&self) -> Option<&Container> {
-        if let Some(container_ix) = self.active_container {
-            if let Ok(parent_ix) = self.tree.parent_of(container_ix) {
-                return Some(&self.tree[parent_ix]);
-            }
-        }
-        return None
-    }
-
     /// Gets the index of the currently active container with the given type.
     /// Starts at the active container, moves up until either a container with
     /// that type is found or the root node is hit
@@ -742,7 +731,6 @@ pub mod tests {
         let mut tree = basic_tree();
         tree.active_container = None;
         assert_eq!(tree.get_active_container(), None);
-        assert_eq!(tree.get_active_parent(), None);
         assert_eq!(tree.active_ix_of(ContainerType::View), None);
         assert_eq!(tree.active_ix_of(ContainerType::Container), None);
         assert_eq!(tree.active_ix_of(ContainerType::Workspace), None);
@@ -1002,7 +990,8 @@ pub mod tests {
     fn tiling_toggle_key() {
         let mut tree = basic_tree();
         // active container is the first view, so it should just change it's root.
-        match *tree.get_active_parent().unwrap() {
+        let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
                 // default is horizontal
                 assert_eq!(*layout, Layout::Horizontal)
@@ -1010,7 +999,8 @@ pub mod tests {
             _ => unreachable!()
         }
         tree.toggle_active_horizontal();
-        match *tree.get_active_parent().unwrap() {
+        let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
                 // default is horizontal
                 assert_eq!(*layout, Layout::Vertical)
@@ -1019,7 +1009,8 @@ pub mod tests {
         }
         // and back again
         tree.toggle_active_horizontal();
-        match *tree.get_active_parent().unwrap() {
+        let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
+        match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
                 // default is horizontal
                 assert_eq!(*layout, Layout::Horizontal)
