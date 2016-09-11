@@ -8,7 +8,7 @@ use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
 use petgraph::EdgeDirection;
-use petgraph::graph::{Graph, NodeIndex};
+use petgraph::graph::{Graph, NodeIndex, EdgeIndex};
 use uuid::Uuid;
 
 use rustwlc::WlcView;
@@ -164,9 +164,13 @@ impl InnerTree {
     pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container, active: bool) -> NodeIndex {
         let id = val.get_id();
         let child_ix = self.graph.add_node(val);
-        self.attach_child(parent_ix, child_ix);
+        let edge = self.attach_child(parent_ix, child_ix);
         if active {
             self.set_ancestor_paths_active(child_ix);
+        } else {
+            let mut weight = self.graph.edge_weight_mut(edge)
+                .expect("Could not get edge weight of parent/child");
+            weight.active = false;
         }
         self.id_map.insert(id, child_ix);
         child_ix
@@ -174,7 +178,7 @@ impl InnerTree {
 
     /// Add an existing node (detached in the graph) to the tree.
     /// Note that floating nodes shouldn't exist for too long.
-    pub fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex) {
+    fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex) -> EdgeIndex {
         // Make sure the child doesn't have a parent
         if cfg!(debug_assertions) && self.has_parent(child_ix) {
             panic!("attach_child: child had a parent!")
@@ -191,8 +195,9 @@ impl InnerTree {
         }
         let (_ix, mut biggest_child) = self.largest_child(parent_ix);
         *biggest_child += 1;
-        self.graph.update_edge(parent_ix, child_ix, biggest_child);
+        let result = self.graph.update_edge(parent_ix, child_ix, biggest_child);
         self.normalize_edge_weights(parent_ix);
+        result
     }
 
     /// Finds the index of the container at the child index's parent,
