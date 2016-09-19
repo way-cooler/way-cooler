@@ -45,7 +45,7 @@ impl LayoutTree {
                     size: handle.get_resolution()
                         .expect("Couldn't get resolution")
                 };
-                trace!("layout: Laying out workspace, using size of the screen output {:?}", handle);
+                trace!("layout: Laying out workspace, using size of the screen output {:#?}", handle);
                 self.layout_helper(node_ix, output_geometry);
             }
             _ => {
@@ -65,7 +65,7 @@ impl LayoutTree {
         match self.tree[node_ix].get_type() {
             ContainerType::Root | ContainerType::Output => {
                 trace!("layout_helper: Laying out entire tree");
-                warn!("Ignoring geometry constraint ({:?}), \
+                warn!("Ignoring geometry constraint ({:#?}), \
                        deferring to each output's constraints",
                       geometry);
                 for child_ix in self.tree.children_of(node_ix) {
@@ -75,8 +75,8 @@ impl LayoutTree {
             ContainerType::Workspace => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out workspace {:?} with\
-                            geometry constraints {:?}",
+                    trace!("layout_helper: Laying out workspace {:#?} with\
+                            geometry constraints {:#?}",
                         container_mut, geometry);
                     match *container_mut {
                         Container::Workspace { ref mut size, .. } => {
@@ -100,7 +100,7 @@ impl LayoutTree {
             ContainerType::Container => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out container {:?} with geometry constraints {:?}",
+                    trace!("layout_helper: Laying out container {:#?} with geometry constraints {:#?}",
                            container_mut, geometry);
                     match *container_mut {
                         Container::Container { geometry: ref mut c_geometry, .. } => {
@@ -196,7 +196,7 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                trace!("layout_helper: Laying out view {:?} with geometry constraints {:?}",
+                trace!("layout_helper: Laying out view {:#?} with geometry constraints {:#?}",
                        handle, geometry);
                 handle.set_geometry(ResizeEdge::empty(), geometry);
             }
@@ -262,11 +262,13 @@ impl LayoutTree {
     /// other nodes.
     fn place_floating(&mut self, node_ix: NodeIndex) {
         if !self.tree[node_ix].floating() {
-            return;
+            // TODO Will panic here when you can float nested containers
+            panic!("Tried to place a tiling window to be floating");
         }
         match self.tree[node_ix] {
             Container::Container { .. } => {},
             Container::View { ref handle, .. } => {
+                trace!("Placing {:?}, at {:?}", self.tree[node_ix], handle.get_geometry());
                 handle.bring_to_front();
             },
             _ => unreachable!()
@@ -327,7 +329,7 @@ impl LayoutTree {
 
             }
         } else {
-            warn!("{:?} did not have a parent of type {:?}, doing nothing!",
+            warn!("{:#?} did not have a parent of type {:?}, doing nothing!",
                    self, c_type);
         }
         self.validate();
@@ -340,7 +342,7 @@ impl LayoutTree {
     /// done separately by the caller
     pub fn toggle_active_horizontal(&mut self) {
         if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
-            trace!("Toggling {:?} to be horizontal or vertical...", self.tree[active_ix]);
+            trace!("Toggling {:#?} to be horizontal or vertical...", self.tree[active_ix]);
             match self.tree[active_ix] {
                 Container::Container { ref mut layout, .. } => {
                     match *layout {
@@ -430,7 +432,7 @@ impl LayoutTree {
                 *layout = new_layout;
             },
             ref container => {
-                warn!("Can not set layout on non-container {:?}", container);
+                warn!("Can not set layout on non-container {:#?}", container);
                 return;
             }
         }
@@ -492,7 +494,7 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 };
-                trace!("Setting view {:?} to geometry: {:?}",
+                trace!("Setting view {:#?} to geometry: {:#?}",
                     self.tree[node_ix], new_geometry);
                 handle.set_geometry(ResizeEdge::empty(), new_geometry);
             },

@@ -96,8 +96,10 @@ impl LayoutTree {
                 TreeError::UuidWrongType(container.get_id(),
                                          vec!(ContainerType::View, ContainerType::Container)))
         }
+        if !self.tree[node_ix].floating() {
+            self.tree.set_ancestor_paths_active(node_ix);
+        }
         info!("Active container is now: {:?}", self.active_container);
-        self.tree.set_ancestor_paths_active(node_ix);
         Ok(())
     }
 
