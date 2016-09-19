@@ -4,6 +4,7 @@ use petgraph::graph::NodeIndex;
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
 use super::super::LayoutTree;
+use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
 
 impl LayoutTree {
@@ -196,6 +197,35 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Changes the layout of the active container to the given layout.
+    /// If the active container is a view, a new container is added with the given
+    /// layout type.
+    pub fn toggle_active_layout(&mut self, new_layout: Layout) -> CommandResult {
+        if let Some(active_ix) = self.active_container {
+            let parent_ix = self.tree.parent_of(active_ix)
+                .expect("Active container had no parent");
+            if self.tree.is_root_container(active_ix) {
+                self.set_layout(active_ix, new_layout);
+                return Ok(())
+            }
+            if self.tree.children_of(parent_ix).len() == 1 {
+                self.set_layout(parent_ix, new_layout);
+                return Ok(())
+            }
+
+            let active_geometry = self.get_active_container()
+                .expect("Could not get the active container")
+                .get_geometry().expect("Active container had no geometry");
+
+            let mut new_container = Container::new_container(active_geometry);
+            new_container.set_layout(new_layout).ok();
+            try!(self.add_container(new_container, active_ix));
+            // add_container sets the active container to be the new container
+            try!(self.set_active_node(active_ix));
+        }
+        self.validate();
+        Ok(())
+    }
 
     // Updates the tree's layout recursively starting from the active container.
     // If the active container is a view, it starts at the parent container.
@@ -223,6 +253,36 @@ impl LayoutTree {
         }
         self.validate();
     }
+
+    /// Gets the active container and toggles it based on the following rules:
+    /// * If horizontal, make it vertical
+    /// * else, make it horizontal
+    /// This method does *NOT* update the actual views geometry, that needs to be
+    /// done separately by the caller
+    pub fn toggle_cardinal_tiling(&mut self) {
+        if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
+            trace!("Toggling {:?} to be horizontal or vertical...", self.tree[active_ix]);
+            match self.tree[active_ix] {
+                Container::Container { ref mut layout, .. } => {
+                    match *layout {
+                        Layout::Horizontal => {
+                            trace!("Toggling to be vertical");
+                            *layout = Layout::Vertical
+                        }
+                        _ => {
+                            trace!("Toggling to be horizontal");
+                            *layout = Layout::Horizontal
+                        }
+                    }
+                },
+                _ => unreachable!()
+            }
+        } else {
+            error!("No active container")
+        }
+        self.validate();
+    }
+
 
     /// Calculates how much to scale on average for each value given.
     /// If the value is 0 (i.e the width or height of the container is 0),

@@ -22,7 +22,10 @@ pub enum GraphError {
     /// These nodes were not siblings.
     NotSiblings(NodeIndex, NodeIndex),
     /// This node had no parent
-    NoParent(NodeIndex)
+    NoParent(NodeIndex),
+    /// A node could not be found in the tree with this type.
+    /// Gives the node where the search was started
+    NotFound(ContainerType, NodeIndex)
 }
 
 /// Layout tree implemented with petgraph.
@@ -67,7 +70,7 @@ impl InnerTree {
     /// Determines if the container at the node index is the root.
     /// Normally, this should only be true if the NodeIndex value is 1.
     pub fn is_root_container(&self, node_ix: NodeIndex) -> bool {
-        if let Some(parent_ix) = self.parent_of(node_ix) {
+        if let Ok(parent_ix) = self.parent_of(node_ix) {
             self.graph[parent_ix].get_type() == ContainerType::Workspace
         } else {
             false
@@ -229,8 +232,8 @@ impl InnerTree {
     /// be siblings of each other, otherwise this function will fail.
     pub fn swap_node_order(&mut self, child1_ix: NodeIndex,
                            child2_ix: NodeIndex) -> Result<(), GraphError> {
-        let parent1_ix = try!(self.parent_of(child1_ix).ok_or(GraphError::NoParent(child1_ix)));
-        let parent2_ix = try!(self.parent_of(child2_ix).ok_or(GraphError::NoParent(child2_ix)));
+        let parent1_ix = try!(self.parent_of(child1_ix));
+        let parent2_ix = try!(self.parent_of(child2_ix));
         if parent2_ix != parent1_ix {
             return Err(GraphError::NotSiblings(child1_ix, child2_ix))
         }
@@ -254,7 +257,7 @@ impl InnerTree {
     /// (which is always the same as the target node).
     pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex)
                      -> Result<NodeIndex, GraphError> {
-        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent = try!(self.parent_of(source));
         let source_parent_edge = self.graph.find_edge(source_parent, source)
             .expect("Source node and it's parent were not linked");
         self.graph.remove_edge(source_parent_edge);
@@ -278,7 +281,7 @@ impl InnerTree {
                          -> Result<NodeIndex, GraphError> {
         trace!("Placing source {:?} at target {:?}. Shifting to {:?}",
                source, target, dir);
-        let target_parent = try!(self.parent_of(target).ok_or(GraphError::NoParent(target)));
+        let target_parent = try!(self.parent_of(target));
         let target_parent_edge = self.graph.find_edge(target_parent, target)
             .expect("Target node and it's parent were not linked");
         let target_weight = match dir {
@@ -297,7 +300,7 @@ impl InnerTree {
         let bigger_target_siblings: Vec<NodeIndex> = self.graph.edges_directed(target_parent, EdgeDirection::Outgoing)
             .filter(|&(_node_ix, sibling_weight)| *sibling_weight >= target_weight)
             .map(|(node_ix, _)| node_ix).collect();
-        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent = try!(self.parent_of(source));
         let source_parent_edge = self.graph.find_edge(source_parent, source)
             .expect("Source node and it's parent were not linked");
         for sibling_ix in bigger_target_siblings {
@@ -326,9 +329,9 @@ impl InnerTree {
     /// Returns the new parent of the source after the transformation, if no error occurred.
     pub fn add_to_end(&mut self, source: NodeIndex, target: NodeIndex, dir: ShiftDirection)
                       -> Result<NodeIndex, GraphError> {
-        let target_parent = try!(self.parent_of(target).ok_or(GraphError::NoParent(target)));
+        let target_parent = try!(self.parent_of(target));
         let siblings = self.children_of(target_parent);
-        let source_parent = try!(self.parent_of(source).ok_or(GraphError::NoParent(source)));
+        let source_parent = try!(self.parent_of(source));
         let source_parent_edge = self.graph.find_edge(source_parent, source)
             .expect("Source node and it's parent were not linked");
         match dir {
@@ -368,7 +371,7 @@ impl InnerTree {
     /// Detaches a node from the tree (causing there to be two trees).
     /// This should only be done temporarily.
     fn detach(&mut self, node_ix: NodeIndex) {
-        if let Some(parent_ix) = self.parent_of(node_ix) {
+        if let Ok(parent_ix) = self.parent_of(node_ix) {
             let edge = self.graph.find_edge(parent_ix, node_ix)
                 .expect("detatch: Node has parent but edge cannot be found!");
 
@@ -408,7 +411,7 @@ impl InnerTree {
             let last_id = last_container.get_id();
             self.id_map.insert(last_id, node_ix);
         }
-        if let Some(mut parent_ix) = maybe_parent_ix {
+        if let Ok(mut parent_ix) = maybe_parent_ix {
             if parent_ix == last_ix {
                 parent_ix = node_ix;
             }
@@ -474,20 +477,17 @@ impl InnerTree {
     }
 
     /// Gets the parent of a node, if the node exists
-    pub fn parent_of(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+    pub fn parent_of(&self, node_ix: NodeIndex) -> Result<NodeIndex, GraphError> {
         let mut neighbors = self.graph
             .neighbors_directed(node_ix, EdgeDirection::Incoming);
+        let result = neighbors.next().ok_or(GraphError::NoParent(node_ix));
         if cfg!(debug_assertions) {
-            let result = neighbors.next();
             if neighbors.next().is_some() {
                 error!("{:?}", self);
                 panic!("parent_of: node has multiple parents!")
             }
-            result
-        }
-        else {
-            neighbors.next()
-        }
+	}
+        result
     }
 
     /// Gets an iterator to the children of a node, sorted by weight.
@@ -544,7 +544,7 @@ impl InnerTree {
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Option<NodeIndex> {
         let mut curr_ix = node_ix;
-        while let Some(parent_ix) = self.parent_of(curr_ix) {
+        while let Ok(parent_ix) = self.parent_of(curr_ix) {
             let parent = self.graph.node_weight(parent_ix)
                 .expect("ancestor_of_type: parent_of invalid");
             if parent.get_type() == container_type {
@@ -560,35 +560,35 @@ impl InnerTree {
     ///
     /// Note this *DOES* check the given node.
     pub fn descendant_of_type(&self, node_ix: NodeIndex,
-                           container_type: ContainerType) -> Option<NodeIndex> {
+                              container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         if let Some(container) = self.get(node_ix) {
             if container.get_type() == container_type {
-                return Some(node_ix)
+                return Ok(node_ix)
             }
         }
         for child in self.children_of(node_ix) {
-            if let Some(desc) = self.descendant_of_type(child, container_type) {
-                return Some(desc)
+            if let Ok(desc) = self.descendant_of_type(child, container_type) {
+                return Ok(desc)
             }
         }
-        return None
+        return Err(GraphError::NotFound(container_type, node_ix))
     }
 
     /// Attempts to get a descendant of the matching type.
     /// Looks down the right side of the tree first
     pub fn descendant_of_type_right(&self, node_ix: NodeIndex,
-                              container_type: ContainerType) -> Option<NodeIndex> {
+                                    container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         if let Some(container) = self.get(node_ix) {
             if container.get_type() == container_type {
-                return Some(node_ix)
+                return Ok(node_ix)
             }
         }
         for child in self.children_of(node_ix).iter().rev() {
-            if let Some(desc) = self.descendant_of_type(*child, container_type) {
-                return Some(desc)
+            if let Ok(desc) = self.descendant_of_type(*child, container_type) {
+                return Ok(desc)
             }
         }
-        return None
+        return Err(GraphError::NotFound(container_type, node_ix))
     }
 
     /// Finds a node by the view handle.
@@ -668,7 +668,7 @@ impl InnerTree {
                 .expect("Could not associate edge index with an edge weight");
             edge.active = false;
         }
-        while let Some(parent_ix) = self.parent_of(node_ix) {
+        while let Ok(parent_ix) = self.parent_of(node_ix) {
             for child_ix in self.children_of(parent_ix) {
                 let edge_ix = self.graph.find_edge(parent_ix, child_ix)
                     .expect("Could not get edge index between parent and child");

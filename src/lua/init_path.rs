@@ -1,4 +1,5 @@
 //! Contains methods for initializing the lua config
+#![allow(dead_code)]
 
 use std::fs::{OpenOptions, File};
 use std::env;

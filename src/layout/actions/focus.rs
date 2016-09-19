@@ -1,16 +1,50 @@
+use super::super::commands::CommandResult;
 use petgraph::graph::NodeIndex;
-
 use rustwlc::WlcView;
 
-use super::super::LayoutTree;
+#[derive(Clone, Debug)]
+pub enum FocusError {
+    /// Reached a container where we can keep climbing the tree no longer.
+    ///
+    /// Usually this is a workspace, because it doesn't make sense to move a
+    /// container out of a workspace
+    ReachedLimit(NodeIndex)
+}
+
+use super::super::{LayoutTree, TreeError};
 use super::super::core::Direction;
 use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
 impl LayoutTree {
-    pub fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, ()> {
+/// Focus on the container relative to the active container.
+    ///
+    /// If Horizontal, left and right will move within siblings.
+    /// If Vertical, up and down will move within siblings.
+    /// Other wise, it moves to the next sibling of the parent container.
+    ///
+    /// If the edge of the children is hit, it does not wrap around,
+    /// but moves between ancestor siblings.
+    pub fn move_focus(&mut self, direction: Direction) -> CommandResult {
+        if let Some(prev_active_ix) = self.active_container {
+            let new_active_ix = self.move_focus_recurse(prev_active_ix, direction)
+                .unwrap_or(prev_active_ix);
+            try!(self.set_active_node(new_active_ix));
+            match self.tree[self.active_container.unwrap()] {
+                Container::View { ref handle, .. } => handle.focus(),
+                _ => warn!("move_focus returned a non-view, cannot focus")
+            }
+        } else {
+            warn!("Cannot move active focus when not there is no active container");
+        }
+        self.validate();
+        Ok(())
+    }
+
+    pub fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_ix].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
-            _ => return Err(())
+            _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
+                                                     vec!(ContainerType::View, ContainerType::Container)))
         }
         let parent_ix = self.tree.parent_of(node_ix)
             .expect("Active ix had no parent");
@@ -42,14 +76,10 @@ impl LayoutTree {
                                     ContainerType::Container => {
                                         let path_ix = self.tree.follow_path(new_active_ix);
                                         // If the path wasn't complete, find the first view and focus on that
-                                        let node_ix = match self.tree.descendant_of_type(path_ix, ContainerType::View) {
-                                            Some(ix) => ix,
-                                            None => {
-                                                warn!("Could not find view while changing focus in a container");
-                                                return Err(())
-                                            }
-                                        };
-                                        let parent_ix = (self.tree.parent_of(node_ix)).unwrap();
+                                        let node_ix = try!(self.tree.descendant_of_type(path_ix, ContainerType::View)
+                                                           .map_err(|err| TreeError::PetGraph(err)));
+                                        let parent_ix = try!(self.tree.parent_of(node_ix)
+                                                             .map_err(|err| TreeError::PetGraph(err)));
                                         match self.tree[node_ix].get_type() {
                                             ContainerType::View | ContainerType::Container => {},
                                             _ => panic!("Following path did not lead to a container or a view!")
@@ -70,7 +100,7 @@ impl LayoutTree {
                 }
             }
             Container::Workspace { .. } => {
-                return Err(());
+                return Err(TreeError::Focus(FocusError::ReachedLimit(parent_ix)));
             }
             _ => unreachable!()
         }
@@ -89,7 +119,7 @@ impl LayoutTree {
     pub fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
         while self.tree.node_type(parent_ix)
             .expect("Node not part of the tree") != ContainerType::Workspace {
-            if let Some(view_ix) = self.tree.descendant_of_type_right(parent_ix,
+            if let Ok(view_ix) = self.tree.descendant_of_type_right(parent_ix,
                                                             ContainerType::View) {
                 match self.tree[view_ix]
                                     .get_handle().expect("view had no handle") {
@@ -136,5 +166,17 @@ impl LayoutTree {
             Container::Container { .. } => WlcView::root().focus(),
             _ => panic!("Active container not view or container!")
         });
+    }
+
+    /// Normalizes the geometry of a view to be the same size as its siblings,
+    /// based on the parent container's layout, at the 0 point of the parent container.
+    /// Note this does not auto-tile, only modifies this one view.
+    ///
+    /// Useful if a container's children want to be evenly distributed, or a new view
+    /// is being added.
+    pub fn normalize_view(&mut self, view: WlcView) {
+        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
+            self.normalize_container(view_ix);
+        }
     }
 }
