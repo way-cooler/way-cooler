@@ -57,8 +57,6 @@ pub enum Container {
     Output {
         /// Handle to the wlc
         handle: WlcOutput,
-        /// Whether the output is focused
-        focused: bool,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -66,10 +64,6 @@ pub enum Container {
     Workspace {
         /// Name of the workspace
         name: String,
-        /// Whether the workspace is focused
-        ///
-        /// Multiple workspaces can be focused
-        focused: bool,
         /// The size of the workspace on the screen.
         /// Might be different if there is e.g a bar present
         size: Size,
@@ -80,8 +74,6 @@ pub enum Container {
     Container {
         /// How the container is layed out
         layout: Layout,
-        /// If the container is focused
-        focused: bool,
         /// If the container is floating
         floating: bool,
         /// The geometry of the container, relative to the parent container
@@ -93,8 +85,6 @@ pub enum Container {
     View {
         /// The wlc handle to the view
         handle: WlcView,
-        /// Whether this view is focused
-        focused: bool,
         /// Whether this view is floating
         floating: bool,
         /// UUID associated with container, client program can use container
@@ -111,7 +101,6 @@ impl Container {
     pub fn new_output(handle: WlcOutput) -> Container {
         Container::Output {
             handle: handle,
-            focused: false,
             id: Uuid::new_v4()
         }
     }
@@ -122,7 +111,6 @@ impl Container {
     pub fn new_workspace(name: String, size: Size) -> Container {
         Container::Workspace {
             name: name,
-            focused: false,
             size: size,
             id: Uuid::new_v4()
         }
@@ -132,7 +120,6 @@ impl Container {
     pub fn new_container(geometry: Geometry) -> Container {
         Container::Container {
             layout: Layout::Horizontal,
-            focused: false,
             floating: false,
             geometry: geometry,
             id: Uuid::new_v4()
@@ -143,7 +130,6 @@ impl Container {
     pub fn new_view(handle: WlcView) -> Container {
         Container::View {
             handle: handle,
-            focused: false,
             floating: false,
             id: Uuid::new_v4()
         }
@@ -187,28 +173,6 @@ impl Container {
         match *self {
             Container::Workspace { ref name, ..} => Some(name),
             _ => None
-        }
-    }
-
-    /// Determines if the container is focused or not
-    pub fn is_focused(&self) -> bool {
-        match *self {
-            Container::Root(_)  => false,
-            Container::Output { ref focused, .. } |
-            Container::Workspace { ref focused, .. } |
-            Container::Container { ref focused, .. } |
-            Container::View { ref focused, .. } => *focused,
-        }
-    }
-
-    /// Sets the focused value of the container
-    pub fn set_focused(&mut self, new_focused: bool) {
-        match *self {
-            Container::Root(_) => {},
-            Container::Output { ref mut focused, .. } |
-            Container::Workspace { ref mut focused, .. } |
-            Container::Container { ref mut focused, .. } |
-            Container::View { ref mut focused, .. } => *focused = new_focused,
         }
     }
 
@@ -361,24 +325,6 @@ mod tests {
                 let result = container.set_layout(*new_layout);
                 assert!(result.is_err());
             }
-        }
-    }
-
-    #[test]
-    fn is_focused_test() {
-        let root = Container::new_root();
-        let output = Container::new_output(WlcView::root().as_output());
-        let workspace = Container::new_workspace("1".to_string(),
-                                                 Size { w: 500, h: 500 });
-        let container = Container::new_container(Geometry {
-            origin: Point { x: 0, y: 0},
-            size: Size { w: 0, h:0}
-        });
-        let view = Container::new_view(WlcView::root());
-        for container in &mut [root.clone(), output.clone(),
-                               container.clone(),
-                               workspace.clone(), view.clone()] {
-            assert_eq!(container.is_focused(), false);
         }
     }
 }
