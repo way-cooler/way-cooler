@@ -34,7 +34,7 @@ pub fn remove_active() {
 
 pub fn tile_switch() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.0.toggle_active_horizontal();
+        tree.0.toggle_cardinal_tiling();
         tree.layout_active_of(ContainerType::Workspace)
             .unwrap_or_else(|_| {
                 warn!("Could not tile workspace");

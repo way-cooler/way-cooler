@@ -809,7 +809,7 @@ pub mod tests {
             },
             _ => unreachable!()
         }
-        tree.toggle_active_horizontal();
+        tree.toggle_cardinal_tiling();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
@@ -819,7 +819,7 @@ pub mod tests {
             _ => unreachable!()
         }
         // and back again
-        tree.toggle_active_horizontal();
+        tree.toggle_cardinal_tiling();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {

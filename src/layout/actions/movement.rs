@@ -248,7 +248,7 @@ mod tests {
         let children = tree.tree.children_of(active_parent);
         assert_eq!(children[1], tree.active_container.unwrap());
         // test going up and down works
-        tree.toggle_active_horizontal();
+        tree.toggle_cardinal_tiling();
         assert!(tree.move_container(active_uuid, Direction::Up).is_ok());
         let children = tree.tree.children_of(active_parent);
         assert_eq!(children[0], tree.active_container.unwrap());
