@@ -32,16 +32,6 @@ pub fn remove_active() {
     }
 }
 
-pub fn float_active() {
-    if let Ok(mut tree) = try_lock_tree() {
-        if let Some(uuid) = tree.active_id() {
-            if let Err(err) = tree.float_container(uuid) {
-                warn!("Could not float container {:?}: {:?}", uuid, err);
-            }
-        }
-    }
-}
-
 pub fn tile_switch() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.0.toggle_active_horizontal();
@@ -142,21 +132,13 @@ pub fn move_active_down() {
  */
 
 impl Tree {
-    /// Gets the uuid of the active container, if there is an active container
-    pub fn active_id(&self) -> Option<Uuid> {
-        if let Some(active_ix) = self.0.active_container {
-            Some(self.0.tree[active_ix].get_id())
-        } else {
-            None
-        }
-    }
-
     pub fn move_active(&mut self, maybe_uuid: Option<Uuid>, direction: Direction) -> CommandResult {
         let uuid = try!(maybe_uuid
                         .or_else(|| self.0.get_active_container()
                                  .and_then(|container| Some(container.get_id())))
                         .ok_or(TreeError::NoActiveContainer));
         try!(self.0.move_container(uuid, direction));
+        // NOTE Make this not layout the active, but actually the node index's workspace.
         try!(self.layout_active_of(ContainerType::Workspace));
         Ok(())
     }
@@ -177,11 +159,6 @@ impl Tree {
     pub fn layout_active_of(&mut self, c_type: ContainerType) -> CommandResult {
         self.0.layout_active_of(c_type);
         Ok(())
-    }
-
-    /// Attempts to set the node behind the id to be floating.
-    pub fn float_container(&mut self, id: Uuid) -> CommandResult {
-        self.0.float_container(id)
     }
 
     /// Adds a view to the workspace of the active container
@@ -218,7 +195,7 @@ impl Tree {
         }
         try!(tree.add_view(view));
         tree.normalize_view(view);
-        tree.layout_active_of(ContainerType::Workspace);
+        tree.layout_active_of(ContainerType::Container);
         Ok(())
     }
 

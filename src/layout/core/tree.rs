@@ -61,14 +61,6 @@ impl LayoutTree {
         if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &handle) {
             self.set_active_node(node_ix)
         } else {
-            // Check floating
-            if let Some(root_c_ix) = self.root_container_ix() {
-                for child_ix in self.tree.floating_children(root_c_ix) {
-                    if let Some(view_ix) = self.tree.descendant_with_handle(child_ix, &handle) {
-                        return self.set_active_node(view_ix)
-                    }
-                }
-            }
             Err(TreeError::ViewNotFound(handle))
         }
     }
@@ -179,10 +171,6 @@ impl LayoutTree {
     /// Add a new view container with the given WlcView to the active container
     pub fn add_view(&mut self, view: WlcView) -> CommandResult {
         if let Some(mut active_ix) = self.active_container {
-            // Correct using the path
-            if self.tree[active_ix].floating() {
-                active_ix = self.tree.root_path();
-            }
             let parent_ix = self.tree.parent_of(active_ix)
                 .expect("Active container had no parent");
             // Get the previous position before correcting the container
@@ -340,6 +328,7 @@ impl LayoutTree {
                 if child_parent != parent_ix {
                     error!("Child at {:?} has parent {:?}, expected {:?}",
                            child_ix, child_parent, parent_ix);
+                    trace!("The tree: {:#?}", this);
                     panic!()
                 }
                 validate_node_connections(this, child_ix);

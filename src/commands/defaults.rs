@@ -96,8 +96,7 @@ pub fn register_defaults() {
     register("move_active_right", Arc::new(layout_cmds::move_active_right));
     register("move_active_up", Arc::new(layout_cmds::move_active_up));
     register("move_active_down", Arc::new(layout_cmds::move_active_down));
-    register("close_window", Arc::new(layout_cmds::remove_active));
-    register("float_window", Arc::new(layout_cmds::float_active))
+    register("close_window", Arc::new(layout_cmds::remove_active))
 }
 
 // All of the methods defined should be registered.

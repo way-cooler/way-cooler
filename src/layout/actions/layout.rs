@@ -1,10 +1,12 @@
 use std::cmp;
+
 use petgraph::graph::NodeIndex;
-use uuid::Uuid;
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
+
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
+use uuid::Uuid;
 
 impl LayoutTree {
     /// Given the index of some container in the tree, lays out the children of
@@ -443,10 +445,6 @@ impl LayoutTree {
     ///
     /// See `normalize_view` for more information
     pub fn normalize_container(&mut self, node_ix: NodeIndex) {
-        // If floating, do not normalize
-        if self.tree[node_ix].floating() {
-            return;
-        }
         match self.tree[node_ix].get_type() {
             ContainerType::Container  => {
                 for child_ix in self.tree.children_of(node_ix) {
@@ -460,13 +458,10 @@ impl LayoutTree {
                 };
                 let parent_ix = self.tree.ancestor_of_type(node_ix,
                                                         ContainerType::Container)
-                    .or_else(|_| self.tree.ancestor_of_type(self.tree.root_path(),
-                                                            ContainerType::Container))
                     .expect("View had no container parent");
                 let new_geometry: Geometry;
-                let num_siblings = cmp::max(1,
-                                            self.tree.children_of(parent_ix).len().checked_sub(1)
-                                            .unwrap_or(0)) as u32;
+                let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
+                    as u32;
                 let parent_geometry = self.tree[parent_ix].get_geometry()
                     .expect("Parent container had no geometry");
                 match self.tree[parent_ix] {

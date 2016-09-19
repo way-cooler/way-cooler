@@ -84,8 +84,7 @@ impl LayoutTree {
         self.tree.set_family_visible(workspace_ix, true);
         // Delete the old workspace if it has no views on it
         self.active_container = None;
-        if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err()
-            && !self.tree.has_floating(old_worksp_ix) {
+        if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
             trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
                    .expect("Workspace had no name"));
             self.remove_container(old_worksp_ix);
@@ -165,7 +164,8 @@ impl LayoutTree {
                 if self.tree.can_remove_empty_parent(parent_ix) {
                     self.remove_view_or_container(parent_ix);
                 }
-            } else {
+            }
+            else {
                 self.focus_on_next_container(curr_work_ix);
             }
 
