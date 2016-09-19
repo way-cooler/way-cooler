@@ -75,7 +75,7 @@ impl LayoutTree {
             ContainerType::Workspace => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out workspace {:#?} with\
+                    warn!("layout_helper: Laying out workspace {:#?} with\
                             geometry constraints {:#?}",
                         container_mut, geometry);
                     match *container_mut {
@@ -89,7 +89,7 @@ impl LayoutTree {
                     self.layout_helper(child_ix, geometry.clone());
                 }
                 // place floating children above everything else
-                if let Some(root_ix) = self.root_container_ix() {
+                if let Some(root_ix) = self.root_ix_of(node_ix) {
                     for child_ix in self.tree.floating_children(root_ix) {
                         self.place_floating(child_ix);
                     }

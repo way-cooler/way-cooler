@@ -131,6 +131,16 @@ impl LayoutTree {
         }
     }
 
+    /// Searches the ancestry of the given node to find the root container.
+    pub fn root_ix_of(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+        if let Ok(workspace_ix) = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace) {
+            let children = self.tree.children_of(workspace_ix);
+            Some(children[0])
+        } else {
+            None
+        }
+    }
+
     /// Gets the currently active container.
     pub fn get_active_container(&self) -> Option<&Container> {
         self.active_container.and_then(|ix| self.tree.get(ix))
