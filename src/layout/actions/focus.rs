@@ -168,7 +168,7 @@ impl LayoutTree {
         });
     }
 
-    /// Normalizes the geometry of a view to be the same size as it's siblings,
+    /// Normalizes the geometry of a view to be the same size as its siblings,
     /// based on the parent container's layout, at the 0 point of the parent container.
     /// Note this does not auto-tile, only modifies this one view.
     ///
