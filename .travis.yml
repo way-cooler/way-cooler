@@ -1,4 +1,6 @@
-language: rust
+language: 
+  - rust
+  - lua
 rust:
   - stable
 cache: cargo
@@ -25,9 +27,7 @@ before_script:
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
 script:
-  - echo "Checking Lua libs integrity"
-  - find -X lib/lua -type f -name "*.lua" | xargs luac -p
-  - echo "Checking init.lua integrity"
+  - find lib/lua -type f -name "*.lua" | xargs luac -p
   - luac -p config/init.lua
   - cargo check
   - cargo test --verbose
