@@ -25,6 +25,10 @@ before_script:
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
 script:
+  - echo "Checking Lua libs integrity"
+  - find -X lib/lua -type f -name "*.lua" | xargs luac -p
+  - echo "Checking init.lua integrity"
+  - luac -p config/init.lua
   - cargo check
   - cargo test --verbose
 
