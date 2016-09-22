@@ -3,7 +3,6 @@ use std::cmp;
 use petgraph::graph::NodeIndex;
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
-use std::ops::Deref;
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
@@ -270,21 +269,10 @@ impl LayoutTree {
         }
         let root_ix = self.tree.root_ix();
         let mut node_ix = self.tree.follow_path(root_ix);
-        let prev_pos;
-        match self.tree[node_ix].get_type() {
-            // If view, need to make it a sibling
-            ContainerType::View => {
-                let parent_ix = try!(self.tree.parent_of(node_ix)
-                               .map_err(|err| TreeError::PetGraph(err)));
-                prev_pos = *self.tree.get_edge_weight_between(parent_ix, node_ix)
-                    .expect("Could not get edge weight between active and active parent").deref()
-                + 1;
-                node_ix = parent_ix;
-            },
-            ContainerType::Container => {
-                prev_pos = self.tree.grounded_children(node_ix).len() as u32;
-            },
-            _ => unreachable!()
+        // If view, need to make it a sibling
+        if self.tree[node_ix].get_type() == ContainerType::View {
+            node_ix = try!(self.tree.parent_of(node_ix)
+                           .map_err(|err| TreeError::PetGraph(err)));
         }
         {
             let container = &mut self.tree[floating_ix];
@@ -294,7 +282,6 @@ impl LayoutTree {
         }
         try!(self.tree.move_into(floating_ix, node_ix)
              .map_err(|err| TreeError::PetGraph(err)));
-        self.tree.set_child_pos(node_ix, prev_pos);
         self.normalize_container(node_ix);
         Ok(())
     }
