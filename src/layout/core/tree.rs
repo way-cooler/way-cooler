@@ -77,6 +77,15 @@ impl LayoutTree {
         self.set_active_node(node_ix)
     }
 
+    /// Looks up the id, returning the container associated with it.
+    pub fn lookup(&self, id: Uuid) -> Option<&Container> {
+        if let Some(node_ix) = self.tree.lookup_id(id) {
+            Some(&self.tree[node_ix])
+        } else {
+            None
+        }
+    }
+
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
         info!("Active container was {:?}", self.active_container);
@@ -120,16 +129,6 @@ impl LayoutTree {
             // Check the path
             let root_ix = self.tree.root_ix();
             self.tree.follow_path_until(root_ix, ContainerType::Container).ok()
-        }
-    }
-
-    /// Searches the ancestry of the given node to find the root container.
-    pub fn root_ix_of(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
-        if let Ok(workspace_ix) = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace) {
-            let children = self.tree.children_of(workspace_ix);
-            Some(children[0])
-        } else {
-            None
         }
     }
 
@@ -178,8 +177,8 @@ impl LayoutTree {
                 .expect("Could not get edge weight between active and active parent")).deref()
                 + 1;
             if self.tree[active_ix].get_type() == ContainerType::View {
-                active_ix = self.tree.parent_of(active_ix)
-                    .expect("View had no parent");
+                active_ix = try!(self.tree.parent_of(active_ix)
+                                 .map_err(|err| TreeError::PetGraph(err)));
             }
             let view_ix = self.tree.add_child(active_ix,
                                               Container::new_view(view),

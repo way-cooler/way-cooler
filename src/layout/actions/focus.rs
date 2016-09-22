@@ -163,21 +163,19 @@ impl LayoutTree {
             return;
         } else {
             let floating_children = self.tree.floating_children(container_ix);
-            if floating_children.len() > 0 {
-                for child_ix in floating_children {
-                    if let Ok(view_ix) = self.tree.descendant_of_type(child_ix,
-                                                                      ContainerType::View) {
-                        match self.tree[view_ix] {
-                            Container::View { handle, id, .. } => {
-                                info!("Floating view found, focusing on {:#?}", handle);
-                                handle.focus();
-                                self.set_active_container(id)
-                                    .expect("Could not set active container");
-                                return;
-                            },
-                            _ => unreachable!()
-                        };
-                    }
+            for child_ix in floating_children {
+                if let Ok(view_ix) = self.tree.descendant_of_type(child_ix,
+                                                                    ContainerType::View) {
+                    match self.tree[view_ix] {
+                        Container::View { handle, id, .. } => {
+                            info!("Floating view found, focusing on {:#?}", handle);
+                            handle.focus();
+                            self.set_active_container(id)
+                                .expect("Could not set active container");
+                            return;
+                        },
+                        _ => unreachable!()
+                    };
                 }
             }
         }

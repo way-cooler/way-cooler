@@ -171,7 +171,9 @@ impl LayoutTree {
 
             self.tree.set_family_visible(curr_work_ix, true);
 
-            self.normalize_container(active_ix);
+            if !self.tree[active_ix].floating() {
+                self.normalize_container(active_ix);
+            }
         }
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);

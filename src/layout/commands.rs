@@ -4,6 +4,7 @@ use super::try_lock_tree;
 use super::{Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
+use std::ops::Deref;
 use uuid::Uuid;
 use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 
@@ -29,6 +30,34 @@ pub fn remove_active() {
             }
         }
         tree.0.remove_active();
+    }
+}
+
+pub fn toggle_float() {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Some(uuid) = tree.active_id() {
+            let is_floating;
+            {
+                let container = tree.0.lookup(uuid);
+                if let None = container {
+                    error!("{:?} was not associated with a container in the tree!\n {:#?}",
+                        container, tree.0.deref());
+                }
+                is_floating = container.unwrap().floating();
+            }
+            if !is_floating {
+                if let Err(err) = tree.float_container(uuid) {
+                    warn!("{:?}: Could not float container {:?}\n{:#?}",
+                          err, uuid, tree.0.deref());
+                }
+                info!("Floating {:?}", uuid);
+            } else {
+                if let Err(err) = tree.ground_container(uuid) {
+                    warn!("{:?}: Could not ground container {:?}\n{:#?}",
+                          err, uuid, tree.0.deref())
+                }
+            }
+        }
     }
 }
 
@@ -132,6 +161,15 @@ pub fn move_active_down() {
  */
 
 impl Tree {
+    /// Gets the uuid of the active container, if there is an active container
+    pub fn active_id(&self) -> Option<Uuid> {
+        if let Some(active_ix) = self.0.active_container {
+            Some(self.0.tree[active_ix].get_id())
+        } else {
+            None
+        }
+    }
+
     pub fn move_active(&mut self, maybe_uuid: Option<Uuid>, direction: Direction) -> CommandResult {
         let uuid = try!(maybe_uuid
                         .or_else(|| self.0.get_active_container()
@@ -139,7 +177,7 @@ impl Tree {
                         .ok_or(TreeError::NoActiveContainer));
         try!(self.0.move_container(uuid, direction));
         // NOTE Make this not layout the active, but actually the node index's workspace.
-        try!(self.layout_active_of(ContainerType::Workspace));
+        try!(self.layout_active_of(ContainerType::Output));
         Ok(())
     }
 
@@ -159,6 +197,16 @@ impl Tree {
     pub fn layout_active_of(&mut self, c_type: ContainerType) -> CommandResult {
         self.0.layout_active_of(c_type);
         Ok(())
+    }
+
+    /// Attempts to set the node behind the id to be floating
+    pub fn float_container(&mut self, id: Uuid) -> CommandResult {
+        self.0.float_container(id)
+    }
+
+    /// Attempts to set the node behind the id to be not floating
+    pub fn ground_container(&mut self, id: Uuid) -> CommandResult {
+        self.0.ground_container(id)
     }
 
     /// Adds a view to the workspace of the active container
@@ -195,7 +243,7 @@ impl Tree {
         }
         try!(tree.add_view(view));
         tree.normalize_view(view);
-        tree.layout_active_of(ContainerType::Container);
+        tree.layout_active_of(ContainerType::Workspace);
         Ok(())
     }
 
@@ -228,10 +276,10 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
-        if let Some(node_ix) = self.0.tree.lookup_id(id) {
-            match self.0.tree[node_ix].get_type() {
+        if let Some(container) = self.0.lookup(id).cloned() {
+            match container.get_type() {
                 ContainerType::View => {
-                    let handle = match self.0.tree[node_ix].get_handle()
+                    let handle = match container.get_handle()
                         .expect("Could not get handle") {
                             Handle::View(ref handle) => handle.clone(),
                             _ => unreachable!()

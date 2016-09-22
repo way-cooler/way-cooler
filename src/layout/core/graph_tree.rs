@@ -263,7 +263,7 @@ impl InnerTree {
         self.graph.remove_edge(source_parent_edge);
         let mut highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing)
             .map(|(_ix, weight)| *weight).max()
-            .expect("Could not get highest weighted child of target node").clone();
+            .unwrap_or(PathBuilder::new(0).build());
         highest_weight.weight = *highest_weight + 1;
         self.graph.update_edge(target, source, highest_weight);
         self.set_ancestor_paths_active(source);
@@ -506,6 +506,17 @@ impl InnerTree {
     pub fn floating_children(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
             .filter(|&(node_ix, _)| self[node_ix].floating())
+            .collect::<Vec<(NodeIndex, &Path)>>();
+        edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
+        edges.into_iter().map(|(ix, _edge)| ix).collect()
+    }
+
+    /// Collects all **non-floating** children of a node, sorted by weight
+    ///
+    /// Will return an empty iterator if the node has no children or
+    pub fn grounded_children(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
+        let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
+            .filter(|&(node_ix, _)| !self[node_ix].floating())
             .collect::<Vec<(NodeIndex, &Path)>>();
         edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
         edges.into_iter().map(|(ix, _edge)| ix).collect()
