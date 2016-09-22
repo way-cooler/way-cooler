@@ -428,6 +428,13 @@ impl LayoutTree {
                 }
             }
         }
+        let root_ix = self.tree.root_ix();
+        for node_ix in self.tree.follow_path_until(root_ix, ContainerType::View) {
+            if self.tree[node_ix].floating() {
+                error!("{:?} cannot be both on the active path and floating!\n{:#?}",
+                       node_ix, self);
+            }
+        }
     }
 
     #[cfg(not(debug_assertions))]

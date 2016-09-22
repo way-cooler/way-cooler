@@ -255,6 +255,8 @@ impl InnerTree {
     /// Moves the node index at source so that it is a child of the target node.
     /// If the node was moved, the new parent of the source node is returned
     /// (which is always the same as the target node).
+    ///
+    /// If the source node is not floating, then the new connection is made active.
     pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex)
                      -> Result<NodeIndex, GraphError> {
         let source_parent = try!(self.parent_of(source));
@@ -266,7 +268,9 @@ impl InnerTree {
             .unwrap_or(PathBuilder::new(0).build());
         highest_weight.weight = *highest_weight + 1;
         self.graph.update_edge(target, source, highest_weight);
-        self.set_ancestor_paths_active(source);
+        if !self[source].floating() {
+            self.set_ancestor_paths_active(source);
+        }
         self.normalize_edge_weights(source_parent);
         self.normalize_edge_weights(target);
         Ok(target)
@@ -681,6 +685,12 @@ impl InnerTree {
     /// If a divergent path is detected, that edge is deactivated in favor of
     /// the one that leads to this node.
     pub fn set_ancestor_paths_active(&mut self, mut node_ix: NodeIndex) {
+        if cfg!(debug_assertions) {
+            if self[node_ix].floating() {
+                error!("{:?} was set active, but it is floating!\n{:#?}", node_ix, self);
+                panic!("A node that was floating was set to be active!")
+            }
+        }
         // Make sure that any children of this node are inactive
         for child_ix in self.children_of(node_ix) {
             let edge_ix = self.graph.find_edge(node_ix, child_ix)

@@ -298,7 +298,7 @@ impl LayoutTree {
         match self.tree[node_ix] {
             Container::Container { .. } => {},
             Container::View { ref handle, .. } => {
-                trace!("Placing {:?}, at {:?}", self.tree[node_ix], handle.get_geometry());
+                trace!("Placing {:#?}, at {:#?}", self.tree[node_ix], handle.get_geometry());
                 handle.bring_to_front();
             },
             _ => unreachable!()
