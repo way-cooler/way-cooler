@@ -258,6 +258,7 @@ impl LayoutTree {
                              .map_err(|_| TreeError::NoActiveContainer));
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
+        self.layout(root_c_ix);
         Ok(())
     }
 
@@ -283,6 +284,7 @@ impl LayoutTree {
         try!(self.tree.move_into(floating_ix, node_ix)
              .map_err(|err| TreeError::PetGraph(err)));
         self.normalize_container(node_ix);
+        self.layout(node_ix);
         Ok(())
     }
 
