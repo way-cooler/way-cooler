@@ -159,14 +159,19 @@ pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
-                         _mods: &KeyboardModifiers, _button: u32,
-                             state: ButtonState, _point: &Point) -> bool {
+                         mods: &KeyboardModifiers, _button: u32,
+                             state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed && !view.is_root() {
         if let Ok(mut tree) = try_lock_tree() {
             tree.set_active_view(view)
                 .unwrap_or_else(|err| {
                     error!("Could not set active container {:?}", err);
                 });
+            if mods.mods.contains(MOD_CTRL) {
+                if let Err(err) = tree.try_drag_active(*point) {
+                    warn!("{:#?}\nCould not drag container {:?}", view, err);
+                };
+            }
         }
     }
     false

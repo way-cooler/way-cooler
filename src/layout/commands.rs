@@ -193,6 +193,11 @@ impl Tree {
         Ok(())
     }
 
+    /// Attempts to drag the window around the screen.
+    pub fn try_drag_active(&mut self, point: Point) -> CommandResult {
+        unimplemented!()
+    }
+
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
         self.0.add_output(output);
