@@ -102,6 +102,31 @@ macro_rules! require_rustwlc {
     }
 }
 
+/// Handles the boilderplate of creating a dbus method to accept
+/// their library's annoying types. 
+macro_rules! dbus_closure {
+    ( $name:ident ) => {{
+        #[inline]
+        fn dbus_handle_zero_args(info: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
+            let _output = $name();
+            Ok(());
+        }
+    }};
+    ( $($arg_ty:ty),+ -> $out_ty:ty = $name:ident ) => {
+        #[inline]
+        fn dbus_handle_some_args(info: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
+            let inputs = info.msg.iter_init();
+            $(let concat!(arg_, $arg_ty) = inputs.read().expect("whoops"));+
+
+            let output = $name(
+                $(concat!(arg_, $arg_ty)),+ );
+
+            info.msg.method_return().append(output);
+            Ok(());
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::convert::{ToTable, FromTable, LuaDecoder};

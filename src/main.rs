@@ -32,6 +32,8 @@ extern crate uuid;
 #[macro_use]
 extern crate wayland_client;
 
+extern crate dbus;
+
 extern crate tempfile;
 
 extern crate byteorder;
@@ -155,7 +157,7 @@ fn main() {
     // Register Alt+Esc keybinding
     keys::init();
     // Start listening for clients
-    let _ipc = ipc::init();
+    //let _ipc = ipc::init();
 
     // Hand control over to wlc's event loop
     info!("Running wlc...");
