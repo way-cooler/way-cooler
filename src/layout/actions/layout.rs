@@ -256,8 +256,12 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
                              .map_err(|_| TreeError::NoActiveContainer));
+        let prev_parent = try!(self.tree.parent_of(node_ix)
+                               .map_err(|err| TreeError::PetGraph(err)));
+        let next_ix = self.tree.next_sibling(prev_parent, node_ix);
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
+        self.tree.set_ancestor_paths_active(next_ix);
         let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
         self.layout(parent_ix);
         Ok(())
