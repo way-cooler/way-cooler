@@ -8,6 +8,7 @@ use rustwlc::{WlcView, WlcOutput};
 use super::super::LayoutTree;
 use super::container::{Container, ContainerType};
 use super::super::actions::focus::FocusError;
+use super::super::actions::movement::MovementError;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -40,8 +41,13 @@ pub enum TreeError {
     /// There was an error in the graph, an invariant of one of the
     /// functions were not held, so this might be an issue in the Tree.
     PetGraph(GraphError),
-    /// An error occured while trying to focus on a container
-    Focus(FocusError)
+    /// An error occurred while trying to focus on a container
+    Focus(FocusError),
+    /// An error occurred while trying to move a container
+    Movement(MovementError),
+    /// The tree was (true) or was not (false) performing an action,
+    /// but the opposite value was expected.
+    PerformingAction(bool)
 }
 
 impl LayoutTree {
@@ -492,7 +498,8 @@ pub mod tests {
                                                 Container::new_view(fake_view_1.clone()), false);
         let mut layout_tree = LayoutTree {
             tree: tree,
-            active_container: None
+            active_container: None,
+            performing_action: None
         };
         let id = layout_tree.tree[wkspc_1_view].get_id();
         layout_tree.set_active_container(id).unwrap();

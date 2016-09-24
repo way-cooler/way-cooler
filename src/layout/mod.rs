@@ -2,6 +2,9 @@ mod actions;
 mod core;
 pub mod commands;
 
+pub use self::actions::movement::MovementError;
+
+pub use self::core::action::{Action};
 pub use self::core::container::{Container, ContainerType, Handle, Layout};
 pub use self::core::tree::{Direction, TreeError};
 use self::core::InnerTree;
@@ -24,14 +27,16 @@ pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 #[derive(Debug)]
 pub struct LayoutTree {
     tree: InnerTree,
-    active_container: Option<NodeIndex>
+    active_container: Option<NodeIndex>,
+    performing_action: Option<Action>
 }
 
 lazy_static! {
     static ref TREE: Mutex<LayoutTree> = {
         Mutex::new(LayoutTree {
             tree: InnerTree::new(),
-            active_container: None
+            active_container: None,
+            performing_action: None
         })
     };
 }

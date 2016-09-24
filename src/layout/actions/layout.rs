@@ -77,7 +77,7 @@ impl LayoutTree {
             ContainerType::Workspace => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    warn!("layout_helper: Laying out workspace {:#?} with\
+                    trace!("layout_helper: Laying out workspace {:#?} with\
                             geometry constraints {:#?}",
                         container_mut, geometry);
                     match *container_mut {
@@ -258,7 +258,8 @@ impl LayoutTree {
                              .map_err(|_| TreeError::NoActiveContainer));
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
-        self.layout(root_c_ix);
+        let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
+        self.layout(parent_ix);
         Ok(())
     }
 
@@ -284,7 +285,11 @@ impl LayoutTree {
         try!(self.tree.move_into(floating_ix, node_ix)
              .map_err(|err| TreeError::PetGraph(err)));
         self.normalize_container(node_ix);
-        self.layout(node_ix);
+        let root_ix = self.tree.root_ix();
+        let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
+                             .map_err(|_| TreeError::NoActiveContainer));
+        let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
+        self.layout(parent_ix);
         Ok(())
     }
 

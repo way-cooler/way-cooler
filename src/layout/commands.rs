@@ -1,7 +1,7 @@
 //! Commands from the user to manipulate the tree
 
 use super::try_lock_tree;
-use super::{Container, ContainerType, Direction, Handle, Layout, TreeError};
+use super::{Action, Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use std::ops::Deref;
@@ -195,7 +195,18 @@ impl Tree {
 
     /// Attempts to drag the window around the screen.
     pub fn try_drag_active(&mut self, point: Point) -> CommandResult {
-        unimplemented!()
+        if let Some(mut action) = self.performing_action() {
+            let old_point = action.grab;
+            let active_ix = try!(self.0.active_container
+                                .ok_or(TreeError::NoActiveContainer));
+            try!(self.0.drag_floating(active_ix, point, old_point));
+            action.grab = point;
+            self.set_performing_action(Some(action)).ok();
+            Ok(())
+        } else {
+            // TODO Add no performing action error
+            Err(TreeError::PerformingAction(false))
+        }
     }
 
     /// Adds an Output to the tree. Never fails
@@ -353,6 +364,16 @@ impl Tree {
     /// Moves the active container to a workspace
     pub fn send_active_to_workspace(&mut self, workspace_name: &str) -> CommandResult {
         self.0.send_active_to_workspace(workspace_name);
+        Ok(())
+    }
+
+    /// Determines if the user is currently doing an action on the tree
+    pub fn performing_action(&self) -> Option<Action> {
+        self.0.performing_action
+    }
+
+    pub fn set_performing_action(&mut self, val: Option<Action>) -> CommandResult {
+        self.0.performing_action = val;
         Ok(())
     }
 }

@@ -11,7 +11,7 @@ use std::thread;
 
 use registry::{self, RegistryGetData};
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, ContainerType, TreeError};
+use super::layout::{Action, try_lock_tree, ContainerType, MovementError, TreeError};
 use super::lua::{self, LuaQuery};
 use super::background;
 
@@ -168,9 +168,20 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                     error!("Could not set active container {:?}", err);
                 });
             if mods.mods.contains(MOD_CTRL) {
-                if let Err(err) = tree.try_drag_active(*point) {
-                    warn!("{:#?}\nCould not drag container {:?}", view, err);
+                let action = Action {
+                    view: view,
+                    grab: *point,
+                    edges: ResizeEdge::empty()
                 };
+                if let Err(err) = tree.set_performing_action(Some(action)) {
+                    warn!("{:#?}", err);
+                }
+            }
+        }
+    } else {
+        if let Ok(mut tree) = try_lock_tree() {
+            if let Err(err) = tree.set_performing_action(None) {
+                warn!("{:#?}", err);
             }
         }
     }
@@ -185,6 +196,17 @@ pub extern fn pointer_scroll(_view: WlcView, _time: u32,
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     pointer::set_position(*point);
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Err(err) = tree.try_drag_active(*point) {
+            match err {
+                TreeError::PerformingAction(_) => {},
+                TreeError::Movement(MovementError::NotFloating(_)) => {}
+                err => {
+                    error!("Error: {:#?}", err);
+                }
+            }
+        }
+    }
     false
 }
 
