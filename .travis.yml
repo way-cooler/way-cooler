@@ -22,6 +22,8 @@ notifications:
 before_script:
   - |
       echo $(whereis dbus); echo $(whereis dbus-1)
+      locate pgk-config
+      echo $(whereis pkg-config)
       git clone https://github.com/Timidger/travis-cargo
       (cd travis-cargo;
       pip install -e . --user &&
