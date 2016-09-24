@@ -1,9 +1,8 @@
 //! Main module of way-cooler ipc.
 
-pub const VERSION: u32 = 2;
+mod dbus_ipc;
+pub use self::dbus_ipc::init;
+
+pub const VERSION: u32 = 1;
 
 
-// This will be in a module
-pub fn init() {
-    
-}
