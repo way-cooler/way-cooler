@@ -10,6 +10,7 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
+      - dbus
 notifications:
   slack:
     rooms:
