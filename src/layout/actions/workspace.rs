@@ -102,7 +102,9 @@ impl LayoutTree {
                     _ => unreachable!()
                 }
                 self.active_container = Some(active_ix);
-                self.tree.set_ancestor_paths_active(active_ix);
+                if !self.tree[active_ix].floating() {
+                    self.tree.set_ancestor_paths_active(active_ix);
+                }
                 self.validate();
                 return;
             },

@@ -27,18 +27,17 @@ pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 #[derive(Debug)]
 pub struct LayoutTree {
     tree: InnerTree,
-    active_container: Option<NodeIndex>,
-    performing_action: Option<Action>
+    active_container: Option<NodeIndex>
 }
 
 lazy_static! {
     static ref TREE: Mutex<LayoutTree> = {
         Mutex::new(LayoutTree {
             tree: InnerTree::new(),
-            active_container: None,
-            performing_action: None
+            active_container: None
         })
     };
+    static ref PREV_ACTION: Mutex<Option<Action>> = Mutex::new(None);
 }
 
 impl ToJson for LayoutTree {
@@ -80,9 +79,15 @@ impl ToJson for LayoutTree {
 /// Attempts to lock the tree. If the Result is Err, then a thread that
 /// previously had the lock panicked and potentially left the tree in a bad state
 pub fn try_lock_tree() -> Result<Tree, TreeErr> {
-    trace!("Locking the tree!");
     let tree = try!(TREE.try_lock());
     Ok(Tree(tree))
+}
+
+pub fn try_lock_action() -> Result<MutexGuard<'static, Option<Action>>,
+                                 TryLockError<MutexGuard<'static,
+                                                         Option<Action>>>> {
+    let action = try!(PREV_ACTION.try_lock());
+    Ok(action)
 }
 
 

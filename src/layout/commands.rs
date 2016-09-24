@@ -1,6 +1,6 @@
 //! Commands from the user to manipulate the tree
 
-use super::try_lock_tree;
+use super::{try_lock_tree, try_lock_action};
 use super::{Action, Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
@@ -163,6 +163,25 @@ pub fn move_active_down() {
     }
 }
 
+/// Determines if the user is currently doing an action on the tree
+pub fn performing_action() -> Option<Action> {
+    if let Ok(action) = try_lock_action() {
+        *action
+    } else {
+        error!("Could not lock action mutex!");
+        None
+    }
+}
+
+pub fn set_performing_action(val: Option<Action>) -> CommandResult {
+    if let Ok(mut action) = try_lock_action() {
+        *action = val;
+    } else {
+        error!("Could not lock action mutex!");
+    }
+    Ok(())
+}
+
 /* These commands are the interface that the rest of Way Cooler has to the
  * tree. Any action done, whether through a callback, or from the IPC/Lua thread
  * it will have to go through one of these methods.
@@ -195,13 +214,13 @@ impl Tree {
 
     /// Attempts to drag the window around the screen.
     pub fn try_drag_active(&mut self, point: Point) -> CommandResult {
-        if let Some(mut action) = self.performing_action() {
+        if let Some(mut action) = performing_action() {
             let old_point = action.grab;
             let active_ix = try!(self.0.active_container
                                 .ok_or(TreeError::NoActiveContainer));
             try!(self.0.drag_floating(active_ix, point, old_point));
             action.grab = point;
-            self.set_performing_action(Some(action)).ok();
+            set_performing_action(Some(action)).ok();
             Ok(())
         } else {
             // TODO Add no performing action error
@@ -364,16 +383,6 @@ impl Tree {
     /// Moves the active container to a workspace
     pub fn send_active_to_workspace(&mut self, workspace_name: &str) -> CommandResult {
         self.0.send_active_to_workspace(workspace_name);
-        Ok(())
-    }
-
-    /// Determines if the user is currently doing an action on the tree
-    pub fn performing_action(&self) -> Option<Action> {
-        self.0.performing_action
-    }
-
-    pub fn set_performing_action(&mut self, val: Option<Action>) -> CommandResult {
-        self.0.performing_action = val;
         Ok(())
     }
 }

@@ -498,8 +498,7 @@ pub mod tests {
                                                 Container::new_view(fake_view_1.clone()), false);
         let mut layout_tree = LayoutTree {
             tree: tree,
-            active_container: None,
-            performing_action: None
+            active_container: None
         };
         let id = layout_tree.tree[wkspc_1_view].get_id();
         layout_tree.set_active_container(id).unwrap();

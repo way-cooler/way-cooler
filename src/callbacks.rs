@@ -11,7 +11,8 @@ use std::thread;
 
 use registry::{self, RegistryGetData};
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{Action, try_lock_tree, ContainerType, MovementError, TreeError};
+use super::layout::{Action, try_lock_tree, try_lock_action, ContainerType, MovementError, TreeError};
+use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 use super::background;
 
@@ -173,16 +174,14 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                     grab: *point,
                     edges: ResizeEdge::empty()
                 };
-                if let Err(err) = tree.set_performing_action(Some(action)) {
+                if let Err(err) = set_performing_action(Some(action)) {
                     warn!("{:#?}", err);
                 }
             }
         }
     } else {
-        if let Ok(mut tree) = try_lock_tree() {
-            if let Err(err) = tree.set_performing_action(None) {
-                warn!("{:#?}", err);
-            }
+        if let Err(err) = set_performing_action(None) {
+            warn!("{:#?}", err);
         }
     }
     false
@@ -196,6 +195,12 @@ pub extern fn pointer_scroll(_view: WlcView, _time: u32,
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     pointer::set_position(*point);
+    if let Ok(action) = try_lock_action() {
+        match *action {
+            None => return false,
+            _ => {}
+        }
+    }
     if let Ok(mut tree) = try_lock_tree() {
         if let Err(err) = tree.try_drag_active(*point) {
             match err {
