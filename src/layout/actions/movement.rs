@@ -1,4 +1,3 @@
-use rustwlc::Geometry;
 use uuid::Uuid;
 use petgraph::graph::NodeIndex;
 

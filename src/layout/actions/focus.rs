@@ -192,6 +192,43 @@ impl LayoutTree {
         });
     }
 
+    /// If the currently focused view is floating, then the non-floating at the end of
+    /// the path becomes the focused view. Otherwise, the first floating view becomes
+    /// the focused view.
+    ///
+    /// If there is no currently focused view, does nothing.
+    pub fn toggle_floating_focus(&mut self) -> CommandResult {
+        if let None = self.active_container {
+            return Err(TreeError::NoActiveContainer)
+        }
+        let active_ix = self.active_container.unwrap();
+        if self.tree[active_ix].floating() {
+            let root_ix = self.tree.root_ix();
+            let new_ix = self.tree.follow_path(root_ix);
+            match self.tree[new_ix].get_type() {
+                ContainerType::View | ContainerType::Container  => {
+                    try!(self.set_active_node(new_ix));
+                    Ok(())
+                },
+                type_ => {
+                    error!("Path lead to the wrong container, {:#?}\n{:#?}\n{:#?}",
+                           active_ix, type_, self);
+                    panic!("toggle_floating_focused: bad path");
+                }
+            }
+        } else {
+            // Current view is not floating, gotta focus on floating view
+            let root_c_ix = self.root_container_ix()
+                .expect("No root container ancestor of active container");
+            let floating_children = self.tree.floating_children(root_c_ix);
+            if floating_children.len() > 0 {
+                try!(self.set_active_node(floating_children[0]));
+            }
+            Ok(())
+        }
+    }
+
+
     /// Normalizes the geometry of a view to be the same size as it's siblings,
     /// based on the parent container's layout, at the 0 point of the parent container.
     /// Note this does not auto-tile, only modifies this one view.

@@ -61,6 +61,14 @@ pub fn toggle_float() {
     }
 }
 
+pub fn toggle_float_focus() {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Err(err) = tree.toggle_floating_focus() {
+            warn!("Could not float focus: {:#?}", err);
+        }
+    }
+}
+
 pub fn tile_switch() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.0.toggle_active_horizontal();
@@ -168,6 +176,10 @@ impl Tree {
         } else {
             None
         }
+    }
+
+    pub fn toggle_floating_focus(&mut self) -> CommandResult {
+        self.0.toggle_floating_focus()
     }
 
     pub fn move_active(&mut self, maybe_uuid: Option<Uuid>, direction: Direction) -> CommandResult {
