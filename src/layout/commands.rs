@@ -39,9 +39,9 @@ pub fn toggle_float() {
             let is_floating;
             {
                 let container = tree.0.lookup(uuid);
-                if let None = container {
-                    error!("{:?} was not associated with a container in the tree!\n {:#?}",
-                        container, tree.0.deref());
+                if let Err(err) = container.clone() {
+                    error!("{:#?}\n{:?} was not associated with a container in the tree!\n {:#?}",
+                        err, container, tree.0.deref());
                 }
                 is_floating = container.unwrap().floating();
             }
@@ -276,22 +276,19 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
-        if let Some(container) = self.0.lookup(id).cloned() {
-            match container.get_type() {
-                ContainerType::View => {
-                    let handle = match container.get_handle()
-                        .expect("Could not get handle") {
-                            Handle::View(ref handle) => handle.clone(),
-                            _ => unreachable!()
-                        };
-                    return self.remove_view(handle)
-                },
-                _ => {
-                    Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
-                }
+        let container = try!(self.0.lookup(id)).clone();
+        match container.get_type() {
+            ContainerType::View => {
+                let handle = match container.get_handle()
+                    .expect("Could not get handle") {
+                        Handle::View(ref handle) => handle.clone(),
+                        _ => unreachable!()
+                    };
+                return self.remove_view(handle)
+            },
+            _ => {
+                Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
             }
-        } else {
-            Err(TreeError::NodeNotFound(id))
         }
     }
 

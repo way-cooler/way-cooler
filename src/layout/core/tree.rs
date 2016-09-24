@@ -78,11 +78,11 @@ impl LayoutTree {
     }
 
     /// Looks up the id, returning the container associated with it.
-    pub fn lookup(&self, id: Uuid) -> Option<&Container> {
+    pub fn lookup(&self, id: Uuid) -> Result<&Container, TreeError> {
         if let Some(node_ix) = self.tree.lookup_id(id) {
-            Some(&self.tree[node_ix])
+            Ok(&self.tree[node_ix])
         } else {
-            None
+            Err(TreeError::NodeNotFound(id))
         }
     }
 
