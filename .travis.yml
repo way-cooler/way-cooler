@@ -21,6 +21,7 @@ notifications:
 # load travis-cargo
 before_script:
   - |
+      echo $(whereis dbus); echo $(whereis dbus-1)
       git clone https://github.com/Timidger/travis-cargo
       (cd travis-cargo;
       pip install -e . --user &&
