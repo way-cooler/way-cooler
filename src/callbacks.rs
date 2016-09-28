@@ -210,6 +210,8 @@ pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool 
                     error!("Error: {:#?}", err);
                 }
             }
+        } else {
+            return true
         }
     }
     false
