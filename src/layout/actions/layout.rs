@@ -301,8 +301,8 @@ impl LayoutTree {
     /// other nodes.
     fn place_floating(&mut self, node_ix: NodeIndex) {
         if !self.tree[node_ix].floating() {
-            // TODO Will panic here when you can float nested containers
-            panic!("Tried to place a tiling window to be floating");
+            warn!("Tried to make an already floating window floating");
+            return
         }
         match self.tree[node_ix] {
             Container::Container { .. } => {},
@@ -489,6 +489,7 @@ impl LayoutTree {
                 panic!("Tried to normalize a floating view, are you sure you want to do that?")
             } else {
                 warn!("Tried to normalize {:?}\n{:#?}", node_ix, self);
+                return
             }
         }
         match self.tree[node_ix].get_type() {
