@@ -379,7 +379,7 @@ impl LayoutTree {
     /// * else, make it horizontal
     /// This method does *NOT* update the actual views geometry, that needs to be
     /// done separately by the caller
-    pub fn toggle_active_horizontal(&mut self) {
+    pub fn toggle_cardinal_tiling(&mut self) {
         if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
             trace!("Toggling {:#?} to be horizontal or vertical...", self.tree[active_ix]);
             match self.tree[active_ix] {
