@@ -4,7 +4,6 @@ use super::{try_lock_tree, try_lock_action};
 use super::{Action, Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
-use std::ops::Deref;
 use uuid::Uuid;
 use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 
@@ -36,26 +35,15 @@ pub fn remove_active() {
 pub fn toggle_float() {
     if let Ok(mut tree) = try_lock_tree() {
         if let Some(uuid) = tree.active_id() {
-            let is_floating;
-            {
-                let container = tree.0.lookup(uuid);
-                if let Err(err) = container.clone() {
-                    error!("{:#?}\n{:?} was not associated with a container in the tree!\n {:#?}",
-                        err, container, tree.0.deref());
-                }
-                is_floating = container.unwrap().floating();
-            }
-            if !is_floating {
-                if let Err(err) = tree.float_container(uuid) {
-                    warn!("{:?}: Could not float container {:?}\n{:#?}",
-                          err, uuid, tree.0.deref());
-                }
-                info!("Floating {:?}", uuid);
-            } else {
-                if let Err(err) = tree.ground_container(uuid) {
-                    warn!("{:?}: Could not ground container {:?}\n{:#?}",
-                          err, uuid, tree.0.deref())
-                }
+            let is_floating = tree.0.lookup(uuid)
+                .and_then(|container| Ok(container.floating()));
+            let err = match is_floating {
+                Ok(true) => tree.ground_container(uuid),
+                Ok(false) => tree.float_container(uuid),
+                Err(err) => Err(err)
+            };
+            if let Err(err) = err {
+                warn!("{:?},\nError while toggling the floating of {:#?}\n {:#?}", err, uuid, *tree.0);
             }
         }
     }
