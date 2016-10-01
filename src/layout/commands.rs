@@ -310,11 +310,10 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
-        match try!(self.0.lookup(id)).get_handle().expect("Could not get handle") {
-            Handle::View(view) => return self.remove_view(view),
-            Handle::Output(output) => {
-                error!("Got output {:?}, expected a view!", output);
-                panic!("Got output, expected view");
+        match try!(self.0.lookup(id)).get_handle() {
+            Some(Handle::View(view)) => return self.remove_view(view),
+            Some(Handle::Output(_)) | None => {
+                Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
             }
         }
     }
