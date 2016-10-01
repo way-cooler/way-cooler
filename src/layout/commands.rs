@@ -211,7 +211,6 @@ impl Tree {
             set_performing_action(Some(action)).ok();
             Ok(())
         } else {
-            // TODO Add no performing action error
             Err(TreeError::PerformingAction(false))
         }
     }
@@ -311,18 +310,11 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
-        let container = try!(self.0.lookup(id)).clone();
-        match container.get_type() {
-            ContainerType::View => {
-                let handle = match container.get_handle()
-                    .expect("Could not get handle") {
-                        Handle::View(ref handle) => handle.clone(),
-                        _ => unreachable!()
-                    };
-                return self.remove_view(handle)
-            },
-            _ => {
-                Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
+        match try!(self.0.lookup(id)).get_handle().expect("Could not get handle") {
+            Handle::View(view) => return self.remove_view(view),
+            Handle::Output(output) => {
+                error!("Got output {:?}, expected a view!", output);
+                panic!("Got output, expected view");
             }
         }
     }
