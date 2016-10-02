@@ -721,12 +721,15 @@ impl InnerTree {
     ///
     /// # Panics
     /// This will panic if `child_ix` is not a child of `parent_ix`
-    pub fn next_sibling(&self, parent_ix: NodeIndex, child_ix: NodeIndex) -> NodeIndex {
+    pub fn next_sibling(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+        let parent_ix = self.parent_of(node_ix)
+            .expect("Could not get parent of node!");
         let children = self.children_of(parent_ix);
         let mut prev_index = None;
         for (index, sibling_ix) in children.iter().enumerate() {
-            if child_ix == *sibling_ix {
+            if node_ix == *sibling_ix {
                 prev_index = Some(index);
+                break;
             }
         }
         if prev_index.is_none() {
@@ -734,12 +737,12 @@ impl InnerTree {
         }
         let prev_index = prev_index.unwrap();
         if children.len() == 1 {
-            return parent_ix
+            return None
         }
         if prev_index == children.len() - 1 {
-            children[children.len() - 2]
+            Some(children[children.len() - 2])
         } else {
-            children[prev_index + 1]
+            Some(children[prev_index + 1])
         }
     }
 }

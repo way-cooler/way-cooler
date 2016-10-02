@@ -1,6 +1,6 @@
 //! Commands from the user to manipulate the tree
 
-use super::{try_lock_tree, try_lock_action};
+use super::{try_lock_tree, try_lock_action, lock_action};
 use super::{Action, Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
@@ -151,7 +151,7 @@ pub fn move_active_down() {
     }
 }
 
-/// Determines if the user is currently doing an action on the tree
+/// Returns a copy of the action behind the lock.
 pub fn performing_action() -> Option<Action> {
     if let Ok(action) = try_lock_action() {
         *action
@@ -161,13 +161,17 @@ pub fn performing_action() -> Option<Action> {
     }
 }
 
+/// Sets the value behind the lock to the provided value.
+///
+/// None means an action is done being performed.
 pub fn set_performing_action(val: Option<Action>) -> CommandResult {
-    if let Ok(mut action) = try_lock_action() {
+    if let Ok(mut action) = lock_action() {
         *action = val;
+        Ok(())
     } else {
-        error!("Could not lock action mutex!");
+        error!("Action mutex was poisoned");
+        panic!("Action mutex was poisoned");
     }
-    Ok(())
 }
 
 /* These commands are the interface that the rest of Way Cooler has to the
@@ -208,7 +212,7 @@ impl Tree {
                                 .ok_or(TreeError::NoActiveContainer));
             try!(self.0.drag_floating(active_ix, point, old_point));
             action.grab = point;
-            set_performing_action(Some(action)).ok();
+            set_performing_action(Some(action)).unwrap();
             Ok(())
         } else {
             Err(TreeError::PerformingAction(false))

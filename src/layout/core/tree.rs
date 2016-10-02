@@ -9,6 +9,7 @@ use super::super::LayoutTree;
 use super::container::{Container, ContainerType};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
+use super::super::actions::layout::LayoutErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -45,6 +46,8 @@ pub enum TreeError {
     Focus(FocusError),
     /// An error occurred while trying to move a container
     Movement(MovementError),
+    /// An error occurred while trying to change the layout
+    Layout(LayoutErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
     PerformingAction(bool)
@@ -85,11 +88,9 @@ impl LayoutTree {
 
     /// Looks up the id, returning the container associated with it.
     pub fn lookup(&self, id: Uuid) -> Result<&Container, TreeError> {
-        if let Some(node_ix) = self.tree.lookup_id(id) {
-            Ok(&self.tree[node_ix])
-        } else {
-            Err(TreeError::NodeNotFound(id))
-        }
+        self.tree.lookup_id(id)
+            .map(|node_ix| &self.tree[node_ix])
+            .ok_or(TreeError::NodeNotFound(id))
     }
 
     /// Sets the active container to be the given node.
@@ -439,6 +440,7 @@ impl LayoutTree {
             if self.tree[node_ix].floating() {
                 error!("{:?} cannot be both on the active path and floating!\n{:#?}",
                        node_ix, self);
+                panic!("Found node that was on the active path and floating!");
             }
         }
     }

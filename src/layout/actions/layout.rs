@@ -8,6 +8,14 @@ use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
 use uuid::Uuid;
 
+#[derive(Debug, Clone, Copy)]
+pub enum LayoutErr {
+    /// The node behind the UUID was asked to ground when it was already grounded.
+    AlreadyGrounded(Uuid),
+    /// The node behind the UUID was asked to float when it was already floating.
+    AlreadyFloating(Uuid)
+}
+
 impl LayoutTree {
     /// Given the index of some container in the tree, lays out the children of
     /// that container based on what type of container it is and how big of an
@@ -217,7 +225,7 @@ impl LayoutTree {
         let node_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
         if self.tree[node_ix].floating() {
             warn!("Trying to float an already floating container");
-            return Ok(());
+            return Err(TreeError::Layout(LayoutErr::AlreadyFloating(id)));
         }
         let output_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Output)
                              .map_err(|err| TreeError::PetGraph(err)));
@@ -256,9 +264,8 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
                              .map_err(|_| TreeError::NoActiveContainer));
-        let prev_parent = try!(self.tree.parent_of(node_ix)
-                               .map_err(|err| TreeError::PetGraph(err)));
-        let next_ix = self.tree.next_sibling(prev_parent, node_ix);
+        let next_ix = self.tree.next_sibling(node_ix)
+            .unwrap_or_else(|| self.tree.parent_of(node_ix).expect("node_ix had no parent!"));
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
         self.tree.set_ancestor_paths_active(next_ix);
@@ -271,7 +278,7 @@ impl LayoutTree {
         let floating_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
         if !self.tree[floating_ix].floating() {
             warn!("Trying to ground an already grounded container");
-            return Ok(());
+            return Err(TreeError::Layout(LayoutErr::AlreadyGrounded(id)));
         }
         let root_ix = self.tree.root_ix();
         let mut node_ix = self.tree.follow_path(root_ix);
@@ -301,11 +308,12 @@ impl LayoutTree {
     /// other nodes.
     fn place_floating(&mut self, node_ix: NodeIndex) {
         if !self.tree[node_ix].floating() {
-            warn!("Tried to make an already floating window floating");
+            // This could mess up the layout very badly, that's why it's an error
+            error!("Tried to absolutely place a non-floating view!");
             return
         }
         match self.tree[node_ix] {
-            Container::Container { .. } => {},
+            Container::Container { .. } => { unimplemented!() },
             Container::View { ref handle, .. } => {
                 trace!("Placing {:#?}, at {:#?}", self.tree[node_ix], handle.get_geometry());
                 handle.bring_to_front();
@@ -507,8 +515,8 @@ impl LayoutTree {
                                                         ContainerType::Container)
                     .expect("View had no container parent");
                 let new_geometry: Geometry;
-                let num_siblings = cmp::max(1, self.tree.grounded_children(parent_ix).len().checked_sub(1)
-                                            .unwrap_or(0)) as u32;
+                let num_siblings = cmp::max(1, self.tree.grounded_children(parent_ix).len()
+                                            .checked_sub(1).unwrap_or(0)) as u32;
                 let parent_geometry = self.tree[parent_ix].get_geometry()
                     .expect("Parent container had no geometry");
                 match self.tree[parent_ix] {

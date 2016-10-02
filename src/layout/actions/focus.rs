@@ -141,8 +141,9 @@ impl LayoutTree {
         }
         // If this is reached, parent is workspace
         let container_ix = self.tree.children_of(parent_ix)[0];
-        let root_c_children = self.tree.children_of(container_ix);
+        let root_c_children = self.tree.grounded_children(container_ix);
         if root_c_children.len() > 0 {
+            // Only searches first child of root container, can't be floating view.
             let new_active_ix = self.tree.descendant_of_type(root_c_children[0],
                                                                 ContainerType::View)
                 .unwrap_or(root_c_children[0]);
@@ -198,10 +199,7 @@ impl LayoutTree {
     ///
     /// If there is no currently focused view, does nothing.
     pub fn toggle_floating_focus(&mut self) -> CommandResult {
-        if let None = self.active_container {
-            return Err(TreeError::NoActiveContainer)
-        }
-        let active_ix = self.active_container.unwrap();
+        let active_ix = try!(self.active_container.ok_or(TreeError::NoActiveContainer));
         if self.tree[active_ix].floating() {
             let root_ix = self.tree.root_ix();
             let new_ix = self.tree.follow_path(root_ix);

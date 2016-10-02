@@ -200,18 +200,16 @@ pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool 
             None => return false,
             _ => {}
         }
+    } else {
+        warn!("Could not lock action");
+        return false;
     }
     if let Ok(mut tree) = try_lock_tree() {
-        if let Err(err) = tree.try_drag_active(*point) {
-            match err {
-                TreeError::PerformingAction(_) => {},
-                TreeError::Movement(MovementError::NotFloating(_)) => {}
-                err => {
-                    error!("Error: {:#?}", err);
-                }
-            }
-        } else {
-            return true
+        match tree.try_drag_active(*point) {
+            Ok(_) => return true,
+            Err(TreeError::PerformingAction(_)) => {},
+            Err(TreeError::Movement(MovementError::NotFloating(_))) => {},
+            Err(err) => error!("Error: {:#?}", err)
         }
     }
     false

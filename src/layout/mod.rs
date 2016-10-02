@@ -12,7 +12,7 @@ use self::core::InnerTree;
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
 
-use std::sync::{Mutex, MutexGuard, TryLockError};
+use std::sync::{Mutex, MutexGuard, TryLockError, PoisonError};
 
 /// A wrapper around tree, to hide its methods
 pub struct Tree(TreeGuard);
@@ -76,20 +76,29 @@ impl ToJson for LayoutTree {
     }
 }
 
-/// Attempts to lock the tree. If the Result is Err, then a thread that
-/// previously had the lock panicked and potentially left the tree in a bad state
+/// Attempts to lock the tree. If the Result is Err, then the lock could
+/// not be returned at this time, already locked.
 pub fn try_lock_tree() -> Result<Tree, TreeErr> {
     let tree = try!(TREE.try_lock());
     Ok(Tree(tree))
 }
 
+/// Attempts to lock the action mutex. If the Result is Err, then the lock could
+/// not be returned at this time, already locked.
 pub fn try_lock_action() -> Result<MutexGuard<'static, Option<Action>>,
                                  TryLockError<MutexGuard<'static,
                                                          Option<Action>>>> {
-    let action = try!(PREV_ACTION.try_lock());
-    Ok(action)
+    PREV_ACTION.try_lock()
 }
 
+/// Attempts to lock the action, waiting if it currently locked.
+///
+/// If an Err is returned, the lock is poisoned.
+pub fn lock_action() -> Result<MutexGuard<'static, Option<Action>>,
+                               PoisonError<MutexGuard<'static, Option<Action>>>>
+                                    {
+    PREV_ACTION.lock()
+}
 
 pub fn tree_as_json() -> Json {
     if let Ok(tree) = try_lock_tree() {
