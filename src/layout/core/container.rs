@@ -189,13 +189,13 @@ impl Container {
                 size: handle.get_resolution()
                     .expect("Couldn't get output resolution")
             }),
-            Container::Workspace { ref size, .. } => Some(Geometry {
+            Container::Workspace { size, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0},
-                size: size.clone()
+                size: size
             }),
-            Container::Container { ref geometry, .. } => Some(geometry.clone()),
+            Container::Container { geometry, .. } => Some(geometry),
             Container::View { ref handle, ..} =>
-                handle.get_geometry().map(|geo| geo.clone()),
+                handle.get_geometry(),
         }
     }
 
@@ -215,6 +215,29 @@ impl Container {
             Container::Workspace { id, .. } | Container::Container { id, .. } |
             Container::View { id, .. } => {
                 id
+            }
+        }
+    }
+
+    pub fn floating(&self) -> bool {
+        match *self {
+            Container::View { floating, .. } | Container::Container { floating, .. } => floating,
+            Container::Workspace { .. } | Container::Output { .. } | Container::Root(_) => false
+        }
+    }
+
+    /// If not set on a view or container, error is returned telling what
+    /// container type that this function was (incorrectly) called on.
+    pub fn set_floating(&mut self, val: bool) -> Result<ContainerType, ContainerType> {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { ref mut floating, .. } |
+            Container::Container { ref mut floating, .. } => {
+                *floating = val;
+                Ok(c_type)
+            },
+            _ => {
+                Err(c_type)
             }
         }
     }
@@ -251,12 +274,12 @@ mod tests {
 
         assert!(!workspace.can_have_child(root),      "! Workspace > root");
         assert!(!workspace.can_have_child(output),    "! Workspace > output");
-        assert!(!workspace.can_have_child(workspace), "! Workspace > worksp");
+        assert!(!workspace.can_have_child(workspace), "! Workspace > workspace");
         assert!(!workspace.can_have_child(view),      "! Workspace > view");
 
         assert!(!container.can_have_child(root),      "! Container > root");
-        assert!(!container.can_have_child(workspace), "! Container > worksp");
-        assert!(!container.can_have_child(output),    "! Container > contanr");
+        assert!(!container.can_have_child(workspace), "! Container > workspace");
+        assert!(!container.can_have_child(output),    "! Container > container");
 
         assert!(!view.can_have_child(root),      "! View > root");
         assert!(!view.can_have_child(output),    "! View > output");
@@ -326,5 +349,42 @@ mod tests {
                 assert!(result.is_err());
             }
         }
+    }
+
+    #[test]
+    fn floating_tests() {
+        let mut root = Container::new_root();
+        let mut output = Container::new_output(WlcView::root().as_output());
+        let mut workspace = Container::new_workspace("1".to_string(),
+                                                 Size { w: 500, h: 500 });
+        let mut container = Container::new_container(Geometry {
+            origin: Point { x: 0, y: 0},
+            size: Size { w: 0, h:0}
+        });
+        let mut view = Container::new_view(WlcView::root());
+        // by default, none are floating.
+        assert!(!root.floating());
+        assert!(!output.floating());
+        assert!(!workspace.floating());
+        assert!(!container.floating());
+        assert!(!view.floating());
+
+        // trying to do anything to root, output, or workspace is Err.
+        assert_eq!(root.set_floating(true),  Err(ContainerType::Root));
+        assert_eq!(root.set_floating(false), Err(ContainerType::Root));
+        assert_eq!(output.set_floating(true),  Err(ContainerType::Output));
+        assert_eq!(output.set_floating(false), Err(ContainerType::Output));
+        assert_eq!(workspace.set_floating(true),  Err(ContainerType::Workspace));
+        assert_eq!(workspace.set_floating(false), Err(ContainerType::Workspace));
+
+        assert_eq!(container.set_floating(true),  Ok(ContainerType::Container));
+        assert!(container.floating());
+        assert_eq!(container.set_floating(false), Ok(ContainerType::Container));
+        assert!(!container.floating());
+
+        assert_eq!(view.set_floating(true),  Ok(ContainerType::View));
+        assert!(view.floating());
+        assert_eq!(view.set_floating(false), Ok(ContainerType::View));
+        assert!(!view.floating());
     }
 }

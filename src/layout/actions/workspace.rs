@@ -58,7 +58,7 @@ impl LayoutTree {
         let active_ix = maybe_active_ix.unwrap();
         // Get the old (current) workspace
         let old_worksp_ix: NodeIndex;
-        if let Some(index) = self.tree.ancestor_of_type(active_ix, ContainerType::Workspace) {
+        if let Ok(index) = self.tree.ancestor_of_type(active_ix, ContainerType::Workspace) {
             old_worksp_ix = index;
             trace!("Switching to workspace {}", name);
         } else {
@@ -96,20 +96,25 @@ impl LayoutTree {
             ContainerType::View  => {
                 match self.tree[active_ix] {
                     Container::View { ref handle, ..} => {
+                        trace!("View found, focusing on {:?}", handle);
                         handle.focus();
                     },
                     _ => unreachable!()
                 }
                 self.active_container = Some(active_ix);
-                self.tree.set_ancestor_paths_active(active_ix);
+                if !self.tree[active_ix].floating() {
+                    self.tree.set_ancestor_paths_active(active_ix);
+                }
                 self.validate();
                 return;
             },
             _ => {
                 self.active_container = self.tree.descendant_of_type(active_ix, ContainerType::View)
-                    .or_else(|_| self.tree.descendant_of_type(active_ix, ContainerType::Container)).ok();
+                    .or_else(|_| self.tree.descendant_of_type(active_ix,
+                                                              ContainerType::Container)).ok();
             }
         }
+        trace!("Focusing on next container");
         self.focus_on_next_container(workspace_ix);
         self.validate();
     }
@@ -168,7 +173,9 @@ impl LayoutTree {
 
             self.tree.set_family_visible(curr_work_ix, true);
 
-            self.normalize_container(active_ix);
+            if !self.tree[active_ix].floating() {
+                self.normalize_container(active_ix);
+            }
         }
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);

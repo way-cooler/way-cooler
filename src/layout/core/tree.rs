@@ -8,6 +8,8 @@ use rustwlc::{WlcView, WlcOutput};
 use super::super::LayoutTree;
 use super::container::{Container, ContainerType};
 use super::super::actions::focus::FocusError;
+use super::super::actions::movement::MovementError;
+use super::super::actions::layout::LayoutErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -40,15 +42,22 @@ pub enum TreeError {
     /// There was an error in the graph, an invariant of one of the
     /// functions were not held, so this might be an issue in the Tree.
     PetGraph(GraphError),
-    /// An error occured while trying to focus on a container
-    Focus(FocusError)
+    /// An error occurred while trying to focus on a container
+    Focus(FocusError),
+    /// An error occurred while trying to move a container
+    Movement(MovementError),
+    /// An error occurred while trying to change the layout
+    Layout(LayoutErr),
+    /// The tree was (true) or was not (false) performing an action,
+    /// but the opposite value was expected.
+    PerformingAction(bool)
 }
 
 impl LayoutTree {
     /// Drops every node in the tree, essentially invalidating it
     pub fn destroy_tree(&mut self) {
         let root_ix = self.tree.root_ix();
-        let mut nodes = self.tree.all_descendants_of(&root_ix);
+        let mut nodes = self.tree.all_descendants_of(root_ix);
         nodes.sort_by(|a, b| b.cmp(a));
         for node in nodes {
             self.tree.remove(node);
@@ -77,6 +86,13 @@ impl LayoutTree {
         self.set_active_node(node_ix)
     }
 
+    /// Looks up the id, returning the container associated with it.
+    pub fn lookup(&self, id: Uuid) -> Result<&Container, TreeError> {
+        self.tree.lookup_id(id)
+            .map(|node_ix| &self.tree[node_ix])
+            .ok_or(TreeError::NodeNotFound(id))
+    }
+
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
         info!("Active container was {:?}", self.active_container);
@@ -88,8 +104,10 @@ impl LayoutTree {
                 TreeError::UuidWrongType(container.get_id(),
                                          vec!(ContainerType::View, ContainerType::Container)))
         }
+        if !self.tree[node_ix].floating() {
+            self.tree.set_ancestor_paths_active(node_ix);
+        }
         info!("Active container is now: {:?}", self.active_container);
-        self.tree.set_ancestor_paths_active(node_ix);
         Ok(())
     }
 
@@ -97,6 +115,28 @@ impl LayoutTree {
     /// a view that is not a part of the tree.
     pub fn unset_active_container(&mut self) {
         self.active_container = None;
+    }
+
+    /// Gets the root container of the active container.
+    ///
+    /// If there is no active container, searches the path.
+    pub fn root_container_ix(&self) -> Option<NodeIndex> {
+        if let Some(active_ix) = self.active_container {
+            let mut cur_ix = active_ix;
+            while let Ok(parent_ix) = self.tree.parent_of(cur_ix) {
+                if self.tree[cur_ix].get_type() == ContainerType::Container
+                    && self.tree[parent_ix].get_type() == ContainerType::Workspace {
+                        return Some(cur_ix)
+                    } else {
+                    cur_ix = parent_ix;
+                }
+            }
+            None
+        } else {
+            // Check the path
+            let root_ix = self.tree.root_ix();
+            self.tree.follow_path_until(root_ix, ContainerType::Container).ok()
+        }
     }
 
     /// Gets the currently active container.
@@ -117,7 +157,7 @@ impl LayoutTree {
             if self.tree[ix].get_type() == ctype {
                 Some(ix)
             } else {
-                self.tree.ancestor_of_type(ix, ctype)
+                self.tree.ancestor_of_type(ix, ctype).ok()
             }
         } else {
             None
@@ -144,8 +184,8 @@ impl LayoutTree {
                 .expect("Could not get edge weight between active and active parent")).deref()
                 + 1;
             if self.tree[active_ix].get_type() == ContainerType::View {
-                active_ix = self.tree.parent_of(active_ix)
-                    .expect("View had no parent");
+                active_ix = try!(self.tree.parent_of(active_ix)
+                                 .map_err(|err| TreeError::PetGraph(err)));
             }
             let view_ix = self.tree.add_child(active_ix,
                                               Container::new_view(view),
@@ -213,7 +253,7 @@ impl LayoutTree {
     /// number of descendants of the container), any node indices should be
     /// considered invalid after this operation (except for the active_container)
     pub fn remove_container(&mut self, container_ix: NodeIndex) {
-        let mut children = self.tree.all_descendants_of(&container_ix);
+        let mut children = self.tree.all_descendants_of(container_ix);
         // add current container to the list as well
         children.push(container_ix);
         for node_ix in children {
@@ -234,7 +274,7 @@ impl LayoutTree {
     pub fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Option<Container> {
         // Only the root container has a non-container parent, and we can't remove that
         let mut result = None;
-        if let Some(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
+        if let Ok(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
                                                                     ContainerType::Container) {
             // If it'll move, fix that before that happens
             if self.tree.is_last_ix(parent_ix) {
@@ -313,7 +353,7 @@ impl LayoutTree {
                     _ => panic!("Active container was not view or container")
                 }
                 // Check active container in tree
-                if self.tree.ancestor_of_type(active_ix, ContainerType::Root).is_none() {
+                if self.tree.ancestor_of_type(active_ix, ContainerType::Root).is_err() {
                     error!("Active container @ {:?} is not part of tree!", active_ix);
                     error!("Active container is {:?}", active);
                     trace!("The tree: {:#?}", self);
@@ -331,7 +371,7 @@ impl LayoutTree {
                     trace!("The tree: {:#?}", self);
                     panic!()
                 }
-                for container_ix in self.tree.all_descendants_of(&workspace_ix) {
+                for container_ix in self.tree.all_descendants_of(workspace_ix) {
                     match self.tree[container_ix] {
                         Container::Container { .. } => {
                             let parent_ix = self.tree.parent_of(container_ix)
@@ -393,6 +433,14 @@ impl LayoutTree {
                 }  else if weight.active {
                     flipped = true;
                 }
+            }
+        }
+        let root_ix = self.tree.root_ix();
+        for node_ix in self.tree.follow_path_until(root_ix, ContainerType::View) {
+            if self.tree[node_ix].floating() {
+                error!("{:?} cannot be both on the active path and floating!\n{:#?}",
+                       node_ix, self);
+                panic!("Found node that was on the active path and floating!");
             }
         }
     }

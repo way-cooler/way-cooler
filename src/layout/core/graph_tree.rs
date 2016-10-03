@@ -255,6 +255,8 @@ impl InnerTree {
     /// Moves the node index at source so that it is a child of the target node.
     /// If the node was moved, the new parent of the source node is returned
     /// (which is always the same as the target node).
+    ///
+    /// If the source node is not floating, then the new connection is made active.
     pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex)
                      -> Result<NodeIndex, GraphError> {
         let source_parent = try!(self.parent_of(source));
@@ -263,10 +265,12 @@ impl InnerTree {
         self.graph.remove_edge(source_parent_edge);
         let mut highest_weight = self.graph.edges_directed(target, EdgeDirection::Outgoing)
             .map(|(_ix, weight)| *weight).max()
-            .expect("Could not get highest weighted child of target node").clone();
+            .unwrap_or(PathBuilder::new(0).build());
         highest_weight.weight = *highest_weight + 1;
         self.graph.update_edge(target, source, highest_weight);
-        self.set_ancestor_paths_active(source);
+        if !self[source].floating() {
+            self.set_ancestor_paths_active(source);
+        }
         self.normalize_edge_weights(source_parent);
         self.normalize_edge_weights(target);
         Ok(target)
@@ -490,12 +494,33 @@ impl InnerTree {
         result
     }
 
-    /// Gets an iterator to the children of a node, sorted by weight.
+    /// Collects all children of a node, sorted by weight.
     ///
     /// Will return an empty iterator if the node has no children or
-    /// if the node does not exist.
     pub fn children_of(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
+            .collect::<Vec<(NodeIndex, &Path)>>();
+        edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
+        edges.into_iter().map(|(ix, _edge)| ix).collect()
+    }
+
+    /// Collects all **floating** children of a node, sorted by weight
+    ///
+    /// Will return an empty iterator if the node has no children or
+    pub fn floating_children(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
+        let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
+            .filter(|&(node_ix, _)| self[node_ix].floating())
+            .collect::<Vec<(NodeIndex, &Path)>>();
+        edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
+        edges.into_iter().map(|(ix, _edge)| ix).collect()
+    }
+
+    /// Collects all **non-floating** children of a node, sorted by weight
+    ///
+    /// Will return an empty iterator if the node has no children or
+    pub fn grounded_children(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
+        let mut edges = self.graph.edges_directed(node_ix, EdgeDirection::Outgoing)
+            .filter(|&(node_ix, _)| !self[node_ix].floating())
             .collect::<Vec<(NodeIndex, &Path)>>();
         edges.sort_by_key(|&(ref _ix, ref edge)| *edge);
         edges.into_iter().map(|(ix, _edge)| ix).collect()
@@ -542,17 +567,17 @@ impl InnerTree {
     ///
     /// Note this does *NOT* check the given node.
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
-                           container_type: ContainerType) -> Option<NodeIndex> {
+                           container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         let mut curr_ix = node_ix;
         while let Ok(parent_ix) = self.parent_of(curr_ix) {
             let parent = self.graph.node_weight(parent_ix)
                 .expect("ancestor_of_type: parent_of invalid");
             if parent.get_type() == container_type {
-                return Some(parent_ix)
+                return Ok(parent_ix)
             }
             curr_ix = parent_ix;
         }
-        return None;
+        return Err(GraphError::NotFound(container_type, node_ix));
     }
 
     /// Attempts to get a descendant of the matching type
@@ -616,9 +641,9 @@ impl InnerTree {
     }
 
     /// Returns the node indices of any node that is a descendant of a node
-    pub fn all_descendants_of(&self, node_ix: &NodeIndex) -> Vec<NodeIndex> {
+    pub fn all_descendants_of(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut index: usize = 0;
-        let mut nodes: Vec<NodeIndex> = self.graph.edges_directed(*node_ix,
+        let mut nodes: Vec<NodeIndex> = self.graph.edges_directed(node_ix,
                                                       EdgeDirection::Outgoing)
             .map(|(ix, _)| ix).collect();
         while index != nodes.len() {
@@ -660,6 +685,12 @@ impl InnerTree {
     /// If a divergent path is detected, that edge is deactivated in favor of
     /// the one that leads to this node.
     pub fn set_ancestor_paths_active(&mut self, mut node_ix: NodeIndex) {
+        if cfg!(debug_assertions) {
+            if self[node_ix].floating() {
+                error!("{:?} was set active, but it is floating!\n{:#?}", node_ix, self);
+                panic!("A node that was floating was set to be active!")
+            }
+        }
         // Make sure that any children of this node are inactive
         for child_ix in self.children_of(node_ix) {
             let edge_ix = self.graph.find_edge(node_ix, child_ix)
@@ -682,6 +713,36 @@ impl InnerTree {
                 .expect("Could not associate edge index with an edge weight");
             edge.active = true;
             node_ix = parent_ix;
+        }
+    }
+
+    /// Gets the next sibling to focus on, assuming child_ix would be removed from parent_ix.
+    /// If there are no other siblings to focus on, parent_ix is returned.
+    ///
+    /// # Panics
+    /// This will panic if `child_ix` is not a child of `parent_ix`
+    pub fn next_sibling(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+        let parent_ix = self.parent_of(node_ix)
+            .expect("Could not get parent of node!");
+        let children = self.children_of(parent_ix);
+        let mut prev_index = None;
+        for (index, sibling_ix) in children.iter().enumerate() {
+            if node_ix == *sibling_ix {
+                prev_index = Some(index);
+                break;
+            }
+        }
+        if prev_index.is_none() {
+            panic!("Could not find child in parent node");
+        }
+        let prev_index = prev_index.unwrap();
+        if children.len() == 1 {
+            return None
+        }
+        if prev_index == children.len() - 1 {
+            Some(children[children.len() - 2])
+        } else {
+            Some(children[prev_index + 1])
         }
     }
 }
@@ -757,12 +818,12 @@ mod tests {
     #[test]
     fn test_descendents_of() {
         let basic_tree = basic_tree();
-        let children_of_root = basic_tree.all_descendants_of(&basic_tree.root);
+        let children_of_root = basic_tree.all_descendants_of(basic_tree.root);
         assert_eq!(children_of_root.len(), 9);
         let simple_view = basic_tree.descendant_of_type(basic_tree.root,
                                                         ContainerType::View)
             .expect("No view in the basic test tree");
-        let children_of_view = basic_tree.all_descendants_of(&simple_view);
+        let children_of_view = basic_tree.all_descendants_of(simple_view);
         assert_eq!(children_of_view.len(), 0);
     }
 
@@ -795,10 +856,52 @@ mod tests {
         assert_eq!(only_view.get_id(), container_uuid);
 
         // Generic test where we make sure all of them have the right ids in the map
-        for container_ix in tree.all_descendants_of(&root_ix) {
+        for container_ix in tree.all_descendants_of(root_ix) {
             let container = &tree[container_ix];
             let container_id = container.get_id();
             assert_eq!(*tree.id_map.get(&container_id).unwrap(), container_ix);
         }
+    }
+
+    #[test]
+    // Ensures floating children_of includes floating children
+    fn children_of_has_floating() {
+        let mut tree = basic_tree();
+        let root_ix = tree.root_ix();
+        let root_c = tree.descendant_of_type(root_ix, ContainerType::Container)
+            .expect("No containers in basic tree");
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 1);
+        for child_ix in children {
+            tree[child_ix].set_floating(true).unwrap();
+        }
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 1);
+    }
+
+    #[test]
+    fn floating_children_only() {
+        let mut tree = basic_tree();
+        let root_ix = tree.root_ix();
+        let root_c = tree.descendant_of_type(root_ix, ContainerType::Container)
+            .expect("No containers in basic tree");
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 1);
+        let floating_children = tree.floating_children(root_c);
+        assert_eq!(floating_children.len(), 0);
+        for child_ix in children {
+            tree[child_ix].set_floating(true).unwrap();
+        }
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 1);
+        let floating_children = tree.floating_children(root_c);
+        assert_eq!(floating_children.len(), 1);
+        for child_ix in floating_children {
+            tree[child_ix].set_floating(false).unwrap();
+        }
+        let children = tree.children_of(root_c);
+        assert_eq!(children.len(), 1);
+        let floating_children = tree.floating_children(root_c);
+        assert_eq!(floating_children.len(), 0);
     }
 }

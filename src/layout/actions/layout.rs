@@ -3,9 +3,18 @@ use std::cmp;
 use petgraph::graph::NodeIndex;
 use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
-use super::super::LayoutTree;
+use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Copy)]
+pub enum LayoutErr {
+    /// The node behind the UUID was asked to ground when it was already grounded.
+    AlreadyGrounded(Uuid),
+    /// The node behind the UUID was asked to float when it was already floating.
+    AlreadyFloating(Uuid)
+}
 
 impl LayoutTree {
     /// Given the index of some container in the tree, lays out the children of
@@ -46,7 +55,7 @@ impl LayoutTree {
                     size: handle.get_resolution()
                         .expect("Couldn't get resolution")
                 };
-                trace!("layout: Laying out workspace, using size of the screen output {:?}", handle);
+                trace!("layout: Laying out workspace, using size of the screen output {:#?}", handle);
                 self.layout_helper(node_ix, output_geometry);
             }
             _ => {
@@ -66,7 +75,7 @@ impl LayoutTree {
         match self.tree[node_ix].get_type() {
             ContainerType::Root | ContainerType::Output => {
                 trace!("layout_helper: Laying out entire tree");
-                warn!("Ignoring geometry constraint ({:?}), \
+                warn!("Ignoring geometry constraint ({:#?}), \
                        deferring to each output's constraints",
                       geometry);
                 for child_ix in self.tree.children_of(node_ix) {
@@ -76,8 +85,8 @@ impl LayoutTree {
             ContainerType::Workspace => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out workspace {:?} with\
-                            geometry constraints {:?}",
+                    trace!("layout_helper: Laying out workspace {:#?} with\
+                            geometry constraints {:#?}",
                         container_mut, geometry);
                     match *container_mut {
                         Container::Workspace { ref mut size, .. } => {
@@ -86,14 +95,19 @@ impl LayoutTree {
                         _ => unreachable!()
                     };
                 }
-                for child_ix in self.tree.children_of(node_ix) {
+                for child_ix in self.tree.grounded_children(node_ix) {
                     self.layout_helper(child_ix, geometry.clone());
+                }
+                // place floating children above everything else
+                let root_ix = self.tree.children_of(node_ix)[0];
+                for child_ix in self.tree.floating_children(root_ix) {
+                    self.place_floating(child_ix);
                 }
             },
             ContainerType::Container => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out container {:?} with geometry constraints {:?}",
+                    trace!("layout_helper: Laying out container {:#?} with geometry constraints {:#?}",
                            container_mut, geometry);
                     match *container_mut {
                         Container::Container { geometry: ref mut c_geometry, .. } => {
@@ -109,7 +123,7 @@ impl LayoutTree {
                 match layout {
                     Layout::Horizontal => {
                         trace!("Layout was horizontal, laying out the sub-containers horizontally");
-                        let children = self.tree.children_of(node_ix);
+                        let children = self.tree.grounded_children(node_ix);
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
                             let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
@@ -146,7 +160,7 @@ impl LayoutTree {
                     }
                     Layout::Vertical => {
                         trace!("Layout was vertical, laying out the sub-containers vertically");
-                        let children = self.tree.children_of(node_ix);
+                        let children = self.tree.grounded_children(node_ix);
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
                             let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
@@ -189,12 +203,126 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                trace!("layout_helper: Laying out view {:?} with geometry constraints {:?}",
+                trace!("layout_helper: Laying out view {:#?} with geometry constraints {:#?}",
                        handle, geometry);
                 handle.set_geometry(ResizeEdge::empty(), geometry);
             }
         }
         self.validate();
+    }
+
+    /// Attempts to set the node behind the id to be floating.
+    ///
+    /// This removes the container from its parent and makes its new parent-
+    /// the workspace it resides in.
+    ///
+    /// The view will have a geometry of 1/2 the height/width, and set right in the
+    /// middle of the screen.
+    ///
+    /// This will change the active container, but **not** the active path,
+    /// it will remain pointing at the previous parent container.
+    pub fn float_container(&mut self, id: Uuid) -> CommandResult {
+        let node_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
+        if self.tree[node_ix].floating() {
+            warn!("Trying to float an already floating container");
+            return Err(TreeError::Layout(LayoutErr::AlreadyFloating(id)));
+        }
+        let output_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Output)
+                             .map_err(|err| TreeError::PetGraph(err)));
+        let output_size = match self.tree[output_ix] {
+            Container::Output { handle, .. } => {
+                handle.get_resolution().expect("Output had no resolution")
+            },
+            _ => unreachable!()
+        };
+        {
+            let container = &mut self.tree[node_ix];
+            try!(container.set_floating(true)
+                .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                                ContainerType::Container))));
+            let new_geometry = Geometry {
+                    size: Size {
+                        h: output_size.h / 2,
+                        w: output_size.w / 2
+                    },
+                    origin: Point {
+                        x: (output_size.w / 2 - output_size.w / 4) as i32 ,
+                        y: (output_size.h / 2 - output_size.h / 4) as i32
+                    }
+                };
+            match *container {
+                Container::View { handle, .. } => {
+                    handle.set_geometry(ResizeEdge::empty(), new_geometry);
+                },
+                Container::Container { ref mut geometry, .. } => {
+                    *geometry = new_geometry
+                },
+                _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                                  ContainerType::Container)))
+            }
+        }
+        let root_ix = self.tree.root_ix();
+        let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
+                             .map_err(|_| TreeError::NoActiveContainer));
+        let next_ix = self.tree.next_sibling(node_ix)
+            .unwrap_or_else(|| self.tree.parent_of(node_ix).expect("node_ix had no parent!"));
+        try!(self.tree.move_into(node_ix, root_c_ix)
+             .map_err(|err| TreeError::PetGraph(err)));
+        self.tree.set_ancestor_paths_active(next_ix);
+        let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
+        self.layout(parent_ix);
+        Ok(())
+    }
+
+    pub fn ground_container(&mut self, id: Uuid) -> CommandResult {
+        let floating_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
+        if !self.tree[floating_ix].floating() {
+            warn!("Trying to ground an already grounded container");
+            return Err(TreeError::Layout(LayoutErr::AlreadyGrounded(id)));
+        }
+        let root_ix = self.tree.root_ix();
+        let mut node_ix = self.tree.follow_path(root_ix);
+        // If view, need to make it a sibling
+        if self.tree[node_ix].get_type() == ContainerType::View {
+            node_ix = try!(self.tree.parent_of(node_ix)
+                           .map_err(|err| TreeError::PetGraph(err)));
+        }
+        {
+            let container = &mut self.tree[floating_ix];
+            try!(container.set_floating(false)
+                 .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                                ContainerType::Container))));
+        }
+        try!(self.tree.move_into(floating_ix, node_ix)
+             .map_err(|err| TreeError::PetGraph(err)));
+        self.normalize_container(node_ix);
+        let root_ix = self.tree.root_ix();
+        let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
+                             .map_err(|_| TreeError::NoActiveContainer));
+        let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
+        self.layout(parent_ix);
+        Ok(())
+    }
+
+    /// If the node is floating, places it at its reported position, above all
+    /// other nodes.
+    fn place_floating(&mut self, node_ix: NodeIndex) {
+        if !self.tree[node_ix].floating() {
+            // This could mess up the layout very badly, that's why it's an error
+            error!("Tried to absolutely place a non-floating view!");
+            return
+        }
+        match self.tree[node_ix] {
+            Container::Container { .. } => { unimplemented!() },
+            Container::View { ref handle, .. } => {
+                trace!("Placing {:#?}, at {:#?}", self.tree[node_ix], handle.get_geometry());
+                handle.bring_to_front();
+            },
+            _ => unreachable!()
+        }
+        for child_ix in self.tree.floating_children(node_ix) {
+            self.place_floating(child_ix);
+        }
     }
 
     /// Changes the layout of the active container to the given layout.
@@ -208,7 +336,7 @@ impl LayoutTree {
                 self.set_layout(active_ix, new_layout);
                 return Ok(())
             }
-            if self.tree.children_of(parent_ix).len() == 1 {
+            if self.tree.grounded_children(parent_ix).len() == 1 {
                 self.set_layout(parent_ix, new_layout);
                 return Ok(())
             }
@@ -248,7 +376,7 @@ impl LayoutTree {
 
             }
         } else {
-            warn!("{:?} did not have a parent of type {:?}, doing nothing!",
+            warn!("{:#?} did not have a parent of type {:?}, doing nothing!",
                    self, c_type);
         }
         self.validate();
@@ -261,7 +389,7 @@ impl LayoutTree {
     /// done separately by the caller
     pub fn toggle_cardinal_tiling(&mut self) {
         if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
-            trace!("Toggling {:?} to be horizontal or vertical...", self.tree[active_ix]);
+            trace!("Toggling {:#?} to be horizontal or vertical...", self.tree[active_ix]);
             match self.tree[active_ix] {
                 Container::Container { ref mut layout, .. } => {
                     match *layout {
@@ -346,12 +474,12 @@ impl LayoutTree {
     }
 
     pub fn set_layout(&mut self, node_ix: NodeIndex, new_layout: Layout) {
-        match  self.tree[node_ix] {
+        match self.tree[node_ix] {
             Container::Container { ref mut layout, .. } => {
                 *layout = new_layout;
             },
             ref container => {
-                warn!("Can not set layout on non-container {:?}", container);
+                warn!("Can not set layout on non-container {:#?}", container);
                 return;
             }
         }
@@ -362,9 +490,19 @@ impl LayoutTree {
     ///
     /// See `normalize_view` for more information
     pub fn normalize_container(&mut self, node_ix: NodeIndex) {
+        // if floating, do not normalize
+        if self.tree[node_ix].floating() {
+            if cfg!(debug_assertions) {
+                error!("Tried to normalize {:?}\n{:#?}", node_ix, self);
+                panic!("Tried to normalize a floating view, are you sure you want to do that?")
+            } else {
+                warn!("Tried to normalize {:?}\n{:#?}", node_ix, self);
+                return
+            }
+        }
         match self.tree[node_ix].get_type() {
             ContainerType::Container  => {
-                for child_ix in self.tree.children_of(node_ix) {
+                for child_ix in self.tree.grounded_children(node_ix) {
                     self.normalize_container(child_ix)
                 }
             },
@@ -377,8 +515,8 @@ impl LayoutTree {
                                                         ContainerType::Container)
                     .expect("View had no container parent");
                 let new_geometry: Geometry;
-                let num_siblings = cmp::max(1, self.tree.children_of(parent_ix).len() - 1)
-                    as u32;
+                let num_siblings = cmp::max(1, self.tree.grounded_children(parent_ix).len()
+                                            .checked_sub(1).unwrap_or(0)) as u32;
                 let parent_geometry = self.tree[parent_ix].get_geometry()
                     .expect("Parent container had no geometry");
                 match self.tree[parent_ix] {
@@ -406,7 +544,7 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 };
-                trace!("Setting view {:?} to geometry: {:?}",
+                trace!("Setting view {:#?} to geometry: {:#?}",
                     self.tree[node_ix], new_geometry);
                 handle.set_geometry(ResizeEdge::empty(), new_geometry);
             },

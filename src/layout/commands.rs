@@ -1,7 +1,7 @@
 //! Commands from the user to manipulate the tree
 
-use super::try_lock_tree;
-use super::{Container, ContainerType, Direction, Handle, Layout, TreeError};
+use super::{try_lock_tree, try_lock_action, lock_action};
+use super::{Action, Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
@@ -29,6 +29,31 @@ pub fn remove_active() {
             }
         }
         tree.0.remove_active();
+    }
+}
+
+pub fn toggle_float() {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Some(uuid) = tree.active_id() {
+            let is_floating = tree.0.lookup(uuid)
+                .and_then(|container| Ok(container.floating()));
+            let err = match is_floating {
+                Ok(true) => tree.ground_container(uuid),
+                Ok(false) => tree.float_container(uuid),
+                Err(err) => Err(err)
+            };
+            if let Err(err) = err {
+                warn!("{:?},\nError while toggling the floating of {:#?}\n {:#?}", err, uuid, *tree.0);
+            }
+        }
+    }
+}
+
+pub fn toggle_float_focus() {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Err(err) = tree.toggle_floating_focus() {
+            warn!("Could not float focus: {:#?}", err);
+        }
     }
 }
 
@@ -126,12 +151,48 @@ pub fn move_active_down() {
     }
 }
 
+/// Returns a copy of the action behind the lock.
+pub fn performing_action() -> Option<Action> {
+    if let Ok(action) = try_lock_action() {
+        *action
+    } else {
+        error!("Could not lock action mutex!");
+        None
+    }
+}
+
+/// Sets the value behind the lock to the provided value.
+///
+/// None means an action is done being performed.
+pub fn set_performing_action(val: Option<Action>) -> CommandResult {
+    if let Ok(mut action) = lock_action() {
+        *action = val;
+        Ok(())
+    } else {
+        error!("Action mutex was poisoned");
+        panic!("Action mutex was poisoned");
+    }
+}
+
 /* These commands are the interface that the rest of Way Cooler has to the
  * tree. Any action done, whether through a callback, or from the IPC/Lua thread
  * it will have to go through one of these methods.
  */
 
 impl Tree {
+    /// Gets the uuid of the active container, if there is an active container
+    pub fn active_id(&self) -> Option<Uuid> {
+        if let Some(active_ix) = self.0.active_container {
+            Some(self.0.tree[active_ix].get_id())
+        } else {
+            None
+        }
+    }
+
+    pub fn toggle_floating_focus(&mut self) -> CommandResult {
+        self.0.toggle_floating_focus()
+    }
+
     pub fn move_active(&mut self, maybe_uuid: Option<Uuid>, direction: Direction) -> CommandResult {
         let uuid = try!(maybe_uuid
                         .or_else(|| self.0.get_active_container()
@@ -139,8 +200,23 @@ impl Tree {
                         .ok_or(TreeError::NoActiveContainer));
         try!(self.0.move_container(uuid, direction));
         // NOTE Make this not layout the active, but actually the node index's workspace.
-        try!(self.layout_active_of(ContainerType::Workspace));
+        try!(self.layout_active_of(ContainerType::Output));
         Ok(())
+    }
+
+    /// Attempts to drag the window around the screen.
+    pub fn try_drag_active(&mut self, point: Point) -> CommandResult {
+        if let Some(mut action) = performing_action() {
+            let old_point = action.grab;
+            let active_ix = try!(self.0.active_container
+                                .ok_or(TreeError::NoActiveContainer));
+            try!(self.0.drag_floating(active_ix, point, old_point));
+            action.grab = point;
+            set_performing_action(Some(action)).unwrap();
+            Ok(())
+        } else {
+            Err(TreeError::PerformingAction(false))
+        }
     }
 
     /// Adds an Output to the tree. Never fails
@@ -159,6 +235,16 @@ impl Tree {
     pub fn layout_active_of(&mut self, c_type: ContainerType) -> CommandResult {
         self.0.layout_active_of(c_type);
         Ok(())
+    }
+
+    /// Attempts to set the node behind the id to be floating
+    pub fn float_container(&mut self, id: Uuid) -> CommandResult {
+        self.0.float_container(id)
+    }
+
+    /// Attempts to set the node behind the id to be not floating
+    pub fn ground_container(&mut self, id: Uuid) -> CommandResult {
+        self.0.ground_container(id)
     }
 
     /// Adds a view to the workspace of the active container
@@ -195,7 +281,7 @@ impl Tree {
         }
         try!(tree.add_view(view));
         tree.normalize_view(view);
-        tree.layout_active_of(ContainerType::Container);
+        tree.layout_active_of(ContainerType::Workspace);
         Ok(())
     }
 
@@ -228,22 +314,11 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
-        if let Some(node_ix) = self.0.tree.lookup_id(id) {
-            match self.0.tree[node_ix].get_type() {
-                ContainerType::View => {
-                    let handle = match self.0.tree[node_ix].get_handle()
-                        .expect("Could not get handle") {
-                            Handle::View(ref handle) => handle.clone(),
-                            _ => unreachable!()
-                        };
-                    return self.remove_view(handle)
-                },
-                _ => {
-                    Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
-                }
+        match try!(self.0.lookup(id)).get_handle() {
+            Some(Handle::View(view)) => return self.remove_view(view),
+            Some(Handle::Output(_)) | None => {
+                Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
             }
-        } else {
-            Err(TreeError::NodeNotFound(id))
         }
     }
 

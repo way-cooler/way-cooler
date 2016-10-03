@@ -11,7 +11,8 @@ use std::thread;
 
 use registry::{self, RegistryGetData};
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, ContainerType, TreeError};
+use super::layout::{Action, try_lock_tree, try_lock_action, ContainerType, MovementError, TreeError};
+use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 use super::background;
 
@@ -159,14 +160,28 @@ pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
-                         _mods: &KeyboardModifiers, _button: u32,
-                             state: ButtonState, _point: &Point) -> bool {
+                         mods: &KeyboardModifiers, _button: u32,
+                             state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed && !view.is_root() {
         if let Ok(mut tree) = try_lock_tree() {
             tree.set_active_view(view)
                 .unwrap_or_else(|err| {
                     error!("Could not set active container {:?}", err);
                 });
+            if mods.mods.contains(MOD_CTRL) {
+                let action = Action {
+                    view: view,
+                    grab: *point,
+                    edges: ResizeEdge::empty()
+                };
+                if let Err(err) = set_performing_action(Some(action)) {
+                    warn!("{:#?}", err);
+                }
+            }
+        }
+    } else {
+        if let Err(err) = set_performing_action(None) {
+            warn!("{:#?}", err);
         }
     }
     false
@@ -180,6 +195,23 @@ pub extern fn pointer_scroll(_view: WlcView, _time: u32,
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     pointer::set_position(*point);
+    if let Ok(action) = try_lock_action() {
+        match *action {
+            None => return false,
+            _ => {}
+        }
+    } else {
+        warn!("Could not lock action");
+        return false;
+    }
+    if let Ok(mut tree) = try_lock_tree() {
+        match tree.try_drag_active(*point) {
+            Ok(_) => return true,
+            Err(TreeError::PerformingAction(_)) => {},
+            Err(TreeError::Movement(MovementError::NotFloating(_))) => {},
+            Err(err) => error!("Error: {:#?}", err)
+        }
+    }
     false
 }
 

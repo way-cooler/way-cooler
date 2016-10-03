@@ -134,15 +134,16 @@ impl LayoutTree {
             }
             parent_ix = self.tree.ancestor_of_type(parent_ix,
                                                     ContainerType::Container)
-                .unwrap_or_else(|| {
+                .unwrap_or_else(|_| {
                     self.tree.ancestor_of_type(parent_ix, ContainerType::Workspace)
                         .expect("Container was not part of a workspace")
                 });
         }
         // If this is reached, parent is workspace
         let container_ix = self.tree.children_of(parent_ix)[0];
-        let root_c_children = self.tree.children_of(container_ix);
+        let root_c_children = self.tree.grounded_children(container_ix);
         if root_c_children.len() > 0 {
+            // Only searches first child of root container, can't be floating view.
             let new_active_ix = self.tree.descendant_of_type(root_c_children[0],
                                                                 ContainerType::View)
                 .unwrap_or(root_c_children[0]);
@@ -150,10 +151,34 @@ impl LayoutTree {
             self.set_active_container(id)
                 .expect("Could not set active container");
             match self.tree[new_active_ix] {
-                Container::View { ref handle, .. } => handle.focus(),
-                _ => {}
+                Container::View { ref handle, .. } => {
+                    info!("Focusing on {:?}", handle);
+                    handle.focus();
+                },
+                Container::Container { .. } => {
+                    info!("No view found, focusing on nothing in workspace {:?}", parent_ix);
+                    WlcView::root().focus();
+                }
+                _ => unreachable!()
             };
             return;
+        } else {
+            let floating_children = self.tree.floating_children(container_ix);
+            for child_ix in floating_children {
+                if let Ok(view_ix) = self.tree.descendant_of_type(child_ix,
+                                                                    ContainerType::View) {
+                    match self.tree[view_ix] {
+                        Container::View { handle, id, .. } => {
+                            info!("Floating view found, focusing on {:#?}", handle);
+                            handle.focus();
+                            self.set_active_container(id)
+                                .expect("Could not set active container");
+                            return;
+                        },
+                        _ => unreachable!()
+                    };
+                }
+            }
         }
         trace!("Active container set to container {:?}", container_ix);
         let id = self.tree[container_ix].get_id();
@@ -168,7 +193,41 @@ impl LayoutTree {
         });
     }
 
-    /// Normalizes the geometry of a view to be the same size as its siblings,
+    /// If the currently focused view is floating, then the non-floating at the end of
+    /// the path becomes the focused view. Otherwise, the first floating view becomes
+    /// the focused view.
+    ///
+    /// If there is no currently focused view, does nothing.
+    pub fn toggle_floating_focus(&mut self) -> CommandResult {
+        let active_ix = try!(self.active_container.ok_or(TreeError::NoActiveContainer));
+        if self.tree[active_ix].floating() {
+            let root_ix = self.tree.root_ix();
+            let new_ix = self.tree.follow_path(root_ix);
+            match self.tree[new_ix].get_type() {
+                ContainerType::View | ContainerType::Container  => {
+                    try!(self.set_active_node(new_ix));
+                    Ok(())
+                },
+                type_ => {
+                    error!("Path lead to the wrong container, {:#?}\n{:#?}\n{:#?}",
+                           active_ix, type_, self);
+                    panic!("toggle_floating_focused: bad path");
+                }
+            }
+        } else {
+            // Current view is not floating, gotta focus on floating view
+            let root_c_ix = self.root_container_ix()
+                .expect("No root container ancestor of active container");
+            let floating_children = self.tree.floating_children(root_c_ix);
+            if floating_children.len() > 0 {
+                try!(self.set_active_node(floating_children[0]));
+            }
+            Ok(())
+        }
+    }
+
+
+    /// Normalizes the geometry of a view to be the same size as it's siblings,
     /// based on the parent container's layout, at the 0 point of the parent container.
     /// Note this does not auto-tile, only modifies this one view.
     ///

@@ -1,3 +1,4 @@
+use rustwlc::{Point, ResizeEdge};
 use uuid::Uuid;
 use petgraph::graph::NodeIndex;
 
@@ -6,13 +7,16 @@ use super::super::commands::CommandResult;
 use super::super::core::{Direction, ShiftDirection, TreeError};
 use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
+#[derive(Debug, Clone)]
 pub enum MovementError {
     /// Attempted to move the node behind the UUID in the given direction,
     /// which would cause it to leave its siblings.
     MoveOutsideSiblings(Uuid, Direction),
     /// There was a tree error, generally should abort operation and pass this
     /// up back through the caller.
-    Tree(TreeError)
+    Tree(Box<TreeError>),
+    /// Expected the view to be floating, but it was not
+    NotFloating(NodeIndex)
 }
 
 
@@ -56,12 +60,16 @@ impl LayoutTree {
                                 Ok(new_parent_ix) => Ok(new_parent_ix),
                                 Err(MovementError::Tree(err)) => {
                                     error!("Tree error moving between ancestors: {:?}", err);
-                                    Err(err)
+                                    Err(*err)
                                 }
                                 Err(MovementError::MoveOutsideSiblings(node, dir)) => {
                                     error!("Trying to move {:#?} in the {:?} direction somehow moved out of siblings",
                                            node, dir);
                                     panic!("Moving between ancestors failed in an unexpected way")
+                                },
+                                err => {
+                                    error!("Unexpected error: {:#?}", err);
+                                    panic!("unexpected error");
                                 }
                             }
                         } else { /* Moving within current parent container */
@@ -73,7 +81,11 @@ impl LayoutTree {
                                     self.move_recurse(node_to_move, Some(parent_ix), direction)
                                 },
                                 Err(MovementError::Tree(err)) => {
-                                    Err(err)
+                                    Err(*err)
+                                },
+                                err => {
+                                    error!("Unexpected error: {:#?}", err);
+                                    panic!("unexpected error");
                                 }
                             }
                         }
@@ -99,12 +111,12 @@ impl LayoutTree {
                              -> Result<NodeIndex, MovementError> {
         let parent_ix = try!(self.tree.parent_of(node_ix)
                              .map_err(|err| MovementError::Tree(
-                                 TreeError::PetGraph(err))));
+                                 Box::new(TreeError::PetGraph(err)))));
         let siblings_and_self = self.tree.children_of(parent_ix);
         let cur_index = try!(siblings_and_self.iter().position(|node| {
             *node == node_ix
         }).ok_or(MovementError::Tree(
-            TreeError::NodeNotFound(self.tree[node_ix].get_id()))));
+            Box::new(TreeError::NodeNotFound(self.tree[node_ix].get_id())))));
         let maybe_new_index = match direction {
             Direction::Right | Direction::Down => {
                 cur_index.checked_add(1)
@@ -121,12 +133,12 @@ impl LayoutTree {
                 Container::View { .. } => {
                     try!(self.tree.swap_node_order(node_ix, swap_ix)
                          .map_err(|err| MovementError::Tree(
-                             TreeError::PetGraph(err))))
+                             Box::new(TreeError::PetGraph(err)))))
                 },
                 Container::Container { .. } => {
                     try!(self.tree.move_into(node_ix, swap_ix)
                          .map_err(|err| MovementError::Tree(
-                             TreeError::PetGraph(err))));
+                             Box::new(TreeError::PetGraph(err)))));
                     if let Some(handle) = self.tree[node_ix].get_handle() {
                         match handle {
                             Handle::View(view) => self.normalize_view(view),
@@ -135,8 +147,8 @@ impl LayoutTree {
                     }
                 },
                 _ => return Err(MovementError::Tree(
-                    TreeError::UuidWrongType(self.tree[swap_ix].get_id(),
-                                             vec!(ContainerType::View, ContainerType::Container))))
+                    Box::new(TreeError::UuidWrongType(self.tree[swap_ix].get_id(),
+                                             vec!(ContainerType::View, ContainerType::Container)))))
             };
             Ok(self.tree.parent_of(node_ix)
                .expect("Moved container had no new parent"))
@@ -158,12 +170,12 @@ impl LayoutTree {
                                  -> Result<NodeIndex, MovementError> {
         let cur_parent_ix = try!(self.tree.parent_of(move_ancestor)
                                  .map_err(|err| MovementError::Tree(
-                                     TreeError::PetGraph(err))));
+                                     Box::new(TreeError::PetGraph(err)))));
         let siblings_and_self = self.tree.children_of(cur_parent_ix);
         let cur_index = try!(siblings_and_self.iter().position(|node| {
             *node == move_ancestor
         }).ok_or(MovementError::Tree(
-            TreeError::NodeNotFound(self.tree[move_ancestor].get_id()))));
+            Box::new(TreeError::NodeNotFound(self.tree[move_ancestor].get_id())))));
         let next_ix = match direction {
             Direction::Right | Direction::Down => {
                 let next_index = cur_index + 1;
@@ -173,7 +185,7 @@ impl LayoutTree {
                                                 ShiftDirection::Left)
                         .and_then(|_| self.tree.parent_of(node_to_move))
                         .map_err(|err| MovementError::Tree(
-                            TreeError::PetGraph(err)))
+                            Box::new(TreeError::PetGraph(err))))
                 } else {
                     siblings_and_self[next_index]
                 }
@@ -187,7 +199,7 @@ impl LayoutTree {
                                                 ShiftDirection::Right)
                         .and_then(|_| self.tree.parent_of(node_to_move))
                         .map_err(|err| MovementError::Tree(
-                            TreeError::PetGraph(err)))
+                            Box::new(TreeError::PetGraph(err))))
                 }
             }
         };
@@ -208,7 +220,7 @@ impl LayoutTree {
                 self.tree.move_into(node_to_move, next_ix)
             },
             _ => unreachable!()
-        }.map_err(|err| MovementError::Tree(TreeError::PetGraph(err))));
+        }.map_err(|err| MovementError::Tree(Box::new(TreeError::PetGraph(err)))));
         match self.tree[node_to_move] {
             Container::View { handle, .. } => {
                 self.normalize_view(handle);
@@ -216,8 +228,36 @@ impl LayoutTree {
             },
             _ => {
                 Err(MovementError::Tree(
-                    TreeError::UuidWrongType(self.tree[node_to_move].get_id(), vec!(ContainerType::View))))
+                    Box::new(
+                        TreeError::UuidWrongType(self.tree[node_to_move].get_id(),
+                                                 vec!(ContainerType::View)))))
             },
+        }
+    }
+
+    /// If the view behind the node index is floating, drags move it to a
+    /// point on the screen.
+    pub fn drag_floating(&mut self, node_ix: NodeIndex, point: Point, old_point: Point)
+                         -> CommandResult {
+        let container = &self.tree[node_ix];
+        if !container.floating() {
+            return Err(TreeError::Movement(MovementError::NotFloating(node_ix)))
+        }
+        match *container {
+            Container::View { handle, .. } => {
+                let dx = point.x - old_point.x;
+                let dy = point.y - old_point.y;
+                let mut geo = handle.get_geometry()
+                    .expect("Could not get geometry of view");
+                geo.origin.x += dx;
+                geo.origin.y += dy;
+                handle.set_geometry(ResizeEdge::empty(), geo);
+                Ok(())
+            },
+            Container::Container { id, .. } | Container::Workspace { id, .. } |
+            Container::Output { id, .. } | Container::Root(id) => {
+                Err(TreeError::UuidWrongType(id, vec!(ContainerType::View)))
+            }
         }
     }
 }
