@@ -62,7 +62,6 @@ mod commands;
 mod ipc;
 
 mod layout;
-mod compositor;
 mod background;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");

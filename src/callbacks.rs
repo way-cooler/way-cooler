@@ -4,16 +4,15 @@
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
-use rustwlc::xkb::Keysym;
 
 use rustc_serialize::json::Json;
 use std::sync::Arc;
 use std::thread;
 
-use compositor;
 use registry::{self, RegistryGetData};
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, ContainerType, TreeError};
+use super::layout::{Action, try_lock_tree, try_lock_action, ContainerType, MovementError, TreeError};
+use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 use super::background;
 
@@ -103,28 +102,25 @@ pub extern fn view_move_to_output(current: WlcView,
     trace!("view_move_to_output: {:?}, {:?}, {:?}", current, o1, o2);
 }
 
-pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
-}
-
 pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
     view.set_state(state, handled);
 }
 
-pub extern fn view_request_move(view: WlcView, dest: &Point) {
-    // Called by views when they have a dang resize mouse thing, we should only
-    // let it happen in view floating mode
-    compositor::start_interactive_move(&view, dest);
+pub extern fn view_request_move(view: WlcView, _dest: &Point) {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Err(err) = tree.set_active_view(view) {
+            error!("view_request_move error: {:?}", err);
+        }
+    }
 }
 
-pub extern fn view_request_resize(view: WlcView,
-                              edge: ResizeEdge, location: &Point) {
-    compositor::start_interactive_resize(&view, edge, location);
+pub extern fn view_request_resize(_view: WlcView, _edge: ResizeEdge, _location: &Point) {
+
 }
 
 #[allow(non_snake_case)] // EMPTY_MODS will be a static once we have KEY_LED_NONE
 pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
                            key: u32, state: KeyState) -> bool {
-    let raw_sym = Keysym::from(key);
     let EMPTY_MODS: KeyboardModifiers = KeyboardModifiers {
             mods: MOD_NONE,
             leds: KeyboardLed::empty()
@@ -160,10 +156,35 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
     return EVENT_PASS_THROUGH
 }
 
+pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
+}
+
 pub extern fn pointer_button(view: WlcView, _time: u32,
-                         mods: &KeyboardModifiers, button: u32,
+                         mods: &KeyboardModifiers, _button: u32,
                              state: ButtonState, point: &Point) -> bool {
-    compositor::on_pointer_button(view, _time, mods, button, state, point)
+    if state == ButtonState::Pressed && !view.is_root() {
+        if let Ok(mut tree) = try_lock_tree() {
+            tree.set_active_view(view)
+                .unwrap_or_else(|err| {
+                    error!("Could not set active container {:?}", err);
+                });
+            if mods.mods.contains(MOD_CTRL) {
+                let action = Action {
+                    view: view,
+                    grab: *point,
+                    edges: ResizeEdge::empty()
+                };
+                if let Err(err) = set_performing_action(Some(action)) {
+                    warn!("{:#?}", err);
+                }
+            }
+        }
+    } else {
+        if let Err(err) = set_performing_action(None) {
+            warn!("{:#?}", err);
+        }
+    }
+    false
 }
 
 pub extern fn pointer_scroll(_view: WlcView, _time: u32,
@@ -174,7 +195,24 @@ pub extern fn pointer_scroll(_view: WlcView, _time: u32,
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
     pointer::set_position(*point);
-    compositor::on_pointer_motion(_view, _time, point)
+    if let Ok(action) = try_lock_action() {
+        match *action {
+            None => return false,
+            _ => {}
+        }
+    } else {
+        warn!("Could not lock action");
+        return false;
+    }
+    if let Ok(mut tree) = try_lock_tree() {
+        match tree.try_drag_active(*point) {
+            Ok(_) => return true,
+            Err(TreeError::PerformingAction(_)) => {},
+            Err(TreeError::Movement(MovementError::NotFloating(_))) => {},
+            Err(err) => error!("Error: {:#?}", err)
+        }
+    }
+    false
 }
 
 pub extern fn compositor_ready() {

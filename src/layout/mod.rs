@@ -1,16 +1,18 @@
-mod layout_tree;
-mod graph_tree;
-mod container;
+mod actions;
+mod core;
 pub mod commands;
 
-pub use self::container::{Container, ContainerType, Handle, Layout};
-pub use self::layout_tree::tree::{Direction, TreeError};
-use self::graph_tree::InnerTree;
+pub use self::actions::movement::MovementError;
+
+pub use self::core::action::{Action};
+pub use self::core::container::{Container, ContainerType, Handle, Layout};
+pub use self::core::tree::{Direction, TreeError};
+use self::core::InnerTree;
 
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
 
-use std::sync::{Mutex, MutexGuard, TryLockError};
+use std::sync::{Mutex, MutexGuard, TryLockError, PoisonError};
 
 /// A wrapper around tree, to hide its methods
 pub struct Tree(TreeGuard);
@@ -35,6 +37,7 @@ lazy_static! {
             active_container: None
         })
     };
+    static ref PREV_ACTION: Mutex<Option<Action>> = Mutex::new(None);
 }
 
 impl ToJson for LayoutTree {
@@ -73,14 +76,29 @@ impl ToJson for LayoutTree {
     }
 }
 
-/// Attempts to lock the tree. If the Result is Err, then a thread that
-/// previously had the lock panicked and potentially left the tree in a bad state
+/// Attempts to lock the tree. If the Result is Err, then the lock could
+/// not be returned at this time, already locked.
 pub fn try_lock_tree() -> Result<Tree, TreeErr> {
-    trace!("Locking the tree!");
     let tree = try!(TREE.try_lock());
     Ok(Tree(tree))
 }
 
+/// Attempts to lock the action mutex. If the Result is Err, then the lock could
+/// not be returned at this time, already locked.
+pub fn try_lock_action() -> Result<MutexGuard<'static, Option<Action>>,
+                                 TryLockError<MutexGuard<'static,
+                                                         Option<Action>>>> {
+    PREV_ACTION.try_lock()
+}
+
+/// Attempts to lock the action, waiting if it currently locked.
+///
+/// If an Err is returned, the lock is poisoned.
+pub fn lock_action() -> Result<MutexGuard<'static, Option<Action>>,
+                               PoisonError<MutexGuard<'static, Option<Action>>>>
+                                    {
+    PREV_ACTION.lock()
+}
 
 pub fn tree_as_json() -> Json {
     if let Ok(tree) = try_lock_tree() {

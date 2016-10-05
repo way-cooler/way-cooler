@@ -3,7 +3,7 @@
 use uuid::Uuid;
 
 use rustwlc::handle::{WlcView, WlcOutput};
-use rustwlc::{Geometry, Point, Size, ResizeEdge};
+use rustwlc::{Geometry, Point, Size};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,36 +39,24 @@ impl ContainerType {
             View => false
         }
     }
-
-    /// Whether this container can have a parent of type other
-    #[allow(dead_code)]
-    pub fn can_have_parent(self, other: ContainerType) -> bool {
-        other.can_have_child(self)
-    }
 }
 
 /// Layout mode for a container
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum Layout {
     Horizontal,
-    Vertical,
-    Stacked,
-    Tabbed,
-    Floating
+    Vertical
 }
 
 /// Represents an item in the container tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Container {
     /// Root node of the container
-    Root,
+    Root(Uuid),
     /// Output
     Output {
         /// Handle to the wlc
         handle: WlcOutput,
-        /// Whether the output is focused
-        focused: bool,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -76,10 +64,6 @@ pub enum Container {
     Workspace {
         /// Name of the workspace
         name: String,
-        /// Whether the workspace is focused
-        ///
-        /// Multiple workspaces can be focused
-        focused: bool,
         /// The size of the workspace on the screen.
         /// Might be different if there is e.g a bar present
         size: Size,
@@ -90,8 +74,6 @@ pub enum Container {
     Container {
         /// How the container is layed out
         layout: Layout,
-        /// If the container is focused
-        focused: bool,
         /// If the container is floating
         floating: bool,
         /// The geometry of the container, relative to the parent container
@@ -103,8 +85,6 @@ pub enum Container {
     View {
         /// The wlc handle to the view
         handle: WlcView,
-        /// Whether this view is focused
-        focused: bool,
         /// Whether this view is floating
         floating: bool,
         /// UUID associated with container, client program can use container
@@ -113,11 +93,14 @@ pub enum Container {
 }
 
 impl Container {
+    /// Creates a new root container.
+    pub fn new_root() -> Container {
+        Container::Root(Uuid::new_v4())
+    }
     /// Creates a new output container with the given output
     pub fn new_output(handle: WlcOutput) -> Container {
         Container::Output {
             handle: handle,
-            focused: false,
             id: Uuid::new_v4()
         }
     }
@@ -128,7 +111,6 @@ impl Container {
     pub fn new_workspace(name: String, size: Size) -> Container {
         Container::Workspace {
             name: name,
-            focused: false,
             size: size,
             id: Uuid::new_v4()
         }
@@ -138,7 +120,6 @@ impl Container {
     pub fn new_container(geometry: Geometry) -> Container {
         Container::Container {
             layout: Layout::Horizontal,
-            focused: false,
             floating: false,
             geometry: geometry,
             id: Uuid::new_v4()
@@ -149,7 +130,6 @@ impl Container {
     pub fn new_view(handle: WlcView) -> Container {
         Container::View {
             handle: handle,
-            focused: false,
             floating: false,
             id: Uuid::new_v4()
         }
@@ -171,7 +151,7 @@ impl Container {
     /// Gets the type of this container
     pub fn get_type(&self) -> ContainerType {
         match *self {
-            Container::Root => ContainerType::Root,
+            Container::Root(_) => ContainerType::Root,
             Container::Output { .. } => ContainerType::Output,
             Container::Workspace { .. } => ContainerType::Workspace,
             Container::Container { .. } => ContainerType::Container,
@@ -196,28 +176,6 @@ impl Container {
         }
     }
 
-    /// Determines if the container is focused or not
-    pub fn is_focused(&self) -> bool {
-        match *self {
-            Container::Root { .. } => false,
-            Container::Output { ref focused, .. } |
-            Container::Workspace { ref focused, .. } |
-            Container::Container { ref focused, .. } |
-            Container::View { ref focused, .. } => *focused,
-        }
-    }
-
-    /// Sets the focused value of the container
-    pub fn set_focused(&mut self, new_focused: bool) {
-        match *self {
-            Container::Root { .. } => {},
-            Container::Output { ref mut focused, .. } |
-            Container::Workspace { ref mut focused, .. } |
-            Container::Container { ref mut focused, .. } |
-            Container::View { ref mut focused, .. } => *focused = new_focused,
-        }
-    }
-
     /// Gets the geometry of the container, if the container has one.
     /// Root: Returns None
     /// Workspace/Output: Size is the size of the screen, origin is just 0,0
@@ -225,37 +183,20 @@ impl Container {
     /// origin is the coordinates relative to the parent container.
     pub fn get_geometry(&self) -> Option<Geometry> {
         match *self {
-            Container::Root { .. } => None,
+            Container::Root(_)  => None,
             Container::Output { ref handle, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0 },
                 size: handle.get_resolution()
                     .expect("Couldn't get output resolution")
             }),
-            Container::Workspace { ref size, .. } => Some(Geometry {
+            Container::Workspace { size, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0},
-                size: size.clone()
+                size: size
             }),
-            Container::Container { ref geometry, .. } => Some(geometry.clone()),
+            Container::Container { geometry, .. } => Some(geometry),
             Container::View { ref handle, ..} =>
-                handle.get_geometry().map(|geo| geo.clone()),
+                handle.get_geometry(),
         }
-    }
-
-    /// Sets the geometry of the container, if it supports that operation.
-    /// Only Views, Containers, and Workspaces support this operation,
-    /// all others will return an Err with an appropriate error message.
-    ///
-    /// If setting a workspace, only the size of the geometry is set.
-    #[allow(dead_code)]
-    pub fn set_geometry(&mut self, new_geometry: Geometry) -> Result<(), String> {
-        match *self {
-            Container::Workspace { ref mut size, .. } => *size = new_geometry.size,
-            Container::Container { ref mut geometry, .. } => *geometry = new_geometry,
-            Container::View { ref handle, .. } =>
-                handle.set_geometry(ResizeEdge::empty(), new_geometry),
-            _ => { return Err(format!("Could not set geometry on {:?}", self))}
-        };
-        return Ok(())
     }
 
     pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), String>{
@@ -268,12 +209,35 @@ impl Container {
         Ok(())
     }
 
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         match *self {
-            Container::Root => None,
-            Container::Output { ref id, .. } | Container::Workspace { ref id, .. } |
-            Container::Container { ref id, .. } | Container::View { ref id, .. } => {
-                Some(*id)
+            Container::Root(id) | Container::Output { id, .. } |
+            Container::Workspace { id, .. } | Container::Container { id, .. } |
+            Container::View { id, .. } => {
+                id
+            }
+        }
+    }
+
+    pub fn floating(&self) -> bool {
+        match *self {
+            Container::View { floating, .. } | Container::Container { floating, .. } => floating,
+            Container::Workspace { .. } | Container::Output { .. } | Container::Root(_) => false
+        }
+    }
+
+    /// If not set on a view or container, error is returned telling what
+    /// container type that this function was (incorrectly) called on.
+    pub fn set_floating(&mut self, val: bool) -> Result<ContainerType, ContainerType> {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { ref mut floating, .. } |
+            Container::Container { ref mut floating, .. } => {
+                *floating = val;
+                Ok(c_type)
+            },
+            _ => {
+                Err(c_type)
             }
         }
     }
@@ -310,12 +274,12 @@ mod tests {
 
         assert!(!workspace.can_have_child(root),      "! Workspace > root");
         assert!(!workspace.can_have_child(output),    "! Workspace > output");
-        assert!(!workspace.can_have_child(workspace), "! Workspace > worksp");
+        assert!(!workspace.can_have_child(workspace), "! Workspace > workspace");
         assert!(!workspace.can_have_child(view),      "! Workspace > view");
 
         assert!(!container.can_have_child(root),      "! Container > root");
-        assert!(!container.can_have_child(workspace), "! Container > worksp");
-        assert!(!container.can_have_child(output),    "! Container > contanr");
+        assert!(!container.can_have_child(workspace), "! Container > workspace");
+        assert!(!container.can_have_child(output),    "! Container > container");
 
         assert!(!view.can_have_child(root),      "! View > root");
         assert!(!view.can_have_child(output),    "! View > output");
@@ -325,6 +289,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_variables)]
     /// Tests set and get geometry
     fn geometry_test() {
         use rustwlc::*;
@@ -336,43 +301,22 @@ mod tests {
             origin: Point { x: 1024, y: 2048},
             size: Size { w: 500, h: 700}
         };
-        let mut root = Container::Root;
+        let root = Container::new_root();
         assert!(root.get_geometry().is_none());
-        assert!(root.set_geometry(test_geometry1.clone()).is_err());
 
-        let mut output = Container::new_output(WlcView::root().as_output());
-        // NOTE Segfaults, because tries to get the geometry from dummy Wlc output
-        //assert!(output.get_geometry().is_none());
-        assert!(output.set_geometry(test_geometry1.clone()).is_err());
+        let output = Container::new_output(WlcView::root().as_output());
 
-        let mut workspace = Container::new_workspace("1".to_string(),
+        let workspace = Container::new_workspace("1".to_string(),
                                                      Size { w: 500, h: 500 });
         assert_eq!(workspace.get_geometry(), Some(Geometry {
             size: Size { w: 500, h: 500},
             origin: Point { x: 0, y: 0}
         }));
-        workspace.set_geometry(test_geometry1.clone())
-            .expect("Can't set geometry on workspace");
-        // Workspace only grabs the Size, so point will be 0 0.
-        let workspace_geometry = Geometry {
-            size: test_geometry1.size.clone(),
-            origin: Point { x: 0, y: 0}
-        };
-        assert_eq!(workspace.get_geometry(), Some(workspace_geometry.clone()));
-
-        let mut container = Container::new_container(test_geometry1.clone());
-        assert_eq!(container.get_geometry(), Some(test_geometry1.clone()));
-        container.set_geometry(test_geometry2.clone())
-            .expect("Could not set geometry on container");
-        assert_eq!(container.get_geometry(), Some(test_geometry2.clone()));
-
-        // NOTE Can't test view, because that will just segfault as well
-        //let mut view = Container::new_view(WlcView::root());
     }
 
     #[test]
     fn layout_change_test() {
-        let root = Container::Root;
+        let root = Container::new_root();
         let output = Container::new_output(WlcView::root().as_output());
         let workspace = Container::new_workspace("1".to_string(),
                                                      Size { w: 500, h: 500 });
@@ -388,8 +332,7 @@ mod tests {
             _ => panic!()
         };
         assert_eq!(layout, Layout::Horizontal);
-        let layouts = [Layout::Vertical, Layout::Horizontal,
-                       Layout::Tabbed, Layout::Stacked];
+        let layouts = [Layout::Vertical, Layout::Horizontal];
         for new_layout in &layouts {
             container.set_layout(*new_layout).ok();
             let layout = match container {
@@ -409,20 +352,39 @@ mod tests {
     }
 
     #[test]
-    fn is_focused_test() {
-        let root = Container::Root;
-        let output = Container::new_output(WlcView::root().as_output());
-        let workspace = Container::new_workspace("1".to_string(),
+    fn floating_tests() {
+        let mut root = Container::new_root();
+        let mut output = Container::new_output(WlcView::root().as_output());
+        let mut workspace = Container::new_workspace("1".to_string(),
                                                  Size { w: 500, h: 500 });
-        let container = Container::new_container(Geometry {
+        let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
         });
-        let view = Container::new_view(WlcView::root());
-        for container in &mut [root.clone(), output.clone(),
-                               container.clone(),
-                               workspace.clone(), view.clone()] {
-            assert_eq!(container.is_focused(), false);
-        }
+        let mut view = Container::new_view(WlcView::root());
+        // by default, none are floating.
+        assert!(!root.floating());
+        assert!(!output.floating());
+        assert!(!workspace.floating());
+        assert!(!container.floating());
+        assert!(!view.floating());
+
+        // trying to do anything to root, output, or workspace is Err.
+        assert_eq!(root.set_floating(true),  Err(ContainerType::Root));
+        assert_eq!(root.set_floating(false), Err(ContainerType::Root));
+        assert_eq!(output.set_floating(true),  Err(ContainerType::Output));
+        assert_eq!(output.set_floating(false), Err(ContainerType::Output));
+        assert_eq!(workspace.set_floating(true),  Err(ContainerType::Workspace));
+        assert_eq!(workspace.set_floating(false), Err(ContainerType::Workspace));
+
+        assert_eq!(container.set_floating(true),  Ok(ContainerType::Container));
+        assert!(container.floating());
+        assert_eq!(container.set_floating(false), Ok(ContainerType::Container));
+        assert!(!container.floating());
+
+        assert_eq!(view.set_floating(true),  Ok(ContainerType::View));
+        assert!(view.floating());
+        assert_eq!(view.set_floating(false), Ok(ContainerType::View));
+        assert!(!view.floating());
     }
 }

@@ -68,17 +68,24 @@ local keys = {
   key({ mod, "Shift" }, "l", "dmenu_lua_dofile"),
 
   -- Move focus
-  -- (if you're used to mod+arrow to switch workspaces you may wanna change them)
   key({ mod }, "left", "focus_left"),
   key({ mod }, "right", "focus_right"),
   key({ mod }, "up", "focus_up"),
   key({ mod }, "down", "focus_down"),
+
+  -- Move active container
+  key({ mod, "Shift" }, "left", "move_active_left"),
+  key({ mod, "Shift" }, "right", "move_active_right"),
+  key({ mod, "Shift" }, "up", "move_active_up"),
+  key({ mod, "Shift" }, "down", "move_active_down"),
 
   -- Split containers
   key({ mod }, "h", "split_horizontal"),
   key({ mod }, "v", "split_vertical"),
   key({ mod }, "e", "horizontal_vertical_switch"),
   key({ mod }, "q", "close_window"),
+  key({ mod, "Shift"}, "space", "toggle_float_active"),
+  key({ mod }, "space", "toggle_float_focus")
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
   -- This my be modifiable in the future
