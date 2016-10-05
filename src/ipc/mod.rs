@@ -1,8 +1,10 @@
 //! Main module of way-cooler ipc.
 
-mod dbus_ipc;
-pub use self::dbus_ipc::init;
+mod layout;
 
 pub const VERSION: u32 = 1;
 
-
+pub fn init() {
+    let layout_mapping = layout::Layout::new();
+    layout_mapping.run("org.way_cooler");
+}

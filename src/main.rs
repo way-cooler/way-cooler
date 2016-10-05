@@ -4,6 +4,8 @@
 extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
+#[macro_use]
+extern crate dbus_macros;
 
 #[cfg(not(test))]
 extern crate rustwlc;
@@ -157,7 +159,7 @@ fn main() {
     // Register Alt+Esc keybinding
     keys::init();
     // Start listening for clients
-    //let _ipc = ipc::init();
+    ::std::thread::spawn(|| { ipc::init(); });
 
     // Hand control over to wlc's event loop
     info!("Running wlc...");

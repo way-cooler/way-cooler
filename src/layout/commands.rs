@@ -159,7 +159,6 @@ impl Tree {
         }
     }
 
-    #[allow(dead_code)]
     /// Attempts to remove a container based on UUID. Fails if the container
     /// cannot be removed or if the container does not exist.
     ///
