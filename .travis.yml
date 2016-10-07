@@ -45,7 +45,7 @@ script:
   # run tests
   - cargo test --verbose
   # run tag checks
-  - ci.py travis-check
+  - python $TRAVIS_BUILD_DIR/ci.py travis-check
 
 after_success:
   # Test and upload coverage to coveralls
