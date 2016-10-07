@@ -1,6 +1,7 @@
 language: rust
 rust:
   - stable
+sudo: false
 cache: cargo
 # necessary for `travis-cargo coveralls --no-sudo`
 addons:
@@ -20,16 +21,13 @@ notifications:
   email: false
 # load travis-cargo
 before_script:
-  - |
-      echo $(whereis dbus); echo $(whereis dbus-1)
-      locate pgk-config
-      echo $(whereis pkg-config)
-      git clone https://github.com/Timidger/travis-cargo
+  - | git clone https://github.com/Timidger/travis-cargo
       (cd travis-cargo;
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
 script:
   - export DBUS_NO_PKG_CONFIG=true
+  - export DBUS_1_NO_PKG_CONFIG=true
   - cargo test --verbose
 
 after_success:
