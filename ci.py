@@ -1,13 +1,15 @@
 #!/usr/bin/env python2
 
 import sys
+import os
+import re
 
 from semver import semver
 
 """way-cooler CI integration.
 
 Usage:
-  ci.py check <version> [-v]
+  ci.py travis-check
   ci.py bump <old version> <new version> [-v]
   ci.py (-h | --help)
   ci.py --version
@@ -20,11 +22,13 @@ Options:
 from docopt import docopt
 
 VERSION_REGEX = '\d+\.\d+\.\d+'
-"""If we grab the first 'version=' line in the Cargo files we'll be fine."""
+BRANCH_REGEX = 'release-(' + VERSION_REGEX + ')'
+# If we grab the first 'version=' line in the Cargo files we'll be fine
 CARGO_VERSION_LINE = '$version = "' + VERSION_REGEX + '"^'
-README_CRATES_TAG = ""
+README_CRATES_TAG = "crates\.io/-v\" + VERSION_REGEX + '-orange\.svg'
 
-def check_version(semver, verbose):
+
+def check_release_branch(branch_version):
     if verbose:
         print("Verifying requirements for release version " + str(version))
         print("Verifying Cargo.toml release...")
@@ -34,18 +38,24 @@ def check_version(semver, verbose):
 if __name__ == "__main__":
     args = docopt(__doc__, version="ci.py v1.0")
     verbose = args.v
-    if verbose:
-        print(args)
 
-    if args.check:
+    if args.travis_check:
+        travis_pr_branch = os.environ["TRAVIS_PR_BRANCH"]
+        if travis_pr_branch == "":
+            print("Not running in a PR.")
+            sys.exit(0)
+        version_match = re.match(travis_pr_branch)
+        if version_match == None:
+            print("Not in a release branch PR.")
+            sys.exit(0)
         try:
             version = semver.parse(args.version)
-            check_version(version, verbose)
+            check_release_branch(version, verbose)
         except ValueError as e:
-            sys.stderr.write("Invalid version %s.\n" % args.version)
-            exit(1)
+            sys.stderr.write("Error parsing version in branch " + travis_pr_branch)
+            sys.exit(1)
 
-    else if args.bump:
+    elif args.bump:
         try:
             old_version = semver.parse(args["old version"])
             new_version = semver.parse(args["new version"])
