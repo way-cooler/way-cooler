@@ -1,8 +1,19 @@
 language: rust
 rust:
   - stable
-cache: cargo
-# necessary for `travis-cargo coveralls --no-sudo`
+
+cache:
+  - cargo
+  - pip
+  - directories:
+      # kcov
+      - $HOME/.local/bin
+before_cache:
+  # Try to clear out some files we don't need to cache.
+  - rm $HOME/build/Immington-Industries/way-cooler/target/debug/deps -rf
+  - rm $HOME/build/Immington-Industries/way-cooler/target/debug/way-cooler
+  - rm $HOME/build/Immington-Industries/way-cooler/target/debug/.fingerprint -rf
+
 addons:
   apt:
     packages:
@@ -11,6 +22,7 @@ addons:
       - libdw-dev
       - binutils-dev
       - lua5.2
+
 notifications:
   slack:
     rooms:
@@ -18,17 +30,24 @@ notifications:
     on_success: :change
     on_failure: :change
   email: false
-# install travis-cargo
+
 before_script:
+  # install travis-cargo
   - git clone https://github.com/Timidger/travis-cargo
   - export PATH=$HOME/.local/bin:$PATH
   - (cd travis-cargo; pip install -e . --user)
+  # install dependencies for ci.py
   - pip install --user docopt
   - pip install --user semver
+
 script:
+  # check integrity of Lua files in /lib/lua/
   - for file in $( find lib/lua -type f -name "*.lua" ); do echo Checking $file; luac -p $file; done
+  # check integrity of init file
   - luac -p config/init.lua
+  # Make sure no-test builds
   - cargo check
+  # run tests
   - cargo test --verbose
 
 after_success:
