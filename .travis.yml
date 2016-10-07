@@ -7,7 +7,7 @@ cache:
   - pip
   - directories:
       # kcov
-      - $HOME/.local/bin
+      - $TRAVIS_BUILD_DIR/kcov
 
 addons:
   apt:
