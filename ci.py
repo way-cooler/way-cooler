@@ -60,7 +60,7 @@ def check_release_branch(version):
 if __name__ == "__main__":
     args = docopt(DOCOPT_USAGE, version="ci.py v1.0")
     if args["travis-check"]:
-        travis_pr_branch = os.environ["TRAVIS_PR_BRANCH"]
+        travis_pr_branch = os.environ["TRAVIS_PULL_REQUEST_BRANCH"]
         if travis_pr_branch == "":
             print("Not running in a PR.")
             sys.exit(0)
