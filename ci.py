@@ -4,19 +4,6 @@ import sys
 import os
 import re
 
-"""way-cooler CI integration.
-
-Usage:
-  ci.py travis-check
-  ci.py bump <old version> <new version> [-v]
-  ci.py (-h | --help)
-  ci.py --version
-
-Options:
-  -h --help    Show this menu
-  -v           Be verbose, print actions taken
-  --version    Show version information
-"""
 from docopt import docopt
 
 VERSION_REGEX = '(\\d+\\.\\d+\\.\\d+)'
@@ -30,6 +17,20 @@ FILE_MAP = [
     ["Cargo.lock", CARGO_VERSION_LINE],
     ["README.md", README_CRATES_TAG]
 ]
+
+DOCOPT_USAGE = """way-cooler CI integration.
+
+Usage:
+  ci.py travis-check
+  ci.py bump <old version> <new version> [-v]
+  ci.py (-h | --help)
+  ci.py --version
+
+Options:
+  -h --help    Show this menu
+  -v           Be verbose, print actions taken
+  --version    Show version information
+"""
 
 failed = False
 
@@ -57,10 +58,8 @@ def check_release_branch(version):
         sys.exit(2)
 
 if __name__ == "__main__":
-    args = docopt(__doc__, version="ci.py v1.0")
-    verbose = args.v
-
-    if args.travis_check:
+    args = docopt(DOCOPT_USAGE, version="ci.py v1.0")
+    if args["travis-check"]:
         travis_pr_branch = os.environ["TRAVIS_PR_BRANCH"]
         if travis_pr_branch == "":
             print("Not running in a PR.")
@@ -72,9 +71,10 @@ if __name__ == "__main__":
         print("Checking versions in branch " + travis_pr_branch)
         check_release_branch(version_match)
 
-    elif args.bump:
+    elif args["bump"]:
         sys.stderr.write("Not supported yet")
         sys.exit(1)
+
     else:
         sys.stderr.write("Invalid arguments!\n")
         exit(1)
