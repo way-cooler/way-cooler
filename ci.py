@@ -4,8 +4,6 @@ import sys
 import os
 import re
 
-from semver import semver
-
 """way-cooler CI integration.
 
 Usage:
@@ -21,19 +19,42 @@ Options:
 """
 from docopt import docopt
 
-VERSION_REGEX = '\\d+\\.\\d+\\.\\d+'
-BRANCH_REGEX = 'release-(' + VERSION_REGEX + ')'
+VERSION_REGEX = '(\\d+\\.\\d+\\.\\d+)'
+BRANCH_REGEX = '$release*' + VERSION_REGEX + '^'
 # If we grab the first 'version=' line in the Cargo files we'll be fine
 CARGO_VERSION_LINE = '$version = "' + VERSION_REGEX + '"^'
 README_CRATES_TAG = "crates\\.io/-v" + VERSION_REGEX + '-orange\\.svg'
 
+FILE_MAP = [
+    ["Cargo.toml", CARGO_VERSION_LINE],
+    ["Cargo.lock", CARGO_VERSION_LINE],
+    ["README.md", README_CRATES_TAG]
+]
 
-def check_release_branch(branch_version):
-    if verbose:
-        print("Verifying requirements for release version " + str(version))
-        print("Verifying Cargo.toml release...")
+failed = False
 
+def check_file_version(file_name, regex, expected):
+    reg = re.compile(regex)
+    with open(file_name) as f:
+        for line in f.readlines():
+            match = reg.match(line)
+            if match == None:
+                continue
+            elif match == expected:
+                print('\t' + file_name + " updated.")
+                return
+            else:
+                print('\t' + file_name + ": expected " + expected + ", got " + match)
+                global failed
+                failed = True
 
+def check_release_branch(version):
+    for mapping in FILE_MAP:
+        print("Checking " + mapping[0])
+        check_file_version(mapping[0], mapping[1], version)
+    if failed:
+        print("Some files not up to date!")
+        sys.exit(2)
 
 if __name__ == "__main__":
     args = docopt(__doc__, version="ci.py v1.0")
@@ -48,23 +69,12 @@ if __name__ == "__main__":
         if version_match == None:
             print("Not in a release branch PR.")
             sys.exit(0)
-        try:
-            version = semver.parse(args.version)
-            check_release_branch(version, verbose)
-        except ValueError as e:
-            sys.stderr.write("Error parsing version in branch " + travis_pr_branch)
-            sys.exit(1)
+        print("Checking versions in branch " + travis_pr_branch)
+        check_release_branch(version_match)
 
     elif args.bump:
-        try:
-            old_version = semver.parse(args["old version"])
-            new_version = semver.parse(args["new version"])
-            bump_version(old_version, new_version, verbose)
-        except ValueError as e:
-            sys.stderr.write(
-                "Invalid version %s or %s.\n" % args["old_version"], args["new_version"])
-            exit(1)
-
+        sys.stderr.write("Not supported yet")
+        sys.exit(1)
     else:
         sys.stderr.write("Invalid arguments!\n")
         exit(1)
