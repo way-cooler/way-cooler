@@ -29,6 +29,7 @@ before_script:
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
 script:
+  - export DBUS_NO_PKG_CONFIG=true
   - cargo test --verbose
 
 after_success:
