@@ -21,11 +21,11 @@ Options:
 """
 from docopt import docopt
 
-VERSION_REGEX = '\d+\.\d+\.\d+'
+VERSION_REGEX = '\\d+\\.\\d+\\.\\d+'
 BRANCH_REGEX = 'release-(' + VERSION_REGEX + ')'
 # If we grab the first 'version=' line in the Cargo files we'll be fine
 CARGO_VERSION_LINE = '$version = "' + VERSION_REGEX + '"^'
-README_CRATES_TAG = "crates\.io/-v\" + VERSION_REGEX + '-orange\.svg'
+README_CRATES_TAG = "crates\\.io/-v" + VERSION_REGEX + '-orange\\.svg'
 
 
 def check_release_branch(branch_version):
