@@ -8,11 +8,6 @@ cache:
   - directories:
       # kcov
       - $HOME/.local/bin
-before_cache:
-  # Try to clear out some files we don't need to cache.
-  - rm $HOME/build/Immington-Industries/way-cooler/target/debug/deps -rf
-  - rm $HOME/build/Immington-Industries/way-cooler/target/debug/way-cooler
-  - rm $HOME/build/Immington-Industries/way-cooler/target/debug/.fingerprint -rf
 
 addons:
   apt:
