@@ -21,7 +21,8 @@ notifications:
   email: false
 # load travis-cargo
 before_script:
-  - | git clone https://github.com/Timidger/travis-cargo
+  - | 
+      git clone https://github.com/Timidger/travis-cargo
       (cd travis-cargo;
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
