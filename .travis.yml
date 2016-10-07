@@ -1,4 +1,4 @@
-language: rust
+`language: rust
 rust:
   - stable
 cache: cargo
@@ -20,11 +20,11 @@ notifications:
   email: false
 # install travis-cargo
 before_script:
-  - |
-      git clone https://github.com/Timidger/travis-cargo
-      (cd travis-cargo;
-      pip install -e . --user &&
-      export PATH=$HOME/.local/bin:$PATH)
+  - git clone https://github.com/Timidger/travis-cargo
+  - export PATH=$HOME/.local/bin:$PATH
+  - (cd travis-cargo; pip install -e . --user)
+  - pip install --user docopt
+  - pip install --user semver
 script:
   - for file in $( find lib/lua -type f -name "*.lua" ); do echo Checking $file; luac -p $file; done
   - luac -p config/init.lua
