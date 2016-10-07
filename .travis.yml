@@ -26,7 +26,7 @@ before_script:
       pip install -e . --user &&
       export PATH=$HOME/.local/bin:$PATH)
 script:
-  - find lib/lua -type f -name "*.lua" | xargs luac -p
+  - for file in $( find lib/lua -type f -name "*.lua" ); do echo Checking $file; luac -p $file; done
   - luac -p config/init.lua
   - cargo check
   - cargo test --verbose
