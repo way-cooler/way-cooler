@@ -38,7 +38,6 @@ install:
   - pip install --user -e ./travis-cargo
   # install dependencies for ci.py
   - pip install --user docopt
-  - cargo install cargo-check
 
 script:
   # check integrity of Lua files in /lib/lua/
