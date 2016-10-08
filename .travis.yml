@@ -1,6 +1,8 @@
 language: rust
 rust:
   - stable
+depth: 3 # We don't need to clone with depth 50
+
 sudo: false
 
 cache:
@@ -23,18 +25,19 @@ notifications:
   slack:
     rooms:
       - way-cooler:W2vOSvJvgxGi7EiGkZCtvlB6#way-cooler
-    on_success: :change
-    on_failure: :change
+    on_success: change
+    on_failure: change
   email: false
 
-before_script:
-  # install travis-cargo
-  - git clone https://github.com/Timidger/travis-cargo
+before_install:
+  - git clone --depth=1 https://github.com/Timidger/travis-cargo
   - export PATH=$HOME/.local/bin:$PATH
-  - (cd travis-cargo; pip install -e . --user)
+
+install:
+  # install travis-cargo
+  - pip install --user -e ./travis-cargo
   # install dependencies for ci.py
   - pip install --user docopt
-  - pip install --user semver
   - cargo install cargo-check
 
 script:
@@ -43,7 +46,7 @@ script:
   # check integrity of init file
   - luac -p config/init.lua
   # Make sure no-test builds
-  - cargo check
+  - cargo check --verbose
   # run tests
   - cargo test --verbose
   # run tag checks
@@ -60,6 +63,8 @@ after_success:
   - travis-cargo coveralls --no-sudo --verify --exclude-pattern="main.rs,mod.rs,tests.rs,wayland_client_api.rs,callbacks.rs"
 
 before_deploy:
+  - export WAY_COOLER_STATIC_LINK=true
+  - cargo build --release
   - ci.py prepare-deploy
 deploy:
   provider: releases
@@ -69,4 +74,5 @@ deploy:
   api_key:
     secure: "i+7X7qZgq5gwWbi/KBoL03rBTJam2ayJUxuTUGnQNwOEUc1KaDintZG/j6bp2DqFfodBx0oq/nvZi+mIAzbpQHlaDCav+GC0S3o2k10CAPlcg844IZVB22J/WbUjFfkpAWz0Mbs6U7cjCeAPAdYTbcJy5haduKm9FKOat87bBrNIdPZno3j7RDd1ne3+gsbEp0W9788jqX99vV7CWtV0hT5w1yT+COg8YdvCowOLh3mS/y43LZlmyqNFqJpF/tMnBWI9qDlhyCCzmsVb+xq9tjX4XQAgZJI6Y0uP8JoityqG1OpCAfgSpS99+0iy+lSGpALDfKAk04lIRMWublnMSXSqcHRupxF6mvlzer9V4XV1emgDn1rtnIkQiRryuA180mTVpHjGg+Ockl/wjOo4FJGKlDmQn7oT6EMDfY62md2tYbsB2MmJNlFXiQCinNFmjpTJuUbHwXmF4FArq4B8AmoFwY1I7I8x6eHKqLEZOxgm9EgtHC9+dwbRSY7t6X7AiHYv7LsDIjEO70oG7j/nuoZgBZZvMjOWlm7EKUjrcxXVLUZK9f9P/6Pc7r+OQr4jaRRclCtZPsPGPu/EjNfeQ0+PpZdByzT9k1y4loAqZPtP0ANBp7flKsPNWXaMSNsb/Hu4zolDDyeU5eL3VHyrDk1wi9nmFTOnrCl8W++7Fi4="
   file:
-    - "$TRAIVS_BUILD_DIR/way-cooler_linux_x86_64"
+    - "way-cooler_linux_x86_64"
+    - "$TRAVIS_BUILD_DIR/config/init.lua"

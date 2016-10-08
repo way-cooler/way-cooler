@@ -3,6 +3,7 @@
 import sys
 import os
 import re
+import subprocess
 
 from docopt import docopt
 
@@ -70,15 +71,25 @@ if __name__ == "__main__":
             sys.exit(0)
         print("Checking versions in branch " + travis_pr_branch)
         if not check_release_branch(version_match):
-            sys.stderr.write("Not all files matched!")
+            sys.stderr.write("Not all files matched!\n")
             sys.exit(2)
+        print("Checking if we can compile in release mode")
+        retcode = subprocess.call(["cargo", "check", "--release"])
+        if retcode:
+            sys.stderr.write("cargo check --release failed with %d!\n" % retcode)
+            sys.exit(2)
+        print("All checks passed.")
+
 
     elif args["bump"]:
         sys.stderr.write("Not supported yet")
         sys.exit(1)
 
     elif args["prepare-deploy"]:
-        sys.stderr.write("Not supported yet")
+        print("Not compiling for multiple targets yet :(")
+        print("Moving `way-cooler` to `way-cooler_linux_x86_64`")
+        build_dir = os.environ["TRAVIS_BUILD_DIR"]
+        os.rename(build_dir + "/way-cooler", build_dir + "/way-cooler_linux_x86_64")
 
     else:
         sys.stderr.write("Invalid arguments!\n")
