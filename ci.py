@@ -75,7 +75,7 @@ if __name__ == "__main__":
             sys.exit(2)
         print("Checking if we can compile in release mode")
         retcode = subprocess.call(["cargo", "check", "--release"])
-        if retcode:
+        if retcode != 0:
             sys.stderr.write("cargo check --release failed with %d!\n" % retcode)
             sys.exit(2)
         print("All checks passed.")
@@ -87,6 +87,12 @@ if __name__ == "__main__":
 
     elif args["prepare-deploy"]:
         print("Not compiling for multiple targets yet :(")
+        print("cargo build --release --verbose")
+        retcode = subprocess.call(["cargo", "build", "--verbose", "--release"])
+        if retcode != 0:
+            sys.stderr.write("Cargo build exited with %s\n", retcode)
+            sys.exit(2)
+
         print("Moving `way-cooler` to `way-cooler_linux_x86_64`")
         build_dir = os.environ["TRAVIS_BUILD_DIR"]
         os.rename(build_dir + "/way-cooler", build_dir + "/way-cooler_linux_x86_64")

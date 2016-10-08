@@ -8,9 +8,6 @@ sudo: false
 cache:
   - cargo
   - pip
-  - directories:
-      # kcov
-      - $TRAVIS_BUILD_DIR/kcov
 
 addons:
   apt:
@@ -63,7 +60,6 @@ after_success:
 
 before_deploy:
   - export WAY_COOLER_STATIC_LINK=true
-  - cargo build --release
   - ci.py prepare-deploy
 deploy:
   provider: releases
