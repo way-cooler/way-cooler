@@ -10,13 +10,13 @@ VERSION_REGEX = '(\\d+\\.\\d+\\.\\d+)'
 BRANCH_REGEX = '$release*' + VERSION_REGEX + '^'
 # If we grab the first 'version=' line in the Cargo files we'll be fine
 CARGO_VERSION_LINE = '$version = "' + VERSION_REGEX + '"^'
-README_CRATES_TAG = "crates\\.io/-v" + VERSION_REGEX + '-orange\\.svg'
+README_CRATES_TAG = "/badge/crates\\.io/-v" + VERSION_REGEX
 
-FILE_MAP = [
-    ["Cargo.toml", CARGO_VERSION_LINE],
-    ["Cargo.lock", CARGO_VERSION_LINE],
-    ["README.md", README_CRATES_TAG]
-]
+FILE_REGEX_MAP = {
+    "Cargo.toml": CARGO_VERSION_LINE,
+    "Cargo.lock": CARGO_VERSION_LINE,
+    "README.md": README_CRATES_TAG
+}
 
 DOCOPT_USAGE = """way-cooler CI integration.
 
@@ -39,23 +39,22 @@ def check_file_version(file_name, regex, expected):
     with open(file_name) as f:
         for line in f.readlines():
             match = reg.match(line)
-            if match == None:
+            if not match:
                 continue
             elif match == expected:
                 print('\t' + file_name + " updated.")
-                return
+                return True
             else:
                 print('\t' + file_name + ": expected " + expected + ", got " + match)
-                global failed
-                failed = True
+                return False
 
 def check_release_branch(version):
-    for mapping in FILE_MAP:
-        print("Checking " + mapping[0])
-        check_file_version(mapping[0], mapping[1], version)
-    if failed:
-        print("Some files not up to date!")
-        sys.exit(2)
+    all_clear = True
+    for (file_name, file_regex) in FILE_REGEX_MAP.items():
+        print("Checking " + file_name)
+        if not check_file_version(file_name, file_regex, version):
+            all_clear = False
+    return all_clear
 
 if __name__ == "__main__":
     args = docopt(DOCOPT_USAGE, version="ci.py v1.0")
@@ -65,11 +64,13 @@ if __name__ == "__main__":
             print("Not running in a PR.")
             sys.exit(0)
         version_match = re.match(travis_pr_branch)
-        if version_match == None:
+        if not version_match:
             print("Not in a release branch PR.")
             sys.exit(0)
         print("Checking versions in branch " + travis_pr_branch)
-        check_release_branch(version_match)
+        if not check_release_branch(version_match):
+            sys.stderr.write("Not all files matched!")
+            sys.exit(2)
 
     elif args["bump"]:
         sys.stderr.write("Not supported yet")
@@ -77,4 +78,4 @@ if __name__ == "__main__":
 
     else:
         sys.stderr.write("Invalid arguments!\n")
-        exit(1)
+        sys.exit(1)
