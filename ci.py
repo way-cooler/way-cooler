@@ -22,6 +22,7 @@ DOCOPT_USAGE = """way-cooler CI integration.
 
 Usage:
   ci.py travis-check
+  ci.py prepare-deploy
   ci.py bump <old version> <new version> [-v]
   ci.py (-h | --help)
   ci.py --version
@@ -75,6 +76,9 @@ if __name__ == "__main__":
     elif args["bump"]:
         sys.stderr.write("Not supported yet")
         sys.exit(1)
+
+    elif args["prepare-deploy"]:
+        sys.stderr.write("Not supported yet")
 
     else:
         sys.stderr.write("Invalid arguments!\n")
