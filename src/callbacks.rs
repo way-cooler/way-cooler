@@ -59,6 +59,9 @@ pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     if let Ok(mut tree) = try_lock_tree() {
         tree.add_view(view.clone()).and_then(|_| {
+            if view.get_class() == "Background" {
+                return Ok(())
+            }
             tree.set_active_view(view)
         }).is_ok()
     } else {
