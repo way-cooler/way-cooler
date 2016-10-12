@@ -1,6 +1,6 @@
 //! Commands from the user to manipulate the tree
 
-use super::{try_lock_tree, try_lock_action, lock_action};
+use super::{try_lock_tree, try_lock_action};
 use super::{Action, Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
@@ -163,11 +163,12 @@ pub fn performing_action() -> Option<Action> {
 
 /// Sets the value behind the lock to the provided value.
 ///
+/// Note that this method blocks until the lock is released
+///
 /// None means an action is done being performed.
-pub fn set_performing_action(val: Option<Action>) -> CommandResult {
-    if let Ok(mut action) = lock_action() {
+pub fn set_performing_action(val: Option<Action>) {
+    if let Ok(mut action) = try_lock_action() {
         *action = val;
-        Ok(())
     } else {
         error!("Action mutex was poisoned");
         panic!("Action mutex was poisoned");
@@ -212,7 +213,7 @@ impl Tree {
                                 .ok_or(TreeError::NoActiveContainer));
             try!(self.0.drag_floating(active_ix, point, old_point));
             action.grab = point;
-            set_performing_action(Some(action)).unwrap();
+            set_performing_action(Some(action));
             Ok(())
         } else {
             Err(TreeError::PerformingAction(false))
@@ -367,5 +368,21 @@ impl Tree {
     pub fn send_active_to_workspace(&mut self, workspace_name: &str) -> CommandResult {
         self.0.send_active_to_workspace(workspace_name);
         Ok(())
+    }
+
+    /// Resizes the container, as if it was dragged at the edge to a certain point
+    /// on the screen.
+    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, point: Point) -> CommandResult {
+        if try!(self.0.lookup(id)).floating() {
+            if let Ok(mut lock) = try_lock_action() {
+                if let Some(ref mut action) = *lock {
+                    return self.0.resize_floating(id, edge, point, action)
+                }
+            }
+            // TODO errors
+            Ok(())
+        } else {
+            unimplemented!()
+        }
     }
 }

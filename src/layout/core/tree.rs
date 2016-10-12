@@ -10,6 +10,7 @@ use super::container::{Container, ContainerType};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
 use super::super::actions::layout::LayoutErr;
+use super::super::actions::resize::ResizeErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -48,6 +49,8 @@ pub enum TreeError {
     Movement(MovementError),
     /// An error occurred while trying to change the layout
     Layout(LayoutErr),
+    /// An error occurred while trying to resize the layout
+    Resize(ResizeErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
     PerformingAction(bool)
@@ -95,7 +98,12 @@ impl LayoutTree {
 
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
-        info!("Active container was {:?}", self.active_container);
+        if self.active_container != Some(node_ix) {
+            info!("Active container was {}, is now {}",
+                  self.active_container.map(|node| node.index().to_string())
+                    .unwrap_or("not set".into()),
+                  node_ix.index());
+        }
         self.active_container = Some(node_ix);
         match self.tree[node_ix] {
             Container::View { ref handle, .. } => handle.focus(),
@@ -107,7 +115,6 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
-        info!("Active container is now: {:?}", self.active_container);
         Ok(())
     }
 
