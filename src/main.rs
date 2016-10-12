@@ -109,10 +109,12 @@ fn detect_proprietary() {
             for line in reader.lines() {
                 if let Ok(line) = line {
                     if line.contains("nvidia") {
-                        error!("Warning: Proprietary nvidia drivers do NOT support Wayland. Use nouveau.");
+                        error!("Warning: Proprietary nvidia graphics drivers are installed, \
+                               but they are not compatible with Wayland. Consider using nouveau drivers for Wayland.");
                         break;
                     } else if line.contains("fglrx") {
-                        error!("Warning: Proprietary AMD drivers do NOT support Wayland. Use radeon.");
+                        error!("Warning: Proprietary AMD graphics drivers are installed, but they are not compatible with Wayland. \
+                               Consider using radeon drivers for Waylad.");
                         break;
                     }
                 }
