@@ -27,27 +27,34 @@ pub fn get_config() -> (bool, Result<File, &'static str>) {
 
 /// Parses environment variables
 fn get_config_file() -> Result<File, &'static str> {
-    if let Ok(path_env) = env::var("WAY_COOLER_CONFIG") {
+    let home_var = env::var("HOME").expect("HOME environment variable not defined!");
+    let home = home_var.as_str();
+    if let Ok(path_env) = env::var("WAY_COOLER_INIT_FILE") {
         if let Ok(file) = read_file(Path::new(&path_env)) {
-            info!("Reading init file from $WAY_COOLER_INIT_FILE: {}", path_env);
+            info!("Reading init file from $WAY_COOLER_INIT_FILE: {}",
+                  path_env.as_str().replace(home, "~"));
             return Ok(file)
         }
-        warn!("$WAY_COOLER_INIT_FILE={}, was not a valid path to a config file. Defaulting ...", path_env);
+        warn!("Looking for init file: $WAY_COOLER_INIT_FILE={}, was not a valid path to a config file.",
+              path_env.as_str().replace(home, "~"));
     }
 
     if let Ok(xdg) = env::var("XDG_CONFIG_HOME") {
-        if let Ok(file) = read_file(Path::new(&xdg).join(INIT_FILE)) {
-            info!("Reading init file from $XDG_CONFIG_HOME: {}", xdg);
+        let init_file_path = Path::new(&xdg).join("way-cooler").join(INIT_FILE);
+        if let Ok(file) = read_file(&init_file_path) {
+            info!("Reading init file from $XDG_CONFIG_HOME");
             return Ok(file)
         }
-        warn!("$XDG_CONFIG_HOME={}, was not a valid path to a config file. Defaulting ...", xdg);
+        else {
+            warn!("Looking for init file: nothing at $XDG_CONFIG_HOME, no file {}.",
+                  &init_file_path.to_string_lossy().replace(home, "~"));
+        }
     }
-    let dot_config = Path::new(&env::var("HOME")
-                               .expect("HOME environment variable not defined!"))
-        .join(".config").join("way-cooler").join(INIT_FILE);
-    trace!("Looking at {:?}", dot_config);
+    let dot_config = Path::new(home).join(".config").join("way-cooler").join(INIT_FILE);
+
+    trace!("Looking for init file at {:?}", dot_config.to_string_lossy().replace(home, "~"));
     if let Ok(file) = read_file(&dot_config) {
-        info!("Reading init file from {:?}", &dot_config);
+        info!("Reading init file from {:?}", &dot_config.to_string_lossy().replace(home, "~"));
         return Ok(file)
     }
 
