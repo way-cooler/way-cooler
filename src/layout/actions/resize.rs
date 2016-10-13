@@ -1,4 +1,4 @@
-use rustwlc::{Point, Size, ResizeEdge,
+use rustwlc::{Point, Size, ResizeEdge, Geometry,
               RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 
 static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
@@ -18,7 +18,7 @@ pub enum ResizeErr {
 
 impl LayoutTree {
     /// Resizes a floating container. If the container was not floating, an Err is returned.
-    pub fn resize_floating(&mut self, id: Uuid, edges: ResizeEdge, pointer: Point,
+    pub fn resize_floating(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
                            action: &mut Action) -> CommandResult {
         let container = try!(self.lookup_mut(id));
         if !container.floating() {
@@ -29,64 +29,20 @@ impl LayoutTree {
             _ => return Err(TreeError::UuidWrongType(container.get_id(),
                                                      vec!(ContainerType::View)))
         }
-        let mut geo = container.get_geometry()
+        let geo = container.get_geometry()
             .expect("Could not get geometry of the container");
-        let mut new_geo = geo.clone();
 
-        let grab = action.grab;
+        let new_geo = calculate_resize(geo, edge, pointer, action.grab);
         action.grab = pointer;
-        let dx = pointer.x - grab.x;
-        let dy = pointer.y - grab.y;
-        if edges.contains(RESIZE_LEFT) {
-            if dx < 0 {
-                new_geo.size.w += dx.abs() as u32;
-            } else {
-                new_geo.size.w -= dx.abs() as u32;
-            }
-            new_geo.origin.x += dx;
-        }
-        else if edges.contains(RESIZE_RIGHT) {
-            if dx < 0 {
-                new_geo.size.w -= dx.abs() as u32;
-            } else {
-                new_geo.size.w += dx.abs() as u32;
-            }
-        }
 
-        if edges.contains(RESIZE_TOP) {
-            if dy < 0 {
-                new_geo.size.h += dy.abs() as u32;
-            } else {
-                new_geo.size.h -= dy.abs() as u32;
-            }
-            new_geo.origin.y += dy;
-        }
-        else if edges.contains(RESIZE_BOTTOM) {
-            if dy < 0 {
-                new_geo.size.h -= dy.abs() as u32;
-            } else {
-                new_geo.size.h += dy.abs() as u32;
-            }
-        }
-
-        if new_geo.size.w >= MIN_SIZE.w {
-            geo.origin.x = new_geo.origin.x;
-            geo.size.w = new_geo.size.w;
-        }
-
-        if new_geo.size.h >= MIN_SIZE.h {
-            geo.origin.y = new_geo.origin.y;
-            geo.size.h = new_geo.size.h;
-        }
-
-        container.set_geometry(edges, geo);
+        container.set_geometry(edge, new_geo);
         Ok(())
     }
 
-    pub fn resize_tiled(&mut self, id: Uuid, edges: ResizeEdge, pointer: Point,
+    pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
                         action: &mut Action) -> CommandResult {
         // There can be multiple directions we are moving in, e.g up and left.
-        let dirs_moving_in = Direction::from_edge(edges);
+        let dirs_moving_in = Direction::from_edge(edge);
         let siblings: Vec<Uuid> = dirs_moving_in.iter().map(|dir| self.sibling_in_dir(id, *dir)).collect();
 
         // Because we can't have multiple mutable references active in the tree at once,
@@ -101,55 +57,11 @@ impl LayoutTree {
                 _ => return Err(TreeError::UuidWrongType(container.get_id(),
                                                         vec!(ContainerType::View)))
             }
-            let mut cur_geo = container.get_geometry()
+            let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
-            let mut cur_new_geo = cur_geo.clone();
-
-            let grab = action.grab;
+            let new_geo = calculate_resize(geo, edge, pointer, action.grab);
             action.grab = pointer;
-            let dx = pointer.x - grab.x;
-            let dy = pointer.y - grab.y;
-            if edges.contains(RESIZE_LEFT) {
-                if dx < 0 {
-                    cur_new_geo.size.w += dx.abs() as u32;
-                } else {
-                    cur_new_geo.size.w -= dx.abs() as u32;
-                }
-                cur_new_geo.origin.x += dx;
-            }
-            else if edges.contains(RESIZE_RIGHT) {
-                if dx < 0 {
-                    cur_new_geo.size.w -= dx.abs() as u32;
-                } else {
-                    cur_new_geo.size.w += dx.abs() as u32;
-                }
-            }
-
-            if edges.contains(RESIZE_TOP) {
-                if dy < 0 {
-                    cur_new_geo.size.h += dy.abs() as u32;
-                } else {
-                    cur_new_geo.size.h -= dy.abs() as u32;
-                }
-                cur_new_geo.origin.y += dy;
-            }
-            else if edges.contains(RESIZE_BOTTOM) {
-                if dy < 0 {
-                    cur_new_geo.size.h -= dy.abs() as u32;
-                } else {
-                    cur_new_geo.size.h += dy.abs() as u32;
-                }
-            }
-
-            if cur_new_geo.size.w >= MIN_SIZE.w {
-                cur_geo.origin.x = cur_new_geo.origin.x;
-                cur_geo.size.w = cur_new_geo.size.w;
-            }
-
-            if cur_new_geo.size.h >= MIN_SIZE.h {
-                cur_geo.origin.y = cur_new_geo.origin.y;
-                cur_geo.size.h = cur_new_geo.size.h;
-            }
+            container.set_geometry(edge, new_geo);
         }
         // and now we mutate the siblings
         for sibling in siblings {
@@ -157,4 +69,56 @@ impl LayoutTree {
         }
         Ok(())
     }
+}
+
+/// Calculates what the new geometry is of a window.
+/// Needs the geometry of the window, the edge direction the pointer is moving in,
+/// the current position of the pointer, and the previous place the pointer was at.
+fn calculate_resize(geo: Geometry, edge: ResizeEdge,
+                    cur_pointer: Point, prev_pointer: Point) -> Geometry {
+    let mut new_geo = geo.clone();
+    let dx = cur_pointer.x - prev_pointer.x;
+    let dy = cur_pointer.y - prev_pointer.y;
+    if edge.contains(RESIZE_LEFT) {
+        if dx < 0 {
+            new_geo.size.w += dx.abs() as u32;
+        } else {
+            new_geo.size.w -= dx.abs() as u32;
+        }
+        new_geo.origin.x += dx;
+    }
+    else if edge.contains(RESIZE_RIGHT) {
+        if dx < 0 {
+            new_geo.size.w -= dx.abs() as u32;
+        } else {
+            new_geo.size.w += dx.abs() as u32;
+        }
+    }
+
+    if edge.contains(RESIZE_TOP) {
+        if dy < 0 {
+            new_geo.size.h += dy.abs() as u32;
+        } else {
+            new_geo.size.h -= dy.abs() as u32;
+        }
+        new_geo.origin.y += dy;
+    }
+    else if edge.contains(RESIZE_BOTTOM) {
+        if dy < 0 {
+            new_geo.size.h -= dy.abs() as u32;
+        } else {
+            new_geo.size.h += dy.abs() as u32;
+        }
+    }
+
+    if new_geo.size.w <= MIN_SIZE.w {
+        new_geo.origin.x = geo.origin.x;
+        new_geo.size.w = geo.size.w;
+    }
+
+    if new_geo.size.h <= MIN_SIZE.h {
+        new_geo.origin.y = geo.origin.y;
+        new_geo.size.h = geo.size.h;
+    }
+    new_geo
 }
