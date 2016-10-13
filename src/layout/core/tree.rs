@@ -89,10 +89,17 @@ impl LayoutTree {
         self.set_active_node(node_ix)
     }
 
-    /// Looks up the id, returning the container associated with it.
+    /// Looks up the id, returning a reference to the container associated with it.
     pub fn lookup(&self, id: Uuid) -> Result<&Container, TreeError> {
         self.tree.lookup_id(id)
             .map(|node_ix| &self.tree[node_ix])
+            .ok_or(TreeError::NodeNotFound(id))
+    }
+
+    /// Looks up the id, returning a mutable reference to the container associated with it.
+    pub fn lookup_mut(&mut self, id: Uuid) -> Result<&mut Container, TreeError> {
+        self.tree.lookup_id(id)
+            .map(move |node_ix| &mut self.tree[node_ix])
             .ok_or(TreeError::NodeNotFound(id))
     }
 

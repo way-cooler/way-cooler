@@ -3,7 +3,7 @@
 use uuid::Uuid;
 
 use rustwlc::handle::{WlcView, WlcOutput};
-use rustwlc::{Geometry, Point, Size};
+use rustwlc::{Geometry, ResizeEdge, Point, Size};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -196,6 +196,28 @@ impl Container {
             Container::Container { geometry, .. } => Some(geometry),
             Container::View { ref handle, ..} =>
                 handle.get_geometry(),
+        }
+    }
+
+    /// Sets the geometry behind the container. Does nothing if container is root.
+    ///
+    /// For view you need to set the appropriate edges (which can be empty).
+    /// If you are not intending to set the geometry of a view, simply pass `ResizeEdge::empty()`
+    pub fn set_geometry(&mut self, edges: ResizeEdge, geo: Geometry) {
+        match *self {
+            Container::Root(_) => error!("Tried to set the geometry of the root!"),
+            Container::Output { ref handle, .. } => {
+                handle.set_resolution(geo.size, 1);
+            },
+            Container::Workspace { ref mut size, .. } => {
+                *size = geo.size;
+            },
+            Container::Container { ref mut geometry, .. } => {
+                *geometry = geo;
+            },
+            Container::View { ref handle, .. } => {
+                handle.set_geometry(edges, geo);
+            }
         }
     }
 

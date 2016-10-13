@@ -5,38 +5,36 @@ static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 
 use super::super::{Action, LayoutTree, TreeError};
 use super::super::commands::{CommandResult};
-use super::super::core::container::{ContainerType, Handle};
+use super::super::core::container::{ContainerType};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ResizeErr {
     /// Expected the node associated with the UUID to be floating.
-    ExpectedFloating(Uuid)
+    ExpectedFloating(Uuid),
+    /// Expected the node associated with the UUID to not be floating
+    ExpectedNotFloating(Uuid)
 }
 
 impl LayoutTree {
     /// Resizes a floating container. If the container was not floating, an Err is returned.
     pub fn resize_floating(&mut self, id: Uuid, edges: ResizeEdge, point: Point,
                            action: &mut Action) -> CommandResult {
-        let grab = action.grab;
-        //let edges = action.edges;
-        action.grab = point;
-        let container = try!(self.lookup(id));
+        let container = try!(self.lookup_mut(id));
         if !container.floating() {
             return Err(TreeError::Resize(ResizeErr::ExpectedFloating(container.get_id())))
         }
-        if container.get_type() != ContainerType::View {
-            return Err(TreeError::UuidWrongType(container.get_id(),
-                                                vec!(ContainerType::View)))
+        match container.get_type() {
+            ContainerType::View | ContainerType::Container => {},
+            _ => return Err(TreeError::UuidWrongType(container.get_id(),
+                                                     vec!(ContainerType::View)))
         }
-        let handle = match container.get_handle() {
-            Some(Handle::View(view)) => view,
-            _ => unreachable!()
-        };
-        let mut geo = handle.get_geometry()
-            .expect("Could not get geometry of a view");
+        let mut geo = container.get_geometry()
+            .expect("Could not get geometry of the container");
         let mut new_geo = geo.clone();
 
+        let grab = action.grab;
+        action.grab = point;
         let dx = point.x - grab.x;
         let dy = point.y - grab.y;
         if edges.contains(RESIZE_LEFT) {
@@ -81,7 +79,18 @@ impl LayoutTree {
             geo.size.h = new_geo.size.h;
         }
 
-        handle.set_geometry(edges, geo);
+        container.set_geometry(edges, geo);
+        Ok(())
+    }
+
+    pub fn resize_tiled(&mut self, id: Uuid, edges: ResizeEdge, point: Point,
+                        action: &mut Action) -> CommandResult {
+        let container = try!(self.lookup(id));
+        if container.floating() {
+            return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
+        }
+        let grab = action.grab;
+        action.grab = point;
         Ok(())
     }
 }

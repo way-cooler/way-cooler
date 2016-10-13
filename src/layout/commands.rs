@@ -373,16 +373,20 @@ impl Tree {
     /// Resizes the container, as if it was dragged at the edge to a certain point
     /// on the screen.
     pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, point: Point) -> CommandResult {
-        if try!(self.0.lookup(id)).floating() {
-            if let Ok(mut lock) = try_lock_action() {
-                if let Some(ref mut action) = *lock {
-                    return self.0.resize_floating(id, edge, point, action)
+        if let Ok(mut lock) = try_lock_action() {
+            if let Some(ref mut action) = *lock {
+                if try!(self.0.lookup(id)).floating() {
+                    self.0.resize_floating(id, edge, point, action)
+                } else {
+                    self.0.resize_tiled(id, edge, point, action)
                 }
+            } else {
+                Ok(())
             }
             // TODO errors
-            Ok(())
         } else {
-            unimplemented!()
+            // TODO errors
+            Ok(())
         }
     }
 }
