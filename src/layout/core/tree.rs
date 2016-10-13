@@ -4,7 +4,7 @@
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use rustwlc::{WlcView, WlcOutput};
+use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use super::super::LayoutTree;
 use super::container::{Container, ContainerType};
 use super::super::actions::focus::FocusError;
@@ -23,6 +23,27 @@ pub enum Direction {
     Down,
     Right,
     Left
+}
+const NUM_DIRECTIONS: usize = 4;
+
+impl Direction {
+    /// Gets a vector of the directions being moved from the ResizeEdge.
+    pub fn from_edge(edge: ResizeEdge) -> Vec<Self> {
+        let mut result = Vec::with_capacity(NUM_DIRECTIONS);
+        if edge.contains(RESIZE_LEFT) {
+            result.push(Direction::Left);
+        }
+        if edge.contains(RESIZE_RIGHT) {
+            result.push(Direction::Right);
+        }
+        if edge.contains(RESIZE_TOP) {
+            result.push(Direction::Up);
+        }
+        if edge.contains(RESIZE_BOTTOM) {
+            result.push(Direction::Down);
+        }
+        result
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -335,6 +356,10 @@ impl LayoutTree {
         } else {
             None
         }
+    }
+
+    pub fn sibling_in_dir(&self, id: Uuid, dir: Direction) -> Uuid {
+        unimplemented!()
     }
 
     /// Validates the tree
