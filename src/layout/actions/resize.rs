@@ -89,6 +89,8 @@ impl LayoutTree {
             action.grab = pointer;
             container.set_geometry(reversed_edge, new_geo);
         }
+        let node_ix = self.tree.lookup_id(id).unwrap();
+        self.layout(node_ix);
         action.grab = pointer;
         Ok(())
     }

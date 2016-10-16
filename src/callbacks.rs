@@ -198,6 +198,12 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                 }
             }
         } else if button == 0x111 && !view.is_root() {
+            if let Ok(mut tree) = try_lock_tree() {
+                tree.set_active_view(view)
+                    .unwrap_or_else(|err| {
+                        error!("Could not set active container {:?}", err);
+                    });
+            }
             // TODO Make this set in the config file and read here.
             if mods.mods.contains(MOD_CTRL) {
                 let action = Action {
