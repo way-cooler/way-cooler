@@ -6,7 +6,7 @@ use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use super::super::LayoutTree;
-use super::container::{Container, ContainerType};
+use super::container::{Container, ContainerType, Layout};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
 use super::super::actions::layout::LayoutErr;
@@ -27,6 +27,7 @@ pub enum Direction {
 const NUM_DIRECTIONS: usize = 4;
 
 impl Direction {
+    // TODO Make it implement the trait dummy
     /// Gets a vector of the directions being moved from the ResizeEdge.
     pub fn from_edge(edge: ResizeEdge) -> Vec<Self> {
         let mut result = Vec::with_capacity(NUM_DIRECTIONS);
@@ -43,6 +44,29 @@ impl Direction {
             result.push(Direction::Down);
         }
         result
+    }
+
+    pub fn to_edge(dirs: &[Direction]) -> ResizeEdge {
+        let mut result = ResizeEdge::empty();
+        for dir in dirs {
+            match *dir {
+                Direction::Up => result |= RESIZE_TOP,
+                Direction::Down => result |= RESIZE_BOTTOM,
+                Direction::Left => result |= RESIZE_LEFT,
+                Direction::Right => result |= RESIZE_RIGHT
+            }
+        }
+        result
+    }
+
+    // Returns the reverse of a direction
+    pub fn reverse(self) -> Self {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Right,
+            Direction::Right => Direction::Left
+        }
     }
 }
 
@@ -358,8 +382,67 @@ impl LayoutTree {
         }
     }
 
-    pub fn sibling_in_dir(&self, id: Uuid, dir: Direction) -> Uuid {
-        unimplemented!()
+    /// Gets the parent of the node.
+    pub fn parent_of(&self, id: Uuid) -> Result<&Container, TreeError> {
+        let node_ix = try!(self.tree.lookup_id(id)
+                           .ok_or(TreeError::NodeNotFound(id)));
+        self.tree.parent_of(node_ix)
+            .map(|parent_ix| &self.tree[parent_ix])
+            .map_err(|err| TreeError::PetGraph(err))
+    }
+
+    /// Gets the sibling of the view/container node in some
+    /// relative direction. If one could not be found, an Error is returned.
+    pub fn sibling_in_dir(&self, id: Uuid, dir: Direction)
+                          -> Result<Uuid, TreeError> {
+        let container = try!(self.lookup(id));
+        let parent = try!(self.parent_of(id));
+        let (layout, node_ix) = match *container {
+            Container::View { .. } => {
+                if let Container::Container { layout, .. } = *parent {
+                    (layout, try!(self.tree.lookup_id(id)
+                                  .ok_or(TreeError::NodeNotFound(id))))
+                } else {
+                    panic!("Parent of view was not a container!")
+                }
+            },
+            Container::Container { layout, .. } => {
+                (layout, try!(self.tree.lookup_id(id)
+                              .ok_or(TreeError::NodeNotFound(id))))
+            }
+            _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                       ContainerType::Container)))
+        };
+        match (layout, dir) {
+            (Layout::Horizontal, Direction::Left) |
+            (Layout::Horizontal, Direction::Right) |
+            (Layout::Vertical, Direction::Up) |
+            (Layout::Vertical, Direction::Down) => {
+                let parent_ix = try!(self.tree.lookup_id(parent.get_id())
+                                     .ok_or(TreeError::NodeNotFound(id)));
+                let siblings = self.tree.children_of(parent_ix);
+                let cur_index = siblings.iter().position(|node| {
+                    *node == node_ix
+                }).expect("Could not find self in parent");
+                let maybe_new_index = match dir {
+                    Direction::Right | Direction::Down => {
+                        cur_index.checked_add(1)
+                    }
+                    Direction::Left  | Direction::Up => {
+                        cur_index.checked_sub(1)
+                    }
+                };
+                if maybe_new_index.is_some() &&
+                    maybe_new_index.unwrap() < siblings.len() {
+                        let sibling_ix = siblings[maybe_new_index.unwrap()];
+                        Ok(self.tree[sibling_ix].get_id())
+                    }
+                else {
+                    self.sibling_in_dir(parent.get_id(), dir)
+                }
+            },
+            _ => self.sibling_in_dir(parent.get_id(), dir)
+        }
     }
 
     /// Validates the tree

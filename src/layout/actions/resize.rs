@@ -43,7 +43,12 @@ impl LayoutTree {
                         action: &mut Action) -> CommandResult {
         // There can be multiple directions we are moving in, e.g up and left.
         let dirs_moving_in = Direction::from_edge(edge);
-        let siblings: Vec<Uuid> = dirs_moving_in.iter().map(|dir| self.sibling_in_dir(id, *dir)).collect();
+        let siblings: Vec<Uuid> = dirs_moving_in.iter()
+            .map(|dir| self.sibling_in_dir(id, *dir))
+            // TODO There MUST be a better way to do something like this...
+            .filter(|thing| thing.is_ok())
+            .map(|thing| thing.unwrap())
+            .collect();
 
         // Because we can't have multiple mutable references active in the tree at once,
         // first we modify the one the user is resizing and then adjust the siblings.
@@ -60,13 +65,31 @@ impl LayoutTree {
             let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-            action.grab = pointer;
             container.set_geometry(edge, new_geo);
         }
         // and now we mutate the siblings
+        let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
+            .map(|dir| dir.reverse()).collect();
+        let reversed_edge = Direction::to_edge(reversed_dir.as_slice());
         for sibling in siblings {
-            // Do the same thing here as we do above, but reverse the directions
+            // TODO Abstract, the only thing different from above
+            // is the edge and the exact node we are doing the calc on
+            let container = try!(self.lookup_mut(sibling));
+            if container.floating() {
+                return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
+            }
+            match container.get_type() {
+                ContainerType::View | ContainerType::Container => {},
+                _ => return Err(TreeError::UuidWrongType(container.get_id(),
+                                                         vec!(ContainerType::View)))
+            }
+            let geo = container.get_geometry()
+                .expect("Could not get geometry of the container");
+            let new_geo = calculate_resize(geo, reversed_edge, pointer, action.grab);
+            action.grab = pointer;
+            container.set_geometry(reversed_edge, new_geo);
         }
+        action.grab = pointer;
         Ok(())
     }
 }
