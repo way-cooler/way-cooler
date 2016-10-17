@@ -66,6 +66,7 @@ impl LayoutTree {
     pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
                         action: &mut Action) -> CommandResult {
         // There can be multiple directions we are moving in, e.g up and left.
+        let parent_id = try!(self.parent_of(id)).get_id();
         let dirs_moving_in = Direction::from_edge(edge);
         let siblings: Vec<Uuid> = dirs_moving_in.iter()
             .map(|dir| self.sibling_in_dir(id, *dir))
@@ -91,6 +92,28 @@ impl LayoutTree {
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
             container.set_geometry(edge, new_geo);
         }
+        //....update parent?
+        {
+            let container = try!(self.lookup_mut(parent_id));
+            if container.floating() {
+                return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
+            }
+            match container.get_type() {
+                ContainerType::View | ContainerType::Container => {},
+                _ => return Err(TreeError::UuidWrongType(container.get_id(),
+                                                          vec!(ContainerType::View)))
+            }
+            let geo = container.get_geometry()
+                .expect("Could not get geometry of the container");
+            let new_geo = calculate_resize(geo, edge, pointer, action.grab);
+            container.set_geometry(edge, new_geo);
+
+        }
+        let parent_ix = self.tree.lookup_id(parent_id)
+            .expect("Could not get the index of the parent");
+        let parent_parent_ix = self.tree.parent_of(parent_ix)
+            .expect("Could not get parent parent");
+        self.layout(parent_parent_ix);
         // and now we mutate the siblings
         let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
             .map(|dir| dir.reverse()).collect();
