@@ -106,33 +106,33 @@ fn calculate_resize(geo: Geometry, edge: ResizeEdge,
     let dy = cur_pointer.y - prev_pointer.y;
     if edge.contains(RESIZE_LEFT) {
         if dx < 0 {
-            new_geo.size.w += dx.abs() as u32;
+            new_geo.size.w = geo.size.w.saturating_add(dx.abs() as u32);
         } else {
-            new_geo.size.w -= dx.abs() as u32;
+            new_geo.size.w = geo.size.w.saturating_sub(dx.abs() as u32);
         }
         new_geo.origin.x += dx;
     }
     else if edge.contains(RESIZE_RIGHT) {
         if dx < 0 {
-            new_geo.size.w -= dx.abs() as u32;
+            new_geo.size.w = geo.size.w.saturating_sub(dx.abs() as u32);
         } else {
-            new_geo.size.w += dx.abs() as u32;
+            new_geo.size.w = geo.size.w.saturating_add(dx.abs() as u32);
         }
     }
 
     if edge.contains(RESIZE_TOP) {
         if dy < 0 {
-            new_geo.size.h += dy.abs() as u32;
+            new_geo.size.h = geo.size.h.saturating_add(dy.abs() as u32);
         } else {
-            new_geo.size.h -= dy.abs() as u32;
+            new_geo.size.h = geo.size.h.saturating_sub(dy.abs() as u32);
         }
         new_geo.origin.y += dy;
     }
     else if edge.contains(RESIZE_BOTTOM) {
         if dy < 0 {
-            new_geo.size.h -= dy.abs() as u32;
+            new_geo.size.h = geo.size.h.saturating_sub(dy.abs() as u32);
         } else {
-            new_geo.size.h += dy.abs() as u32;
+            new_geo.size.h = geo.size.h.saturating_add(dy.abs() as u32);
         }
     }
 
