@@ -1,5 +1,7 @@
-use rustwlc::{Point, ResizeEdge, Geometry,
-              RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+use rustwlc::{input, Point, ResizeEdge, Geometry,
+              RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM,
+              RESIZE_TOPLEFT, RESIZE_TOPRIGHT, RESIZE_BOTTOMLEFT, RESIZE_BOTTOMRIGHT,
+};
 
 use super::super::{Action, Direction, LayoutTree, TreeError};
 use super::super::commands::{CommandResult};
@@ -15,26 +17,50 @@ pub enum ResizeErr {
 }
 
 impl LayoutTree {
+    /// Updates pointer position for the node behind the id,
+    /// in the same direction as the edge.
+    pub fn update_pointer_pos(&self, id: Uuid, edge: ResizeEdge) -> CommandResult {
+        let container = try!(self.lookup(id));
+        let Geometry { mut origin, size } = container.get_geometry()
+            .expect("Container had no geometry");
+        drop(container);
+        if edge.contains(RESIZE_TOPLEFT) {
+            input::pointer::set_position(origin);
+        } else if edge.contains(RESIZE_TOPRIGHT) {
+            origin.x += size.w as i32;
+            input::pointer::set_position(origin);
+        } else if edge.contains(RESIZE_BOTTOMLEFT) {
+            origin.y += size.h as i32;
+            input::pointer::set_position(origin);
+        } else if edge.contains(RESIZE_BOTTOMRIGHT) {
+            origin.x += size.w as i32;
+            origin.y += size.h as i32;
+            input::pointer::set_position(origin);
+        }
+        Ok(())
+    }
+
     /// Resizes a floating container. If the container was not floating, an Err is returned.
     pub fn resize_floating(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
                            action: &mut Action) -> CommandResult {
-        let container = try!(self.lookup_mut(id));
-        if !container.floating() {
-            return Err(TreeError::Resize(ResizeErr::ExpectedFloating(container.get_id())))
-        }
-        match container.get_type() {
-            ContainerType::View | ContainerType::Container => {},
-            _ => return Err(TreeError::UuidWrongType(container.get_id(),
-                                                     vec!(ContainerType::View)))
-        }
-        let geo = container.get_geometry()
-            .expect("Could not get geometry of the container");
+        {
+            let container = try!(self.lookup_mut(id));
+            if !container.floating() {
+                return Err(TreeError::Resize(ResizeErr::ExpectedFloating(container.get_id())))
+            }
+            match container.get_type() {
+                ContainerType::View | ContainerType::Container => {},
+                _ => return Err(TreeError::UuidWrongType(container.get_id(),
+                                                        vec!(ContainerType::View)))
+            }
+            let geo = container.get_geometry()
+                .expect("Could not get geometry of the container");
 
-        let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-        action.grab = pointer;
-
-        container.set_geometry(edge, new_geo);
-        Ok(())
+            let new_geo = calculate_resize(geo, edge, pointer, action.grab);
+            action.grab = pointer;
+            container.set_geometry(edge, new_geo);
+        }
+        self.update_pointer_pos(id, edge)
     }
 
     pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
@@ -90,7 +116,7 @@ impl LayoutTree {
         let node_ix = self.tree.lookup_id(id).unwrap();
         self.layout(node_ix);
         action.grab = pointer;
-        Ok(())
+        self.update_pointer_pos(id, edge)
     }
 }
 
