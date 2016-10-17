@@ -2,6 +2,8 @@
 
 use uuid::Uuid;
 
+pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
+
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size};
 

@@ -1,11 +1,9 @@
-use rustwlc::{Point, Size, ResizeEdge, Geometry,
+use rustwlc::{Point, ResizeEdge, Geometry,
               RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
-
-static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 
 use super::super::{Action, Direction, LayoutTree, TreeError};
 use super::super::commands::{CommandResult};
-use super::super::core::container::{ContainerType};
+use super::super::core::container::{ContainerType, MIN_SIZE};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
