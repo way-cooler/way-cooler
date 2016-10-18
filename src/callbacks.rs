@@ -271,7 +271,7 @@ pub extern fn pointer_scroll(_view: WlcView, _time: u32,
 }
 
 pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
-    pointer::set_position(*point);
+    let mut result = false;
     let mut maybe_action = None;
     {
         if let Ok(action_lock) = try_lock_action() {
@@ -279,7 +279,7 @@ pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool 
         }
     }
     match maybe_action {
-        None => false,
+        None => result = false,
         Some(action) => {
             if action.edges.bits() != 0 {
                 if let Ok(mut tree) = try_lock_tree() {
@@ -287,6 +287,7 @@ pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool 
                     // Need to implement a map of view to uuid first though...
                     if let Some(active_id) = tree.active_id() {
                         match tree.resize_container(active_id, action.edges, *point) {
+                            // Return early here to not set the pointer
                             Ok(_) => return true,
                             Err(err) => error!("Error: {:#?}", err)
                         }
@@ -295,16 +296,20 @@ pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool 
             } else {
                 if let Ok(mut tree) = try_lock_tree() {
                     match tree.try_drag_active(*point) {
-                        Ok(_) => return true,
-                        Err(TreeError::PerformingAction(_)) => {},
-                        Err(TreeError::Movement(MovementError::NotFloating(_))) => {},
-                        Err(err) => error!("Error: {:#?}", err)
+                        Ok(_) => result = true,
+                        Err(TreeError::PerformingAction(_)) |
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = false,
+                        Err(err) => {
+                            error!("Error: {:#?}", err);
+                            result = false
+                        }
                     }
                 }
             }
-            false
         }
     }
+    pointer::set_position(*point);
+    result
 }
 
 pub extern fn compositor_ready() {
