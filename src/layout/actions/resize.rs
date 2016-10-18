@@ -109,11 +109,6 @@ impl LayoutTree {
             container.set_geometry(edge, new_geo);
 
         }
-        let parent_ix = self.tree.lookup_id(parent_id)
-            .expect("Could not get the index of the parent");
-        let parent_parent_ix = self.tree.parent_of(parent_ix)
-            .expect("Could not get parent parent");
-        self.layout(parent_parent_ix);
         // and now we mutate the siblings
         let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
             .map(|dir| dir.reverse()).collect();
@@ -136,8 +131,12 @@ impl LayoutTree {
             action.grab = pointer;
             container.set_geometry(reversed_edge, new_geo);
         }
-        let node_ix = self.tree.lookup_id(id).unwrap();
-        self.layout(node_ix);
+        let node_ix = self.tree.lookup_id(id)
+            .expect("Could not find node index for an id");
+        let workspace_ix = try!(self.tree.ancestor_of_type(node_ix,
+                                                           ContainerType::Workspace)
+                                .map_err(|err| TreeError::PetGraph(err)));
+        self.layout(workspace_ix);
         action.grab = pointer;
         self.update_pointer_pos(id, edge)
     }
