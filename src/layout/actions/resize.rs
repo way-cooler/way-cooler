@@ -131,12 +131,12 @@ impl LayoutTree {
             action.grab = pointer;
             container.set_geometry(reversed_edge, new_geo);
         }
-        let node_ix = self.tree.lookup_id(id)
+        /*let node_ix = self.tree.lookup_id(id)
             .expect("Could not find node index for an id");
         let workspace_ix = try!(self.tree.ancestor_of_type(node_ix,
                                                            ContainerType::Workspace)
                                 .map_err(|err| TreeError::PetGraph(err)));
-        self.layout(workspace_ix);
+        self.layout(workspace_ix);*/
         action.grab = pointer;
         self.update_pointer_pos(id, edge)
     }
