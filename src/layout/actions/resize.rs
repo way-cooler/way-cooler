@@ -65,18 +65,8 @@ impl LayoutTree {
 
     pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
                         action: &mut Action) -> CommandResult {
-        // There can be multiple directions we are moving in, e.g up and left.
-        let parent_id = try!(self.parent_of(id)).get_id();
-        let dirs_moving_in = Direction::from_edge(edge);
-        let siblings: Vec<Uuid> = dirs_moving_in.iter()
-            .map(|dir| self.sibling_in_dir(id, *dir))
-            // TODO There MUST be a better way to do something like this...
-            .filter(|thing| thing.is_ok())
-            .map(|thing| thing.unwrap())
-            .collect();
-
-        // Because we can't have multiple mutable references active in the tree at once,
-        // first we modify the one the user is resizing and then adjust the siblings.
+        // This is the vector of operations we will perform, we do all geometry sets atomically.
+        let mut resizing_ops: Vec<(Uuid, (ResizeEdge, Geometry))> = Vec::with_capacity(4);
         {
             let container = try!(self.lookup_mut(id));
             if container.floating() {
@@ -93,10 +83,18 @@ impl LayoutTree {
                 return Ok(())
             }
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-            container.set_geometry(edge, new_geo);
+            resizing_ops.push((id, (edge, new_geo)));
         }
+        let dirs_moving_in = Direction::from_edge(edge);
+        let siblings: Vec<Uuid> = dirs_moving_in.iter()
+            .map(|dir| self.sibling_in_dir(id, *dir))
+        // TODO There MUST be a better way to do something like this...
+            .filter(|thing| thing.is_ok())
+            .map(|thing| thing.unwrap())
+            .collect();
+
         //....update parent?
-        {
+        /*{
             let container = try!(self.lookup_mut(parent_id));
             if container.floating() {
                 return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
@@ -111,7 +109,7 @@ impl LayoutTree {
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
             container.set_geometry(edge, new_geo);
 
-        }
+        }*/
         // and now we mutate the siblings
         let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
             .map(|dir| dir.reverse()).collect();
@@ -132,7 +130,13 @@ impl LayoutTree {
                 .expect("Could not get geometry of the container");
             let new_geo = calculate_resize(geo, reversed_edge, pointer, action.grab);
             action.grab = pointer;
+            resizing_ops.push((sibling, (reversed_edge, new_geo)));
             container.set_geometry(reversed_edge, new_geo);
+        }
+        for (id, (edge, geo)) in resizing_ops {
+            let container = self.lookup_mut(id)
+                .expect("Id no longer points to node!");
+            container.set_geometry(edge, geo);
         }
         /*let node_ix = self.tree.lookup_id(id)
             .expect("Could not find node index for an id");
