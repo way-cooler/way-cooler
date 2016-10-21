@@ -68,7 +68,7 @@ impl LayoutTree {
         // This is the vector of operations we will perform, we do all geometry sets atomically.
         let mut resizing_ops: Vec<(Uuid, (ResizeEdge, Geometry))> = Vec::with_capacity(4);
         {
-            let container = try!(self.lookup_mut(id));
+            let container = try!(self.lookup(id));
             if container.floating() {
                 return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
             }
@@ -93,23 +93,6 @@ impl LayoutTree {
             .map(|thing| thing.unwrap())
             .collect();
 
-        //....update parent?
-        /*{
-            let container = try!(self.lookup_mut(parent_id));
-            if container.floating() {
-                return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
-            }
-            match container.get_type() {
-                ContainerType::View | ContainerType::Container => {},
-                _ => return Err(TreeError::UuidWrongType(container.get_id(),
-                                                          vec!(ContainerType::View)))
-            }
-            let geo = container.get_geometry()
-                .expect("Could not get geometry of the container");
-            let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-            container.set_geometry(edge, new_geo);
-
-        }*/
         // and now we mutate the siblings
         let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
             .map(|dir| dir.reverse()).collect();
@@ -129,21 +112,15 @@ impl LayoutTree {
             let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
             let new_geo = calculate_resize(geo, reversed_edge, pointer, action.grab);
-            action.grab = pointer;
             resizing_ops.push((sibling, (reversed_edge, new_geo)));
             container.set_geometry(reversed_edge, new_geo);
         }
+        action.grab = pointer;
         for (id, (edge, geo)) in resizing_ops {
             let container = self.lookup_mut(id)
                 .expect("Id no longer points to node!");
             container.set_geometry(edge, geo);
         }
-        /*let node_ix = self.tree.lookup_id(id)
-            .expect("Could not find node index for an id");
-        let workspace_ix = try!(self.tree.ancestor_of_type(node_ix,
-                                                           ContainerType::Workspace)
-                                .map_err(|err| TreeError::PetGraph(err)));
-        self.layout(workspace_ix);*/
         action.grab = pointer;
         self.update_pointer_pos(id, edge)
     }
