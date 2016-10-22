@@ -34,8 +34,6 @@ Options:
   --version    Show version information
 """
 
-failed = False
-
 def check_file_version(file_name, regex, expected):
     reg = re.compile(regex)
     with open(file_name) as f:
@@ -59,12 +57,12 @@ def check_release_branch(version):
     return all_clear
 
 if __name__ == "__main__":
-    print("Running ci.py...")
+    print("Running way-cooler ci script...")
     args = docopt(DOCOPT_USAGE, version="ci.py v1.0")
     if args["travis-check"]:
         print("Running travis-check...")
         travis_pr_branch = os.environ["TRAVIS_PULL_REQUEST_BRANCH"]
-        if travis_pr_branch == "":
+        if not travis_pr_branch or travis_pr_branch == "":
             print("Not running in a PR.")
             sys.exit(0)
         print("PR " + travis_pr_branch + " detected, checking for versions.")
@@ -86,15 +84,17 @@ if __name__ == "__main__":
     elif args["prepare-deploy"]:
         print("Not compiling for multiple targets yet :(")
         print("cargo build --release --verbose")
-        retcode = subprocess.call(["cargo", "build", "--verbose", "--release"])
+        retcode = subprocess.call(["cargo", "build", "--release", "--verbose"])
         if retcode != 0:
-            sys.stderr.write("Cargo build exited with %s\n", retcode)
+            sys.stderr.write("Cargo build exited with {}\n".format(retcode))
             sys.exit(2)
 
         print("Moving way-cooler => way-cooler_linux_x86_64")
         build_dir = os.environ["TRAVIS_BUILD_DIR"]
-        os.rename(build_dir + "/target/release/way-cooler", build_dir + "/way-cooler_linux_x86_64")
+        os.rename(build_dir + "/target/release/way-cooler",
+                  build_dir + "/way-cooler_linux_x86_64")
 
     else:
         sys.stderr.write("Invalid arguments!\n")
+        print(DOCOPT_USAGE)
         sys.exit(1)
