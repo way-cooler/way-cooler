@@ -59,13 +59,16 @@ def check_release_branch(version):
     return all_clear
 
 if __name__ == "__main__":
+    print("Running ci.py...")
     args = docopt(DOCOPT_USAGE, version="ci.py v1.0")
     if args["travis-check"]:
+        print("Running travis-check...")
         travis_pr_branch = os.environ["TRAVIS_PULL_REQUEST_BRANCH"]
         if travis_pr_branch == "":
             print("Not running in a PR.")
             sys.exit(0)
-        version_match = re.match(travis_pr_branch)
+        print("PR " + travis_pr_branch + " detected, checking for versions.")
+        version_match = re.match(BRANCH_REGEX, travis_pr_branch)
         if not version_match:
             print("Not in a release branch PR.")
             sys.exit(0)
@@ -73,12 +76,7 @@ if __name__ == "__main__":
         if not check_release_branch(version_match):
             sys.stderr.write("Not all files matched!\n")
             sys.exit(2)
-        print("Checking if we can compile in release mode")
-        retcode = subprocess.call(["cargo", "check", "--release"])
-        if retcode != 0:
-            sys.stderr.write("cargo check --release failed with %d!\n" % retcode)
-            sys.exit(2)
-        print("All checks passed.")
+        print("All version checks passed.")
 
 
     elif args["bump"]:
