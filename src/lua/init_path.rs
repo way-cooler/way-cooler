@@ -31,7 +31,7 @@ fn get_config_file() -> Result<File, &'static str> {
     let home = home_var.as_str();
 
     if let Ok(path_env) = env::var("WAY_COOLER_INIT_FILE") {
-        info!("Found $WAY_COOLER_INIT_FILE to be defined, will look for the init file there.")
+        info!("Found $WAY_COOLER_INIT_FILE to be defined, will look for the init file there.");
         if let Ok(file) = read_file(Path::new(&path_env)) {
             info!("Reading init file from $WAY_COOLER_INIT_FILE: {}",
                   path_env.as_str().replace(home, "~"));
