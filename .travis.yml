@@ -70,5 +70,6 @@ deploy:
     secure: "i+7X7qZgq5gwWbi/KBoL03rBTJam2ayJUxuTUGnQNwOEUc1KaDintZG/j6bp2DqFfodBx0oq/nvZi+mIAzbpQHlaDCav+GC0S3o2k10CAPlcg844IZVB22J/WbUjFfkpAWz0Mbs6U7cjCeAPAdYTbcJy5haduKm9FKOat87bBrNIdPZno3j7RDd1ne3+gsbEp0W9788jqX99vV7CWtV0hT5w1yT+COg8YdvCowOLh3mS/y43LZlmyqNFqJpF/tMnBWI9qDlhyCCzmsVb+xq9tjX4XQAgZJI6Y0uP8JoityqG1OpCAfgSpS99+0iy+lSGpALDfKAk04lIRMWublnMSXSqcHRupxF6mvlzer9V4XV1emgDn1rtnIkQiRryuA180mTVpHjGg+Ockl/wjOo4FJGKlDmQn7oT6EMDfY62md2tYbsB2MmJNlFXiQCinNFmjpTJuUbHwXmF4FArq4B8AmoFwY1I7I8x6eHKqLEZOxgm9EgtHC9+dwbRSY7t6X7AiHYv7LsDIjEO70oG7j/nuoZgBZZvMjOWlm7EKUjrcxXVLUZK9f9P/6Pc7r+OQr4jaRRclCtZPsPGPu/EjNfeQ0+PpZdByzT9k1y4loAqZPtP0ANBp7flKsPNWXaMSNsb/Hu4zolDDyeU5eL3VHyrDk1wi9nmFTOnrCl8W++7Fi4="
   file:
     - "way-cooler_linux_x86_64"
+    - "config/init.lua"
 after_deploy:
   - cargo publish --token $CARGO_TOKEN

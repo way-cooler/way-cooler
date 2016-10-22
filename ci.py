@@ -93,9 +93,9 @@ if __name__ == "__main__":
             sys.stderr.write("Cargo build exited with %s\n", retcode)
             sys.exit(2)
 
-        print("Moving `way-cooler` to `way-cooler_linux_x86_64`")
+        print("Moving way-cooler => way-cooler_linux_x86_64")
         build_dir = os.environ["TRAVIS_BUILD_DIR"]
-        os.rename(build_dir + "/way-cooler", build_dir + "/way-cooler_linux_x86_64")
+        os.rename(build_dir + "/target/release/way-cooler", build_dir + "/way-cooler_linux_x86_64")
 
     else:
         sys.stderr.write("Invalid arguments!\n")
