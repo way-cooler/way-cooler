@@ -62,7 +62,7 @@ if __name__ == "__main__":
     if args["travis-check"]:
         print("Running travis-check...")
         travis_pr_branch = os.environ["TRAVIS_PULL_REQUEST_BRANCH"]
-        if not travis_pr_branch or travis_pr_branch == "":
+        if not travis_pr_branch:
             print("Not running in a PR.")
             sys.exit(0)
         print("PR " + travis_pr_branch + " detected, checking for versions.")
