@@ -65,7 +65,7 @@ before_deploy:
   - ci.py prepare-deploy
 deploy:
   provider: releases
-  skip_cleanup: false # We can skip cleanup as we recompile with --release
+  skip_cleanup: false # We do not need to skip cleanup as we recompile with --release
   on:
     tags: true
   api_key:
