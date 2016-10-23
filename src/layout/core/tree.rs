@@ -398,18 +398,19 @@ impl LayoutTree {
         let container = try!(self.lookup(id));
         let parent = try!(self.parent_of(id));
         let (layout, node_ix) = match *container {
-            Container::View { .. } => {
+            Container::View { .. }| Container::Container { .. } => {
                 if let Container::Container { layout, .. } = *parent {
                     (layout, try!(self.tree.lookup_id(id)
                                   .ok_or(TreeError::NodeNotFound(id))))
                 } else {
-                    panic!("Parent of view was not a container!")
+                    return Err(TreeError::UuidWrongType(id, vec!(ContainerType::Container)))
+                    //panic!("Parent of view was not a container!")
                 }
             },
-            Container::Container { layout, .. } => {
+            /*Container::Container { layout, .. } => {
                 (layout, try!(self.tree.lookup_id(id)
                               .ok_or(TreeError::NodeNotFound(id))))
-            }
+            }*/
             _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
                                                        ContainerType::Container)))
         };
