@@ -87,7 +87,7 @@ impl LayoutTree {
         }
         let dirs_moving_in = Direction::from_edge(edge);
         let siblings: Vec<Uuid> = dirs_moving_in.iter()
-            .map(|dir| self.sibling_in_dir(id, *dir))
+            .map(|dir| self.container_in_dir(id, *dir))
         // TODO There MUST be a better way to do something like this...
             .filter(|thing| thing.is_ok())
             .map(|thing| thing.unwrap())

@@ -391,9 +391,12 @@ impl LayoutTree {
             .map_err(|err| TreeError::PetGraph(err))
     }
 
-    /// Gets the sibling of the view/container node in some
-    /// relative direction. If one could not be found, an Error is returned.
-    pub fn sibling_in_dir(&self, id: Uuid, dir: Direction)
+    /// Gets a container relative to the view/container node in some
+    /// direction. If one could not be found, an Error is returned.
+    ///
+    /// An Err should only happen if they are at edge and the direction
+    /// points in that direction.
+    pub fn container_in_dir(&self, id: Uuid, dir: Direction)
                           -> Result<Uuid, TreeError> {
         let container = try!(self.lookup(id));
         let parent = try!(self.parent_of(id));
@@ -439,10 +442,10 @@ impl LayoutTree {
                         Ok(self.tree[sibling_ix].get_id())
                     }
                 else {
-                    self.sibling_in_dir(parent.get_id(), dir)
+                    self.container_in_dir(parent.get_id(), dir)
                 }
             },
-            _ => self.sibling_in_dir(parent.get_id(), dir)
+            _ => self.container_in_dir(parent.get_id(), dir)
         }
     }
 
@@ -1112,5 +1115,68 @@ pub mod tests {
         let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
             .expect("Active container wasn't set properly in basic_tree!");
         assert_eq!(tree.tree[workspace_ix].get_name(), Some("2"));
+    }
+
+    #[test]
+    /// Tests that going back and forth on one level works correctly
+    fn simple_container_in_dir_test() {
+        let mut tree = basic_tree();
+        let first_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        let view = WlcView::root();
+        tree.add_view(view).unwrap();
+        let second_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        assert!(second_view_id != first_view_id);
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap(),
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap(),
+                   second_view_id);
+        assert!(tree.container_in_dir(second_view_id, Direction::Up).is_err());
+        assert!(tree.container_in_dir(second_view_id, Direction::Down).is_err());
+        assert!(tree.container_in_dir(first_view_id, Direction::Up).is_err());
+        assert!(tree.container_in_dir(first_view_id, Direction::Down).is_err());
+        tree.toggle_cardinal_tiling();
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Up).unwrap(),
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Down).unwrap(),
+                   second_view_id);
+        assert!(tree.container_in_dir(first_view_id, Direction::Left).is_err());
+        assert!(tree.container_in_dir(first_view_id, Direction::Right).is_err());
+        assert!(tree.container_in_dir(second_view_id, Direction::Left).is_err());
+        assert!(tree.container_in_dir(second_view_id, Direction::Right).is_err());
+    }
+
+    #[test]
+    fn nested_container_in_dir_test() {
+        let mut tree = basic_tree();
+        let first_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        let view = WlcView::root();
+
+        // First make it a single view horizontally next to a vertical stack
+        tree.add_view(view).unwrap();
+        let second_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        tree.toggle_active_layout(Layout::Vertical).unwrap();
+        assert!(tree.parent_of(first_view_id).unwrap() != tree.parent_of(second_view_id).unwrap());
+        tree.add_view(view).unwrap();
+        let third_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        let sub_container_id = tree.parent_of(third_view_id).unwrap().get_id();
+        assert_eq!(sub_container_id, tree.parent_of(second_view_id).unwrap().get_id());
+        // Ensure going from sub view to the ancestor works
+        assert_eq!(tree.container_in_dir(third_view_id, Direction::Left).unwrap(),
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap(),
+                   first_view_id);
+        // Ensure to the right of the original is the parent container of left and right
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap(),
+                   sub_container_id);
+
+        // Now make it vertical stack beside (horizontal) to a vertical stack
+        tree.active_container = tree.tree.lookup_id(first_view_id);
+        tree.toggle_active_layout(Layout::Vertical).unwrap();
+        tree.add_view(view).unwrap();
+        let fourth_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Up).unwrap(),
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Right).unwrap(),
+                   sub_container_id);
     }
 }
