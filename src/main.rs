@@ -41,6 +41,9 @@ extern crate tempfile;
 extern crate byteorder;
 
 use std::env;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 use getopts::Options;
 use log::LogLevel;
 
@@ -65,6 +68,7 @@ mod layout;
 mod background;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const MODULE_PATH: &'static str = "/proc/modules";
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
@@ -95,6 +99,36 @@ fn log_format(record: &log::LogRecord) -> String {
     }
     format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
             color, record.level(), module_path, file, line, record.args())
+}
+
+/// Checks the loaded modules, and reports any problematic proprietary ones
+fn detect_proprietary() {
+    if env::var("DISPLAY").is_ok() {
+        // If DISPLAY is present, we are running embedded
+        return
+    }
+    match File::open(Path::new(MODULE_PATH)) {
+        Ok(file) => {
+            let reader = BufReader::new(&file);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    if line.contains("nvidia") {
+                        error!("Warning: Proprietary nvidia graphics drivers are installed, \
+                               but they are not compatible with Wayland. Consider using nouveau drivers for Wayland.");
+                        break;
+                    } else if line.contains("fglrx") {
+                        error!("Warning: Proprietary AMD graphics drivers are installed, but they are not compatible with Wayland. \
+                               Consider using radeon drivers for Waylad.");
+                        break;
+                    }
+                }
+            }
+        },
+        Err(err) => {
+            warn!("Could not read proprietary modules at \"{}\", because: {:#?}",
+                  MODULE_PATH, err);
+        }
+    }
 }
 
 /// Initializes the logging system.
@@ -140,6 +174,8 @@ fn main() {
 
     // Start logging first
     init_logs();
+    // Detect proprietary modules loaded, and warn about them.
+    detect_proprietary();
 
     // Initialize callbacks
     callbacks::init();

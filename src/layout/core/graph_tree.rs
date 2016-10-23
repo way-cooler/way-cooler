@@ -182,8 +182,7 @@ impl InnerTree {
     /// Add an existing node (detached in the graph) to the tree.
     /// Note that floating nodes shouldn't exist for too long.
     fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex) -> EdgeIndex {
-        // Make sure the child doesn't have a parent
-        if cfg!(debug_assertions) && self.has_parent(child_ix) {
+        if self.has_parent(child_ix) {
             panic!("attach_child: child had a parent!")
         }
 
@@ -469,7 +468,6 @@ impl InnerTree {
     }
 
     /// Whether a node has a parent
-    #[cfg(debug_assertions)]
     pub fn has_parent(&self, node_ix: NodeIndex) -> bool {
         let neighbors = self.graph
             .neighbors_directed(node_ix, EdgeDirection::Incoming);
