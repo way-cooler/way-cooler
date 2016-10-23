@@ -394,10 +394,17 @@ impl LayoutTree {
     /// Gets a container relative to the view/container node in some
     /// direction. If one could not be found, an Error is returned.
     ///
+    /// The first `Uuid` returned is the ancestor of the passed `Uuid`
+    /// that sits relative to the second returned `Uuid`. This might be
+    /// the same as the passed `Uuid`, if there was no recursion required
+    /// to find the second returned `Uuid`.
+    ///
+    /// The second `Uuid` returned is the node in the relative direction.
+    ///
     /// An Err should only happen if they are at edge and the direction
     /// points in that direction.
     pub fn container_in_dir(&self, id: Uuid, dir: Direction)
-                          -> Result<Uuid, TreeError> {
+                          -> Result<(Uuid, Uuid), TreeError> {
         let container = try!(self.lookup(id));
         let parent = try!(self.parent_of(id));
         let (layout, node_ix) = match *container {
@@ -410,10 +417,6 @@ impl LayoutTree {
                     //panic!("Parent of view was not a container!")
                 }
             },
-            /*Container::Container { layout, .. } => {
-                (layout, try!(self.tree.lookup_id(id)
-                              .ok_or(TreeError::NodeNotFound(id))))
-            }*/
             _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
                                                        ContainerType::Container)))
         };
@@ -439,7 +442,7 @@ impl LayoutTree {
                 if maybe_new_index.is_some() &&
                     maybe_new_index.unwrap() < siblings.len() {
                         let sibling_ix = siblings[maybe_new_index.unwrap()];
-                        Ok(self.tree[sibling_ix].get_id())
+                        Ok((id, self.tree[sibling_ix].get_id()))
                     }
                 else {
                     self.container_in_dir(parent.get_id(), dir)

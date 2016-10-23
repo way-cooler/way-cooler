@@ -87,11 +87,13 @@ impl LayoutTree {
         }
         let dirs_moving_in = Direction::from_edge(edge);
         let siblings: Vec<Uuid> = dirs_moving_in.iter()
-            .map(|dir| self.container_in_dir(id, *dir))
+            .map(|dir| self.container_in_dir(id, *dir)
+                 .map(|uuids| uuids.1))
         // TODO There MUST be a better way to do something like this...
             .filter(|thing| thing.is_ok())
             .map(|thing| thing.unwrap())
             .collect();
+
 
         // and now we mutate the siblings
         let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
