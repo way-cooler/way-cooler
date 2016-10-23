@@ -169,7 +169,14 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
         if let Ok(mut tree) = try_lock_tree() {
             tree.set_active_view(view)
                 .unwrap_or_else(|err| {
-                    error!("Could not set active container {:?}", err);
+                    match err {
+                        TreeError::ViewNotFound(handle) => {
+                            if handle.get_class() != "Background" {
+                                error!("Could not set active container {:?}", err);
+                            }
+                        },
+                        err => error!("Could not set active container {:?}", err)
+                    }
                 });
             if mods.mods.contains(MOD_CTRL) {
                 let action = Action {
