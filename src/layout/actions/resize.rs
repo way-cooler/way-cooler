@@ -67,19 +67,21 @@ impl LayoutTree {
                         action: &mut Action) -> CommandResult {
         // This is the vector of operations we will perform, we do all geometry sets atomically.
         let mut resizing_ops: Vec<(Uuid, (ResizeEdge, Geometry))> = Vec::with_capacity(4);
-        edge &= !RESIZE_TOP;
-        edge &= !RESIZE_BOTTOM;
         let dirs_moving_in = Direction::from_edge(edge);
-        assert_eq!(dirs_moving_in.len(), 1);
-        let next_container = try!(self.container_in_dir(id, dirs_moving_in[0]));
-        {
-            let container = try!(self.lookup(next_container.0));//try!(self.lookup(id));
+        let next_containers: Vec<(Uuid, Uuid)> = dirs_moving_in.iter()
+            .map(|dir| self.container_in_dir(id, *dir))
+            // TODO There MUST be a better way to do something like this...
+            .filter(|thing| thing.is_ok())
+            .map(|thing| thing.unwrap())
+            .collect();
+        for ancestor_id in next_containers.iter().map(|uuids| uuids.0) {
+            let container = try!(self.lookup(ancestor_id));//try!(self.lookup(id));
             if container.floating() {
-                return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
+                return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(ancestor_id)))
             }
             match container.get_type() {
                 ContainerType::View | ContainerType::Container => {},
-                _ => return Err(TreeError::UuidWrongType(container.get_id(),
+                _ => return Err(TreeError::UuidWrongType(ancestor_id,
                                                         vec!(ContainerType::View)))
             }
             let geo = container.get_geometry()
@@ -88,27 +90,10 @@ impl LayoutTree {
                 return Ok(())
             }
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-            resizing_ops.push((next_container.0, (edge, new_geo)));
+            resizing_ops.push((ancestor_id, (edge, new_geo)));
         }
-        let siblings: Vec<Uuid> = vec!(next_container.1);
-        /*let siblings: Vec<Uuid> = dirs_moving_in.iter()
-            .map(|dir| {
-                self.container_in_dir(id, *dir)
-                    .map(|uuids| {
-                        let container = try!(self.lookup(id));
-                        let geo = container.get_geometry()
-                            .expect("Could not get geometry of the container");
-                        let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-                        resizing_ops.push((uuids.0, (edge, new_geo)));
-                        Ok(uuids.1)
-                    })
-            })
-        // TODO There MUST be a better way to do something like this...
-            .filter(|thing| thing.is_ok())
-            .map(|thing| thing.unwrap())
-            .collect();
-
-         */
+        let siblings: Vec<Uuid> = next_containers.into_iter()
+            .map(|uuids| uuids.1).collect();
         // and now we mutate the siblings
         let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
             .map(|dir| dir.reverse()).collect();
