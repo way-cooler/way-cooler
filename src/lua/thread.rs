@@ -92,13 +92,13 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 
 /// Initialize the Lua thread.
 pub fn init() {
-    trace!("Initializing...");
+    debug!("Initializing...");
     let (tx, receiver) = channel();
     *SENDER.lock().expect(ERR_LOCK_SENDER) = Some(tx);
     let mut lua = Lua::new();
     debug!("Loading Lua libraries...");
     lua.openlibs();
-    trace!("Loading way-cooler libraries...");
+    debug!("Loading way-cooler libraries...");
     rust_interop::register_libraries(&mut lua);
 
     let (use_config, maybe_init_file) = init_path::get_config();
@@ -107,8 +107,8 @@ pub fn init() {
             Ok(init_file) => {
                 // TODO defaults here are important
                 let _: () = lua.execute_from_reader(init_file)
-                    .expect("Unable to load config file");
-                debug!("Read config file");
+                    .expect("Unable to load init file");
+                debug!("Read init.lua successfully");
             }
             Err(reason) => {
                 panic!("Unable to load init file: {}", reason)
@@ -116,7 +116,7 @@ pub fn init() {
         }
     }
     else {
-        trace!("Skipping config search");
+        info!("Skipping config search");
     }
 
     // Only ready after loading libs
