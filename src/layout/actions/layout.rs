@@ -504,7 +504,7 @@ impl LayoutTree {
                 let parent_ix = self.tree.ancestor_of_type(node_ix,
                                                         ContainerType::Container)
                     .expect("View had no container parent");
-                let mut new_geometry: Geometry;
+                let new_geometry: Geometry;
                 let num_siblings = cmp::max(1, self.tree.grounded_children(parent_ix).len()
                                             .checked_sub(1).unwrap_or(0)) as u32;
                 let parent_geometry = self.tree[parent_ix].get_geometry()

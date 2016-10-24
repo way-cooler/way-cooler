@@ -1129,18 +1129,18 @@ pub mod tests {
         tree.add_view(view).unwrap();
         let second_view_id = tree.tree[tree.active_container.unwrap()].get_id();
         assert!(second_view_id != first_view_id);
-        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap(),
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap().1,
                    first_view_id);
-        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap(),
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap().1,
                    second_view_id);
         assert!(tree.container_in_dir(second_view_id, Direction::Up).is_err());
         assert!(tree.container_in_dir(second_view_id, Direction::Down).is_err());
         assert!(tree.container_in_dir(first_view_id, Direction::Up).is_err());
         assert!(tree.container_in_dir(first_view_id, Direction::Down).is_err());
         tree.toggle_cardinal_tiling();
-        assert_eq!(tree.container_in_dir(second_view_id, Direction::Up).unwrap(),
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Up).unwrap().1,
                    first_view_id);
-        assert_eq!(tree.container_in_dir(first_view_id, Direction::Down).unwrap(),
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Down).unwrap().1,
                    second_view_id);
         assert!(tree.container_in_dir(first_view_id, Direction::Left).is_err());
         assert!(tree.container_in_dir(first_view_id, Direction::Right).is_err());
@@ -1164,12 +1164,12 @@ pub mod tests {
         let sub_container_id = tree.parent_of(third_view_id).unwrap().get_id();
         assert_eq!(sub_container_id, tree.parent_of(second_view_id).unwrap().get_id());
         // Ensure going from sub view to the ancestor works
-        assert_eq!(tree.container_in_dir(third_view_id, Direction::Left).unwrap(),
+        assert_eq!(tree.container_in_dir(third_view_id, Direction::Left).unwrap().1,
                    first_view_id);
-        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap(),
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap().1,
                    first_view_id);
         // Ensure to the right of the original is the parent container of left and right
-        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap(),
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap().1,
                    sub_container_id);
 
         // Now make it vertical stack beside (horizontal) to a vertical stack
@@ -1177,9 +1177,9 @@ pub mod tests {
         tree.toggle_active_layout(Layout::Vertical).unwrap();
         tree.add_view(view).unwrap();
         let fourth_view_id = tree.tree[tree.active_container.unwrap()].get_id();
-        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Up).unwrap(),
+        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Up).unwrap().1,
                    first_view_id);
-        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Right).unwrap(),
+        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Right).unwrap().1,
                    sub_container_id);
     }
 }
