@@ -2,46 +2,31 @@
 
 /// Dbus macro for Layout code
 
-use dbus;
-use dbus_macros;
+use super::{DBusTree, DBusResult};
+
+use dbus::tree::MethodErr;
 
 use uuid::Uuid;
 
 use super::super::layout::try_lock_tree;
-use super::super::layout::commands;
+use super::super::layout::commands as layout_cmd;
 
-dbus_class!("org.way_cooler.Layout", class Layout {
-    fn remove_active(&this) {
-        commands::remove_active();
-    }
-
-    fn tile_switch(&this) {
-        commands::tile_switch();
-    }
-
-    fn split_vertical(&this) {
-        commands::split_vertical();
-    }
-
-    fn split_horizontal(&this) {
-        commands::split_horizontal();
-    }
-
-    fn move_focus(&this, dir: &str) {
-        match &*dir.to_lowercase() {
-            "up" => commands::focus_up(),
-            "down" => commands::focus_down(),
-            "left" => commands::focus_left(),
-            "right" => commands::focus_right(),
-            _ => ()
+dbus_interface! {
+    path: "/org/way_cooler/Layout";
+    name: "org.way-cooler.Layout";
+    fn ToggleFloat(uuid: String) -> success: DBusResult<()> {
+        if uuid == "" {
+            layout_cmd::toggle_float();
+            Ok()
+        } else {
+            let uuid = try!(Uuid::parse_str(&uuid).map_err(
+                |uuid_err| MethodErr::invalid_arg("uuid is not valid")));
+            if let Ok(mut tree) = try_lock_tree() {
+                match tree.toggle_float() {
+                    Ok(_) => Ok(()),
+                    Err(err) => return Err(MethodErr::failed(""))
+                }
+            }
         }
     }
-
-    fn switch_to_workspace(&this, name: &str) {
-        
-    }
-
-    fn focus_on(&this, id: &str) {
-        
-    }
-});
+}
