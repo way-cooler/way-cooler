@@ -5,7 +5,7 @@ use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
-use super::super::core::container::{Container, ContainerType, Layout, MIN_SIZE};
+use super::super::core::container::{Container, ContainerType, Layout};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
@@ -200,16 +200,6 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                let old_geometry = handle.get_geometry()
-                    .expect("Handle had no geometry");
-                let mut geometry = geometry;
-                if geometry.size.w <= MIN_SIZE.w {
-                    geometry.size.w = old_geometry.size.w;
-                }
-
-                if geometry.size.h <= MIN_SIZE.h {
-                    geometry.size.h = old_geometry.size.h;
-                }
                 handle.set_geometry(ResizeEdge::empty(), geometry);
             }
         }
@@ -544,15 +534,6 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 };
-                let old_geometry = handle.get_geometry()
-                    .expect("Handle had no geometry");
-                if new_geometry.size.w <= MIN_SIZE.w {
-                    new_geometry.size.w = old_geometry.size.w;
-                }
-
-                if new_geometry.size.h <= MIN_SIZE.h {
-                    new_geometry.size.h = old_geometry.size.h;
-                }
                 handle.set_geometry(ResizeEdge::empty(), new_geometry);
             },
             _ => panic!("Can only normalize the view on a view or container")
