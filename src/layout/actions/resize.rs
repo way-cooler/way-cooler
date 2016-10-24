@@ -71,9 +71,7 @@ impl LayoutTree {
         edge &= !RESIZE_BOTTOM;
         let dirs_moving_in = Direction::from_edge(edge);
         assert_eq!(dirs_moving_in.len(), 1);
-        let next_container = self.container_in_dir(id, dirs_moving_in[0]).unwrap();
-        trace!("container: {:?}", next_container);
-        trace!("tree: {:#?}", self);
+        let next_container = try!(self.container_in_dir(id, dirs_moving_in[0]));
         {
             let container = try!(self.lookup(next_container.0));//try!(self.lookup(id));
             if container.floating() {
@@ -129,6 +127,9 @@ impl LayoutTree {
             }
             let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
+            if is_making_too_small(geo, reversed_edge, pointer, action.grab) {
+                return Ok(())
+            }
             let new_geo = calculate_resize(geo, reversed_edge, pointer, action.grab);
             resizing_ops.push((sibling, (reversed_edge, new_geo)));
             container.set_geometry(reversed_edge, new_geo);
@@ -189,12 +190,12 @@ fn calculate_resize(geo: Geometry, edge: ResizeEdge,
 
     if new_geo.size.w < MIN_SIZE.w {
         new_geo.origin.x = geo.origin.x;
-        new_geo.size.w = geo.size.w;
+        new_geo.size.w = MIN_SIZE.w;
     }
 
     if new_geo.size.h < MIN_SIZE.h {
         new_geo.origin.y = geo.origin.y;
-        new_geo.size.h = geo.size.h;
+        new_geo.size.h = MIN_SIZE.h;
     }
     new_geo
 }
@@ -206,7 +207,7 @@ fn calculate_resize(geo: Geometry, edge: ResizeEdge,
 /// Otherwise returns false
 fn is_making_too_small(geo: Geometry, edge: ResizeEdge, cur_point: Point,
                        prev_point: Point) -> bool {
-    if geo.size.w != MIN_SIZE.w && geo.size.h != MIN_SIZE.h {
+    if geo.size.w > MIN_SIZE.w && geo.size.h > MIN_SIZE.h {
         return false
     }
     if edge.contains(RESIZE_RIGHT) && cur_point.x - prev_point.x < 0 {
