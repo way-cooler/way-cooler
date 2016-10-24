@@ -39,7 +39,7 @@ install:
   # Sometimes cargo check doesn't exist?
   - cargo install --force cargo-check
 
-before-script:
+before_script:
   - export DBUS_NO_PKG_CONFIG=true
   - export LIBDBUS_NO_PKG_CONFIG=true
   - export DBUS_1_NO_PKG_CONFIG=true
