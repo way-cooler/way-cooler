@@ -200,17 +200,13 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                let old_geometry = handle.get_geometry()
-                    .expect("Handle had no geometry");
                 let mut geometry = geometry;
                 if geometry.size.w <= MIN_SIZE.w {
-                    //geometry.origin.x = old_geometry.origin.x;
-                    geometry.size.w = old_geometry.size.w;
+                    geometry.size.w = MIN_SIZE.h;
                 }
 
                 if geometry.size.h <= MIN_SIZE.h {
-                    //geometry.origin.y = old_geometry.origin.y;
-                    geometry.size.h = old_geometry.size.h;
+                    geometry.size.h = MIN_SIZE.h;
                 }
                 handle.set_geometry(ResizeEdge::empty(), geometry);
             }
@@ -546,16 +542,12 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 };
-                let old_geometry = handle.get_geometry()
-                    .expect("Handle had no geometry");
                 if new_geometry.size.w <= MIN_SIZE.w {
-                    //new_geometry.origin.x = old_geometry.origin.x;
-                    new_geometry.size.w = old_geometry.size.w;
+                    new_geometry.size.w = MIN_SIZE.w;
                 }
 
                 if new_geometry.size.h <= MIN_SIZE.h {
-                    //new_geometry.origin.y = old_geometry.origin.y;
-                    new_geometry.size.h = old_geometry.size.h;
+                    new_geometry.size.h = MIN_SIZE.h;
                 }
                 handle.set_geometry(ResizeEdge::empty(), new_geometry);
             },
