@@ -117,7 +117,6 @@ impl LayoutTree {
             }
             let new_geo = calculate_resize(geo, reversed_edge, pointer, action.grab);
             resizing_ops.push((sibling, (reversed_edge, new_geo)));
-            container.set_geometry(reversed_edge, new_geo);
         }
         action.grab = pointer;
         for (id, (edge, geo)) in resizing_ops {
