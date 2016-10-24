@@ -63,12 +63,19 @@ impl LayoutTree {
         self.update_pointer_pos(id, edge)
     }
 
-    pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
+    pub fn resize_tiled(&mut self, id: Uuid, mut edge: ResizeEdge, pointer: Point,
                         action: &mut Action) -> CommandResult {
         // This is the vector of operations we will perform, we do all geometry sets atomically.
         let mut resizing_ops: Vec<(Uuid, (ResizeEdge, Geometry))> = Vec::with_capacity(4);
+        edge &= !RESIZE_TOP;
+        edge &= !RESIZE_BOTTOM;
+        let dirs_moving_in = Direction::from_edge(edge);
+        assert_eq!(dirs_moving_in.len(), 1);
+        let next_container = self.container_in_dir(id, dirs_moving_in[0]).unwrap();
+        trace!("container: {:?}", next_container);
+        trace!("tree: {:#?}", self);
         {
-            let container = try!(self.lookup(id));
+            let container = try!(self.lookup(next_container.0));//try!(self.lookup(id));
             if container.floating() {
                 return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))
             }
@@ -83,18 +90,27 @@ impl LayoutTree {
                 return Ok(())
             }
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-            resizing_ops.push((id, (edge, new_geo)));
+            resizing_ops.push((next_container.0, (edge, new_geo)));
         }
-        let dirs_moving_in = Direction::from_edge(edge);
-        let siblings: Vec<Uuid> = dirs_moving_in.iter()
-            .map(|dir| self.container_in_dir(id, *dir)
-                 .map(|uuids| uuids.1))
+        let siblings: Vec<Uuid> = vec!(next_container.1);
+        /*let siblings: Vec<Uuid> = dirs_moving_in.iter()
+            .map(|dir| {
+                self.container_in_dir(id, *dir)
+                    .map(|uuids| {
+                        let container = try!(self.lookup(id));
+                        let geo = container.get_geometry()
+                            .expect("Could not get geometry of the container");
+                        let new_geo = calculate_resize(geo, edge, pointer, action.grab);
+                        resizing_ops.push((uuids.0, (edge, new_geo)));
+                        Ok(uuids.1)
+                    })
+            })
         // TODO There MUST be a better way to do something like this...
             .filter(|thing| thing.is_ok())
             .map(|thing| thing.unwrap())
             .collect();
 
-
+         */
         // and now we mutate the siblings
         let reversed_dir: Vec<Direction> = dirs_moving_in.iter()
             .map(|dir| dir.reverse()).collect();
@@ -124,6 +140,9 @@ impl LayoutTree {
             container.set_geometry(edge, geo);
         }
         action.grab = pointer;
+        let node_ix = self.tree.lookup_id(id).unwrap();
+        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace).unwrap();
+        self.layout(workspace_ix);
         self.update_pointer_pos(id, edge)
     }
 }
