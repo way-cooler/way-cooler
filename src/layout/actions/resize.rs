@@ -63,7 +63,7 @@ impl LayoutTree {
         self.update_pointer_pos(id, edge)
     }
 
-    pub fn resize_tiled(&mut self, id: Uuid, mut edge: ResizeEdge, pointer: Point,
+    pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
                         action: &mut Action) -> CommandResult {
         // This is the vector of operations we will perform, we do all geometry sets atomically.
         let mut resizing_ops: Vec<(Uuid, (ResizeEdge, Geometry))> = Vec::with_capacity(4);
