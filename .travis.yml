@@ -39,6 +39,14 @@ install:
   # Sometimes cargo check doesn't exist?
   - cargo install --force cargo-check
 
+before-script:
+  - export DBUS_NO_PKG_CONFIG=true
+  - export LIBDBUS_NO_PKG_CONFIG=true
+  - export DBUS_1_NO_PKG_CONFIG=true
+  # Remove the dbus build script file. This path is based on previous Travis output,
+  # and is entirely a hack.
+  - rm -f /home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/dbus-0.4.0/build.rs
+
 script:
   # check integrity of Lua files in /lib/lua/
   - for file in $( find lib/lua -type f -name "*.lua" ); do echo Checking $file; luac -p $file; done
