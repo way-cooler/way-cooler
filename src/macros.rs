@@ -114,15 +114,15 @@ macro_rules! require_rustwlc {
 macro_rules! dbus_interface {
     ( path: $obj_path:expr; name: $obj_name:expr;
       $(fn $fn_name:ident($($in_name:ident : $in_ty:ty),*)
-                          -> $out_name:ident : $out_ty:ty { $($inner:tt)* })+ ) => {
+                          -> $out_name:ident : DBusResult< $out_ty_inner:ty > { $($inner:tt)* })+ ) => {
         #[warn(dead_code)]
         pub fn setup(factory: &mut $crate::ipc::DBusFactory) -> $crate::ipc::DBusObjPath {
             return factory.object_path($obj_path, ()).introspectable()
                 .add(factory.interface($obj_name, ())
                      $(
-                         .add_m(factory.method(stringify!(fn_name), (),
+                         .add_m(factory.method(stringify!($fn_name), (),
                                 move |msg| {
-                                    let args_iter = msg.msg.iter_init();
+                                    let mut args_iter = msg.msg.iter_init();
                                     $(
                                         let $in_name: $in_ty = args_iter.read::<$in_ty>()
                                             .expect("oopslol");
@@ -130,16 +130,14 @@ macro_rules! dbus_interface {
                                     let result = $fn_name($($in_name),*);
                                     match result {
                                         Ok(value) => {
-                                            let dbus_return = msg.msg.method_return().append1(value);
-                                            Ok(vec![dbus_return])
+                                            let dbus_return = msg.msg.method_return().append(value);
+                                            return Ok(vec![dbus_return])
                                         },
                                         Err(err) => {
-                                            Err()
+                                            return Err(err)
                                         }
                                     }
-                                    let dbus_return = msg.msg.method_return().append1(result);
-                                    Ok(vec![dbus_return])
-                                }).outarg::<$out_ty, _>(stringify!($out_name))
+                                }).outarg::<$out_ty_inner, _>(stringify!($out_name))
                             )
                      )*
                 );
@@ -147,7 +145,8 @@ macro_rules! dbus_interface {
         $(
             #[allow(non_snake_case)]
             #[warn(dead_code)]
-            fn $fn_name( $($in_name: $in_ty),* ) -> $out_ty {
+            fn $fn_name( $($in_name: $in_ty),* )
+                         -> $crate::ipc::DBusResult<$out_ty_inner> {
                 $($inner)*
             }
         )*
