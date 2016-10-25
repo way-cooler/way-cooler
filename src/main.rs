@@ -194,7 +194,7 @@ fn main() {
     // Register Alt+Esc keybinding
     keys::init();
     // Start listening for clients
-    ::std::thread::spawn(|| { ipc::init(); });
+    ipc::init();
 
     // Hand control over to wlc's event loop
     info!("Running wlc...");

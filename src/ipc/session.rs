@@ -31,7 +31,7 @@ impl DBusSession {
 
         let mut tree = factory.tree();
 
-        super::layout::setup(&mut factory);
+        tree = tree.add(super::layout::setup(&mut factory));
         //super::keybindings::setup(&mut factory);
 
         DBusSession {
@@ -46,7 +46,6 @@ impl DBusSession {
 
         for client in self.tree.run(&self.connection,
                                     self.connection.iter(1000)) {
-            trace!("Got connection: {:?}", client);
         }
     }
 }
