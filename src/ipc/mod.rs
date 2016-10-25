@@ -1,10 +1,12 @@
 //! Main module of way-cooler ipc.
 
 use std::sync::Mutex;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Sender};
+use std::thread;
 
 use dbus::tree::{Factory, Interface, ObjectPath, Tree, MTFn, MethodErr};
 
+mod utils;
 mod keybindings;
 mod dbus_message;
 pub use self::dbus_message::DBusMessage;
@@ -27,4 +29,12 @@ lazy_static! {
 
 
 pub fn init() {
+    let (send, recv) = mpsc::channel();
+    let _join = thread::spawn( move || {
+        let mut session = DBusSession::create(recv);
+
+        *SENDER.lock().expect("Unable to unlock") = Some(send);
+
+        session.run_thread();
+    });
 }
