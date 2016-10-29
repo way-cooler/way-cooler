@@ -122,6 +122,7 @@ impl LayoutTree {
                 match layout {
                     Layout::Horizontal => {
                         let children = self.tree.grounded_children(node_ix);
+                        let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
                             let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
@@ -131,8 +132,15 @@ impl LayoutTree {
                         if scale > 0.1 {
                             scale = geometry.size.w as f32 / scale;
                             let new_size_f = |child_size: Size, sub_geometry: Geometry| {
+                                let width = if child_size.w > 0 {
+                                    child_size.w as f32
+                                } else {
+                                    // If the width would become zero, just make it the average size of the container.
+                                    // e.g, if container was width 500 w/ 2 children, this view would have a width of 250
+                                    geometry.size.w as f32 / children_len.checked_sub(1).unwrap_or(1) as f32
+                                };
                                 Size {
-                                    w: ((child_size.w as f32) * scale) as u32,
+                                    w: ((width) * scale) as u32,
                                     h: sub_geometry.size.h
                                 }
                             };
@@ -158,6 +166,7 @@ impl LayoutTree {
                     }
                     Layout::Vertical => {
                         let children = self.tree.grounded_children(node_ix);
+                        let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
                             let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
@@ -167,9 +176,16 @@ impl LayoutTree {
                         if scale > 0.1 {
                             scale = geometry.size.h as f32 / scale;
                             let new_size_f = |child_size: Size, sub_geometry: Geometry| {
+                                let height = if child_size.h > 0 {
+                                    child_size.h as f32
+                                } else {
+                                    // If the width would become zero, just make it the average size of the container.
+                                    // e.g, if container was width 500 w/ 2 children, this view would have a width of 250
+                                    geometry.size.h as f32 / children_len.checked_sub(1).unwrap_or(1) as f32
+                                 };
                                 Size {
                                     w: sub_geometry.size.w,
-                                    h: ((child_size.h as f32) * scale) as u32
+                                    h: ((height) * scale) as u32
                                 }
                             };
                             let remaining_size_f = |sub_geometry: Geometry,
