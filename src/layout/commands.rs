@@ -183,11 +183,12 @@ pub fn set_performing_action(val: Option<Action>) {
 impl Tree {
     /// Gets the uuid of the active container, if there is an active container
     pub fn active_id(&self) -> Option<Uuid> {
-        if let Some(active_ix) = self.0.active_container {
-            Some(self.0.tree[active_ix].get_id())
-        } else {
-            None
-        }
+        self.0.active_container
+            .map(|active_ix| self.0.tree[active_ix].get_id())
+    }
+
+    pub fn lookup_view(&self, view: WlcView) -> Option<Uuid> {
+        self.0.lookup_view(view).map(|c| c.get_id())
     }
 
     pub fn toggle_floating_focus(&mut self) -> CommandResult {

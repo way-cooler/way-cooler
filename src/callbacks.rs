@@ -117,14 +117,13 @@ pub extern fn view_request_move(view: WlcView, _dest: &Point) {
     }
 }
 
-pub extern fn view_request_resize(_view: WlcView, edge: ResizeEdge, point: &Point) {
+pub extern fn view_request_resize(view: WlcView, edge: ResizeEdge, point: &Point) {
     if let Ok(mut tree) = try_lock_tree() {
         match try_lock_action() {
             Ok(guard) => {
                 if guard.is_some() {
-                    // TODO Change this to use _view, NOT the active container!
-                    if let Some(active_id) = tree.active_id() {
-                        if let Err(err) = tree.resize_container(active_id, edge, *point) {
+                    if let Some(id) = tree.lookup_view(view) {
+                        if let Err(err) = tree.resize_container(id, edge, *point) {
                             error!("Context: Trying to resize a container for the user \
                                     \nProblem: Command returned error: {:#?}", err);
                         }
