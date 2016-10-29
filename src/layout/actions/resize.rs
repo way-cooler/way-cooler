@@ -70,12 +70,10 @@ impl LayoutTree {
         let dirs_moving_in = Direction::from_edge(edge);
         let next_containers: Vec<(Uuid, Uuid)> = dirs_moving_in.iter()
             .map(|dir| self.container_in_dir(id, *dir))
-            // TODO There MUST be a better way to do something like this...
-            .filter(|thing| thing.is_ok())
-            .map(|thing| thing.unwrap())
+            .flat_map(|result| result.into_iter())
             .collect();
         for ancestor_id in next_containers.iter().map(|uuids| uuids.0) {
-            let container = try!(self.lookup(ancestor_id));//try!(self.lookup(id));
+            let container = try!(self.lookup(ancestor_id));
             if container.floating() {
                 return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(ancestor_id)))
             }
@@ -99,8 +97,6 @@ impl LayoutTree {
             .map(|dir| dir.reverse()).collect();
         let reversed_edge = Direction::to_edge(reversed_dir.as_slice());
         for sibling in siblings {
-            // TODO Abstract, the only thing different from above
-            // is the edge and the exact node we are doing the calc on
             let container = try!(self.lookup_mut(sibling));
             if container.floating() {
                 return Err(TreeError::Resize(ResizeErr::ExpectedNotFloating(container.get_id())))

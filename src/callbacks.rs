@@ -181,7 +181,6 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                          mods: &KeyboardModifiers, button: u32,
                              state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed {
-        // TODO Put/Get magic numbers somewhere
         if button == 0x110 && !view.is_root() {
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view)

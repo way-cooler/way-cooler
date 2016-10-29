@@ -27,7 +27,6 @@ pub enum Direction {
 const NUM_DIRECTIONS: usize = 4;
 
 impl Direction {
-    // TODO Make it implement the trait dummy
     /// Gets a vector of the directions being moved from the ResizeEdge.
     pub fn from_edge(edge: ResizeEdge) -> Vec<Self> {
         let mut result = Vec::with_capacity(NUM_DIRECTIONS);

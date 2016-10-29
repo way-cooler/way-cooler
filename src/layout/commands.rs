@@ -381,11 +381,13 @@ impl Tree {
                     self.0.resize_tiled(id, edge, pointer, action)
                 }
             } else {
+                // TODO errors
+                warn!("There is not an action in progress!");
                 Ok(())
             }
-            // TODO errors
         } else {
             // TODO errors
+            warn!("There is already something using this action!");
             Ok(())
         }
     }
