@@ -411,7 +411,7 @@ impl LayoutTree {
         let len = children_values.len();
         for mut value in children_values {
             if value <= 0.0 {
-                value = max / cmp::max(1, len - 1) as f32;
+                value = max / len.checked_sub(1).unwrap_or(1) as f32;
             }
             scale += value;
         }
