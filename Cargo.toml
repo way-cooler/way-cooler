@@ -14,8 +14,8 @@ lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
 hlua = "0.1"
-bitflags = "0.6"
-petgraph = "0.2"
+bitflags = "0.7"
+petgraph = "0.3"
 rustc-serialize = "0.3"
 json_macro = "0.1"
 nix = "0.6"
@@ -24,7 +24,7 @@ wayland-sys = { version = "^0.6.0", features = ["client", "dlopen"] }
 wayland-client = { version = "^0.6.0", features = ["cursor", "dlopen"] }
 tempfile = "2.1"
 byteorder = ">= 0.3, < 0.6"
-getopts = "^0.2"
+getopts = "0.2"
 
 [dev-dependencies]
 dummy-rustwlc = { git = "https://github.com/SnirkImmington/dummy-rustwlc.git"}
