@@ -84,7 +84,7 @@ impl LayoutTree {
             }
             let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
-            if is_making_too_small(geo, edge, pointer, action.grab) {
+            if geometry_resize_too_small(geo, edge, pointer, action.grab) {
                 return Ok(())
             }
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
@@ -108,7 +108,7 @@ impl LayoutTree {
             }
             let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
-            if is_making_too_small(geo, reversed_edge, pointer, action.grab) {
+            if geometry_resize_too_small(geo, reversed_edge, pointer, action.grab) {
                 return Ok(())
             }
             let new_geo = calculate_resize(geo, reversed_edge, pointer, action.grab);
@@ -185,7 +185,7 @@ fn calculate_resize(geo: Geometry, edge: ResizeEdge,
 /// the it returns true (to indicate you should abandon all operations).
 ///
 /// Otherwise returns false
-fn is_making_too_small(geo: Geometry, edge: ResizeEdge, cur_point: Point,
+fn geometry_resize_too_small(geo: Geometry, edge: ResizeEdge, cur_point: Point,
                        prev_point: Point) -> bool {
     if geo.size.w > MIN_SIZE.w && geo.size.h > MIN_SIZE.h {
         return false

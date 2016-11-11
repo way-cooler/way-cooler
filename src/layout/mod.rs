@@ -4,7 +4,7 @@ pub mod commands;
 
 pub use self::actions::movement::MovementError;
 
-pub use self::core::action::{Action};
+pub use self::core::action::{Action, ActionErr};
 pub use self::core::container::{Container, ContainerType, Handle, Layout};
 pub use self::core::tree::{Direction, TreeError};
 use self::core::InnerTree;

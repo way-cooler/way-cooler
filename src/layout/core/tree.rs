@@ -6,6 +6,7 @@ use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use super::super::LayoutTree;
+use super::super::ActionErr;
 use super::container::{Container, ContainerType, Layout};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
@@ -95,6 +96,8 @@ pub enum TreeError {
     Layout(LayoutErr),
     /// An error occurred while trying to resize the layout
     Resize(ResizeErr),
+    /// An error occurred while attempting to modify or use the main action
+    Action(ActionErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
     PerformingAction(bool)

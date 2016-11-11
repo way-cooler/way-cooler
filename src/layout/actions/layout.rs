@@ -179,8 +179,8 @@ impl LayoutTree {
                                 let height = if child_size.h > 0 {
                                     child_size.h as f32
                                 } else {
-                                    // If the width would become zero, just make it the average size of the container.
-                                    // e.g, if container was width 500 w/ 2 children, this view would have a width of 250
+                                    // If the height would become zero, just make it the average size of the container.
+                                    // e.g, if container was height 500 w/ 2 children, this view would have a height of 250
                                     geometry.size.h as f32 / children_len.checked_sub(1).unwrap_or(1) as f32
                                  };
                                 Size {
