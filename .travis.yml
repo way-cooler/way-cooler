@@ -18,6 +18,8 @@ addons:
       - libdw-dev
       - binutils-dev
       - lua5.2
+      - liblua5.2-dev
+      - libdbus-1-dev
 
 notifications:
   slack:
