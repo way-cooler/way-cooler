@@ -3,6 +3,7 @@ rust:
   - stable
 
 sudo: false
+dist: trusty
 git:
   depth: 3 # We don't need to clone with depth 50
 
