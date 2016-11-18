@@ -3,7 +3,6 @@ rust:
   - stable
 
 sudo: false
-dist: trusty
 git:
   depth: 3 # We don't need to clone with depth 50
 
@@ -21,6 +20,7 @@ addons:
       - lua5.2
       - liblua5.2-dev
       - libdbus-1-dev
+      - dbus
 
 notifications:
   slack:
