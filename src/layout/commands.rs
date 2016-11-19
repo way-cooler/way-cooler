@@ -6,6 +6,7 @@ use super::Tree;
 
 use uuid::Uuid;
 use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
 
@@ -48,11 +49,11 @@ pub fn toggle_float_focus() {
 
 pub fn tile_switch() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.0.toggle_cardinal_tiling();
-        tree.layout_active_of(ContainerType::Workspace)
-            .unwrap_or_else(|_| {
-                warn!("Could not tile workspace");
+        if let Some(id) = tree.active_id() {
+            tree.toggle_cardinal_tiling(id).unwrap_or_else(|err| {
+                warn!("Could not toggle cardinal tiling: {:#?}", err);
             });
+        }
     }
 }
 
@@ -140,6 +141,14 @@ pub fn move_active_down() {
     }
 }
 
+pub fn tree_as_json() -> Json {
+    if let Ok(tree) = try_lock_tree() {
+        tree.0.to_json()
+    } else {
+        Json::Null
+    }
+}
+
 /// Returns a copy of the action behind the lock.
 pub fn performing_action() -> Option<Action> {
     if let Ok(action) = try_lock_action() {
@@ -182,13 +191,18 @@ impl Tree {
         if let Some(uuid) = self.active_id() {
             let is_floating: Result<bool, _> = self.0.lookup(uuid)
                 .and_then(|container| Ok(container.floating()));
-            let err = match is_floating {
+            try!(match is_floating {
                 Ok(true) => self.ground_container(uuid),
                 Ok(false) => self.float_container(uuid),
                 Err(err) => return Err(err)
-            };
+            });
         }
         Ok(())
+    }
+
+    pub fn toggle_cardinal_tiling(&mut self, id: Uuid) -> CommandResult {
+        self.0.toggle_cardinal_tiling(id)
+            .and_then(|_| self.layout_active_of(ContainerType::Workspace))
     }
 
     pub fn toggle_floating_focus(&mut self) -> CommandResult {
@@ -299,10 +313,13 @@ impl Tree {
                 warn!("Remove view error: {:?}\n {:#?}", err, *self.0);
                 result = Err(err)
             },
-            Ok(container) => {
-                trace!("Removed container {:?}", container);
+            Ok(Container::View { handle, id, .. }) => {
+                trace!("Removed container {:?}", id);
+                handle.close();
+                trace!("Close wlc view {:?}", handle);
                 result = Ok(())
-            }
+            },
+            _ => unreachable!()
         }
         let root_ix = self.0.tree.root_ix();
         self.0.layout(root_ix);
@@ -334,23 +351,19 @@ impl Tree {
     /// Sets the active container to be the container at the UUID
     /// Fails if the container is not a container or view, or if the
     /// container does not exist
+    ///
+    /// Can also not set floating containers to be active.
     pub fn set_active_container_by_id(&mut self, id: Uuid) -> CommandResult {
-        if let Some(node_ix) = self.0.tree.lookup_id(id) {
-            match self.0.tree[node_ix].get_type() {
-                ContainerType::View | ContainerType::Container => {
-                    self.0.active_container = Some(node_ix);
-                    Ok(())
-                },
-                _ => {
-                    Err(TreeError::UuidWrongType(self.0.tree[node_ix].get_id(),
-                                                  vec!(ContainerType::View,
-                                                       ContainerType::Container)))
-                }
+        self.0.set_active_container(id)
+    }
 
-            }
-        } else {
-            Err(TreeError::NodeNotFound(id))
-        }
+    /// Focuses on the container. If the container is not floating and is a
+    /// Container or a View, then it is also made the active container.
+    pub fn focus(&mut self, id: Uuid) -> CommandResult {
+        self.set_active_container_by_id(id)
+            .or_else(|_| {
+                self.0.focus_on(id)
+            })
     }
 
     /// Destroy the tree
@@ -366,6 +379,12 @@ impl Tree {
 
     /// Moves the active container to a workspace
     pub fn send_active_to_workspace(&mut self, workspace_name: &str) -> CommandResult {
+        self.0.send_active_to_workspace(workspace_name);
+        Ok(())
+    }
+
+    // TODO Fix this so that it actually uses the uuid
+    pub fn send_to_workspace(&mut self, id: Uuid, workspace_name: &str) -> CommandResult {
         self.0.send_active_to_workspace(workspace_name);
         Ok(())
     }

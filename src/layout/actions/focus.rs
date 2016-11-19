@@ -1,6 +1,11 @@
 use super::super::commands::CommandResult;
+use super::super::{LayoutTree, TreeError};
+use super::super::core::Direction;
+use super::super::core::container::{Container, ContainerType, Handle, Layout};
+
 use petgraph::graph::NodeIndex;
 use rustwlc::WlcView;
+use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub enum FocusError {
@@ -8,15 +13,25 @@ pub enum FocusError {
     ///
     /// Usually this is a workspace, because it doesn't make sense to move a
     /// container out of a workspace
-    ReachedLimit(NodeIndex)
+    ReachedLimit(NodeIndex),
+    /// Tried to focus on a container that was not a view.
+    NotAView(Uuid)
 }
 
-use super::super::{LayoutTree, TreeError};
-use super::super::core::Direction;
-use super::super::core::container::{Container, ContainerType, Handle, Layout};
-
 impl LayoutTree {
-/// Focus on the container relative to the active container.
+    /// Focuses on the container by the uuid, if it points to a View.
+    /// Otherwise, an error is returned.
+    pub fn focus_on(&mut self, uuid: Uuid) -> CommandResult {
+        let container = try!(self.lookup(uuid));
+        match *container {
+            Container::View { handle, .. } => {
+                handle.focus();
+                Ok(())
+            },
+            _ => Err(TreeError::Focus(FocusError::NotAView(uuid)))
+        }
+    }
+    /// Focus on the container relative to the active container.
     ///
     /// If Horizontal, left and right will move within siblings.
     /// If Vertical, up and down will move within siblings.
