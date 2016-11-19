@@ -2,12 +2,9 @@
 
 /// Dbus macro for Layout code
 
-use super::{DBusTree, DBusResult};
-use super::utils;
+use super::utils::{parse_uuid, parse_direction};
 
 use dbus::tree::MethodErr;
-
-use uuid::Uuid;
 
 use super::super::layout::try_lock_tree;
 use super::super::layout::Direction;
@@ -18,60 +15,62 @@ dbus_interface! {
     name: "org.way_cooler.Layout";
 
     fn ToggleFloat(container_id: String) -> success: DBusResult<bool> {
-        if container_id == "" {
-            layout_cmd::toggle_float();
-            Ok(true)
-        } else {
-            let uuid = try!(Uuid::parse_str(&container_id).map_err(
-                |uuid_err| MethodErr::invalid_arg(&"uuid is not valid")));
-            if let Ok(mut tree) = try_lock_tree() {
-                match tree.toggle_float() {
-                    Ok(_) => Ok(true),
-                    Err(err) => return Err(MethodErr::failed(&"could not toggle float"))
+        let maybe_uuid = try!(parse_uuid("container_id", &container_id));
+        match maybe_uuid {
+            Some(uuid) => {
+                match try_lock_tree() {
+                    Ok(mut tree) => {
+                        tree.toggle_float()
+                            .and(Ok(true))
+                            .map_err(|err| {
+                                MethodErr::failed(&format!("{:?}", err))
+                            })
+                    },
+                    Err(err) => Err(MethodErr::failed(&format!("{:?}", err)))
                 }
-            } else {
-                return Err(MethodErr::failed(&"could not lock tree"))
+            },
+            None => {
+                layout_cmd::toggle_float();
+                Ok(true)
             }
         }
     }
 
     fn MoveContainer(container_id: String, direction: String) -> success: DBusResult<bool> {
-        let target_uuid = match &*container_id {
-            "" => None,
-            uuid => Some(try!(Uuid::parse_str(uuid).map_err(
-                |uuid_err| MethodErr::invalid_arg(&"uuid is not valid"))))
+        let target_uuid = try!(parse_uuid("container_id", &container_id));
+        let direction = match direction.to_lowercase().as_str() {
+            "up" => Direction::Up,
+            "down" => Direction::Down,
+            "left" => Direction::Left,
+            "right" => Direction::Right,
+            other => return Err(MethodErr::invalid_arg(&"Not a valid direction"))
         };
-        let direction = try!(match &*direction.to_lowercase() {
-            "up" => Ok(Direction::Up),
-            "down" => Ok(Direction::Down),
-            "left" => Ok(Direction::Left),
-            "right" => Ok(Direction::Right),
-            other => Err(MethodErr::invalid_arg(&"direction is not a valid direction"))
-        });
-        if let Ok(mut tree) = try_lock_tree() {
-            match tree.move_active(target_uuid, direction) {
-                Ok(_) => Ok(true),
-                Err(err) => Err(MethodErr::failed(&"could not move that container"))
-            }
-        } else {
-            Err(MethodErr::failed(&"could not lock tree"))
+        match try_lock_tree() {
+            Ok(mut tree) => {
+                match tree.move_active(target_uuid, direction) {
+                    Ok(_) => Ok(true),
+                    Err(err) => Err(MethodErr::failed(&format!("{:?}", err)))
+                }
+            },
+            Err(err) => Err(MethodErr::failed(&format!("{:?}", err)))
         }
     }
 
     fn ActiveContainerId() -> container_id: DBusResult<String> {
-        if let Ok(mut tree) = try_lock_tree() {
-            match tree.active_id() {
-                Some(id) => Ok(id.to_string()),
-                None => Ok("".to_string())
-            }
-        } else {
-            Err(MethodErr::failed(&"could not read from the tree"))
+        match try_lock_tree() {
+            Ok(tree) => {
+                match tree.active_id() {
+                    Some(id) => Ok(id.to_string()),
+                    None => Ok("".to_string())
+                }
+            },
+            Err(err) => Err(MethodErr::failed(&format!("{:?}", err)))
         }
     }
 
     fn SplitContainer(container_id: String, split_direction: String) -> success: DBusResult<bool> {
-        let uuid = try!(utils::parse_uuid("container_id", &container_id));
-        let direction = try!(utils::parse_direction("split_direction", &split_direction));
+        let uuid = try!(parse_uuid("container_id", &container_id));
+        let direction = try!(parse_direction("split_direction", &split_direction));
 
         if let Ok(mut tree) = try_lock_tree() {
             match tree.move_active(uuid, direction) {
