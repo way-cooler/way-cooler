@@ -377,4 +377,10 @@ impl Tree {
         self.0.send_active_to_workspace(workspace_name);
         Ok(())
     }
+
+    // TODO Fix this so that it actually uses the uuid
+    pub fn send_to_workspace(&mut self, id: Uuid, workspace_name: &str) -> CommandResult {
+        self.0.send_active_to_workspace(workspace_name);
+        Ok(())
+    }
 }
