@@ -7,7 +7,14 @@ use dbus::tree::MethodErr;
 
 use super::{DBusResult};
 
-use layout::{Direction, Layout};
+use layout::{Direction, Layout, Tree, try_lock_tree};
+
+pub fn lock_tree_dbus() -> DBusResult<Tree> {
+    match try_lock_tree() {
+        Ok(tree) => Ok(tree),
+        Err(err) => Err(MethodErr::failed(&format!("{:?}", err)))
+    }
+}
 
 /// Parses a uuid from a string, returning `MethodErr::invalid_arg`
 /// if the uuid is invalid.
