@@ -6,6 +6,7 @@ use super::Tree;
 
 use uuid::Uuid;
 use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
 
@@ -148,6 +149,14 @@ pub fn move_active_down() {
             .unwrap_or_else(|_| {
                 warn!("Could not focus right");
             })
+    }
+}
+
+pub fn tree_as_json() -> Json {
+    if let Ok(tree) = try_lock_tree() {
+        tree.0.to_json()
+    } else {
+        Json::Null
     }
 }
 
