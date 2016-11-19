@@ -86,7 +86,7 @@ impl LayoutTree {
         self.set_active_node(node_ix)
     }
 
-    /// Looks up the id, returning the container associated with it.
+    /// Looks up the id, returning a reference to the container associated with it.
     pub fn lookup(&self, id: Uuid) -> Result<&Container, TreeError> {
         self.tree.lookup_id(id)
             .map(|node_ix| &self.tree[node_ix])
@@ -109,6 +109,16 @@ impl LayoutTree {
         }
         info!("Active container is now: {:?}", self.active_container);
         Ok(())
+    }
+
+    /// Gets the parent uuid of the container behind the node.
+    /// If None is returned, then there was no parent (and that's probably the root)
+    pub fn parent_of(&self, id: Uuid) -> Result<Uuid, TreeError> {
+        let node_ix = try!(self.tree.lookup_id(id)
+                           .ok_or(TreeError::NodeNotFound(id)));
+        let parent_ix = try!(self.tree.parent_of(node_ix)
+                             .map_err(|err| TreeError::PetGraph(err)));
+        Ok(self.tree[parent_ix].get_id())
     }
 
     /// Unsets the active container. This should be used when focusing on
@@ -857,7 +867,8 @@ pub mod tests {
             },
             _ => unreachable!()
         }
-        tree.toggle_cardinal_tiling();
+        let id = tree.get_active_container().unwrap().get_id();
+        tree.toggle_cardinal_tiling(id).unwrap();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
@@ -867,7 +878,7 @@ pub mod tests {
             _ => unreachable!()
         }
         // and back again
-        tree.toggle_cardinal_tiling();
+        tree.toggle_cardinal_tiling(id).unwrap();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {

@@ -49,11 +49,11 @@ pub fn toggle_float_focus() {
 
 pub fn tile_switch() {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.0.toggle_cardinal_tiling();
-        tree.layout_active_of(ContainerType::Workspace)
-            .unwrap_or_else(|_| {
-                warn!("Could not tile workspace");
+        if let Some(id) = tree.active_id() {
+            tree.toggle_cardinal_tiling(id).unwrap_or_else(|err| {
+                warn!("Could not toggle cardinal tiling: {:#?}", err);
             });
+        }
     }
 }
 
@@ -198,6 +198,11 @@ impl Tree {
             });
         }
         Ok(())
+    }
+
+    pub fn toggle_cardinal_tiling(&mut self, id: Uuid) -> CommandResult {
+        self.0.toggle_cardinal_tiling(id)
+            .and_then(|_| self.layout_active_of(ContainerType::Workspace))
     }
 
     pub fn toggle_floating_focus(&mut self) -> CommandResult {
