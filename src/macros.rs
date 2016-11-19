@@ -102,6 +102,57 @@ macro_rules! require_rustwlc {
     }
 }
 
+/// Create a dbus interface object.
+///
+/// Given the path and name of a dbus interface
+/// and a series of methods with type ipc::DBusResult, this macro
+/// generates a big function `setup(&mut DBusFactory) -> DBusObjPath`
+/// which will call the `Factory`'s `add_*` methods properly.
+///
+/// Currently limited to one dbus interface per invocation and requires setting
+/// the name of the outputs.
+macro_rules! dbus_interface {
+    ( path: $obj_path:expr; name: $obj_name:expr;
+      $(fn $fn_name:ident($($in_name:ident : $in_ty:ty),*)
+                          -> $out_name:ident : DBusResult< $out_ty_inner:ty > { $($inner:tt)* })+ ) => {
+        #[warn(dead_code)]
+        pub fn setup(factory: &mut $crate::ipc::DBusFactory) -> $crate::ipc::DBusObjPath {
+            return factory.object_path($obj_path, ()).introspectable()
+                .add(factory.interface($obj_name, ())
+                     $(
+                         .add_m(factory.method(stringify!($fn_name), (),
+                                move |msg| {
+                                    let mut args_iter = msg.msg.iter_init();
+                                    $(
+                                        let $in_name: $in_ty = args_iter.read::<$in_ty>()
+                                            .expect("oopslol");
+                                    )*
+                                    let result = $fn_name($($in_name),*);
+                                    match result {
+                                        Ok(value) => {
+                                            let dbus_return = msg.msg.method_return().append(value);
+                                            return Ok(vec![dbus_return])
+                                        },
+                                        Err(err) => {
+                                            return Err(err)
+                                        }
+                                    }
+                                }).outarg::<$out_ty_inner, _>(stringify!($out_name))
+                            )
+                     )*
+                );
+        }
+        $(
+            #[allow(non_snake_case)]
+            #[warn(dead_code)]
+            fn $fn_name( $($in_name: $in_ty),* )
+                         -> $crate::ipc::DBusResult<$out_ty_inner> {
+                $($inner)*
+            }
+        )*
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::convert::{ToTable, FromTable, LuaDecoder};

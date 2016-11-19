@@ -35,18 +35,7 @@ pub fn remove_active() {
 
 pub fn toggle_float() {
     if let Ok(mut tree) = try_lock_tree() {
-        if let Some(uuid) = tree.active_id() {
-            let is_floating = tree.0.lookup(uuid)
-                .and_then(|container| Ok(container.floating()));
-            let err = match is_floating {
-                Ok(true) => tree.ground_container(uuid),
-                Ok(false) => tree.float_container(uuid),
-                Err(err) => Err(err)
-            };
-            if let Err(err) = err {
-                warn!("{:?},\nError while toggling the floating of {:#?}\n {:#?}", err, uuid, *tree.0);
-            }
-        }
+        tree.toggle_float().ok();
     }
 }
 
@@ -196,6 +185,19 @@ impl Tree {
         } else {
             None
         }
+    }
+
+    pub fn toggle_float(&mut self) -> CommandResult {
+        if let Some(uuid) = self.active_id() {
+            let is_floating: Result<bool, _> = self.0.lookup(uuid)
+                .and_then(|container| Ok(container.floating()));
+            let err = match is_floating {
+                Ok(true) => self.ground_container(uuid),
+                Ok(false) => self.float_container(uuid),
+                Err(err) => return Err(err)
+            };
+        }
+        Ok(())
     }
 
     pub fn toggle_floating_focus(&mut self) -> CommandResult {

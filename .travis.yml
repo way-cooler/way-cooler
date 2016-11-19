@@ -1,8 +1,15 @@
 language: rust
 rust:
   - stable
-cache: cargo
-# necessary for `travis-cargo coveralls --no-sudo`
+
+sudo: false
+git:
+  depth: 3 # We don't need to clone with depth 50
+
+cache:
+  - cargo
+  - pip
+
 addons:
   apt:
     packages:
@@ -10,29 +17,62 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
-      - dbus
+      - lua5.2
+
 notifications:
   slack:
     rooms:
       - way-cooler:W2vOSvJvgxGi7EiGkZCtvlB6#way-cooler
-    on_success: :change
-    on_failure: :change
+    on_success: change
+    on_failure: change
   email: false
-# load travis-cargo
-before_script:
-  - |
-      echo $(whereis dbus); echo $(whereis dbus-1)
-      locate pgk-config
-      echo $(whereis pkg-config)
-      git clone https://github.com/Timidger/travis-cargo
-      (cd travis-cargo;
-      pip install -e . --user &&
-      export PATH=$HOME/.local/bin:$PATH)
+
+before_install:
+  - git clone --depth=3 https://github.com/Timidger/travis-cargo
+  - export PATH=$HOME/.local/bin:$PATH
+
+install:
+  # install travis-cargo
+  - pip install --user -e ./travis-cargo
+  # install dependencies for ci.py
+  - pip install --user docopt
+  # Sometimes cargo check doesn't exist?
+  - cargo install --force cargo-check
+
 script:
+  # check integrity of Lua files in /lib/lua/
+  - for file in $( find lib/lua -type f -name "*.lua" ); do echo Checking $file; luac -p $file; done
+  # check integrity of init file
+  - luac -p config/init.lua
+  # Make sure no-test builds
+  - cargo check --verbose
+  # run tests
   - cargo test --verbose
+  # run tag checks
+  - python $TRAVIS_BUILD_DIR/ci.py travis-check
 
 after_success:
-  # measure code coverage and upload to coveralls.io (the verify
-  # argument mitigates kcov crashes due to malformed debuginfo, at the
-  # cost of some speed <https://github.com/huonw/travis-cargo/issues/12>)
+  # Test and upload coverage to coveralls
+  # Justification of excluded files:
+  # main.rs: just initialization of logging, sigkill handler, and initializing lazy static objects. (Arg parsing should be moved into a different module and tested)
+  # mod.rs: although at the moment we have too much code in various mod.rs's these are not really testable either way
+  # tests.rs: should not be running on our tests themselves
+  # wayland_client_api.rs: we really don't have a good way of testing any of this. At the moment it's simple enough that if it didn't work it would be obvious in user testing.
+  # callbacks.rs: we don't have any integration tests for callbacks right now. They'd need to deal with the lazy statics that the other components of the program live in.
   - travis-cargo coveralls --no-sudo --verify --exclude-pattern="main.rs,mod.rs,tests.rs,wayland_client_api.rs,callbacks.rs"
+
+before_deploy:
+  - ci.py prepare-deploy
+deploy:
+  provider: releases
+  skip_cleanup: false # We do not need to skip cleanup as we recompile with --release
+  on:
+    tags: true
+  api_key:
+    # GitHub token
+    secure: "i+7X7qZgq5gwWbi/KBoL03rBTJam2ayJUxuTUGnQNwOEUc1KaDintZG/j6bp2DqFfodBx0oq/nvZi+mIAzbpQHlaDCav+GC0S3o2k10CAPlcg844IZVB22J/WbUjFfkpAWz0Mbs6U7cjCeAPAdYTbcJy5haduKm9FKOat87bBrNIdPZno3j7RDd1ne3+gsbEp0W9788jqX99vV7CWtV0hT5w1yT+COg8YdvCowOLh3mS/y43LZlmyqNFqJpF/tMnBWI9qDlhyCCzmsVb+xq9tjX4XQAgZJI6Y0uP8JoityqG1OpCAfgSpS99+0iy+lSGpALDfKAk04lIRMWublnMSXSqcHRupxF6mvlzer9V4XV1emgDn1rtnIkQiRryuA180mTVpHjGg+Ockl/wjOo4FJGKlDmQn7oT6EMDfY62md2tYbsB2MmJNlFXiQCinNFmjpTJuUbHwXmF4FArq4B8AmoFwY1I7I8x6eHKqLEZOxgm9EgtHC9+dwbRSY7t6X7AiHYv7LsDIjEO70oG7j/nuoZgBZZvMjOWlm7EKUjrcxXVLUZK9f9P/6Pc7r+OQr4jaRRclCtZPsPGPu/EjNfeQ0+PpZdByzT9k1y4loAqZPtP0ANBp7flKsPNWXaMSNsb/Hu4zolDDyeU5eL3VHyrDk1wi9nmFTOnrCl8W++7Fi4="
+  file:
+    - "way-cooler_linux_x86_64"
+    - "config/init.lua"
+after_deploy:
+  - cargo publish --token $CARGO_TOKEN
