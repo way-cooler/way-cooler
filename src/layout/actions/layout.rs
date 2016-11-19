@@ -387,28 +387,36 @@ impl LayoutTree {
     /// * else, make it horizontal
     /// This method does *NOT* update the actual views geometry, that needs to be
     /// done separately by the caller
-    pub fn toggle_cardinal_tiling(&mut self) {
-        if let Some(active_ix) = self.active_ix_of(ContainerType::Container) {
-            trace!("Toggling {:#?} to be horizontal or vertical...", self.tree[active_ix]);
-            match self.tree[active_ix] {
+    pub fn toggle_cardinal_tiling(&mut self, id: Uuid) -> CommandResult {
+        {
+            // NOTE: This stupid mutable lookup can't be its own function, see:
+            // https://www.reddit.com/r/rust/comments/55o54l/hey_rustaceans_got_an_easy_question_ask_here/d8pv5q9/?context=3
+            let node_ix = try!(self.tree.lookup_id(id)
+                               .ok_or(TreeError::NodeNotFound(id)));
+            let container_t = self.tree[node_ix].get_type();
+            if container_t == ContainerType::View {
+                let parent_id = try!(self.parent_of(id));
+                return self.toggle_cardinal_tiling(parent_id)
+            }
+            let container = &mut self.tree[node_ix];
+            match *container {
                 Container::Container { ref mut layout, .. } => {
                     match *layout {
                         Layout::Horizontal => {
-                            trace!("Toggling to be vertical");
+                            trace!("Toggling {:?} to be vertical", id);
                             *layout = Layout::Vertical
                         }
                         _ => {
-                            trace!("Toggling to be horizontal");
+                            trace!("Toggling {:?} to be horizontal", id);
                             *layout = Layout::Horizontal
                         }
                     }
                 },
                 _ => unreachable!()
             }
-        } else {
-            error!("No active container")
         }
         self.validate();
+        Ok(())
     }
 
 

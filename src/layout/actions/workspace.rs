@@ -3,6 +3,12 @@ use rustwlc::{Geometry, Point};
 use super::super::LayoutTree;
 use super::super::core::container::{Container, ContainerType};
 
+// TODO This module needs to be updated like the other modules...
+// Need to add some errors for this (such as when trying to move a non-container/view,
+// or when trying to grab a workspace whos name already exists)
+//
+// Also the code is generally pretty crap, cause it's pretty old (mid-2016)
+
 impl LayoutTree {
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
