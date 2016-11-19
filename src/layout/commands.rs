@@ -352,6 +352,15 @@ impl Tree {
         self.0.set_active_container(id)
     }
 
+    /// Focuses on the container. If the container is not floating and is a
+    /// Container or a View, then it is also made the active container.
+    pub fn focus(&mut self, id: Uuid) -> CommandResult {
+        self.set_active_container_by_id(id)
+            .or_else(|_| {
+                self.0.focus_on(id)
+            })
+    }
+
     /// Destroy the tree
     pub fn destroy_tree(&mut self) -> CommandResult {
         self.0.destroy_tree();
