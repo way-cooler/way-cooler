@@ -346,23 +346,10 @@ impl Tree {
     /// Sets the active container to be the container at the UUID
     /// Fails if the container is not a container or view, or if the
     /// container does not exist
+    ///
+    /// Can also not set floating containers to be active.
     pub fn set_active_container_by_id(&mut self, id: Uuid) -> CommandResult {
-        if let Some(node_ix) = self.0.tree.lookup_id(id) {
-            match self.0.tree[node_ix].get_type() {
-                ContainerType::View | ContainerType::Container => {
-                    self.0.active_container = Some(node_ix);
-                    Ok(())
-                },
-                _ => {
-                    Err(TreeError::UuidWrongType(self.0.tree[node_ix].get_id(),
-                                                  vec!(ContainerType::View,
-                                                       ContainerType::Container)))
-                }
-
-            }
-        } else {
-            Err(TreeError::NodeNotFound(id))
-        }
+        self.0.set_active_container(id)
     }
 
     /// Destroy the tree
