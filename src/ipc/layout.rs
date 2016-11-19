@@ -2,12 +2,12 @@
 
 /// Dbus macro for Layout code
 
-use super::utils::{parse_uuid, parse_direction};
+use super::utils::{parse_uuid, parse_direction, parse_axis};
 
 use dbus::tree::MethodErr;
 
 use super::super::layout::try_lock_tree;
-use super::super::layout::Direction;
+use super::super::layout::{Layout};
 use super::super::layout::commands as layout_cmd;
 
 dbus_interface! {
@@ -38,13 +38,7 @@ dbus_interface! {
 
     fn MoveContainer(container_id: String, direction: String) -> success: DBusResult<bool> {
         let target_uuid = try!(parse_uuid("container_id", &container_id));
-        let direction = match direction.to_lowercase().as_str() {
-            "up" => Direction::Up,
-            "down" => Direction::Down,
-            "left" => Direction::Left,
-            "right" => Direction::Right,
-            other => return Err(MethodErr::invalid_arg(&"Not a valid direction"))
-        };
+        let direction = try!(parse_direction("direction", direction.as_str()));
         match try_lock_tree() {
             Ok(mut tree) => {
                 match tree.move_active(target_uuid, direction) {
@@ -68,17 +62,15 @@ dbus_interface! {
         }
     }
 
-    fn SplitContainer(container_id: String, split_direction: String) -> success: DBusResult<bool> {
+    fn SplitContainer(container_id: String, split_axis: String) -> success: DBusResult<bool> {
         let uuid = try!(parse_uuid("container_id", &container_id));
-        let direction = try!(parse_direction("split_direction", &split_direction));
-
-        if let Ok(mut tree) = try_lock_tree() {
-            match tree.move_active(uuid, direction) {
-                Ok(_) => Ok(true),
-                Err(_) => Ok(false)
-            }
-        } else {
-            Err(MethodErr::failed(&"Could not lock tree"))
+        let axis = try!(parse_axis("split_direction", split_axis.as_str()));
+        // TODO Tree commands need to have these defined on the Tree,
+        // for now this is _ok_, but we are swallowing an potential Tree lock error here.
+        match axis {
+            Layout::Horizontal => layout_cmd::split_horizontal(),
+            Layout::Vertical => layout_cmd::split_vertical()
         }
+            Ok(true)
     }
 }
