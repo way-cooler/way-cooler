@@ -116,6 +116,6 @@ dbus_interface! {
     }
 
     fn Debug() -> success: DBusResult<String> {
-        Ok(format!("{:?}", layout_cmd::tree_as_json()))
+        Ok(format!("{}", layout_cmd::tree_as_json()))
     }
 }
