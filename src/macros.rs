@@ -116,6 +116,7 @@ macro_rules! dbus_interface {
       $(fn $fn_name:ident($($in_name:ident : $in_ty:ty),*)
                           -> $out_name:ident : DBusResult< $out_ty_inner:ty > { $($inner:tt)* })+ ) => {
         #[warn(dead_code)]
+        #[allow(unused_mut)]
         pub fn setup(factory: &mut $crate::ipc::DBusFactory) -> $crate::ipc::DBusObjPath {
             return factory.object_path($obj_path, ()).introspectable()
                 .add(factory.interface($obj_name, ())
@@ -124,8 +125,7 @@ macro_rules! dbus_interface {
                                 move |msg| {
                                     let mut args_iter = msg.msg.iter_init();
                                     $(
-                                        let $in_name: $in_ty = args_iter.read::<$in_ty>()
-                                            .expect("oopslol");
+                                        let $in_name: $in_ty = try!(args_iter.read::<$in_ty>());
                                     )*
                                     let result = $fn_name($($in_name),*);
                                     match result {
@@ -137,7 +137,11 @@ macro_rules! dbus_interface {
                                             return Err(err)
                                         }
                                     }
-                                }).outarg::<$out_ty_inner, _>(stringify!($out_name))
+                                })
+                                .outarg::<$out_ty_inner, _>(stringify!($out_name))
+                                $(
+                                    .inarg::<$in_ty, _>(stringify!($in_name))
+                                )*
                             )
                      )*
                 );
