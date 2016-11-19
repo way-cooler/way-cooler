@@ -191,11 +191,11 @@ impl Tree {
         if let Some(uuid) = self.active_id() {
             let is_floating: Result<bool, _> = self.0.lookup(uuid)
                 .and_then(|container| Ok(container.floating()));
-            let err = match is_floating {
+            try!(match is_floating {
                 Ok(true) => self.ground_container(uuid),
                 Ok(false) => self.float_container(uuid),
                 Err(err) => return Err(err)
-            };
+            });
         }
         Ok(())
     }
@@ -308,10 +308,13 @@ impl Tree {
                 warn!("Remove view error: {:?}\n {:#?}", err, *self.0);
                 result = Err(err)
             },
-            Ok(container) => {
-                trace!("Removed container {:?}", container);
+            Ok(Container::View { handle, id, .. }) => {
+                trace!("Removed container {:?}", id);
+                handle.close();
+                trace!("Close wlc view {:?}", handle);
                 result = Ok(())
-            }
+            },
+            _ => unreachable!()
         }
         let root_ix = self.0.tree.root_ix();
         self.0.layout(root_ix);
