@@ -117,8 +117,21 @@ pub extern fn view_request_move(view: WlcView, _dest: &Point) {
     }
 }
 
-pub extern fn view_request_resize(_view: WlcView, _edge: ResizeEdge, _location: &Point) {
-
+pub extern fn view_request_resize(view: WlcView, edge: ResizeEdge, point: &Point) {
+    if let Ok(mut tree) = try_lock_tree() {
+        match try_lock_action() {
+            Ok(guard) => {
+                if guard.is_some() {
+                    if let Some(id) = tree.lookup_view(view) {
+                        if let Err(err) = tree.resize_container(id, edge, *point) {
+                            error!("Problem: Command returned error: {:#?}", err);
+                        }
+                    }
+                }
+            },
+            _ => {}
+        }
+    }
 }
 
 #[allow(non_snake_case)] // EMPTY_MODS will be a static once we have KEY_LED_NONE
@@ -163,36 +176,81 @@ pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
-                         mods: &KeyboardModifiers, _button: u32,
+                         mods: &KeyboardModifiers, button: u32,
                              state: ButtonState, point: &Point) -> bool {
-    if state == ButtonState::Pressed && !view.is_root() {
-        if let Ok(mut tree) = try_lock_tree() {
-            tree.set_active_view(view)
-                .unwrap_or_else(|err| {
-                    match err {
-                        TreeError::ViewNotFound(handle) => {
-                            if handle.get_class() != "Background" {
-                                error!("Could not set active container {:?}", err);
-                            }
-                        },
-                        err => error!("Could not set active container {:?}", err)
-                    }
-                });
+    if state == ButtonState::Pressed {
+        if button == 0x110 && !view.is_root() {
+            if let Ok(mut tree) = try_lock_tree() {
+                tree.set_active_view(view).ok();
+                if mods.mods.contains(MOD_CTRL) {
+                    let action = Action {
+                        view: view,
+                        grab: *point,
+                        edges: ResizeEdge::empty()
+                    };
+                    set_performing_action(Some(action));
+                }
+            }
+        } else if button == 0x111 && !view.is_root() {
+            if let Ok(mut tree) = try_lock_tree() {
+                tree.set_active_view(view).ok();
+            }
+            // TODO Make this set in the config file and read here.
             if mods.mods.contains(MOD_CTRL) {
                 let action = Action {
                     view: view,
                     grab: *point,
                     edges: ResizeEdge::empty()
                 };
-                if let Err(err) = set_performing_action(Some(action)) {
-                    warn!("{:#?}", err);
+                set_performing_action(Some(action));
+                let geometry = view.get_geometry()
+                    .expect("Could not get geometry of the view");
+                let halfw = geometry.origin.x + geometry.size.w as i32 / 2;
+                let halfh = geometry.origin.y + geometry.size.h as i32 / 2;
+
+                {
+                    let mut action: Action = try_lock_action().ok().and_then(|guard| *guard)
+                        .unwrap_or(Action {
+                            view: view,
+                            grab: *point,
+                            edges: ResizeEdge::empty()
+                        });
+                    let flag_x = if point.x < halfw {
+                        RESIZE_LEFT
+                    } else if point.x > halfw {
+                        RESIZE_RIGHT
+                    } else {
+                        ResizeEdge::empty()
+                    };
+
+                    let flag_y = if point.y < halfh {
+                        RESIZE_TOP
+                    } else if point.y > halfh {
+                        RESIZE_BOTTOM
+                    } else {
+                        ResizeEdge::empty()
+                    };
+
+                    action.edges = flag_x | flag_y;
+                    set_performing_action(Some(action));
                 }
+                view.set_state(VIEW_RESIZING, true);
+                return true;
             }
         }
     } else {
-        if let Err(err) = set_performing_action(None) {
-            warn!("{:#?}", err);
+        if let Ok(lock) = try_lock_action() {
+            match *lock {
+                Some(action) => {
+                    let view = action.view;
+                    if view.get_state().contains(VIEW_RESIZING) {
+                        view.set_state(VIEW_RESIZING, false);
+                    }
+                },
+                _ => {}
+            }
         }
+        set_performing_action(None);
     }
     false
 }
@@ -203,26 +261,46 @@ pub extern fn pointer_scroll(_view: WlcView, _time: u32,
     false
 }
 
-pub extern fn pointer_motion(_view: WlcView, _time: u32, point: &Point) -> bool {
+pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
+    let mut result = false;
+    let mut maybe_action = None;
+    {
+        if let Ok(action_lock) = try_lock_action() {
+            maybe_action = action_lock.clone();
+        }
+    }
+    match maybe_action {
+        None => result = false,
+        Some(action) => {
+            if action.edges.bits() != 0 {
+                if let Ok(mut tree) = try_lock_tree() {
+                    // TODO Change to id of _view
+                    // Need to implement a map of view to uuid first though...
+                    if let Some(active_id) = tree.lookup_view(view) {
+                        match tree.resize_container(active_id, action.edges, *point) {
+                            // Return early here to not set the pointer
+                            Ok(_) => return true,
+                            Err(err) => error!("Error: {:#?}", err)
+                        }
+                    }
+                }
+            } else {
+                if let Ok(mut tree) = try_lock_tree() {
+                    match tree.try_drag_active(*point) {
+                        Ok(_) => result = true,
+                        Err(TreeError::PerformingAction(_)) |
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = false,
+                        Err(err) => {
+                            error!("Error: {:#?}", err);
+                            result = false
+                        }
+                    }
+                }
+            }
+        }
+    }
     pointer::set_position(*point);
-    if let Ok(action) = try_lock_action() {
-        match *action {
-            None => return false,
-            _ => {}
-        }
-    } else {
-        warn!("Could not lock action");
-        return false;
-    }
-    if let Ok(mut tree) = try_lock_tree() {
-        match tree.try_drag_active(*point) {
-            Ok(_) => return true,
-            Err(TreeError::PerformingAction(_)) => {},
-            Err(TreeError::Movement(MovementError::NotFloating(_))) => {},
-            Err(err) => error!("Error: {:#?}", err)
-        }
-    }
-    false
+    result
 }
 
 pub extern fn compositor_ready() {

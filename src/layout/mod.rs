@@ -4,7 +4,7 @@ pub mod commands;
 
 pub use self::actions::movement::MovementError;
 
-pub use self::core::action::{Action};
+pub use self::core::action::{Action, ActionErr};
 pub use self::core::container::{Container, ContainerType, Handle, Layout};
 pub use self::core::tree::{Direction, TreeError};
 use self::core::InnerTree;
@@ -12,7 +12,7 @@ use self::core::InnerTree;
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
 
-use std::sync::{Mutex, MutexGuard, TryLockError, PoisonError};
+use std::sync::{Mutex, MutexGuard, TryLockError};
 
 /// A wrapper around tree, to hide its methods
 pub struct Tree(TreeGuard);
@@ -89,15 +89,6 @@ pub fn try_lock_action() -> Result<MutexGuard<'static, Option<Action>>,
                                  TryLockError<MutexGuard<'static,
                                                          Option<Action>>>> {
     PREV_ACTION.try_lock()
-}
-
-/// Attempts to lock the action, waiting if it currently locked.
-///
-/// If an Err is returned, the lock is poisoned.
-pub fn lock_action() -> Result<MutexGuard<'static, Option<Action>>,
-                               PoisonError<MutexGuard<'static, Option<Action>>>>
-                                    {
-    PREV_ACTION.lock()
 }
 
 pub fn tree_as_json() -> Json {
