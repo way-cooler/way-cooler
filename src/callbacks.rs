@@ -72,9 +72,7 @@ pub extern fn view_created(view: WlcView) -> bool {
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
     if let Ok(mut tree) = try_lock_tree() {
-        tree.remove_view(view.clone()).and_then(|_| {
-            tree.layout_active_of(ContainerType::Workspace)
-        }).unwrap_or_else(|err| {
+        tree.remove_view(view.clone()).unwrap_or_else(|err| {
             match err {
                 TreeError::ViewNotFound(_) => {},
                 _ => {
