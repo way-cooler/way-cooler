@@ -2,12 +2,14 @@ language: rust
 rust:
   - stable
 
-sudo: false
+sudo: required # For Lua, dbus
+dist: trusty
+
 git:
   depth: 3 # We don't need to clone with depth 50
 
 cache:
-  - cargo
+#  - cargo
   - pip
 
 addons:
@@ -17,7 +19,6 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
-      - lua5.2
 
 notifications:
   slack:
@@ -30,6 +31,9 @@ notifications:
 before_install:
   - git clone --depth=3 https://github.com/Timidger/travis-cargo
   - export PATH=$HOME/.local/bin:$PATH
+  - sudo apt-get -qq update
+  - sudo apt-get install -y lua5.2 liblua5.2-dev liblua5.2-0
+  - sudo apt-get install -y libdbus-1-dev dbus
 
 install:
   # install travis-cargo
@@ -47,6 +51,7 @@ script:
   # Make sure no-test builds
   - cargo check --verbose
   # run tests
+  # Currently not running tests because linking fails with Lua and DBus
   - cargo test --verbose
   # run tag checks
   - python $TRAVIS_BUILD_DIR/ci.py travis-check
