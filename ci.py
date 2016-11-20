@@ -8,9 +8,9 @@ import subprocess
 from docopt import docopt
 
 VERSION_REGEX = '(\\d+\\.\\d+\\.\\d+)'
-BRANCH_REGEX = '$release*' + VERSION_REGEX + '^'
+BRANCH_REGEX = '^release-' + VERSION_REGEX + '$'
 # If we grab the first 'version=' line in the Cargo files we'll be fine
-CARGO_VERSION_LINE = '$version = "' + VERSION_REGEX + '"^'
+CARGO_VERSION_LINE = '^version = "' + VERSION_REGEX + '"$'
 
 FILE_REGEX_MAP = {
     "Cargo.toml": CARGO_VERSION_LINE,
