@@ -20,6 +20,7 @@ addons:
       - libdw-dev
       - binutils-dev
       - lua5.2
+      - libdbus-glib-1-2
       - liblua5.2-dev
       - dbus
 
