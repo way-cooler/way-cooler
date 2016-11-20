@@ -114,3 +114,9 @@ end
 
 -- !! Do not place any code after this comment.
 -- !! way-cooler and plugins may insert auto-generated code.
+local status = os.execute("which way-cooler-bg 2>/dev/null")
+if not status then
+  print "Could not find way-cooler-bg! Please install it"
+else
+  os.execute("way-cooler-bg " ..  way_cooler.background .. " ../way-cooler-bg/assets/arrow.png &")
+end
