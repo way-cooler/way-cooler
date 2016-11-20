@@ -1,6 +1,6 @@
 [root]
 name = "way-cooler"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",

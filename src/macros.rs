@@ -155,11 +155,13 @@ mod tests {
     fn keypress() {
         require_rustwlc!();
         use super::super::keys::KeyPress;
+        #[allow(deprecated)]
         use std::hash::{SipHasher, Hash};
 
         let press = KeyPress::from_key_names(&["Ctrl"], "p")
             .expect("Unable to construct regular keypress");
         let press_macro = keypress!("Ctrl", "p");
+        #[allow(deprecated)]
         let mut hasher = SipHasher::new();
         assert!(press.hash(&mut hasher) == press_macro.hash(&mut hasher),
                 "Hashes do not match");
