@@ -9,7 +9,7 @@ git:
   depth: 3 # We don't need to clone with depth 50
 
 cache:
-#  - cargo
+  - cargo
   - pip
 
 addons:
