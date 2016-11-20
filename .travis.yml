@@ -2,20 +2,22 @@ language: rust
 rust:
   - stable
 
-sudo: false
+sudo: required # For Lua, dbus
+dist: trusty   # Newwe
+
 git:
   depth: 3 # We don't need to clone with depth 50
 
 cache:
-  - cargo
+#  - cargo
   - pip
 
 addons:
   apt:
     packages:
-      - libcurl4-openssl-dev
       - libnih-dbus1
       - libdbus-1-3
+      - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
       - binutils-dev
@@ -35,6 +37,9 @@ notifications:
 before_install:
   - git clone --depth=3 https://github.com/Timidger/travis-cargo
   - export PATH=$HOME/.local/bin:$PATH
+  - sudo apt-get -qq update
+  - sudo apt-get install -y lua5.2 liblua5.2-dev liblua5.2-0
+  - sudo apt-get install -y libdbus-1-dev dbus
 
 install:
   # install travis-cargo
