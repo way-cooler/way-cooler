@@ -126,6 +126,7 @@ impl Drop for Ipc {
 
 /// We need random folder names to place sockets in, but they don't need
 /// to be _that_ random.
+#[allow(deprecated)]
 fn unique_ish_id() -> u32 {
     #[allow(deprecated)]
     use std::hash::{Hash, Hasher, SipHasher};
@@ -139,7 +140,6 @@ fn unique_ish_id() -> u32 {
     // Instant doesn't implement hash, and it's supposed to be an opaque
     // struct, but it does implement debug...
     let now = Instant::now();
-    #[allow(deprecated)]
     let mut hasher = SipHasher::new();
     format!("{:?}", now).hash(&mut hasher);
     (hasher.finish() >> MAGIC_SHIFT_NUMBER) as u32
