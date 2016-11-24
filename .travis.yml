@@ -67,7 +67,7 @@ after_success:
   - travis-cargo coveralls --no-sudo --verify --exclude-pattern="main.rs,mod.rs,tests.rs,wayland_client_api.rs,callbacks.rs"
 
 before_deploy:
-  - ci.py prepare-deploy
+  - python $TRAVIS_BUILD_DIR/ci.py prepare-deploy
 deploy:
   provider: releases
   skip_cleanup: false # We do not need to skip cleanup as we recompile with --release
