@@ -8,15 +8,13 @@ import subprocess
 from docopt import docopt
 
 VERSION_REGEX = '(\\d+\\.\\d+\\.\\d+)'
-BRANCH_REGEX = '$release*' + VERSION_REGEX + '^'
+BRANCH_REGEX = '^release-' + VERSION_REGEX + '$'
 # If we grab the first 'version=' line in the Cargo files we'll be fine
-CARGO_VERSION_LINE = '$version = "' + VERSION_REGEX + '"^'
-README_CRATES_TAG = "/badge/crates\\.io/-v" + VERSION_REGEX
+CARGO_VERSION_LINE = '^version = "' + VERSION_REGEX + '"$'
 
 FILE_REGEX_MAP = {
     "Cargo.toml": CARGO_VERSION_LINE,
     "Cargo.lock": CARGO_VERSION_LINE,
-    "README.md": README_CRATES_TAG
 }
 
 DOCOPT_USAGE = """way-cooler CI integration.
@@ -39,14 +37,17 @@ def check_file_version(file_name, regex, expected):
     with open(file_name) as f:
         for line in f.readlines():
             match = reg.match(line)
+            if match: match = match.group(0)
             if not match:
                 continue
             elif match == expected:
                 print('\t' + file_name + " updated.")
                 return True
             else:
-                print('\t' + file_name + ": expected " + expected + ", got " + match)
+                print('\t {}: expected "{}" got "{}"'.format(file_name, expected, match))
                 return False
+        print('\t' + file_name + ": did not find any version match!")
+        return False
 
 def check_release_branch(version):
     all_clear = True
@@ -71,7 +72,8 @@ if __name__ == "__main__":
             print("Not in a release branch PR.")
             sys.exit(0)
         print("Checking versions in branch " + travis_pr_branch)
-        if not check_release_branch(version_match):
+        compare_version = ('version = "{}"'.format(version_match.group(0).split('-')[1]))
+        if not check_release_branch(compare_version):
             sys.stderr.write("Not all files matched!\n")
             sys.exit(2)
         print("All version checks passed.")

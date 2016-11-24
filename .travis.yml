@@ -3,7 +3,7 @@ rust:
   - stable
 
 sudo: required # For Lua, dbus
-dist: trusty   # Newwe
+dist: trusty
 
 git:
   depth: 3 # We don't need to clone with depth 50
@@ -57,6 +57,7 @@ script:
   # Make sure no-test builds
   - cargo check --verbose
   # run tests
+  # Currently not running tests because linking fails with Lua and DBus
   - cargo test --verbose
   # run tag checks
   - python $TRAVIS_BUILD_DIR/ci.py travis-check
@@ -72,7 +73,7 @@ after_success:
   - travis-cargo coveralls --no-sudo --verify --exclude-pattern="main.rs,mod.rs,tests.rs,wayland_client_api.rs,callbacks.rs"
 
 before_deploy:
-  - ci.py prepare-deploy
+  - python $TRAVIS_BUILD_DIR/ci.py prepare-deploy
 deploy:
   provider: releases
   skip_cleanup: false # We do not need to skip cleanup as we recompile with --release
