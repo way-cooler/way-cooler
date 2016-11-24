@@ -296,11 +296,9 @@ impl Tree {
         let result;
         match self.0.remove_view(&view) {
             Err(err)  => {
-                warn!("Remove view error: {:?}\n {:#?}", err, *self.0);
                 result = Err(err)
             },
             Ok(container) => {
-                trace!("Removed container {:?}", container);
                 result = Ok(())
             }
         }
