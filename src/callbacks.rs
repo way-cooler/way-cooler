@@ -62,7 +62,13 @@ pub extern fn view_created(view: WlcView) -> bool {
             if view.get_class() == "Background" {
                 return Ok(())
             }
-            tree.set_active_view(view)
+            tree.set_active_view(view).or_else(|_| {
+                // We still want to focus on the window that appeared
+                // Might need to change later, in case this focus grabbing
+                // gets annoying / becomes a security issue.
+                view.focus();
+                Ok(())
+            })
         }).is_ok()
     } else {
         false
