@@ -36,14 +36,14 @@ def check_file_version(file_name, regex, expected):
     reg = re.compile(regex)
     with open(file_name) as f:
         for line in f.readlines():
-            match = reg.match(line)
+            match = reg.match(line).group(0)
             if not match:
                 continue
             elif match == expected:
                 print('\t' + file_name + " updated.")
                 return True
             else:
-                print('\t {}: expected "{}" got "{}"'.format(file_name, expected, match.group(0)))
+                print('\t {}: expected "{}" got "{}"'.format(file_name, expected, match))
                 return False
         print('\t' + file_name + ": did not find any version match!")
         return False
