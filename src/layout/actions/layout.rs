@@ -55,14 +55,19 @@ impl LayoutTree {
                     size: handle.get_resolution()
                         .expect("Couldn't get resolution")
                 };
-                trace!("layout: Laying out workspace, using size of the screen output {:#?}", handle);
                 self.layout_helper(node_ix, output_geometry);
             }
-            _ => {
-                warn!("layout should not be called directly on a container, view\
-                       laying out the entire tree just to be safe");
-                let root_ix = self.tree.root_ix();
-                self.layout(root_ix);
+            ContainerType::Container => {
+                let geometry = match self.tree[node_ix] {
+                    Container::Container { geometry, .. } => geometry,
+                    _ => unreachable!()
+                };
+                self.layout_helper(node_ix, geometry);
+            }
+            ContainerType::View => {
+                let parent_ix = self.tree.parent_of(node_ix)
+                    .expect("View had no parent");
+                self.layout(parent_ix);
             }
         }
         self.validate();
@@ -74,7 +79,6 @@ impl LayoutTree {
     fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry) {
         match self.tree[node_ix].get_type() {
             ContainerType::Root | ContainerType::Output => {
-                trace!("layout_helper: Laying out entire tree");
                 warn!("Ignoring geometry constraint ({:#?}), \
                        deferring to each output's constraints",
                       geometry);
@@ -85,9 +89,6 @@ impl LayoutTree {
             ContainerType::Workspace => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out workspace {:#?} with\
-                            geometry constraints {:#?}",
-                        container_mut, geometry);
                     match *container_mut {
                         Container::Workspace { ref mut size, .. } => {
                             *size = geometry.size.clone();
@@ -107,8 +108,6 @@ impl LayoutTree {
             ContainerType::Container => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    trace!("layout_helper: Laying out container {:#?} with geometry constraints {:#?}",
-                           container_mut, geometry);
                     match *container_mut {
                         Container::Container { geometry: ref mut c_geometry, .. } => {
                             *c_geometry = geometry.clone();
@@ -122,8 +121,8 @@ impl LayoutTree {
                 };
                 match layout {
                     Layout::Horizontal => {
-                        trace!("Layout was horizontal, laying out the sub-containers horizontally");
                         let children = self.tree.grounded_children(node_ix);
+                        let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
                             let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
@@ -133,8 +132,15 @@ impl LayoutTree {
                         if scale > 0.1 {
                             scale = geometry.size.w as f32 / scale;
                             let new_size_f = |child_size: Size, sub_geometry: Geometry| {
+                                let width = if child_size.w > 0 {
+                                    child_size.w as f32
+                                } else {
+                                    // If the width would become zero, just make it the average size of the container.
+                                    // e.g, if container was width 500 w/ 2 children, this view would have a width of 250
+                                    geometry.size.w as f32 / children_len.checked_sub(1).unwrap_or(1) as f32
+                                };
                                 Size {
-                                    w: ((child_size.w as f32) * scale) as u32,
+                                    w: ((width) * scale) as u32,
                                     h: sub_geometry.size.h
                                 }
                             };
@@ -154,13 +160,13 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, scale, children,
+                            self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f);
                         }
                     }
                     Layout::Vertical => {
-                        trace!("Layout was vertical, laying out the sub-containers vertically");
                         let children = self.tree.grounded_children(node_ix);
+                        let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
                             let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
@@ -170,9 +176,16 @@ impl LayoutTree {
                         if scale > 0.1 {
                             scale = geometry.size.h as f32 / scale;
                             let new_size_f = |child_size: Size, sub_geometry: Geometry| {
+                                let height = if child_size.h > 0 {
+                                    child_size.h as f32
+                                } else {
+                                    // If the height would become zero, just make it the average size of the container.
+                                    // e.g, if container was height 500 w/ 2 children, this view would have a height of 250
+                                    geometry.size.h as f32 / children_len.checked_sub(1).unwrap_or(1) as f32
+                                 };
                                 Size {
                                     w: sub_geometry.size.w,
-                                    h: ((child_size.h as f32) * scale) as u32
+                                    h: ((height) * scale) as u32
                                 }
                             };
                             let remaining_size_f = |sub_geometry: Geometry,
@@ -191,7 +204,7 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y + new_size.h as i32
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, scale, children,
+                            self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f);
                         }
                     }
@@ -203,8 +216,6 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                trace!("layout_helper: Laying out view {:#?} with geometry constraints {:#?}",
-                       handle, geometry);
                 handle.set_geometry(ResizeEdge::empty(), geometry);
             }
         }
@@ -268,7 +279,9 @@ impl LayoutTree {
             .unwrap_or_else(|| self.tree.parent_of(node_ix).expect("node_ix had no parent!"));
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
-        self.tree.set_ancestor_paths_active(next_ix);
+        if !self.tree[next_ix].floating() {
+            self.tree.set_ancestor_paths_active(next_ix);
+        }
         let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
         self.layout(parent_ix);
         Ok(())
@@ -315,7 +328,6 @@ impl LayoutTree {
         match self.tree[node_ix] {
             Container::Container { .. } => { unimplemented!() },
             Container::View { ref handle, .. } => {
-                trace!("Placing {:#?}, at {:#?}", self.tree[node_ix], handle.get_geometry());
                 handle.bring_to_front();
             },
             _ => unreachable!()
@@ -395,7 +407,7 @@ impl LayoutTree {
                                .ok_or(TreeError::NodeNotFound(id)));
             let container_t = self.tree[node_ix].get_type();
             if container_t == ContainerType::View {
-                let parent_id = try!(self.parent_of(id));
+                let parent_id = try!(self.parent_of(id)).get_id();
                 return self.toggle_cardinal_tiling(parent_id)
             }
             let container = &mut self.tree[node_ix];
@@ -428,7 +440,7 @@ impl LayoutTree {
         let len = children_values.len();
         for mut value in children_values {
             if value <= 0.0 {
-                value = max / cmp::max(1, len - 1) as f32;
+                value = max / len.checked_sub(1).unwrap_or(1) as f32;
             }
             scale += value;
         }
@@ -437,13 +449,12 @@ impl LayoutTree {
 
     fn generic_tile<SizeF, RemainF, PointF>
         (&mut self,
-         node_ix: NodeIndex, geometry: Geometry, scale: f32, children: Vec<NodeIndex>,
+         node_ix: NodeIndex, geometry: Geometry, children: Vec<NodeIndex>,
          new_size_f: SizeF, remaining_size_f: RemainF, new_point_f: PointF)
         where SizeF:   Fn(Size, Geometry) -> Size,
               RemainF: Fn(Geometry, Geometry) -> Size,
               PointF:  Fn(Size, Geometry) -> Point
     {
-        trace!("Scaling factor: {:?}", scale);
         let mut sub_geometry = geometry.clone();
         for (index, child_ix) in children.iter().enumerate() {
             let child_size: Size;
@@ -552,8 +563,6 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 };
-                trace!("Setting view {:#?} to geometry: {:#?}",
-                    self.tree[node_ix], new_geometry);
                 handle.set_geometry(ResizeEdge::empty(), new_geometry);
             },
             _ => panic!("Can only normalize the view on a view or container")

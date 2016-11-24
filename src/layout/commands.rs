@@ -1,7 +1,7 @@
 //! Commands from the user to manipulate the tree
 
-use super::{try_lock_tree, try_lock_action, lock_action};
-use super::{Action, Container, ContainerType, Direction, Handle, Layout, TreeError};
+use super::{try_lock_tree, try_lock_action};
+use super::{Action, ActionErr, Container, ContainerType, Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
@@ -161,11 +161,12 @@ pub fn performing_action() -> Option<Action> {
 
 /// Sets the value behind the lock to the provided value.
 ///
+/// Note that this method blocks until the lock is released
+///
 /// None means an action is done being performed.
-pub fn set_performing_action(val: Option<Action>) -> CommandResult {
-    if let Ok(mut action) = lock_action() {
+pub fn set_performing_action(val: Option<Action>) {
+    if let Ok(mut action) = try_lock_action() {
         *action = val;
-        Ok(())
     } else {
         error!("Action mutex was poisoned");
         panic!("Action mutex was poisoned");
@@ -180,11 +181,12 @@ pub fn set_performing_action(val: Option<Action>) -> CommandResult {
 impl Tree {
     /// Gets the uuid of the active container, if there is an active container
     pub fn active_id(&self) -> Option<Uuid> {
-        if let Some(active_ix) = self.0.active_container {
-            Some(self.0.tree[active_ix].get_id())
-        } else {
-            None
-        }
+        self.0.active_container
+            .map(|active_ix| self.0.tree[active_ix].get_id())
+    }
+
+    pub fn lookup_view(&self, view: WlcView) -> Option<Uuid> {
+        self.0.lookup_view(view).map(|c| c.get_id())
     }
 
     pub fn toggle_float(&mut self) -> CommandResult {
@@ -228,7 +230,7 @@ impl Tree {
                                 .ok_or(TreeError::NoActiveContainer));
             try!(self.0.drag_floating(active_ix, point, old_point));
             action.grab = point;
-            set_performing_action(Some(action)).unwrap();
+            set_performing_action(Some(action));
             Ok(())
         } else {
             Err(TreeError::PerformingAction(false))
@@ -383,9 +385,29 @@ impl Tree {
         Ok(())
     }
 
+    /// Resizes the container, as if it was dragged at the edge to a certain point
+    /// on the screen.
+    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point) -> CommandResult {
+        match try_lock_action() {
+            Ok(mut lock) => {
+                if let Some(ref mut action) = *lock {
+                    if try!(self.0.lookup(id)).floating() {
+                        self.0.resize_floating(id, edge, pointer, action)
+                    } else {
+                        self.0.resize_tiled(id, edge, pointer, action)
+                    }
+                } else {
+                    Err(TreeError::Action(ActionErr::ActionNotInProgress))
+                }
+            },
+            _ => Err(TreeError::Action(ActionErr::ActionLocked))
+        }
+    }
+
     // TODO Fix this so that it actually uses the uuid
     pub fn send_to_workspace(&mut self, id: Uuid, workspace_name: &str) -> CommandResult {
         self.0.send_active_to_workspace(workspace_name);
         Ok(())
     }
+
 }

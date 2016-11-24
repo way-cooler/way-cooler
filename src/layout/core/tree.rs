@@ -4,12 +4,14 @@
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use rustwlc::{WlcView, WlcOutput};
+use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use super::super::LayoutTree;
-use super::container::{Container, ContainerType};
+use super::super::ActionErr;
+use super::container::{Container, ContainerType, Layout};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
 use super::super::actions::layout::LayoutErr;
+use super::super::actions::resize::ResizeErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -22,6 +24,50 @@ pub enum Direction {
     Down,
     Right,
     Left
+}
+const NUM_DIRECTIONS: usize = 4;
+
+impl Direction {
+    /// Gets a vector of the directions being moved from the ResizeEdge.
+    pub fn from_edge(edge: ResizeEdge) -> Vec<Self> {
+        let mut result = Vec::with_capacity(NUM_DIRECTIONS);
+        if edge.contains(RESIZE_LEFT) {
+            result.push(Direction::Left);
+        }
+        if edge.contains(RESIZE_RIGHT) {
+            result.push(Direction::Right);
+        }
+        if edge.contains(RESIZE_TOP) {
+            result.push(Direction::Up);
+        }
+        if edge.contains(RESIZE_BOTTOM) {
+            result.push(Direction::Down);
+        }
+        result
+    }
+
+    pub fn to_edge(dirs: &[Direction]) -> ResizeEdge {
+        let mut result = ResizeEdge::empty();
+        for dir in dirs {
+            match *dir {
+                Direction::Up => result |= RESIZE_TOP,
+                Direction::Down => result |= RESIZE_BOTTOM,
+                Direction::Left => result |= RESIZE_LEFT,
+                Direction::Right => result |= RESIZE_RIGHT
+            }
+        }
+        result
+    }
+
+    // Returns the reverse of a direction
+    pub fn reverse(self) -> Self {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Right,
+            Direction::Right => Direction::Left
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -48,6 +94,10 @@ pub enum TreeError {
     Movement(MovementError),
     /// An error occurred while trying to change the layout
     Layout(LayoutErr),
+    /// An error occurred while trying to resize the layout
+    Resize(ResizeErr),
+    /// An error occurred while attempting to modify or use the main action
+    Action(ActionErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
     PerformingAction(bool)
@@ -93,9 +143,26 @@ impl LayoutTree {
             .ok_or(TreeError::NodeNotFound(id))
     }
 
+    /// Looks up the id, returning a mutable reference to the container associated with it.
+    pub fn lookup_mut(&mut self, id: Uuid) -> Result<&mut Container, TreeError> {
+        self.tree.lookup_id(id)
+            .map(move |node_ix| &mut self.tree[node_ix])
+            .ok_or(TreeError::NodeNotFound(id))
+    }
+
+    pub fn lookup_view(&self, view: WlcView) -> Option<&Container> {
+        self.tree.lookup_view(view)
+            .map(|node_ix| &self.tree[node_ix])
+    }
+
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
-        info!("Active container was {:?}", self.active_container);
+        if self.active_container != Some(node_ix) {
+            info!("Active container was {}, is now {}",
+                  self.active_container.map(|node| node.index().to_string())
+                    .unwrap_or("not set".into()),
+                  node_ix.index());
+        }
         self.active_container = Some(node_ix);
         match self.tree[node_ix] {
             Container::View { ref handle, .. } => handle.focus(),
@@ -107,18 +174,7 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
-        info!("Active container is now: {:?}", self.active_container);
         Ok(())
-    }
-
-    /// Gets the parent uuid of the container behind the node.
-    /// If None is returned, then there was no parent (and that's probably the root)
-    pub fn parent_of(&self, id: Uuid) -> Result<Uuid, TreeError> {
-        let node_ix = try!(self.tree.lookup_id(id)
-                           .ok_or(TreeError::NodeNotFound(id)));
-        let parent_ix = try!(self.tree.parent_of(node_ix)
-                             .map_err(|err| TreeError::PetGraph(err)));
-        Ok(self.tree[parent_ix].get_id())
     }
 
     /// Unsets the active container. This should be used when focusing on
@@ -330,6 +386,76 @@ impl LayoutTree {
             self.remove_view_or_container(active_ix)
         } else {
             None
+        }
+    }
+
+    /// Gets the parent of the node.
+    pub fn parent_of(&self, id: Uuid) -> Result<&Container, TreeError> {
+        let node_ix = try!(self.tree.lookup_id(id)
+                           .ok_or(TreeError::NodeNotFound(id)));
+        self.tree.parent_of(node_ix)
+            .map(|parent_ix| &self.tree[parent_ix])
+            .map_err(|err| TreeError::PetGraph(err))
+    }
+
+    /// Gets a container relative to the view/container node in some
+    /// direction. If one could not be found, an Error is returned.
+    ///
+    /// The first `Uuid` returned is the ancestor of the passed `Uuid`
+    /// that sits relative to the second returned `Uuid`. This might be
+    /// the same as the passed `Uuid`, if there was no recursion required
+    /// to find the second returned `Uuid`.
+    ///
+    /// The second `Uuid` returned is the node in the relative direction.
+    ///
+    /// An Err should only happen if they are at edge and the direction
+    /// points in that direction.
+    pub fn container_in_dir(&self, id: Uuid, dir: Direction)
+                          -> Result<(Uuid, Uuid), TreeError> {
+        let container = try!(self.lookup(id));
+        let parent = try!(self.parent_of(id));
+        let (layout, node_ix) = match *container {
+            Container::View { .. }| Container::Container { .. } => {
+                if let Container::Container { layout, .. } = *parent {
+                    (layout, try!(self.tree.lookup_id(id)
+                                  .ok_or(TreeError::NodeNotFound(id))))
+                } else {
+                    return Err(TreeError::UuidWrongType(id, vec!(ContainerType::Container)))
+                    //panic!("Parent of view was not a container!")
+                }
+            },
+            _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                       ContainerType::Container)))
+        };
+        match (layout, dir) {
+            (Layout::Horizontal, Direction::Left) |
+            (Layout::Horizontal, Direction::Right) |
+            (Layout::Vertical, Direction::Up) |
+            (Layout::Vertical, Direction::Down) => {
+                let parent_ix = try!(self.tree.lookup_id(parent.get_id())
+                                     .ok_or(TreeError::NodeNotFound(id)));
+                let siblings = self.tree.children_of(parent_ix);
+                let cur_index = siblings.iter().position(|node| {
+                    *node == node_ix
+                }).expect("Could not find self in parent");
+                let maybe_new_index = match dir {
+                    Direction::Right | Direction::Down => {
+                        cur_index.checked_add(1)
+                    }
+                    Direction::Left  | Direction::Up => {
+                        cur_index.checked_sub(1)
+                    }
+                };
+                if maybe_new_index.is_some() &&
+                    maybe_new_index.unwrap() < siblings.len() {
+                        let sibling_ix = siblings[maybe_new_index.unwrap()];
+                        Ok((id, self.tree[sibling_ix].get_id()))
+                    }
+                else {
+                    self.container_in_dir(parent.get_id(), dir)
+                }
+            },
+            _ => self.container_in_dir(parent.get_id(), dir)
         }
     }
 
@@ -1000,5 +1126,69 @@ pub mod tests {
         let workspace_ix = tree.active_ix_of(ContainerType::Workspace)
             .expect("Active container wasn't set properly in basic_tree!");
         assert_eq!(tree.tree[workspace_ix].get_name(), Some("2"));
+    }
+
+    #[test]
+    /// Tests that going back and forth on one level works correctly
+    fn simple_container_in_dir_test() {
+        let mut tree = basic_tree();
+        let first_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        let view = WlcView::root();
+        tree.add_view(view).unwrap();
+        let second_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        assert!(second_view_id != first_view_id);
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap().1,
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap().1,
+                   second_view_id);
+        assert!(tree.container_in_dir(second_view_id, Direction::Up).is_err());
+        assert!(tree.container_in_dir(second_view_id, Direction::Down).is_err());
+        assert!(tree.container_in_dir(first_view_id, Direction::Up).is_err());
+        assert!(tree.container_in_dir(first_view_id, Direction::Down).is_err());
+        let id = tree.get_active_container().unwrap().get_id();
+        tree.toggle_cardinal_tiling(id).expect("Could not tile active container");
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Up).unwrap().1,
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Down).unwrap().1,
+                   second_view_id);
+        assert!(tree.container_in_dir(first_view_id, Direction::Left).is_err());
+        assert!(tree.container_in_dir(first_view_id, Direction::Right).is_err());
+        assert!(tree.container_in_dir(second_view_id, Direction::Left).is_err());
+        assert!(tree.container_in_dir(second_view_id, Direction::Right).is_err());
+    }
+
+    #[test]
+    fn nested_container_in_dir_test() {
+        let mut tree = basic_tree();
+        let first_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        let view = WlcView::root();
+
+        // First make it a single view horizontally next to a vertical stack
+        tree.add_view(view).unwrap();
+        let second_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        tree.toggle_active_layout(Layout::Vertical).unwrap();
+        assert!(tree.parent_of(first_view_id).unwrap() != tree.parent_of(second_view_id).unwrap());
+        tree.add_view(view).unwrap();
+        let third_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        let sub_container_id = tree.parent_of(third_view_id).unwrap().get_id();
+        assert_eq!(sub_container_id, tree.parent_of(second_view_id).unwrap().get_id());
+        // Ensure going from sub view to the ancestor works
+        assert_eq!(tree.container_in_dir(third_view_id, Direction::Left).unwrap().1,
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(second_view_id, Direction::Left).unwrap().1,
+                   first_view_id);
+        // Ensure to the right of the original is the parent container of left and right
+        assert_eq!(tree.container_in_dir(first_view_id, Direction::Right).unwrap().1,
+                   sub_container_id);
+
+        // Now make it vertical stack beside (horizontal) to a vertical stack
+        tree.active_container = tree.tree.lookup_id(first_view_id);
+        tree.toggle_active_layout(Layout::Vertical).unwrap();
+        tree.add_view(view).unwrap();
+        let fourth_view_id = tree.tree[tree.active_container.unwrap()].get_id();
+        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Up).unwrap().1,
+                   first_view_id);
+        assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Right).unwrap().1,
+                   sub_container_id);
     }
 }

@@ -15,7 +15,7 @@ use rustwlc::WlcView;
 
 use super::path::{Path, PathBuilder};
 
-use layout::{Container, ContainerType};
+use layout::{Container, ContainerType, Handle};
 
 #[derive(Clone, Copy, Debug)]
 pub enum GraphError {
@@ -32,6 +32,7 @@ pub enum GraphError {
 pub struct InnerTree {
     graph: Graph<Container, Path>, // Directed graph
     id_map: HashMap<Uuid, NodeIndex>,
+    view_map: HashMap<WlcView, NodeIndex>,
     root: NodeIndex
 }
 
@@ -50,6 +51,7 @@ impl Debug for InnerTree {
         f.debug_struct("InnerTree")
             .field("graph", &self.graph as &Debug)
             .field("id_map", &self.id_map as &Debug)
+            .field("view_map", &self.view_map as &Debug)
             .field("root", &self.root as &Debug)
             .field("active_path", &active_path as &Debug)
             .finish()
@@ -61,9 +63,11 @@ impl InnerTree {
     pub fn new() -> InnerTree {
         let mut graph = Graph::new();
         let root_ix = graph.add_node(Container::new_root());
-        InnerTree { graph: graph,
-               id_map: HashMap::new(),
-               root: root_ix
+        InnerTree {
+            graph: graph,
+            id_map: HashMap::new(),
+            view_map: HashMap::new(),
+            root: root_ix
         }
     }
 
@@ -166,6 +170,10 @@ impl InnerTree {
     /// If active is true, the path to the new node is made active.
     pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container, active: bool) -> NodeIndex {
         let id = val.get_id();
+        let maybe_view = match val.get_handle() {
+            Some(Handle::View(view)) => Some(view),
+            _ => None
+        };
         let child_ix = self.graph.add_node(val);
         let edge = self.attach_child(parent_ix, child_ix);
         if active {
@@ -176,6 +184,9 @@ impl InnerTree {
             weight.active = false;
         }
         self.id_map.insert(id, child_ix);
+        if let Some(view) = maybe_view {
+            self.view_map.insert(view, child_ix);
+        }
         child_ix
     }
 
@@ -404,7 +415,16 @@ impl InnerTree {
     /// with an endpoint in a, and including the edges with an endpoint in
     /// the displaced node.
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
-        let id = self.graph[node_ix].get_id();
+        let id;
+        let mut maybe_view = None;
+        {
+            let container = &self.graph[node_ix];
+            id = container.get_id();
+            if let Container::View { handle, .. } = *container {
+                maybe_view = Some(handle);
+            }
+        }
+        //let id = self.graph[node_ix].get_id();
         let last_ix = NodeIndex::new(self.graph.node_count() - 1);
         let maybe_parent_ix = self.parent_of(node_ix);
         if last_ix != node_ix {
@@ -413,12 +433,18 @@ impl InnerTree {
             let last_container = &self.graph[last_ix];
             let last_id = last_container.get_id();
             self.id_map.insert(last_id, node_ix);
+            if let Container::View { handle, .. } = *last_container {
+                self.view_map.insert(handle, node_ix);
+            }
         }
         if let Ok(mut parent_ix) = maybe_parent_ix {
             if parent_ix == last_ix {
                 parent_ix = node_ix;
             }
             self.id_map.remove(&id);
+            if let Some(view) = maybe_view {
+                self.view_map.remove(&view);
+            }
             let result = self.graph.remove_node(node_ix);
             // Fix the edge weights of the siblings of this node,
             // so we don't leave a gap
@@ -526,11 +552,11 @@ impl InnerTree {
 
     /// Looks up a container by id
     pub fn lookup_id(&self, id: Uuid) -> Option<NodeIndex> {
-        if let Some(node_ix) = self.id_map.get(&id) {
-            Some(*node_ix)
-        } else {
-            None
-        }
+        self.id_map.get(&id).cloned()
+    }
+
+    pub fn lookup_view(&self, view: WlcView) -> Option<NodeIndex> {
+        self.view_map.get(&view).cloned()
     }
 
     /// Gets the container of the given node.
