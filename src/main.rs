@@ -6,46 +6,25 @@ extern crate lazy_static;
 extern crate bitflags;
 #[macro_use]
 extern crate dbus_macros;
-
 #[cfg(not(test))]
 extern crate rustwlc;
-
 extern crate getopts;
-
 #[cfg(test)]
 extern crate dummy_rustwlc as rustwlc;
-
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-
 #[macro_use]
 extern crate hlua;
 extern crate rustc_serialize;
 #[macro_use]
 extern crate json_macro;
-
 extern crate nix;
-
 extern crate petgraph;
-
 extern crate uuid;
-
 extern crate dbus;
 
-use std::env;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
-use getopts::Options;
-use log::LogLevel;
-
-use nix::sys::signal::{SigHandler, SigSet, SigAction, SaFlags};
-use nix::sys::signal;
-
-use rustwlc::types::LogType;
-
-#[macro_use] // As it happens, it's important to declare the macros first.
+#[macro_use]
 mod macros;
 mod convert;
 
@@ -59,8 +38,19 @@ mod ipc;
 
 mod layout;
 
+use std::env;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+
+use getopts::Options;
+use log::LogLevel;
+use nix::sys::signal::{self, SigHandler, SigSet, SigAction, SaFlags};
+
+use rustwlc::types::LogType;
+
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const MODULE_PATH: &'static str = "/proc/modules";
+const DRIVER_MOD_PATH: &'static str = "/proc/modules";
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
@@ -95,21 +85,23 @@ fn log_format(record: &log::LogRecord) -> String {
 
 /// Checks the loaded modules, and reports any problematic proprietary ones
 fn detect_proprietary() {
+    // If DISPLAY is present, we are running embedded
     if env::var("DISPLAY").is_ok() {
-        // If DISPLAY is present, we are running embedded
         return
     }
-    match File::open(Path::new(MODULE_PATH)) {
+    match File::open(Path::new(DRIVER_MOD_PATH)) {
         Ok(file) => {
             let reader = BufReader::new(&file);
             for line in reader.lines() {
                 if let Ok(line) = line {
                     if line.contains("nvidia") {
                         error!("Warning: Proprietary nvidia graphics drivers are installed, \
-                               but they are not compatible with Wayland. Consider using nouveau drivers for Wayland.");
+                               but they are not compatible with Wayland. \
+                               Consider using nouveau drivers for Wayland.");
                         break;
                     } else if line.contains("fglrx") {
-                        error!("Warning: Proprietary AMD graphics drivers are installed, but they are not compatible with Wayland. \
+                        error!("Warning: Proprietary AMD graphics drivers are installed, \
+                                but they are not compatible with Wayland. \
                                Consider using radeon drivers for Waylad.");
                         break;
                     }
@@ -118,26 +110,27 @@ fn detect_proprietary() {
         },
         Err(err) => {
             warn!("Could not read proprietary modules at \"{}\", because: {:#?}",
-                  MODULE_PATH, err);
+                  DRIVER_MOD_PATH, err);
+            warn!("If you are running proprietary AMD or Nvidia graphics drivers, \
+                   Way Cooler may not work for you");
         }
     }
 }
 
 /// Initializes the logging system.
-/// Can be called from within test methods.
 pub fn init_logs() {
-    // Prepare log builder
     let mut builder = env_logger::LogBuilder::new();
     builder.format(log_format);
     builder.filter(None, log::LogLevelFilter::Trace);
     if env::var("WAY_COOLER_LOG").is_ok() {
-        builder.parse(&env::var("WAY_COOLER_LOG").expect("Asserted unwrap!"));
+        builder.parse(&env::var("WAY_COOLER_LOG")
+                      .expect("WAY_COOLER_LOG not defined"));
     }
     builder.init().expect("Unable to initialize logging!");
     info!("Logger initialized, setting wlc handlers.");
 }
 
-/// Handler for signals, should close the ipc
+/// Handler for signals
 extern "C" fn sig_handle(_: nix::libc::c_int) {
     rustwlc::terminate();
 }
@@ -161,34 +154,21 @@ fn main() {
     }
     println!("Launching way-cooler...");
 
-    let sig_action = SigAction::new(SigHandler::Handler(sig_handle), SaFlags::empty(), SigSet::empty());
+    let sig_action = SigAction::new(SigHandler::Handler(sig_handle), SaFlags::empty(),
+                                    SigSet::empty());
     unsafe {signal::sigaction(signal::SIGINT, &sig_action).unwrap() };
 
-    // Start logging first
     init_logs();
-    // Detect proprietary modules loaded, and warn about them.
     detect_proprietary();
-
-    // Initialize callbacks
-    callbacks::init();
-
-    // Handle wlc logs
-    rustwlc::log_set_rust_handler(log_handler);
-
-    // Prepare to launch wlc
+    // This prepares wlc, doesn't run main loop until run_wlc is called
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
-
-    // (Future config initialization goes here)
-    // Initialize commands
+    rustwlc::log_set_rust_handler(log_handler);
+    callbacks::init();
     commands::init();
-    // Add API to registry
     registry::init();
-    // Register Alt+Esc keybinding
     keys::init();
-    // Start listening for clients
     ipc::init();
 
-    // Hand control over to wlc's event loop
     info!("Running wlc...");
     run_wlc();
 }
