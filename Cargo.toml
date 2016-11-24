@@ -23,9 +23,6 @@ json_macro = "0.1"
 nix = "0.6"
 uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
 wayland-sys = { version = "^0.6.0", features = ["client", "dlopen"] }
-wayland-client = { version = "^0.6.0", features = ["cursor", "dlopen"] }
-tempfile = "2.1"
-byteorder = ">= 0.3, < 0.6"
 getopts = "0.2"
 
 [dev-dependencies]

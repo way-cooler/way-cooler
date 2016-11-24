@@ -31,14 +31,7 @@ extern crate petgraph;
 
 extern crate uuid;
 
-#[macro_use]
-extern crate wayland_client;
-
 extern crate dbus;
-
-extern crate tempfile;
-
-extern crate byteorder;
 
 use std::env;
 use std::fs::File;
