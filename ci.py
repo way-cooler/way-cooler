@@ -71,7 +71,7 @@ if __name__ == "__main__":
             print("Not in a release branch PR.")
             sys.exit(0)
         print("Checking versions in branch " + travis_pr_branch)
-        compare_version = ('version = ' + version_match.group(0).split('-')[1]).replace('"', '')
+        compare_version = ('version = "{}"'.format(version_match.group(0).split('-')[1]))
         if not check_release_branch(compare_version):
             sys.stderr.write("Not all files matched!\n")
             sys.exit(2)
