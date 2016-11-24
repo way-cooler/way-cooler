@@ -184,7 +184,10 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
     if state == ButtonState::Pressed {
         if button == LEFT_CLICK && !view.is_root() {
             if let Ok(mut tree) = try_lock_tree() {
-                tree.set_active_view(view).ok();
+                tree.set_active_view(view).unwrap_or_else(|_| {
+                    // still focus on view, even if not in tree.
+                    view.focus();
+                });
                 if mods.mods.contains(MOD_CTRL) {
                     let action = Action {
                         view: view,
