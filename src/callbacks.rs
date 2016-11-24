@@ -1,22 +1,26 @@
+//! Implementations of the callbacks exposed by wlc.
+//! These functions are the main entry points into Way Cooler from user action.
 #![allow(deprecated)] // keysyms
 
-//! Callback methods for rustwlc
 use rustwlc::handle::{WlcOutput, WlcView};
-use rustwlc::types::*;
+use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
+                     Point, Geometry, ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_RESIZING,
+                     MOD_NONE, MOD_CTRL, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
 
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{Action, try_lock_tree, try_lock_action, ContainerType, MovementError, TreeError};
+use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType, MovementError, TreeError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
 /// If the event is handled by way-cooler
-const EVENT_HANDLED: bool = true;
+const EVENT_BLOCKED: bool = true;
 
 /// If the event should be passed through to clients
 const EVENT_PASS_THROUGH: bool = false;
 
-// wlc callbacks
+const LEFT_CLICK: u32 = 0x110;
+const RIGHT_CLICK: u32 = 0x111;
 
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
@@ -38,11 +42,12 @@ pub extern fn output_focus(output: WlcOutput, focused: bool) {
 }
 
 pub extern fn output_resolution(output: WlcOutput,
-                            old_size_ptr: &Size, new_size_ptr: &Size) {
+                                old_size_ptr: &Size, new_size_ptr: &Size) {
     trace!("output_resolution: {:?} from  {:?} to {:?}",
            output, *old_size_ptr, *new_size_ptr);
     // Update the resolution of the output and its children
-    output.set_resolution(*new_size_ptr, 1);
+    let scale = 1;
+    output.set_resolution(*new_size_ptr, scale);
     if let Ok(mut tree) = try_lock_tree() {
         tree.layout_active_of(ContainerType::Output)
             .expect("Could not layout active output");
@@ -52,7 +57,7 @@ pub extern fn output_resolution(output: WlcOutput,
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
     if let Ok(mut tree) = try_lock_tree() {
-        tree.add_view(view.clone()).and_then(|_| {
+        tree.add_view(view).and_then(|_| {
             if view.get_class() == "Background" {
                 return Ok(())
             }
@@ -72,7 +77,7 @@ pub extern fn view_created(view: WlcView) -> bool {
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
     if let Ok(mut tree) = try_lock_tree() {
-        tree.remove_view(view.clone()).unwrap_or_else(|err| {
+        tree.remove_view(view).unwrap_or_else(|err| {
             match err {
                 TreeError::ViewNotFound(_) => {},
                 _ => {
@@ -88,12 +93,12 @@ pub extern fn view_destroyed(view: WlcView) {
 pub extern fn view_focus(current: WlcView, focused: bool) {
     trace!("view_focus: {:?} {}", current, focused);
     current.set_state(VIEW_ACTIVATED, focused);
-    // set the focus view in the tree
-    // If tree is already grabbed,
-    // it should have the active container all set
     if let Ok(mut tree) = try_lock_tree() {
-        if tree.set_active_view(current.clone()).is_err() {
-            error!("Could not layout {:?}", current);
+        match tree.set_active_view(current) {
+            Ok(_) => {},
+            Err(err) => {
+                error!("Could not set {:?} to be active view: {:?}", current, err);
+            }
         }
     }
 }
@@ -104,6 +109,7 @@ pub extern fn view_move_to_output(current: WlcView,
 }
 
 pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
+    trace!("Setting {:?} to state {:?}", view, state);
     view.set_state(state, handled);
 }
 
@@ -132,14 +138,13 @@ pub extern fn view_request_resize(view: WlcView, edge: ResizeEdge, point: &Point
     }
 }
 
-#[allow(non_snake_case)] // EMPTY_MODS will be a static once we have KEY_LED_NONE
 pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
                            key: u32, state: KeyState) -> bool {
-    let EMPTY_MODS: KeyboardModifiers = KeyboardModifiers {
+    let empty_mods: KeyboardModifiers = KeyboardModifiers {
             mods: MOD_NONE,
             leds: KeyboardLed::empty()
     };
-    let sym = keyboard::get_keysym_for_key(key, EMPTY_MODS);
+    let sym = keyboard::get_keysym_for_key(key, empty_mods);
     let press = KeyPress::new(mods.mods, sym);
 
     if state == KeyState::Pressed {
@@ -163,7 +168,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
                     }
                 }
             }
-            return EVENT_HANDLED
+            return EVENT_BLOCKED
         }
     }
 
@@ -177,7 +182,7 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                          mods: &KeyboardModifiers, button: u32,
                              state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed {
-        if button == 0x110 && !view.is_root() {
+        if button == LEFT_CLICK && !view.is_root() {
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).ok();
                 if mods.mods.contains(MOD_CTRL) {
@@ -189,7 +194,7 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                     set_performing_action(Some(action));
                 }
             }
-        } else if button == 0x111 && !view.is_root() {
+        } else if button == RIGHT_CLICK && !view.is_root() {
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).ok();
             }
@@ -233,7 +238,7 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                     set_performing_action(Some(action));
                 }
                 view.set_state(VIEW_RESIZING, true);
-                return true;
+                return EVENT_BLOCKED
             }
         }
     } else {
@@ -250,17 +255,17 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
         }
         set_performing_action(None);
     }
-    false
+    EVENT_PASS_THROUGH
 }
 
 pub extern fn pointer_scroll(_view: WlcView, _time: u32,
                          _mods_ptr: &KeyboardModifiers, _axis: ScrollAxis,
                          _heights: [f64; 2]) -> bool {
-    false
+    EVENT_PASS_THROUGH
 }
 
 pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
-    let mut result = false;
+    let mut result = EVENT_PASS_THROUGH;
     let mut maybe_action = None;
     {
         if let Ok(action_lock) = try_lock_action() {
@@ -268,7 +273,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
         }
     }
     match maybe_action {
-        None => result = false,
+        None => result = EVENT_PASS_THROUGH,
         Some(action) => {
             if action.edges.bits() != 0 {
                 if let Ok(mut tree) = try_lock_tree() {
@@ -277,7 +282,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                     if let Some(active_id) = tree.lookup_view(view) {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
-                            Ok(_) => return true,
+                            Ok(_) => return EVENT_BLOCKED,
                             Err(err) => error!("Error: {:#?}", err)
                         }
                     }
@@ -285,12 +290,12 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
             } else {
                 if let Ok(mut tree) = try_lock_tree() {
                     match tree.try_drag_active(*point) {
-                        Ok(_) => result = true,
+                        Ok(_) => result = EVENT_BLOCKED,
                         Err(TreeError::PerformingAction(_)) |
-                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = false,
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = EVENT_PASS_THROUGH,
                         Err(err) => {
                             error!("Error: {:#?}", err);
-                            result = false
+                            result = EVENT_PASS_THROUGH
                         }
                     }
                 }
