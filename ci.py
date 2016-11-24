@@ -43,7 +43,7 @@ def check_file_version(file_name, regex, expected):
                 print('\t' + file_name + " updated.")
                 return True
             else:
-                print('\t {}: expected "{}" got "{}"', file_name, expected, match.group(0))
+                print('\t {}: expected "{}" got "{}"'.format(file_name, expected, match.group(0)))
                 return False
         print('\t' + file_name + ": did not find any version match!")
         return False
@@ -71,7 +71,8 @@ if __name__ == "__main__":
             print("Not in a release branch PR.")
             sys.exit(0)
         print("Checking versions in branch " + travis_pr_branch)
-        if not check_release_branch('version = ' + version_match.group(0).split('-')[1]):
+        compare_version = ('version = ' + version_match.group(0).split('-')[1]).replace('"', '')
+        if not check_release_branch(compare_version):
             sys.stderr.write("Not all files matched!\n")
             sys.exit(2)
         print("All version checks passed.")
