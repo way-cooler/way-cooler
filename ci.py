@@ -8,7 +8,7 @@ import subprocess
 from docopt import docopt
 
 VERSION_REGEX = '(\\d+\\.\\d+\\.\\d+)'
-BRANCH_REGEX = '^release-' + VERSION_REGEX + '$'
+BRANCH_REGEX = '^' + VERSION_REGEX + '$'
 # If we grab the first 'version=' line in the Cargo files we'll be fine
 CARGO_VERSION_LINE = '^version = "' + VERSION_REGEX + '"$'
 
@@ -62,7 +62,6 @@ if __name__ == "__main__":
     if args["travis-check"]:
         print("Running travis-check...")
         travis_pr_branch = os.environ["TRAVIS_PULL_REQUEST_BRANCH"]
-        print("Branch name: {}".format(travis_pr_branch))
         if not travis_pr_branch:
             print("Not running in a PR.")
             sys.exit(0)
