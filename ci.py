@@ -61,7 +61,8 @@ if __name__ == "__main__":
     args = docopt(DOCOPT_USAGE, version="ci.py v1.0")
     if args["travis-check"]:
         print("Running travis-check...")
-        travis_pr_branch = os.environ["TRAVIS_PULL_REQUEST"]
+        travis_pr_branch = os.environ["TRAVIS_PULL_REQUEST_BRANCH"]
+        print("Branch name: {}".format(travis_pr_branch))
         if not travis_pr_branch:
             print("Not running in a PR.")
             sys.exit(0)
