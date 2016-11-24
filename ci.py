@@ -36,7 +36,8 @@ def check_file_version(file_name, regex, expected):
     reg = re.compile(regex)
     with open(file_name) as f:
         for line in f.readlines():
-            match = reg.match(line).group(0)
+            match = reg.match(line)
+            if match: match = match.group(0)
             if not match:
                 continue
             elif match == expected:
