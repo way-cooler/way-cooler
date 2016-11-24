@@ -993,7 +993,8 @@ pub mod tests {
             },
             _ => unreachable!()
         }
-        tree.toggle_cardinal_tiling();
+        let id = tree.get_active_container().unwrap().get_id();
+        tree.toggle_cardinal_tiling(id).unwrap();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
@@ -1003,7 +1004,7 @@ pub mod tests {
             _ => unreachable!()
         }
         // and back again
-        tree.toggle_cardinal_tiling();
+        tree.toggle_cardinal_tiling(id).unwrap();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
@@ -1144,7 +1145,8 @@ pub mod tests {
         assert!(tree.container_in_dir(second_view_id, Direction::Down).is_err());
         assert!(tree.container_in_dir(first_view_id, Direction::Up).is_err());
         assert!(tree.container_in_dir(first_view_id, Direction::Down).is_err());
-        tree.toggle_cardinal_tiling();
+        let id = tree.get_active_container().unwrap().get_id();
+        tree.toggle_cardinal_tiling(id).expect("Could not tile active container");
         assert_eq!(tree.container_in_dir(second_view_id, Direction::Up).unwrap().1,
                    first_view_id);
         assert_eq!(tree.container_in_dir(first_view_id, Direction::Down).unwrap().1,
