@@ -8,7 +8,7 @@ import subprocess
 from docopt import docopt
 
 VERSION_REGEX = '(\\d+\\.\\d+\\.\\d+)'
-BRANCH_REGEX = '^' + VERSION_REGEX + '$'
+BRANCH_REGEX = '^release-' + VERSION_REGEX + '$'
 # If we grab the first 'version=' line in the Cargo files we'll be fine
 CARGO_VERSION_LINE = '^version = "' + VERSION_REGEX + '"$'
 
@@ -43,7 +43,7 @@ def check_file_version(file_name, regex, expected):
                 print('\t' + file_name + " updated.")
                 return True
             else:
-                print('\t' + file_name + ": expected " + expected.group(0) + ", got " + match.group(0))
+                print('\t {}: expected "{}" got "{}"', file_name, expected, match.group(0))
                 return False
         print('\t' + file_name + ": did not find any version match!")
         return False
@@ -71,7 +71,7 @@ if __name__ == "__main__":
             print("Not in a release branch PR.")
             sys.exit(0)
         print("Checking versions in branch " + travis_pr_branch)
-        if not check_release_branch(version_match):
+        if not check_release_branch('version = ' + version_match.group(0).split('-')[1]):
             sys.stderr.write("Not all files matched!\n")
             sys.exit(2)
         print("All version checks passed.")
