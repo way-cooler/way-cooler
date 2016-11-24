@@ -43,7 +43,7 @@ def check_file_version(file_name, regex, expected):
                 print('\t' + file_name + " updated.")
                 return True
             else:
-                print('\t' + file_name + ": expected " + expected + ", got " + match.group(0))
+                print('\t' + file_name + ": expected " + expected.group(0) + ", got " + match.group(0))
                 return False
         print('\t' + file_name + ": did not find any version match!")
         return False
