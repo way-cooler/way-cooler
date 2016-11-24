@@ -1,11 +1,11 @@
 //! Contains a debus session object.
 
-use std::sync::mpsc::{self, Sender, Receiver};
+use std::sync::mpsc::{Receiver};
 
 use dbus::{Connection, BusType, NameFlag};
 use dbus::tree::{Factory};
 
-use super::{DBusFactory, DBusTree};
+use super::{DBusTree};
 
 use super::dbus_message::DBusMessage;
 
@@ -14,6 +14,7 @@ use super::dbus_message::DBusMessage;
 /// Contains all of the horrors of the dbus library within.
 /// Way Cooler's IPC is split up into files for different interfaces
 /// which all come together
+#[allow(dead_code)]
 pub struct DBusSession {
     tree: DBusTree,
     connection: Connection,
@@ -42,10 +43,11 @@ impl DBusSession {
     }
 
     pub fn run_thread(&mut self) {
-        self.tree.set_registered(&self.connection, true);
+        self.tree.set_registered(&self.connection, true)
+            .expect("Could not register connect");
 
-        for client in self.tree.run(&self.connection,
-                                    self.connection.iter(1000)) {
+        for _ in self.tree.run(&self.connection,
+                               self.connection.iter(1000)) {
         }
     }
 }
