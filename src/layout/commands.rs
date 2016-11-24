@@ -341,7 +341,8 @@ impl Tree {
         }
     }
 
-    /// Sets the view to be the new active container. Never fails
+    /// Sets the view to be the new active container.
+    /// Will fail if the container is floating.
     pub fn set_active_view(&mut self, view: WlcView) -> CommandResult {
         try!(self.0.set_active_view(view.clone()));
         view.focus();
