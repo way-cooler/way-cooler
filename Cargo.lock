@@ -1,10 +1,10 @@
 [root]
 name = "way-cooler"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "dummy-rustwlc 0.5.1 (git+https://github.com/SnirkImmington/dummy-rustwlc.git)",
+ "dummy-rustwlc 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hlua 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -70,7 +70,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "dummy-rustwlc"
 version = "0.5.1"
-source = "git+https://github.com/SnirkImmington/dummy-rustwlc.git#f1fc6f1695a544e0ef47462757b55442993dc721"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -396,7 +396,7 @@ dependencies = [
 "checksum cfg-if 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de1e760d7b6535af4241fca8bd8adf68e2e7edacc6b29f5d399050c5e48cf88c"
 "checksum dlib 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8bd015f00d33d7e4ff66f1589fb824ccf3ccb10209b66c7b756f26ba9aa90215"
 "checksum dtoa 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0dd841b58510c9618291ffa448da2e4e0f699d984d436122372f446dae62263d"
-"checksum dummy-rustwlc 0.5.1 (git+https://github.com/SnirkImmington/dummy-rustwlc.git)" = "<none>"
+"checksum dummy-rustwlc 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ac439b9560559e2a76828b3809a43c6e5b065a57616049222180ee3834d7044f"
 "checksum env_logger 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "82dcb9ceed3868a03b335657b85a159736c961900f7e7747d3b0b97b9ccb5ccb"
 "checksum fixedbitset 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "88c3c33fc4c00db33f5174eb98aea809c4c007db0b71351d810a7e094ea3b64d"
 "checksum gcc 0.3.35 (registry+https://github.com/rust-lang/crates.io-index)" = "91ecd03771effb0c968fd6950b37e89476a578aaf1c70297d8e92b6516ec3312"

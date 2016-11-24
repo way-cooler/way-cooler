@@ -126,7 +126,9 @@ impl Drop for Ipc {
 
 /// We need random folder names to place sockets in, but they don't need
 /// to be _that_ random.
+#[allow(deprecated)]
 fn unique_ish_id() -> u32 {
+    #[allow(deprecated)]
     use std::hash::{Hash, Hasher, SipHasher};
     use std::time::Instant;
 

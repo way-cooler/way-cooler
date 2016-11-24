@@ -152,9 +152,11 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn keypress() {
         require_rustwlc!();
         use super::super::keys::KeyPress;
+        #[allow(deprecated)]
         use std::hash::{SipHasher, Hash};
 
         let press = KeyPress::from_key_names(&["Ctrl"], "p")
