@@ -90,11 +90,3 @@ pub fn try_lock_action() -> Result<MutexGuard<'static, Option<Action>>,
                                                          Option<Action>>>> {
     PREV_ACTION.try_lock()
 }
-
-pub fn tree_as_json() -> Json {
-    if let Ok(tree) = try_lock_tree() {
-        tree.0.to_json()
-    } else {
-        Json::Null
-    }
-}
