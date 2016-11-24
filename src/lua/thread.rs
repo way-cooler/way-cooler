@@ -8,7 +8,7 @@ use std::fmt::Result as FmtResult;
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 
-use hlua::{Lua, LuaError};
+use hlua::{Lua, LuaError, functions_read};
 
 use super::types::*;
 use super::rust_interop;
@@ -24,6 +24,7 @@ lazy_static! {
 
 const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
 const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
+const INIT_LUA_FUNC: &'static str = "way_cooler_init";
 
 /// Struct sent to the Lua query
 struct LuaMessage {
@@ -118,6 +119,12 @@ pub fn init() {
     else {
         info!("Skipping config search");
     }
+
+    // Call the special init hook function that we read from the init file
+    lua.get(INIT_LUA_FUNC)
+        .map(|mut f: functions_read::LuaFunction<_>|  f.call().unwrap_or_else(|err| {
+            error!("Lua function \"{}\" returned an error: {:?}", INIT_LUA_FUNC, err);
+        }));
 
     // Only ready after loading libs
     *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;

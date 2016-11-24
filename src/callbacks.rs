@@ -5,16 +5,10 @@ use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::*;
 use rustwlc::input::{pointer, keyboard};
 
-use rustc_serialize::json::Json;
-use std::sync::Arc;
-use std::thread;
-
-use registry::{self, RegistryGetData};
 use super::keys::{self, KeyPress, KeyEvent};
 use super::layout::{Action, try_lock_tree, try_lock_action, ContainerType, MovementError, TreeError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
-use super::background;
 
 /// If the event is handled by way-cooler
 const EVENT_HANDLED: bool = true;
@@ -311,27 +305,6 @@ pub extern fn compositor_ready() {
     info!("Preparing compositor!");
     info!("Initializing Lua...");
     lua::init();
-    info!("Loading background...");
-    let maybe_color: Result<Arc<Json>, ()> = registry::get_data("background")
-        .map(RegistryGetData::resolve).and_then(|(_, data)| {
-            Ok(data)
-        }).map_err(|_| ());
-    if let Ok(color) = maybe_color {
-        match *color {
-            Json::F64(hex_color) => {
-                for output in WlcOutput::list() {
-                    let color = background::Color::from_u32(hex_color as u32);
-                    // different thread for each output.
-                    thread::spawn(move || {background::generate_solid_background(color, output.clone());});
-                }
-            }
-            _ => {
-                error!("Non-solid color backgrounds not yet supported, {:?}", color);
-            }
-        }
-    } else {
-        warn!("Couldn't read background value");
-    }
 }
 
 pub extern fn compositor_terminating() {
