@@ -553,7 +553,19 @@ impl LayoutTree {
             }
         }
         validate_edge_count(self, self.tree.root_ix());
+        let root_ix = self.tree.root_ix();
+        for node_ix in self.tree.follow_path_until(root_ix, ContainerType::View) {
+            if self.tree[node_ix].floating() {
+                error!("{:?} cannot be both on the active path and floating!\n{:#?}",
+                       node_ix, self);
+                panic!("Found node that was on the active path and floating!");
+            }
+        }
+    }
 
+    /// Validates the tree
+    #[cfg(debug_assertions)]
+    pub fn validate_path(&self) {
         // Ensure there is only one active path from the root
         let mut next_ix = Some(self.tree.root_ix());
         while let Some(cur_ix) = next_ix {
@@ -568,21 +580,34 @@ impl LayoutTree {
                     panic!("Divergent paths detected!");
                 }  else if weight.active {
                     flipped = true;
+                    next_ix = Some(child_ix);
                 }
             }
-        }
-        let root_ix = self.tree.root_ix();
-        for node_ix in self.tree.follow_path_until(root_ix, ContainerType::View) {
-            if self.tree[node_ix].floating() {
-                error!("{:?} cannot be both on the active path and floating!\n{:#?}",
-                       node_ix, self);
-                panic!("Found node that was on the active path and floating!");
+            if next_ix.is_none() {
+                match self.tree[cur_ix].get_type() {
+                    ContainerType::Root | ContainerType::View | ContainerType::Container => {}
+                    container => {
+                        //warn!("Path: {:#?}", self.tree.active_path());
+                        let children = self.tree.children_of(cur_ix);
+                        if children.len() != 0 {
+                            warn!("{:#?}", self);
+                            error!("{:?}", children);
+                            error!("Path did not end at a container/view, ended at {:?}!",
+                                container);
+                            error!("Path: {:?}", self.tree.active_path());
+                            panic!("Active path was invalid");
+                        }
+                    }
+                }
             }
         }
     }
 
     #[cfg(not(debug_assertions))]
     pub fn validate(&self) {}
+
+    #[cfg(not(debug_assertions))]
+    pub fn validate_path(&self) {}
 }
 
 #[cfg(test)]
