@@ -1,7 +1,7 @@
 [package]
 name = "way-cooler"
 description = "Customizeable Wayland compositor written in Rust"
-version = "0.3.3"
+version = "0.4.0"
 repository = "https://github.com/Immington-Industries/way-cooler/"
 keywords = ["Wayland", "compositor", "window", "manager", "wlc"]
 readme = "README.md"
