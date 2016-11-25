@@ -150,8 +150,15 @@ impl LayoutTree {
         self.validate_path();
     }
 
-    /// Moves the current active container to a new workspace
-    pub fn send_active_to_workspace(&mut self, id: Uuid, name: &str) {
+    /// Moves the active container to a new workspace.
+    pub fn send_active_to_workspace(&mut self, name: &str) {
+        if let Some(active_ix) = self.active_container {
+            let id = self.tree[active_ix].get_id();
+            self.send_to_workspace(id, name);
+        }
+    }
+    /// Moves a container to a new workspace
+    pub fn send_to_workspace(&mut self, id: Uuid, name: &str) {
         let node_ix = self.tree.lookup_id(id);
         // Ensure focus
         if let Some(active_ix) = node_ix.or(self.active_container) {
