@@ -1216,4 +1216,28 @@ pub mod tests {
         assert_eq!(tree.container_in_dir(fourth_view_id, Direction::Right).unwrap().1,
                    sub_container_id);
     }
+
+
+    #[test]
+    fn switch_workspaces_does_not_invalidate_path() {
+        let mut tree = basic_tree();
+        tree.validate_path();
+        tree.switch_to_workspace("2");
+        tree.validate_path();
+        tree.switch_to_workspace("3");
+        tree.validate_path();
+        tree.switch_to_workspace("1");
+
+        // Try sending things to other workspaces
+        tree.send_active_to_workspace("3");
+        tree.validate_path();
+        tree.switch_to_workspace("2");
+        tree.validate_path();
+        tree.switch_to_workspace("3");
+        tree.validate_path();
+        tree.send_active_to_workspace("2");
+        tree.validate_path();
+        tree.switch_to_workspace("2");
+        tree.validate_path();
+    }
 }
