@@ -945,12 +945,13 @@ pub mod tests {
         let mut tree = basic_tree();
         /* Make sure sending to the current workspace does nothing */
         let old_view = tree.tree[tree.active_container.unwrap()].clone();
-        tree.send_active_to_workspace("1");
+        tree.send_active_to_workspace(old_view.get_id(), "1");
         assert_eq!(old_view, tree.tree[tree.active_container.unwrap()]);
         //let old_view = tree.tree[tree.active_container.unwrap()].clone();
-        tree.send_active_to_workspace("3");
+        tree.send_active_to_workspace(old_view.get_id(), "3");
         // Trying to send the root container does nothing
-        tree.send_active_to_workspace("3");
+        let root_container_id = tree.tree[tree.active_container.unwrap()].get_id();
+        tree.send_active_to_workspace(root_container_id, "3");
         let active_ix = tree.active_container.unwrap();
         assert!(tree.tree.is_root_container(active_ix));
         tree.switch_to_workspace("3");
@@ -993,7 +994,8 @@ pub mod tests {
             },
             _ => unreachable!()
         }
-        tree.toggle_cardinal_tiling();
+        let id = tree.get_active_container().unwrap().get_id();
+        tree.toggle_cardinal_tiling(id).unwrap();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
@@ -1003,7 +1005,7 @@ pub mod tests {
             _ => unreachable!()
         }
         // and back again
-        tree.toggle_cardinal_tiling();
+        tree.toggle_cardinal_tiling(id).unwrap();
         let parent = tree.tree.parent_of(tree.active_container.unwrap()).unwrap();
         match tree.tree[parent] {
             Container::Container { ref layout, .. } => {
@@ -1144,7 +1146,8 @@ pub mod tests {
         assert!(tree.container_in_dir(second_view_id, Direction::Down).is_err());
         assert!(tree.container_in_dir(first_view_id, Direction::Up).is_err());
         assert!(tree.container_in_dir(first_view_id, Direction::Down).is_err());
-        tree.toggle_cardinal_tiling();
+        let id = tree.get_active_container().unwrap().get_id();
+        tree.toggle_cardinal_tiling(id).expect("Could not tile active container");
         assert_eq!(tree.container_in_dir(second_view_id, Direction::Up).unwrap().1,
                    first_view_id);
         assert_eq!(tree.container_in_dir(first_view_id, Direction::Down).unwrap().1,
