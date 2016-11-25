@@ -970,12 +970,13 @@ pub mod tests {
         let mut tree = basic_tree();
         /* Make sure sending to the current workspace does nothing */
         let old_view = tree.tree[tree.active_container.unwrap()].clone();
-        tree.send_active_to_workspace("1");
+        tree.send_active_to_workspace(old_view.get_id(), "1");
         assert_eq!(old_view, tree.tree[tree.active_container.unwrap()]);
         //let old_view = tree.tree[tree.active_container.unwrap()].clone();
-        tree.send_active_to_workspace("3");
+        tree.send_active_to_workspace(old_view.get_id(), "3");
         // Trying to send the root container does nothing
-        tree.send_active_to_workspace("3");
+        let root_container_id = tree.tree[tree.active_container.unwrap()].get_id();
+        tree.send_active_to_workspace(root_container_id, "3");
         let active_ix = tree.active_container.unwrap();
         assert!(tree.tree.is_root_container(active_ix));
         tree.switch_to_workspace("3");
