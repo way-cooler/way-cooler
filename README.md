@@ -31,7 +31,8 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 - i3-style tiling
   * Horizontal/vertical layouts
   * Nest containers with different layouts
-- Client application support via an IPC
+  * Floating windows per workspace
+- Client application support via the D-Bus IPC
   * See an example application [here](https://github.com/Immington-Industries/Way-Cooler-Example-Clients). It displays the tree in a somewhat organized format, and is actually really helpful for both debugging the tree and understanding how subcontainers work.
   * Enables dynamic configuration at runtime, without having to reload a configuration file
   * Allows extensions of the window manager to exist as separate programs talking over the IPC
@@ -43,7 +44,6 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
 ## Planned Features
 
 - i3 tabbed/stacked tiling
-- Floating windows
 - Tiling window through configurable Lua scripts (awesome-style)
 - Server-side borders around window clients
 - Swappable status bars/docs/menus
@@ -105,6 +105,8 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 - `Alt+Shift+<arrow-key>` Moves active container in that direction
 - `Alt+<number-key>` Switches the current workspace
 - `Alt+shift+<number-key>` Moves the focused container to another workspace
+- `Alt+shift+space` Make a window floating
+- `Alt+space` Change focus between tiled and floating windows
 
 # Contributors
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
