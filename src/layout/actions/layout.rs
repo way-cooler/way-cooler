@@ -565,7 +565,10 @@ impl LayoutTree {
                 };
                 handle.set_geometry(ResizeEdge::empty(), new_geometry);
             },
-            _ => panic!("Can only normalize the view on a view or container")
+            container => {
+                error!("Tried to normalize a {:#?}", container);
+                panic!("Can only normalize the view on a view or container")
+            }
         }
     }
 }
