@@ -65,7 +65,6 @@ mod commands;
 mod ipc;
 
 mod layout;
-mod background;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const MODULE_PATH: &'static str = "/proc/modules";
