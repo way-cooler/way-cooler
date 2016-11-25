@@ -1,4 +1,5 @@
 use petgraph::graph::NodeIndex;
+use uuid::Uuid;
 use rustwlc::{Geometry, Point};
 use super::super::LayoutTree;
 use super::super::core::container::{Container, ContainerType};
@@ -13,7 +14,9 @@ impl LayoutTree {
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
         let active_index = self.active_ix_of(ContainerType::Output)
-            .or_else(|| self.tree.follow_path_until(self.tree.root_ix(), ContainerType::Output).ok())
+            .or_else(|| {
+                self.tree.follow_path_until(self.tree.root_ix(), ContainerType::Output).ok()
+            })
             .expect("get_or_make_wksp: Couldn't get output");
         let workspace_ix = self.tree.workspace_ix_by_name(name).unwrap_or_else(|| {
             let root_ix = self.init_workspace(name.to_string(), active_index);
@@ -126,9 +129,10 @@ impl LayoutTree {
     }
 
     /// Moves the current active container to a new workspace
-    pub fn send_active_to_workspace(&mut self, name: &str) {
+    pub fn send_active_to_workspace(&mut self, id: Uuid, name: &str) {
+        let node_ix = self.tree.lookup_id(id);
         // Ensure focus
-        if let Some(active_ix) = self.active_container {
+        if let Some(active_ix) = node_ix.or(self.active_container) {
             let curr_work_ix = self.active_ix_of(ContainerType::Workspace)
                 .expect("send_active: Not currently in a workspace!");
             if active_ix == self.tree.children_of(curr_work_ix)[0] {
