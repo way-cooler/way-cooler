@@ -381,7 +381,10 @@ impl Tree {
 
     /// Moves the active container to a workspace
     pub fn send_active_to_workspace(&mut self, workspace_name: &str) -> CommandResult {
-        self.0.send_active_to_workspace(workspace_name);
+        let active_id = try!(self.0.get_active_container()
+            .map(|container| container.get_id())
+            .ok_or(TreeError::NoActiveContainer));
+        self.0.send_active_to_workspace(active_id, workspace_name);
         Ok(())
     }
 
@@ -404,9 +407,8 @@ impl Tree {
         }
     }
 
-    // TODO Fix this so that it actually uses the uuid
     pub fn send_to_workspace(&mut self, id: Uuid, workspace_name: &str) -> CommandResult {
-        self.0.send_active_to_workspace(workspace_name);
+        self.0.send_active_to_workspace(id, workspace_name);
         Ok(())
     }
 
