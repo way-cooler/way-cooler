@@ -241,7 +241,7 @@ impl LayoutTree {
     }
 
     /// Add a new view container with the given WlcView to the active container
-    pub fn add_view(&mut self, view: WlcView) -> CommandResult {
+    pub fn add_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
         if let Some(mut active_ix) = self.active_container {
             let parent_ix = self.tree.parent_of(active_ix)
                 .expect("Active container had no parent");
@@ -258,7 +258,8 @@ impl LayoutTree {
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
-            return self.set_active_node(view_ix)
+            try!(self.set_active_node(view_ix));
+            return Ok(&self.tree[view_ix])
         }
         self.validate();
         Err(TreeError::NoActiveContainer)

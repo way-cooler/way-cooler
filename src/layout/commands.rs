@@ -267,6 +267,7 @@ impl Tree {
 
     /// Adds a view to the workspace of the active container
     pub fn add_view(&mut self, view: WlcView) -> CommandResult {
+        // TODO Move this out of commands
         let tree = &mut self.0;
         let output = view.get_output();
         if tree.get_active_container().is_none() {
@@ -276,14 +277,14 @@ impl Tree {
         let v_type = view.get_type();
         let v_class = view.get_class();
         // If it is empty, don't add to tree
-        if v_type != ViewType::empty() {
+        /*if v_type != ViewType::empty() {
             // Now focused on something outside the tree,
             // have to unset the active container
             if !tree.active_is_root() {
                 tree.unset_active_container();
             }
             return Ok(())
-        }
+        }*/
         if v_class.as_str() == "Background" {
             info!("Setting background: {}", view.get_title());
             view.send_to_back();
@@ -297,8 +298,12 @@ impl Tree {
             view.set_geometry(ResizeEdge::empty(), fullscreen);
             return Ok(());
         }
-        try!(tree.add_view(view));
-        tree.normalize_view(view);
+        let c_id = try!(tree.add_view(view)).get_id();
+        if v_type != ViewType::empty() {
+            try!(tree.float_container(c_id));
+        } else {
+            tree.normalize_view(view);
+        }
         tree.layout_active_of(ContainerType::Workspace);
         Ok(())
     }
