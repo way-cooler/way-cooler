@@ -1241,4 +1241,13 @@ pub mod tests {
         tree.switch_to_workspace("2");
         tree.validate_path();
     }
+
+    #[test]
+    fn empty_workspace_float_test() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("3");
+        assert_eq!(tree.get_active_container().unwrap().get_type(), ContainerType::Container);
+        let uuid = tree.get_active_container().unwrap().get_id();
+        assert!(tree.float_container(uuid).is_ok());
+    }
 }
