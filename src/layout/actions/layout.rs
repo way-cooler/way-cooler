@@ -8,7 +8,7 @@ use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
     /// The node behind the UUID was asked to ground when it was already grounded.
     AlreadyGrounded(Uuid),

@@ -17,7 +17,7 @@ use super::path::{Path, PathBuilder};
 
 use layout::{Container, ContainerType, Handle};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GraphError {
     /// These nodes were not siblings.
     NotSiblings(NodeIndex, NodeIndex),

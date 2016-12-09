@@ -8,7 +8,7 @@ use super::super::commands::{CommandResult};
 use super::super::core::container::{ContainerType, MIN_SIZE};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ResizeErr {
     /// Expected the node associated with the UUID to be floating.
     ExpectedFloating(Uuid),
