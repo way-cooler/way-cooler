@@ -234,6 +234,9 @@ impl LayoutTree {
     /// it will remain pointing at the previous parent container.
     pub fn float_container(&mut self, id: Uuid) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
+        if self.root_container_ix() == Some(node_ix) {
+            return Err(TreeError::InvalidOperationOnRootContainer(id))
+        }
         if self.tree[node_ix].floating() {
             warn!("Trying to float an already floating container");
             return Err(TreeError::Layout(LayoutErr::AlreadyFloating(id)));

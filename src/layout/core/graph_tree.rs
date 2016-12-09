@@ -592,14 +592,15 @@ impl InnerTree {
     /// Note this does *NOT* check the given node.
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Result<NodeIndex, GraphError> {
-        let mut curr_ix = node_ix;
-        while let Ok(parent_ix) = self.parent_of(curr_ix) {
+        let mut cur_ix = node_ix;
+        while let Ok(parent_ix) = self.parent_of(cur_ix) {
             let parent = self.graph.node_weight(parent_ix)
                 .expect("ancestor_of_type: parent_of invalid");
             if parent.get_type() == container_type {
                 return Ok(parent_ix)
             }
-            curr_ix = parent_ix;
+            assert!(cur_ix != parent_ix, "Parent of node was itself!");
+            cur_ix = parent_ix;
         }
         return Err(GraphError::NotFound(container_type, node_ix));
     }
