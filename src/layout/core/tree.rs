@@ -18,7 +18,7 @@ use super::super::core::graph_tree::GraphError;
 
 use super::super::commands::CommandResult;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Direction {
     Up,
     Down,
@@ -70,7 +70,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TreeError {
     /// A Node can not be found in the tree with this Node Handle.
     NodeNotFound(Uuid),
@@ -1248,6 +1248,6 @@ pub mod tests {
         tree.switch_to_workspace("3");
         assert_eq!(tree.get_active_container().unwrap().get_type(), ContainerType::Container);
         let uuid = tree.get_active_container().unwrap().get_id();
-        assert!(tree.float_container(uuid).is_ok());
+        assert_eq!(tree.float_container(uuid), Err(TreeError::InvalidOperationOnRootContainer(uuid)));
     }
 }

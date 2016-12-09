@@ -7,7 +7,7 @@ use petgraph::graph::NodeIndex;
 use rustwlc::WlcView;
 use uuid::Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FocusError {
     /// Reached a container where we can keep climbing the tree no longer.
     ///
