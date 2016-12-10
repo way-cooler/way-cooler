@@ -243,8 +243,8 @@ impl LayoutTree {
     /// Add a new view container with the given WlcView to the active container
     pub fn add_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
         if let Some(mut active_ix) = self.active_container {
-            let parent_ix = self.tree.parent_of(active_ix)
-                .expect("Active container had no parent");
+            let parent_ix = try!(self.tree.parent_of(active_ix)
+                                 .map_err(|err| TreeError::PetGraph(err)));
             // Get the previous position before correcting the container
             let prev_pos = (*self.tree.get_edge_weight_between(parent_ix, active_ix)
                 .expect("Could not get edge weight between active and active parent")).deref()
@@ -259,6 +259,21 @@ impl LayoutTree {
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
             try!(self.set_active_node(view_ix));
+            return Ok(&self.tree[view_ix])
+        }
+        self.validate();
+        Err(TreeError::NoActiveContainer)
+    }
+
+    /// Adds a new view container with the given WlcView to the workspace of the active container.
+    ///
+    /// The view is automatically made floating, with no modifications to its geometry.
+    pub fn add_floating_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
+        if let Some(root_ix) = self.root_container_ix() {
+            let view_ix = self.tree.add_child(root_ix,
+                                             Container::new_view(view),
+                                             false);
+            self.tree[view_ix].set_floating(true);
             return Ok(&self.tree[view_ix])
         }
         self.validate();

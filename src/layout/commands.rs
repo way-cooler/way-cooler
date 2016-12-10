@@ -267,17 +267,16 @@ impl Tree {
 
     /// Adds a view to the workspace of the active container
     pub fn add_view(&mut self, view: WlcView) -> CommandResult {
-        // TODO Move this out of commands
         let tree = &mut self.0;
         let output = view.get_output();
         if tree.get_active_container().is_none() {
             return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
-        let c_id = try!(tree.add_view(view)).get_id();
         if view.get_type() != ViewType::empty() {
-            try!(tree.float_container(c_id));
+            try!(tree.add_floating_view(view));
         } else {
+            try!(tree.add_view(view));
             tree.normalize_view(view);
         }
         tree.layout_active_of(ContainerType::Workspace);
