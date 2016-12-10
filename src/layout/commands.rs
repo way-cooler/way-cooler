@@ -5,7 +5,7 @@ use super::{Action, ActionErr, Container, ContainerType, Direction, Handle, Layo
 use super::Tree;
 
 use uuid::Uuid;
-use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -274,32 +274,8 @@ impl Tree {
             return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
-        let v_type = view.get_type();
-        let v_class = view.get_class();
-        // If it is empty, don't add to tree
-        /*if v_type != ViewType::empty() {
-            // Now focused on something outside the tree,
-            // have to unset the active container
-            if !tree.active_is_root() {
-                tree.unset_active_container();
-            }
-            return Ok(())
-        }*/
-        if v_class.as_str() == "Background" {
-            info!("Setting background: {}", view.get_title());
-            view.send_to_back();
-            let output = view.get_output();
-            let resolution = output.get_resolution()
-                .expect("Couldn't get output resolution");
-            let fullscreen = Geometry {
-                origin: Point { x: 0, y: 0 },
-                size: resolution
-            };
-            view.set_geometry(ResizeEdge::empty(), fullscreen);
-            return Ok(());
-        }
         let c_id = try!(tree.add_view(view)).get_id();
-        if v_type != ViewType::empty() {
+        if view.get_type() != ViewType::empty() {
             try!(tree.float_container(c_id));
         } else {
             tree.normalize_view(view);
