@@ -116,6 +116,11 @@ function way_cooler_init()
   end
 end
 
+--- Execute some code when Way Cooler restarts
+function way_cooler_restart()
+    os.execute("pkill way-cooler-bg")
+end
+
 -- To use plugins such as bars, or to start other programs on startup,
 -- call util.exec.spawn_once, which will not spawn copies after a config reload.
 

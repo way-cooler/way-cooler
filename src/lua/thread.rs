@@ -24,7 +24,9 @@ lazy_static! {
 
 pub const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
 pub const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
+
 const INIT_LUA_FUNC: &'static str = "way_cooler_init";
+const RESTART_LUA_FUNC: &'static str = "way_cooler_restart";
 
 /// Struct sent to the Lua query
 struct LuaMessage {
@@ -171,9 +173,11 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
         },
 
         LuaQuery::Restart => {
-            use std::time::Duration;
             trace!("Received restart signal!");
-            error!("Lua thread restart not supported!");
+            lua.get(RESTART_LUA_FUNC)
+                .map(|mut f: functions_read::LuaFunction<_>|  f.call().unwrap_or_else(|err| {
+                    error!("Lua function \"{}\" returned an error: {:?}", RESTART_LUA_FUNC, err);
+                }));
 
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
             thread_send(request.reply, LuaResponse::Pong);
@@ -182,7 +186,6 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
             let _new_handle = thread::Builder::new()
                 .name("Lua re-init".to_string())
                 .spawn(move || {
-                    //thread::sleep(Duration::from_secs(4));
                     init();
                 });
 
