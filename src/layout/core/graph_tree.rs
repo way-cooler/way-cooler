@@ -626,6 +626,7 @@ impl InnerTree {
 
     /// Attempts to get a descendant of the matching type.
     /// Looks down the right side of the tree first
+    #[allow(dead_code)]
     pub fn descendant_of_type_right(&self, node_ix: NodeIndex,
                                     container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         if let Some(container) = self.get(node_ix) {
