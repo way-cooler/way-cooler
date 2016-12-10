@@ -22,8 +22,8 @@ lazy_static! {
     pub static ref RUNNING: RwLock<bool> = RwLock::new(false);
 }
 
-const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
-const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
+pub const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
+pub const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
 const INIT_LUA_FUNC: &'static str = "way_cooler_init";
 
 /// Struct sent to the Lua query
@@ -106,7 +106,6 @@ pub fn init() {
     if use_config {
         match maybe_init_file {
             Ok(init_file) => {
-                // TODO defaults here are important
                 let _: () = lua.execute_from_reader(init_file)
                     .expect("Unable to load init file");
                 debug!("Read init.lua successfully");
@@ -183,7 +182,7 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
             let _new_handle = thread::Builder::new()
                 .name("Lua re-init".to_string())
                 .spawn(move || {
-                    thread::sleep(Duration::from_secs(4));
+                    //thread::sleep(Duration::from_secs(4));
                     init();
                 });
 

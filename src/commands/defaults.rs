@@ -10,6 +10,7 @@ use registry::{self, RegistryError, RegistryGetData};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
+use super::super::keys;
 
 /// Register the default commands in the API.
 ///
@@ -28,6 +29,7 @@ pub fn register_defaults() {
     register("print_pointer", Arc::new(print_pointer));
 
     register("dmenu_eval", Arc::new(dmenu_eval));
+    register("way_cooler_restart", Arc::new(way_cooler_restart));
     register("dmenu_lua_dofile", Arc::new(dmenu_lua_dofile));
 
     /// Generate switch_workspace methods and register them
@@ -181,4 +183,11 @@ fn dmenu_eval() {
                .expect("Unable to contact Lua").recv().expect("Can't get reply");
            trace!("Lua result: {:?}", result)
     }).expect("Unable to spawn thread");
+}
+
+fn way_cooler_restart() {
+    keys::clear_keys();
+    if let Err(err) = lua::send(lua::LuaQuery::Restart) {
+        warn!("Could not send restart signal, {:?}", err);
+    }
 }

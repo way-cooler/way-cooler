@@ -12,6 +12,8 @@ use commands;
 use keys::{self, KeyPress, KeyEvent};
 use convert::json::{json_to_lua, lua_to_json};
 
+use super::thread::{RUNNING, ERR_LOCK_RUNNING};
+
 type ValueResult = Result<AnyLuaValue, &'static str>;
 
 /// We've `include!`d the code which initializes from the Lua side.
@@ -82,8 +84,14 @@ fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
 fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
     let json = try!(lua_to_json(value)
                     .map_err(|_| "Unable to convert value to JSON!"));
-    registry::set_json(key.clone(), json.clone())
-        .map(|data| data.call(json.clone()))
+    match *RUNNING.read().expect(ERR_LOCK_RUNNING) {
+        true => {
+            registry::set_json(key.clone(), json.clone())
+        },
+        false => {
+            registry::set_json_ignore_flags(key.clone(), json.clone())
+        }
+    }.map(|data| data.call(json.clone()))
         .or_else(|err| {
             match err {
                 RegistryError::InvalidOperation => {
