@@ -243,10 +243,6 @@ impl LayoutTree {
         }
         let output_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Output)
                              .map_err(|err| TreeError::PetGraph(err)));
-        let handle = match self.tree[node_ix].get_handle() {
-            Some(Handle::View(view)) => view,
-            _ => unreachable!()
-        };
         let output_size = match self.tree[output_ix] {
             Container::Output { handle, .. } => {
                 handle.get_resolution().expect("Output had no resolution")
@@ -258,28 +254,25 @@ impl LayoutTree {
             try!(container.set_floating(true)
                 .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
                                                                 ContainerType::Container))));
-            // We float pop-ups as soon as they spawn, this is so we don't resize them
-            if handle.get_type() == ViewType::empty() {
-                let new_geometry = Geometry {
-                        size: Size {
-                            h: output_size.h / 2,
-                            w: output_size.w / 2
-                        },
-                        origin: Point {
-                            x: (output_size.w / 2 - output_size.w / 4) as i32 ,
-                            y: (output_size.h / 2 - output_size.h / 4) as i32
-                        }
-                    };
-                match *container {
-                    Container::View { handle, .. } => {
-                        handle.set_geometry(ResizeEdge::empty(), new_geometry);
+            let new_geometry = Geometry {
+                    size: Size {
+                        h: output_size.h / 2,
+                        w: output_size.w / 2
                     },
-                    Container::Container { ref mut geometry, .. } => {
-                        *geometry = new_geometry
-                    },
-                    _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
-                                                                    ContainerType::Container)))
-                }
+                    origin: Point {
+                        x: (output_size.w / 2 - output_size.w / 4) as i32 ,
+                        y: (output_size.h / 2 - output_size.h / 4) as i32
+                    }
+                };
+            match *container {
+                Container::View { handle, .. } => {
+                    handle.set_geometry(ResizeEdge::empty(), new_geometry);
+                },
+                Container::Container { ref mut geometry, .. } => {
+                    *geometry = new_geometry
+                },
+                _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                                ContainerType::Container)))
             }
         }
         let root_ix = self.tree.root_ix();
