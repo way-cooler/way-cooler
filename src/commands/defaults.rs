@@ -109,7 +109,7 @@ fn launch_terminal() {
         .map(RegistryGetData::resolve).and_then(|(_, data)| {
         data.as_string().map(str::to_string)
             .ok_or(RegistryError::KeyNotFound)
-    }).unwrap_or("weston_terminal".to_string());
+    }).unwrap_or("weston-terminal".to_string());
 
     Command::new("sh").arg("-c")
         .arg(command)
