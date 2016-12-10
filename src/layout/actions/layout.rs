@@ -1,11 +1,11 @@
 use std::cmp;
 
 use petgraph::graph::NodeIndex;
-use rustwlc::{Geometry, Point, Size, ResizeEdge, ViewType};
+use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
-use super::super::core::container::{Container, ContainerType, Layout, Handle};
+use super::super::core::container::{Container, ContainerType, Layout};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

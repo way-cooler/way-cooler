@@ -232,6 +232,7 @@ impl LayoutTree {
     }
 
     /// Determines if the active container is the root container
+    #[allow(dead_code)]
     pub fn active_is_root(&self) -> bool {
         if let Some(active_ix) = self.active_container {
             self.tree.is_root_container(active_ix)
@@ -273,7 +274,8 @@ impl LayoutTree {
             let view_ix = self.tree.add_child(root_ix,
                                              Container::new_view(view),
                                              false);
-            self.tree[view_ix].set_floating(true);
+            self.tree[view_ix].set_floating(true)
+                .expect("Could not float view we just made");
             return Ok(&self.tree[view_ix])
         }
         self.validate();
