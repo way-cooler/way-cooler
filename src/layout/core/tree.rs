@@ -571,14 +571,6 @@ impl LayoutTree {
             }
         }
         validate_edge_count(self, self.tree.root_ix());
-        let root_ix = self.tree.root_ix();
-        for node_ix in self.tree.follow_path_until(root_ix, ContainerType::View) {
-            if self.tree[node_ix].floating() {
-                error!("{:?} cannot be both on the active path and floating!\n{:#?}",
-                       node_ix, self);
-                panic!("Found node that was on the active path and floating!");
-            }
-        }
     }
 
     /// Validates the tree

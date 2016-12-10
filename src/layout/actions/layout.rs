@@ -278,13 +278,9 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
                              .map_err(|_| TreeError::NoActiveContainer));
-        let next_ix = self.tree.next_sibling(node_ix)
-            .unwrap_or_else(|| self.tree.parent_of(node_ix).expect("node_ix had no parent!"));
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
-        if !self.tree[next_ix].floating() {
-            self.tree.set_ancestor_paths_active(next_ix);
-        }
+        self.tree.set_ancestor_paths_active(node_ix);
         let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
         self.layout(parent_ix);
         Ok(())

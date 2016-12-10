@@ -711,12 +711,6 @@ impl InnerTree {
     /// If a divergent path is detected, that edge is deactivated in favor of
     /// the one that leads to this node.
     pub fn set_ancestor_paths_active(&mut self, mut node_ix: NodeIndex) {
-        if cfg!(debug_assertions) {
-            if self[node_ix].floating() {
-                error!("{:?} was set active, but it is floating!\n{:#?}", node_ix, self);
-                panic!("A node that was floating was set to be active!")
-            }
-        }
         // Make sure that any children of this node are inactive
         for child_ix in self.children_of(node_ix) {
             let edge_ix = self.graph.find_edge(node_ix, child_ix)
@@ -742,11 +736,8 @@ impl InnerTree {
         }
     }
 
-    /// Gets the next sibling to focus on, assuming child_ix would be removed from parent_ix.
-    /// If there are no other siblings to focus on, parent_ix is returned.
-    ///
-    /// # Panics
-    /// This will panic if `child_ix` is not a child of `parent_ix`
+    /// Gets the next sibling (if any) to focus on, assuming node_ix would be removed
+    /// from its parent.
     pub fn next_sibling(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
         let parent_ix = self.parent_of(node_ix)
             .expect("Could not get parent of node!");
