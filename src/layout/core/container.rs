@@ -7,6 +7,8 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size};
 
+use super::border::{Borders};
+
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Handle {
@@ -82,6 +84,8 @@ pub enum Container {
         geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
+        /// The border drawn to the screen
+        borders: Borders,
     },
     /// View or window
     View {
@@ -91,6 +95,8 @@ pub enum Container {
         floating: bool,
         /// UUID associated with container, client program can use container
         id: Uuid,
+        /// The border drawn to the screen
+        borders: Borders,
     }
 }
 
@@ -124,7 +130,8 @@ impl Container {
             layout: Layout::Horizontal,
             floating: false,
             geometry: geometry,
-            id: Uuid::new_v4()
+            id: Uuid::new_v4(),
+            borders: Borders::new(None, None, None, None)
         }
     }
 
@@ -133,7 +140,8 @@ impl Container {
         Container::View {
             handle: handle,
             floating: false,
-            id: Uuid::new_v4()
+            id: Uuid::new_v4(),
+            borders: Borders::new(None, None, None, None)
         }
     }
 

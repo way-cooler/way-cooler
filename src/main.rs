@@ -23,6 +23,7 @@ extern crate nix;
 extern crate petgraph;
 extern crate uuid;
 extern crate dbus;
+extern crate cairo;
 
 #[macro_use]
 mod macros;
