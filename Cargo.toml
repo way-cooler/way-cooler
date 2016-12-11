@@ -24,9 +24,7 @@ nix = "0.6"
 uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
 wayland-sys = { version = "^0.6.0", features = ["client", "dlopen"] }
 getopts = "0.2"
+cairo-rs = "0.1.1"
 
 [dev-dependencies]
 dummy-rustwlc = "0.5.1"
-
-[features]
-static-wlc = ["rustwlc/static-wlc"]
