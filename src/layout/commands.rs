@@ -285,9 +285,7 @@ impl Tree {
 
     /// Attempts to remove a view from the tree. If it is not in the tree it fails.
     ///
-    /// This will NOT close the handle behind the view, and should only be called
-    /// on views that have already been slated for removal from the wlc pool.
-    /// Otherwise you leak a `WlcView`
+    /// This will close the handle behind the view.
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         let result;
         match self.0.remove_view(&view) {
