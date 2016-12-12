@@ -111,7 +111,7 @@ function way_cooler_init()
   if not status then
     print "Could not find way-cooler-bg! Please install it"
   else
-    os.execute("way-cooler-bg " ..  way_cooler.background)
+    os.execute("way-cooler-bg " ..  way_cooler.background .. " &")
   end
 end
 
