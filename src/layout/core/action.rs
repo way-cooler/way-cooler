@@ -7,7 +7,7 @@ pub struct Action {
     pub edges: ResizeEdge
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ActionErr {
     /// Tried to start an action, but an action was already in progress
     #[allow(dead_code)]

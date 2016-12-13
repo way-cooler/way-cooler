@@ -5,7 +5,7 @@ use super::{Action, ActionErr, Container, ContainerType, Direction, Handle, Layo
 use super::Tree;
 
 use uuid::Uuid;
-use rustwlc::{Geometry, Point, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -273,41 +273,19 @@ impl Tree {
             return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
-        let v_type = view.get_type();
-        let v_class = view.get_class();
-        // If it is empty, don't add to tree
-        if v_type != ViewType::empty() {
-            // Now focused on something outside the tree,
-            // have to unset the active container
-            if !tree.active_is_root() {
-                tree.unset_active_container();
-            }
-            return Ok(())
+        if view.get_type() != ViewType::empty() {
+            try!(tree.add_floating_view(view));
+        } else {
+            try!(tree.add_view(view));
+            tree.normalize_view(view);
         }
-        if v_class.as_str() == "Background" {
-            info!("Setting background: {}", view.get_title());
-            view.send_to_back();
-            let output = view.get_output();
-            let resolution = output.get_resolution()
-                .expect("Couldn't get output resolution");
-            let fullscreen = Geometry {
-                origin: Point { x: 0, y: 0 },
-                size: resolution
-            };
-            view.set_geometry(ResizeEdge::empty(), fullscreen);
-            return Ok(());
-        }
-        try!(tree.add_view(view));
-        tree.normalize_view(view);
         tree.layout_active_of(ContainerType::Workspace);
         Ok(())
     }
 
     /// Attempts to remove a view from the tree. If it is not in the tree it fails.
     ///
-    /// This will NOT close the handle behind the view, and should only be called
-    /// on views that have already been slated for removal from the wlc pool.
-    /// Otherwise you leak a `WlcView`
+    /// This will close the handle behind the view.
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         let result;
         match self.0.remove_view(&view) {

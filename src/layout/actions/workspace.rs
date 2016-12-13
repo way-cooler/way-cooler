@@ -195,6 +195,7 @@ impl LayoutTree {
 
             // Update the active container
             if let Ok(parent_ix) = maybe_active_parent {
+                self.tree.set_ancestor_paths_active(parent_ix);
                 let ctype = self.tree.node_type(parent_ix).unwrap_or(ContainerType::Root);
                 if ctype == ContainerType::Container {
                     self.focus_on_next_container(parent_ix);
