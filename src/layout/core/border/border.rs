@@ -1,8 +1,8 @@
 use std::iter;
 use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
-use std::ops::{Deref, DerefMut};
-use rustwlc::{Geometry, Size};
+use std::ops::{Deref};
+use rustwlc::{Geometry, Size, Point};
 use cairo::{Context, ImageSurface, Format, Operator, Status, SolidPattern};
 
 pub trait Border {
@@ -144,7 +144,17 @@ impl BottomBorder {
 }
 
 impl Border for BottomBorder {
-    fn render(&self, view_g: Geometry) {}
+    fn render(&self, view_g: Geometry) {
+        let Point { x, y } = self.geometry.origin;
+        let top_border_height = view_g.origin.y - self.geometry.origin.y;
+        let height = self.geometry.size.h - (top_border_height as u32 + view_g.size.h);
+        if height > 0 {
+            self.draw_line(x as f64,
+                        (y as u32 + self.geometry.size.h - height) as f64,
+                        self.geometry.size.w as f64,
+                        height as f64);
+        }
+    }
 
     fn get_context(&self) -> &Context {
         &self.context
@@ -163,7 +173,13 @@ impl TopBorder {
 }
 
 impl Border for TopBorder {
-    fn render(&self, view_g: Geometry) {}
+    fn render(&self, view_g: Geometry) {
+        let Point { x, y } = self.geometry.origin;
+        let height = view_g.origin.y - self.geometry.origin.y;
+        if height > 0 {
+            self.draw_line(x as f64, y as f64, self.geometry.size.w as f64, height as f64);
+        }
+    }
 
     fn get_context(&self) -> &Context {
         &self.context
@@ -182,7 +198,17 @@ impl RightBorder {
 
 impl Border for RightBorder {
 
-    fn render(&self, view_g: Geometry) {}
+    fn render(&self, view_g: Geometry) {
+        let Point { x, y } = self.geometry.origin;
+        let left_border_width = (view_g.origin.x - self.geometry.origin.x) as u32;
+        let width = self.geometry.size.w - view_g.size.w - left_border_width;
+        if width > 0 {
+            self.draw_line((x as u32 + self.geometry.size.w - width) as f64,
+                           y as f64,
+                           width as f64,
+                           self.geometry.size.h as f64);
+        }
+    }
 
     fn get_context(&self) -> &Context {
         &self.context
@@ -201,7 +227,11 @@ impl LeftBorder {
 
 impl Border for LeftBorder {
 
-    fn render(&self, view_g: Geometry) {}
+    fn render(&self, view_g: Geometry) {
+        let Point { x, y } = self.geometry.origin;
+        let width = view_g.origin.x - self.geometry.origin.x;
+        self.draw_line(x as f64, y as f64, width as f64, self.geometry.size.h as f64);
+    }
 
     fn get_context(&self) -> &Context {
         &self.context
@@ -249,6 +279,7 @@ fn calculate_stride(width: u32) -> u32 {
     (32 * width + 7) / 8 + 4 & !4
 }
 
+#[allow(dead_code)]
 fn drop_data(_: Box<[u8]>) {}
 
 

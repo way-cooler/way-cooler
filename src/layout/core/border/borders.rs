@@ -1,4 +1,4 @@
-use rustwlc::{Geometry, Size};
+use rustwlc::{Geometry};
 use super::{Border, TopBorder, BottomBorder, LeftBorder, RightBorder};
 
 /// All the borders of a container (top, bottom, left, right)
@@ -29,7 +29,7 @@ impl Borders {
                            self.left.as_ref().map(|g| g as &Border),
                            self.right.as_ref().map(|g| g as &Border)];
         for border in borders.iter().flat_map(|maybe_g| maybe_g.into_iter()){
-            let foo = border.render(view_g);
+            border.render(view_g);
         }
     }
 }
