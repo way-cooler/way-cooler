@@ -1,32 +1,172 @@
 use std::iter;
-use rustwlc::{Geometry, Size};
 use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
+use std::ops::{Deref, DerefMut};
+use rustwlc::{Geometry, Size};
 use cairo::{Context, ImageSurface, Format, Operator, Status, SolidPattern};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Color {
     red: u32,
     green: u32,
     blue: u32
 }
 
+pub trait Border {
+    /// Renders the border around the geometry of a view.
+    fn render(&self, view_g: Geometry);
+
+    fn get_color(&self) -> Color;
+
+    fn get_context(&self) -> &Context;
+
+    /// Draws the line from (x, y) to (x+width,y+height) where width/height.
+    ///
+    /// You should just use the default implementation in most cases.
+    fn draw_line(&self, mut x: f64, mut y: f64, mut w: f64, mut h: f64) {
+        let Color { red, green, blue} = self.get_color();
+        let pattern = SolidPattern::from_rgb(red as f64 / 255.0,
+                                             green as f64 / 255.0,
+                                             blue as f64 / 255.0);
+        let context = self.get_context();
+        context.set_source(&pattern);
+        if w > 1.0 && h > 1.0 {
+            context.rectangle(x, y, w, h);
+            context.fill();
+        } else {
+            if w == 1.0 {
+                x += 0.5;
+                h += y;
+                w = x;
+            }
+
+            if h == 1.0 {
+                y += 0.5;
+                w += x;
+                h = y;
+            }
+
+            context.move_to(x, y);
+            context.set_line_width(1.0);
+            context.line_to(w, h);
+            context.stroke();
+        }
+    }
+}
+
 #[derive(Clone)]
 /// A border for a container.
-pub struct Border {
+pub struct BaseBorder {
     context: Context,
     thickness: u32,
     color: Color,
     geometry: Geometry
 }
 
+impl Border for BottomBorder {
+    fn render(&self, view_g: Geometry) {}
+
+    fn get_context(&self) -> &Context {
+        &self.context
+    }
+
+    fn get_color(&self) -> Color {
+        self.color
+    }
+}
+impl Border for TopBorder {
+    fn render(&self, view_g: Geometry) {}
+
+    fn get_context(&self) -> &Context {
+        &self.context
+    }
+
+    fn get_color(&self) -> Color {
+        self.color
+    }
+}
+
+impl Border for RightBorder {
+    fn render(&self, view_g: Geometry) {}
+
+    fn get_context(&self) -> &Context {
+        &self.context
+    }
+
+    fn get_color(&self) -> Color {
+        self.color
+    }
+}
+
+impl Border for LeftBorder {
+    fn render(&self, view_g: Geometry) {}
+
+    fn get_context(&self) -> &Context {
+        &self.context
+    }
+
+    fn get_color(&self) -> Color {
+        self.color
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TopBorder {
+    border: BaseBorder
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BottomBorder {
+    border: BaseBorder
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RightBorder {
+    border: BaseBorder
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LeftBorder {
+    border: BaseBorder
+}
+
+impl Deref for TopBorder {
+    type Target = BaseBorder;
+
+    fn deref(&self) -> &BaseBorder {
+        &self.border
+    }
+}
+
+impl Deref for BottomBorder {
+    type Target = BaseBorder;
+
+    fn deref(&self) -> &BaseBorder {
+        &self.border
+    }
+}
+impl Deref for RightBorder {
+    type Target = BaseBorder;
+
+    fn deref(&self) -> &BaseBorder {
+        &self.border
+    }
+}
+impl Deref for LeftBorder {
+    type Target = BaseBorder;
+
+    fn deref(&self) -> &BaseBorder {
+        &self.border
+    }
+}
+
 /// All the borders of a container (top, bottom, left, right)
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Borders {
-    top: Option<Border>,
-    bottom: Option<Border>,
-    right: Option<Border>,
-    left: Option<Border>
+    top: Option<TopBorder>,
+    bottom: Option<BottomBorder>,
+    right: Option<RightBorder>,
+    left: Option<LeftBorder>
 }
 
 impl Color {
@@ -35,7 +175,7 @@ impl Color {
     }
 }
 
-impl Border {
+impl BaseBorder {
     pub fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
         let Size { w, h } = geometry.size;
         let h = h as i32;
@@ -52,7 +192,7 @@ impl Border {
                 panic!("Cairo context failed with {:#?}", err);
             }
         }
-        Border {
+        BaseBorder {
             context: context,
             thickness: thickness,
             color: color,
@@ -62,39 +202,10 @@ impl Border {
 
     /// Renders a line, starting from (x, y) to (x + width, y + height).
     pub fn render(&self, mut x: f64, mut y: f64) {
-        let Color { red, green, blue} = self.color;
-        let Size { w, h } = self.geometry.size;
-        let mut w = w as f64;
-        let mut h = h as f64;
-        let pattern = SolidPattern::from_rgb(red as f64 / 255.0,
-                                             green as f64 / 255.0,
-                                             blue as f64 / 255.0);
-        self.context.set_source(&pattern);
-        if w > 1.0 && h > 1.0 {
-            self.context.rectangle(x, y, w, h);
-            self.context.fill();
-        } else {
-            if w == 1.0 {
-                x += 0.5;
-                h += y;
-                w = x;
-            }
-
-            if h == 1.0 {
-                y += 0.5;
-                w += x;
-                h = y;
-            }
-
-            self.context.move_to(x, y);
-            self.context.set_line_width(1.0);
-            self.context.line_to(w, h);
-            self.context.stroke();
-        }
     }
 }
 
-impl Debug for Border {
+impl Debug for BaseBorder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Debug")
             .field("thickness", &self.thickness as &Debug)
@@ -103,21 +214,21 @@ impl Debug for Border {
     }
 }
 
-impl PartialEq for Border {
-    fn eq(&self, other: &Border) -> bool {
+impl PartialEq for BaseBorder {
+    fn eq(&self, other: &BaseBorder) -> bool {
         (self.thickness == other.thickness && self.color == other.color
          && self.geometry == other.geometry)
     }
 }
 
-impl Eq for Border {}
+impl Eq for BaseBorder {}
 
-unsafe impl Send for Border {}
-unsafe impl Sync for Border {}
+unsafe impl Send for BaseBorder {}
+unsafe impl Sync for BaseBorder {}
 
 impl Borders {
-    pub fn new(top: Option<Border>, bottom: Option<Border>,
-               left: Option<Border>, right: Option<Border>) -> Self {
+    pub fn new(top: Option<TopBorder>, bottom: Option<BottomBorder>,
+               left: Option<LeftBorder>, right: Option<RightBorder>) -> Self {
         Borders {
             top: top,
             bottom: bottom,
@@ -127,9 +238,13 @@ impl Borders {
     }
 
     /// Renders each border at their respective geometries.
-    pub fn render(&self) {
-        let borders = vec![&self.top, &self.bottom, &self.left, &self.right];
-        for border in borders.iter().flat_map(|maybe_g| maybe_g.into_iter()) {
+    pub fn render(&self, view_g: Geometry) {
+        let borders = vec![self.top.as_ref().map(|g| g as &Border),
+                           self.bottom.as_ref().map(|g| g as &Border),
+                           self.left.as_ref().map(|g| g as &Border),
+                           self.right.as_ref().map(|g| g as &Border)];
+        for border in borders.iter().flat_map(|maybe_g| maybe_g.into_iter()){
+            let foo = border.render(view_g);
         }
     }
 }
