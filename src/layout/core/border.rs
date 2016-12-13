@@ -1,5 +1,5 @@
 use std::iter;
-use rustwlc::Size;
+use rustwlc::{Geometry, Size};
 use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
 use cairo::{Context, ImageSurface, Format, Operator, Status, SolidPattern};
@@ -17,7 +17,7 @@ pub struct Border {
     context: Context,
     thickness: u32,
     color: Color,
-    size: Size
+    geometry: Geometry
 }
 
 /// All the borders of a container (top, bottom, left, right)
@@ -36,11 +36,10 @@ impl Color {
 }
 
 impl Border {
-    pub fn new(size: Size, thickness: u32, color: Color) -> Self {
-        let Size { w, h } = size;
+    pub fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
+        let Size { w, h } = geometry.size;
         let h = h as i32;
         let w = w as i32;
-        // TODO Magic numbers
         let stride = calculate_stride(w as u32) as i32;
         let data: Vec<u8> = iter::repeat(0).take(w as usize * stride as usize).collect();
         let buffer = data.into_boxed_slice();
@@ -57,14 +56,14 @@ impl Border {
             context: context,
             thickness: thickness,
             color: color,
-            size: size
+            geometry: geometry
         }
     }
 
     /// Renders a line, starting from (x, y) to (x + width, y + height).
-    pub fn render(&mut self, mut x: f64, mut y: f64) {
+    pub fn render(&self, mut x: f64, mut y: f64) {
         let Color { red, green, blue} = self.color;
-        let Size { w, h } = self.size;
+        let Size { w, h } = self.geometry.size;
         let mut w = w as f64;
         let mut h = h as f64;
         let pattern = SolidPattern::from_rgb(red as f64 / 255.0,
@@ -107,7 +106,7 @@ impl Debug for Border {
 impl PartialEq for Border {
     fn eq(&self, other: &Border) -> bool {
         (self.thickness == other.thickness && self.color == other.color
-         && self.size == other.size)
+         && self.geometry == other.geometry)
     }
 }
 
@@ -124,6 +123,13 @@ impl Borders {
             bottom: bottom,
             left: left,
             right: right
+        }
+    }
+
+    /// Renders each border at their respective geometries.
+    pub fn render(&self) {
+        let borders = vec![&self.top, &self.bottom, &self.left, &self.right];
+        for border in borders.iter().flat_map(|maybe_g| maybe_g.into_iter()) {
         }
     }
 }
