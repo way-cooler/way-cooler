@@ -17,7 +17,7 @@ use super::path::{Path, PathBuilder};
 
 use layout::{Container, ContainerType, Handle};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GraphError {
     /// These nodes were not siblings.
     NotSiblings(NodeIndex, NodeIndex),
@@ -592,14 +592,15 @@ impl InnerTree {
     /// Note this does *NOT* check the given node.
     pub fn ancestor_of_type(&self, node_ix: NodeIndex,
                            container_type: ContainerType) -> Result<NodeIndex, GraphError> {
-        let mut curr_ix = node_ix;
-        while let Ok(parent_ix) = self.parent_of(curr_ix) {
+        let mut cur_ix = node_ix;
+        while let Ok(parent_ix) = self.parent_of(cur_ix) {
             let parent = self.graph.node_weight(parent_ix)
                 .expect("ancestor_of_type: parent_of invalid");
             if parent.get_type() == container_type {
                 return Ok(parent_ix)
             }
-            curr_ix = parent_ix;
+            assert!(cur_ix != parent_ix, "Parent of node was itself!");
+            cur_ix = parent_ix;
         }
         return Err(GraphError::NotFound(container_type, node_ix));
     }
@@ -625,6 +626,7 @@ impl InnerTree {
 
     /// Attempts to get a descendant of the matching type.
     /// Looks down the right side of the tree first
+    #[allow(dead_code)]
     pub fn descendant_of_type_right(&self, node_ix: NodeIndex,
                                     container_type: ContainerType) -> Result<NodeIndex, GraphError> {
         if let Some(container) = self.get(node_ix) {
@@ -709,12 +711,6 @@ impl InnerTree {
     /// If a divergent path is detected, that edge is deactivated in favor of
     /// the one that leads to this node.
     pub fn set_ancestor_paths_active(&mut self, mut node_ix: NodeIndex) {
-        if cfg!(debug_assertions) {
-            if self[node_ix].floating() {
-                error!("{:?} was set active, but it is floating!\n{:#?}", node_ix, self);
-                panic!("A node that was floating was set to be active!")
-            }
-        }
         // Make sure that any children of this node are inactive
         for child_ix in self.children_of(node_ix) {
             let edge_ix = self.graph.find_edge(node_ix, child_ix)
@@ -740,11 +736,8 @@ impl InnerTree {
         }
     }
 
-    /// Gets the next sibling to focus on, assuming child_ix would be removed from parent_ix.
-    /// If there are no other siblings to focus on, parent_ix is returned.
-    ///
-    /// # Panics
-    /// This will panic if `child_ix` is not a child of `parent_ix`
+    /// Gets the next sibling (if any) to focus on, assuming node_ix would be removed
+    /// from its parent.
     pub fn next_sibling(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
         let parent_ix = self.parent_of(node_ix)
             .expect("Could not get parent of node!");
