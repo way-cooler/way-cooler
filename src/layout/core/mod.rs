@@ -1,7 +1,7 @@
 pub mod tree;
 pub mod container;
 pub mod action;
-mod border;
+pub mod border;
 mod path;
 mod graph_tree;
 
