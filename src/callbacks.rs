@@ -56,6 +56,20 @@ pub extern fn output_resolution(output: WlcOutput,
 
 pub extern fn view_created(view: WlcView) -> bool {
     trace!("view_created: {:?}: \"{}\"", view, view.get_title());
+    if view.get_class().as_str() == "Background" {
+        info!("Setting background: {}", view.get_title());
+        view.send_to_back();
+        view.set_mask(1);
+        let output = view.get_output();
+        let resolution = output.get_resolution()
+            .expect("Couldn't get output resolution");
+        let fullscreen = Geometry {
+            origin: Point { x: 0, y: 0 },
+            size: resolution
+        };
+        view.set_geometry(ResizeEdge::empty(), fullscreen);
+        return true
+    }
     if let Ok(mut tree) = try_lock_tree() {
         tree.add_view(view).and_then(|_| {
             if view.get_class() == "Background" {

@@ -10,6 +10,8 @@ use std::io::Result as IOResult;
 pub const INIT_FILE: &'static str = "init.lua";
 pub const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/";
 
+pub const DEFAULT_CONFIG: &'static str = include_str!("../../config/init.lua");
+
 #[inline]
 fn read_file<P: AsRef<Path>>(path: P) -> IOResult<File> {
     OpenOptions::new().read(true).open(path)
@@ -71,17 +73,13 @@ fn get_config_file() -> Result<File, &'static str> {
     }
 
     warn!("way-cooler was unable to find an init file. \
-           This is currently required to use way-cooler.");
+           Using our default, pre-compiled init.lua.");
     warn!("Our default init.lua is available on GitHub, \
            it is included with the source.");
     warn!("You may place it in ~/.config/way-cooler/init.lua, \
            or a similar folder if you use $XDG_CONFIG_HOME, or /etc/way-cooler.");
     warn!("You may also use the environment variable $WAY_COOLER_INIT_FILE to point \
            directly to the file of your choice.");
-
-    info!("The init file will be included with way-cooler in the next release. If you \
-           do not have one or do not wish to customize we will always have the default \
-           to fall back on.");
 
     return Err("Could not find an init file in any path!")
 }

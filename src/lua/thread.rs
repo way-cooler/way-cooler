@@ -111,8 +111,10 @@ pub fn init() {
                     .expect("Unable to load init file");
                 debug!("Read init.lua successfully");
             }
-            Err(reason) => {
-                panic!("Unable to load init file: {}", reason)
+            Err(_) => {
+                debug!("Defaulting to pre-compiled init.lua");
+                let _: () = lua.execute(init_path::DEFAULT_CONFIG)
+                    .expect("Unable to load pre-compiled init file");
             }
         }
     }

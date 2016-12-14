@@ -8,7 +8,7 @@ use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
     /// The node behind the UUID was asked to ground when it was already grounded.
     AlreadyGrounded(Uuid),
@@ -234,6 +234,9 @@ impl LayoutTree {
     /// it will remain pointing at the previous parent container.
     pub fn float_container(&mut self, id: Uuid) -> CommandResult {
         let node_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
+        if self.tree.is_root_container(node_ix) {
+            return Err(TreeError::InvalidOperationOnRootContainer(id))
+        }
         if self.tree[node_ix].floating() {
             warn!("Trying to float an already floating container");
             return Err(TreeError::Layout(LayoutErr::AlreadyFloating(id)));
@@ -269,19 +272,15 @@ impl LayoutTree {
                     *geometry = new_geometry
                 },
                 _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
-                                                                  ContainerType::Container)))
+                                                                ContainerType::Container)))
             }
         }
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
                              .map_err(|_| TreeError::NoActiveContainer));
-        let next_ix = self.tree.next_sibling(node_ix)
-            .unwrap_or_else(|| self.tree.parent_of(node_ix).expect("node_ix had no parent!"));
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
-        if !self.tree[next_ix].floating() {
-            self.tree.set_ancestor_paths_active(next_ix);
-        }
+        self.tree.set_ancestor_paths_active(node_ix);
         let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
         self.layout(parent_ix);
         Ok(())

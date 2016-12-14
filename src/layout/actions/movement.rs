@@ -7,7 +7,7 @@ use super::super::commands::CommandResult;
 use super::super::core::{Direction, ShiftDirection, TreeError};
 use super::super::core::container::{Container, ContainerType, Handle, Layout};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MovementError {
     /// Attempted to move the node behind the UUID in the given direction,
     /// which would cause it to leave its siblings.
