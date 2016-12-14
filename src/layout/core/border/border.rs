@@ -4,7 +4,7 @@ use std::cmp::{Eq, PartialEq};
 use std::ops::{Deref};
 use rustwlc::{Geometry, Size, Point};
 use rustwlc::render::{write_pixels, wlc_pixel_format};
-use cairo::{Context, ImageSurface, ImageSurfaceData, Format, Operator, Status, SolidPattern};
+use cairo::{Context, ImageSurface, Format, Operator, Status, SolidPattern};
 
 pub trait Border {
     /// Renders the border around the geometry of a view.
@@ -12,7 +12,7 @@ pub trait Border {
 
     fn get_color(&self) -> Color;
 
-    fn get_context(&self) -> &Context;
+    fn get_context(&self) -> &Option<Context>;
 
     /// Draws the line from (x, y) to (x+width,y+height) where width/height.
     ///
@@ -22,7 +22,8 @@ pub trait Border {
         let pattern = SolidPattern::from_rgb(red as f64 / 255.0,
                                              green as f64 / 255.0,
                                              blue as f64 / 255.0);
-        let context = self.get_context();
+        // TODO error handling
+        let context = self.get_context().as_ref().unwrap();
         context.set_source(&pattern);
         if w > 1.0 && h > 1.0 {
             context.rectangle(x, y, w, h);
@@ -51,7 +52,7 @@ pub trait Border {
 #[derive(Clone)]
 /// A border for a container.
 pub struct BaseBorder {
-    context: Context,
+    context: Option<Context>,
     thickness: u32,
     color: Color,
     geometry: Geometry,
@@ -99,6 +100,7 @@ impl BaseBorder {
         let stride = calculate_stride(w as u32) as i32;
         let data: Vec<u8> = iter::repeat(0).take(w as usize * stride as usize).collect();
         let buffer = data.into_boxed_slice();
+        error!("{:#?}", stride);
         let surface = ImageSurface::create_for_data(buffer, drop_data, Format::ARgb32, h, w, stride);
         let context = Context::new(&surface);
         context.set_operator(Operator::Source);
@@ -109,7 +111,7 @@ impl BaseBorder {
             }
         }
         BaseBorder {
-            context: context,
+            context: Some(context),
             thickness: thickness,
             color: color,
             geometry: geometry,
@@ -118,6 +120,7 @@ impl BaseBorder {
     }
 
     pub fn render(&mut self) {
+        self.context = None;
         let mut buffer = self.surface.get_data()
             .expect("Couldn't get border surface buffer");
         write_pixels(wlc_pixel_format::WLC_RGBA8888, self.geometry, &mut buffer);
@@ -146,7 +149,7 @@ unsafe impl Send for BaseBorder {}
 unsafe impl Sync for BaseBorder {}
 
 impl BottomBorder {
-    fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
+    pub fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
         BottomBorder { border: BaseBorder::new(geometry, thickness, color)}
     }
 
@@ -154,19 +157,22 @@ impl BottomBorder {
 
 impl Border for BottomBorder {
     fn draw(&mut self, view_g: Geometry) {
+        if self.get_context().is_none() {
+            self.border = BaseBorder::new(view_g, self.thickness, self.color);
+        }
         let Point { x, y } = self.geometry.origin;
         let top_border_height = view_g.origin.y - self.geometry.origin.y;
-        let height = self.geometry.size.h - (top_border_height as u32 + view_g.size.h);
+        let height = self.geometry.size.h as i32 - (top_border_height + view_g.size.h as i32);
         if height > 0 {
             self.draw_line(x as f64,
-                        (y as u32 + self.geometry.size.h - height) as f64,
+                        (y + self.geometry.size.h as i32 - height) as f64,
                         self.geometry.size.w as f64,
                         height as f64);
         }
         self.border.render();
     }
 
-    fn get_context(&self) -> &Context {
+    fn get_context(&self) -> &Option<Context> {
         &self.context
     }
 
@@ -176,7 +182,7 @@ impl Border for BottomBorder {
 }
 
 impl TopBorder {
-    fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
+    pub fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
         TopBorder { border: BaseBorder::new(geometry, thickness, color)}
     }
 
@@ -184,6 +190,9 @@ impl TopBorder {
 
 impl Border for TopBorder {
     fn draw(&mut self, view_g: Geometry) {
+        if self.get_context().is_none() {
+            self.border = BaseBorder::new(view_g, self.thickness, self.color);
+        }
         let Point { x, y } = self.geometry.origin;
         let height = view_g.origin.y - self.geometry.origin.y;
         if height > 0 {
@@ -192,7 +201,7 @@ impl Border for TopBorder {
         self.border.render();
     }
 
-    fn get_context(&self) -> &Context {
+    fn get_context(&self) -> &Option<Context> {
         &self.context
     }
 
@@ -202,7 +211,7 @@ impl Border for TopBorder {
 }
 
 impl RightBorder {
-    fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
+    pub fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
         RightBorder { border: BaseBorder::new(geometry, thickness, color)}
     }
 }
@@ -210,11 +219,14 @@ impl RightBorder {
 impl Border for RightBorder {
 
     fn draw(&mut self, view_g: Geometry) {
+        if self.get_context().is_none() {
+            self.border = BaseBorder::new(view_g, self.thickness, self.color);
+        }
         let Point { x, y } = self.geometry.origin;
-        let left_border_width = (view_g.origin.x - self.geometry.origin.x) as u32;
-        let width = self.geometry.size.w - view_g.size.w - left_border_width;
+        let left_border_width = view_g.origin.x - self.geometry.origin.x;
+        let width = self.geometry.size.w as i32 - view_g.size.w as i32 - left_border_width;
         if width > 0 {
-            self.draw_line((x as u32 + self.geometry.size.w - width) as f64,
+            self.draw_line((x + self.geometry.size.w as i32 - width) as f64,
                            y as f64,
                            width as f64,
                            self.geometry.size.h as f64);
@@ -222,7 +234,7 @@ impl Border for RightBorder {
         self.border.render();
     }
 
-    fn get_context(&self) -> &Context {
+    fn get_context(&self) -> &Option<Context> {
         &self.context
     }
 
@@ -232,20 +244,23 @@ impl Border for RightBorder {
 }
 
 impl LeftBorder {
-    fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
+    pub fn new(geometry: Geometry, thickness: u32, color: Color) -> Self {
         LeftBorder { border: BaseBorder::new(geometry, thickness, color)}
     }
 }
 
 impl Border for LeftBorder {
     fn draw(&mut self, view_g: Geometry) {
+        if self.get_context().is_none() {
+            self.border = BaseBorder::new(view_g, self.thickness, self.color);
+        }
         let Point { x, y } = self.geometry.origin;
         let width = view_g.origin.x - self.geometry.origin.x;
         self.draw_line(x as f64, y as f64, width as f64, self.geometry.size.h as f64);
         self.border.render();
     }
 
-    fn get_context(&self) -> &Context {
+    fn get_context(&self) -> &Option<Context> {
         &self.context
     }
 
