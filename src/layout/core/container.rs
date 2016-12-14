@@ -285,14 +285,25 @@ impl Container {
         }
     }
 
-    pub fn render(&mut self) {
+    pub fn render_borders(&mut self) {
         match *self {
-            Container::View { ref mut borders, handle, .. }  => {
-                let geometry = handle.get_geometry().unwrap();
-                borders.render(geometry);
+            Container::View { ref mut borders, .. } |
+            Container::Container { ref mut borders, .. } => {
+                borders.render();
+            },
+            _ => panic!("Tried to render a non-view / non-container")
+        }
+    }
+
+    pub fn draw_borders(&mut self) {
+        match *self {
+            Container::View { ref mut borders, handle, .. } => {
+                let geometry = handle.get_geometry()
+                    .expect("View had no geometry");
+                borders.draw(geometry);
             },
             Container::Container { ref mut borders, geometry, .. } => {
-                borders.render(geometry);
+                borders.draw(geometry);
             },
             _ => panic!("Tried to render a non-view / non-container")
         }

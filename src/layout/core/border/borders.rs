@@ -23,14 +23,24 @@ impl Borders {
     }
 
     /// Renders each border at their respective geometries.
-    pub fn render(&mut self, view_g: Geometry) {
+    pub fn render(&mut self) {
         let mut borders = vec![self.top.as_mut().map(|g| g as &mut Border),
                            self.bottom.as_mut().map(|g| g as &mut Border),
                            self.left.as_mut().map(|g| g as &mut Border),
                            self.right.as_mut().map(|g| g as &mut Border)];
         for border in borders.iter_mut().flat_map(|maybe_g| maybe_g.into_iter()){
-            border.draw(view_g);
             border.render();
+        }
+    }
+
+    /// Re-draws the borders, using the (new) view's geometry.
+    pub fn draw(&mut self, view_g: Geometry) {
+        let mut borders = vec![self.top.as_mut().map(|g| g as &mut Border),
+                               self.bottom.as_mut().map(|g| g as &mut Border),
+                               self.left.as_mut().map(|g| g as &mut Border),
+                               self.right.as_mut().map(|g| g as &mut Border)];
+        for border in borders.iter_mut().flat_map(|maybe_g| maybe_g.into_iter()){
+            border.draw(view_g);
         }
     }
 }

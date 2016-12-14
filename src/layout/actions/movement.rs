@@ -239,7 +239,7 @@ impl LayoutTree {
     /// point on the screen.
     pub fn drag_floating(&mut self, node_ix: NodeIndex, point: Point, old_point: Point)
                          -> CommandResult {
-        let container = &self.tree[node_ix];
+        let container = &mut self.tree[node_ix];
         if !container.floating() {
             return Err(TreeError::Movement(MovementError::NotFloating(node_ix)))
         }
@@ -252,6 +252,7 @@ impl LayoutTree {
                 geo.origin.x += dx;
                 geo.origin.y += dy;
                 handle.set_geometry(ResizeEdge::empty(), geo);
+                container.draw_borders();
                 Ok(())
             },
             Container::Container { id, .. } | Container::Workspace { id, .. } |
