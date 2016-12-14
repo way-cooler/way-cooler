@@ -326,6 +326,16 @@ pub extern fn compositor_terminating() {
 
 }
 
+pub extern fn view_pre_render(view: WlcView) {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Some(id) = tree.lookup_view(view) {
+            if let Ok(mut container) = tree.get_container_mut(id) {
+                container.render();
+            }
+        }
+    }
+}
+
 
 pub fn init() {
     use rustwlc::callback;
@@ -348,5 +358,6 @@ pub fn init() {
     callback::pointer_motion(pointer_motion);
     callback::compositor_ready(compositor_ready);
     callback::compositor_terminate(compositor_terminating);
+    callback::view_render_pre(view_pre_render);
     trace!("Registered wlc callbacks");
 }

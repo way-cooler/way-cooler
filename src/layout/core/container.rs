@@ -7,7 +7,7 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size};
 
-use super::border::{Borders};
+use super::border::{Borders, TopBorder, BottomBorder, LeftBorder, RightBorder, Color};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,6 +100,17 @@ pub enum Container {
     }
 }
 
+/// Test function
+/// TODO remove
+fn test_border(g: Geometry) -> Borders {
+    let top = TopBorder::new(g, 5, Color::new(255, 0, 0));
+    let bottom = BottomBorder::new(g, 5, Color::new(255, 0, 0));
+    let left = LeftBorder::new(g, 5, Color::new(255, 0, 0));
+    let right = RightBorder::new(g, 5, Color::new(255, 0, 0));
+    Borders::new(Some(top), Some(bottom), Some(left), Some(right))
+}
+
+
 impl Container {
     /// Creates a new root container.
     pub fn new_root() -> Container {
@@ -131,7 +142,7 @@ impl Container {
             floating: false,
             geometry: geometry,
             id: Uuid::new_v4(),
-            borders: Borders::new(None, None, None, None)
+            borders: test_border(geometry)
         }
     }
 
@@ -141,7 +152,7 @@ impl Container {
             handle: handle,
             floating: false,
             id: Uuid::new_v4(),
-            borders: Borders::new(None, None, None, None)
+            borders: test_border(handle.get_geometry().unwrap())
         }
     }
 
@@ -271,6 +282,19 @@ impl Container {
             _ => {
                 Err(c_type)
             }
+        }
+    }
+
+    pub fn render(&mut self) {
+        match *self {
+            Container::View { ref mut borders, handle, .. }  => {
+                let geometry = handle.get_geometry().unwrap();
+                borders.render(geometry);
+            },
+            Container::Container { ref mut borders, geometry, .. } => {
+                borders.render(geometry);
+            },
+            _ => panic!("Tried to render a non-view / non-container")
         }
     }
 }

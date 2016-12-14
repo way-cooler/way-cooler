@@ -189,6 +189,10 @@ impl Tree {
         self.0.lookup_view(view).map(|c| c.get_id())
     }
 
+    pub fn get_container_mut(&mut self, id: Uuid) -> Result<&mut Container, TreeError> {
+        self.0.lookup_mut(id)
+    }
+
     pub fn toggle_float(&mut self) -> CommandResult {
         if let Some(uuid) = self.active_id() {
             let is_floating: Result<bool, _> = self.0.lookup(uuid)
