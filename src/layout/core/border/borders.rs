@@ -30,6 +30,7 @@ impl Borders {
                            self.right.as_mut().map(|g| g as &mut Border)];
         for border in borders.iter_mut().flat_map(|maybe_g| maybe_g.into_iter()){
             border.draw(view_g);
+            border.render();
         }
     }
 }

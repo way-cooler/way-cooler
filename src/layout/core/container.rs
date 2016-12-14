@@ -103,10 +103,10 @@ pub enum Container {
 /// Test function
 /// TODO remove
 fn test_border(g: Geometry) -> Borders {
-    let top = TopBorder::new(g, 5, Color::new(255, 0, 0));
-    let bottom = BottomBorder::new(g, 5, Color::new(255, 0, 0));
-    let left = LeftBorder::new(g, 5, Color::new(255, 0, 0));
-    let right = RightBorder::new(g, 5, Color::new(255, 0, 0));
+    let top = TopBorder::new(g, 100, Color::new(255, 0, 0));
+    let bottom = BottomBorder::new(g, 100, Color::new(255, 0, 0));
+    let left = LeftBorder::new(g, 100, Color::new(255, 0, 0));
+    let right = RightBorder::new(g, 100, Color::new(255, 0, 0));
     Borders::new(Some(top), Some(bottom), Some(left), Some(right))
 }
 

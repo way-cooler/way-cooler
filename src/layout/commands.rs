@@ -280,8 +280,8 @@ impl Tree {
         if view.get_type() != ViewType::empty() {
             try!(tree.add_floating_view(view));
         } else {
-            try!(tree.add_view(view));
-            tree.normalize_view(view);
+            try!(tree.add_floating_view(view));
+            //tree.normalize_view(view);
         }
         tree.layout_active_of(ContainerType::Workspace);
         Ok(())
