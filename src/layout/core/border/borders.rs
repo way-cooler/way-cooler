@@ -23,13 +23,13 @@ impl Borders {
     }
 
     /// Renders each border at their respective geometries.
-    pub fn render(&self, view_g: Geometry) {
-        let borders = vec![self.top.as_ref().map(|g| g as &Border),
-                           self.bottom.as_ref().map(|g| g as &Border),
-                           self.left.as_ref().map(|g| g as &Border),
-                           self.right.as_ref().map(|g| g as &Border)];
-        for border in borders.iter().flat_map(|maybe_g| maybe_g.into_iter()){
-            border.render(view_g);
+    pub fn render(&mut self, view_g: Geometry) {
+        let mut borders = vec![self.top.as_mut().map(|g| g as &mut Border),
+                           self.bottom.as_mut().map(|g| g as &mut Border),
+                           self.left.as_mut().map(|g| g as &mut Border),
+                           self.right.as_mut().map(|g| g as &mut Border)];
+        for border in borders.iter_mut().flat_map(|maybe_g| maybe_g.into_iter()){
+            border.draw(view_g);
         }
     }
 }
