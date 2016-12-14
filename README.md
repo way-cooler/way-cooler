@@ -112,6 +112,7 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
 
 - @vinipsmaker created (and maintains) AUR packages
+- @starfys created way-cooler desktop file
 - @toogley fixed a link
 - @paulmenzel fixed a typo
 
