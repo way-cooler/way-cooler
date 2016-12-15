@@ -7,6 +7,8 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size};
 
+use super::borders::{Borders, Color, Drawable, SimpleDraw};
+
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Handle {
@@ -82,6 +84,8 @@ pub enum Container {
         geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
+        /// The border drawn to the screen
+        borders: Option<Borders>,
     },
     /// View or window
     View {
@@ -91,9 +95,10 @@ pub enum Container {
         floating: bool,
         /// UUID associated with container, client program can use container
         id: Uuid,
+        /// The border drawn to the screen
+        borders: Option<Borders>,
     }
 }
-
 
 
 impl Container {
@@ -127,15 +132,19 @@ impl Container {
             floating: false,
             geometry: geometry,
             id: Uuid::new_v4(),
+            borders: Some(Borders::new(geometry))
         }
     }
 
     /// Creates a new view container with the given handle
     pub fn new_view(handle: WlcView) -> Container {
+        let geometry = handle.get_geometry()
+            .expect("View had no geometry");
         Container::View {
             handle: handle,
             floating: false,
             id: Uuid::new_v4(),
+            borders: Some(Borders::new(geometry))
         }
     }
 
@@ -268,29 +277,44 @@ impl Container {
         }
     }
 
-    /*pub fn render_borders(&mut self) {
+    pub fn render_borders(&mut self) {
         match *self {
             Container::View { ref mut borders, .. } |
             Container::Container { ref mut borders, .. } => {
-                borders.render();
+                if let Some(borders) = borders.as_mut() {
+                    borders.render();
+                }
             },
             _ => panic!("Tried to render a non-view / non-container")
         }
     }
 
     pub fn draw_borders(&mut self) {
+        // TODO Eventually, we should use an enum to choose which way to draw the
+        // border, but for now this will do.
         match *self {
             Container::View { ref mut borders, handle, .. } => {
-                let geometry = handle.get_geometry()
-                    .expect("View had no geometry");
-                borders.draw(geometry);
+                if let Some(borders_) = borders.take() {
+                    let geometry = handle.get_geometry()
+                        .expect("View had no geometry");
+                    // TODO Don't hard code color
+                    *borders = SimpleDraw::new(borders_.enable_cairo().unwrap(),
+                                                     Color::solid_color(0, 0, 255),
+                                                     100)
+                        .draw(geometry).ok();
+                }
             },
             Container::Container { ref mut borders, geometry, .. } => {
-                borders.draw(geometry);
+                if let Some(borders_) = borders.take() {
+                    *borders = SimpleDraw::new(borders_.enable_cairo().unwrap(),
+                                               Color::solid_color(0, 0, 255),
+                                               100)
+                        .draw(geometry).ok();
+                }
             },
             _ => panic!("Tried to render a non-view / non-container")
         }
-    }*/
+    }
 }
 
 #[cfg(test)]
