@@ -252,7 +252,6 @@ impl LayoutTree {
                 geo.origin.x += dx;
                 geo.origin.y += dy;
                 handle.set_geometry(ResizeEdge::empty(), geo);
-                container.draw_borders();
                 Ok(())
             },
             Container::Container { id, .. } | Container::Workspace { id, .. } |

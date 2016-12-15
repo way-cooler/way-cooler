@@ -7,8 +7,6 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size};
 
-use super::border::{Borders, TopBorder, BottomBorder, LeftBorder, RightBorder, Color};
-
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Handle {
@@ -84,8 +82,6 @@ pub enum Container {
         geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
-        /// The border drawn to the screen
-        borders: Borders,
     },
     /// View or window
     View {
@@ -95,20 +91,9 @@ pub enum Container {
         floating: bool,
         /// UUID associated with container, client program can use container
         id: Uuid,
-        /// The border drawn to the screen
-        borders: Borders,
     }
 }
 
-/// Test function
-/// TODO remove
-fn test_border(g: Geometry) -> Borders {
-    let top = TopBorder::new(g, 100, Color::new(255, 0, 0));
-    let bottom = BottomBorder::new(g, 100, Color::new(255, 0, 0));
-    let left = LeftBorder::new(g, 100, Color::new(255, 0, 0));
-    let right = RightBorder::new(g, 100, Color::new(255, 0, 0));
-    Borders::new(Some(top), Some(bottom), Some(left), Some(right))
-}
 
 
 impl Container {
@@ -142,7 +127,6 @@ impl Container {
             floating: false,
             geometry: geometry,
             id: Uuid::new_v4(),
-            borders: test_border(geometry)
         }
     }
 
@@ -152,7 +136,6 @@ impl Container {
             handle: handle,
             floating: false,
             id: Uuid::new_v4(),
-            borders: test_border(handle.get_geometry().unwrap())
         }
     }
 
@@ -285,7 +268,7 @@ impl Container {
         }
     }
 
-    pub fn render_borders(&mut self) {
+    /*pub fn render_borders(&mut self) {
         match *self {
             Container::View { ref mut borders, .. } |
             Container::Container { ref mut borders, .. } => {
@@ -307,7 +290,7 @@ impl Container {
             },
             _ => panic!("Tried to render a non-view / non-container")
         }
-    }
+    }*/
 }
 
 #[cfg(test)]

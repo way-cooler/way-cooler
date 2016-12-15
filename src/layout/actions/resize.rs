@@ -59,7 +59,6 @@ impl LayoutTree {
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
             action.grab = pointer;
             container.set_geometry(edge, new_geo);
-            container.draw_borders();
         }
         self.update_pointer_pos(id, edge)
     }
