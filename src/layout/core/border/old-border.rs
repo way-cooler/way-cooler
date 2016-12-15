@@ -89,7 +89,7 @@ impl BaseBorder {
     /// Draws the line from (x, y) to (x+width,y+height) where width/height.
     ///
     /// You should just use the default implementation in most cases.
-    fn draw_line(&self, mut x: f64, mut y: f64, mut w: f64, mut h: f64, thickness: f64) {
+    fn draw_line(&self, mut x: f64, mut y: f64, mut w: f64, mut h: f64, _thickness: f64) {
         warn!("drawing a line");
         let Color { red, green, blue} = self.color;
         let pattern = SolidPattern::from_rgb(red as f64 / 255.0,
