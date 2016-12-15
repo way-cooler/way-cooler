@@ -21,8 +21,6 @@ pub struct BaseBorder {
     color: Color,
     geometry: Geometry,
     surface: ImageSurface
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TopBorder {
     border: BaseBorder
