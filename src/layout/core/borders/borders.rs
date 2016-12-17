@@ -13,7 +13,6 @@ use super::draw::BaseDraw;
 /// The borders of a container.
 ///
 /// This type just deals with rendering,
-/// and only renders when it's surface has become "dirty".
 #[derive(Clone)]
 pub struct Borders {
     /// The surface that contains the bytes we give to wlc to draw.
@@ -21,9 +20,7 @@ pub struct Borders {
     /// The geometry where the buffer is written.
     ///
     /// Should correspond with the geometry of the container.
-    pub geometry: Geometry,
-    /// Flag to indicate whether we need to re-render the buffer.
-    dirty: bool
+    pub geometry: Geometry
 }
 
 impl Borders {
@@ -40,19 +37,14 @@ impl Borders {
                                                     stride);
         Borders {
             surface: surface,
-            geometry: geometry,
-            dirty: true
+            geometry: geometry
         }
     }
 
     pub fn render(&mut self) {
-        if self.dirty {
-            error!("DRAWING YO");
-            let mut buffer = self.surface.get_data()
-                .expect("Could not get border surface buffer");
-            write_pixels(wlc_pixel_format::WLC_RGBA8888, self.geometry, &mut buffer);
-            self.dirty = false;
-        }
+        let mut buffer = self.surface.get_data()
+            .expect("Could not get border surface buffer");
+        write_pixels(wlc_pixel_format::WLC_RGBA8888, self.geometry, &mut buffer);
     }
 
     /// Updates the position at which we render the buffer.
@@ -66,7 +58,6 @@ impl Borders {
     /// flag so that wlc can render it on the next render cycle.
     pub fn update_pos(&mut self, origin: Point) {
         self.geometry.origin = origin;
-        self.dirty = true;
     }
 
     /// Enables Cairo drawing capabilities on the borders.
@@ -86,26 +77,19 @@ impl Borders {
         }
         Ok(BaseDraw::new(self, cairo))
     }
-
-    /// Flags the buffer as dirty and in need of a re-render.
-    pub fn flag_dirty(&mut self) {
-        self.dirty = true;
-    }
-
 }
 
 impl Debug for Borders {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Debug")
             .field("geometry", &self.geometry as &Debug)
-            .field("dirty", &self.dirty as &Debug)
             .finish()
     }
 }
 
 impl PartialEq for Borders {
     fn eq(&self, other: &Borders) -> bool {
-        self.dirty == other.dirty && self.geometry == other.geometry
+        self.geometry == other.geometry
     }
 }
 

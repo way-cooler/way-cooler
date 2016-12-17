@@ -57,7 +57,6 @@ impl BaseDraw {
     /// Finishes drawing on the border, yielding renderable `Borders`.
     pub fn finish(mut self, border_g: Geometry) -> Borders {
         self.borders.geometry = border_g;
-        self.borders.flag_dirty();
         self.borders
     }
 }
