@@ -26,7 +26,6 @@ pub const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
 pub const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
 
 const INIT_LUA_FUNC: &'static str = "way_cooler_init";
-const RESTART_LUA_FUNC: &'static str = "way_cooler_restart";
 
 /// Struct sent to the Lua query
 struct LuaMessage {
@@ -155,30 +154,33 @@ fn main_loop(receiver: Receiver<LuaMessage>, lua: &mut Lua) {
             }
             Ok(message) => {
                 trace!("Handling a request");
-                handle_message(message, lua);
+                if !handle_message(message, lua) {
+                    return
+                }
             }
         }
     }
 }
 
 /// Handle each LuaQuery option sent to the thread
-fn handle_message(request: LuaMessage, lua: &mut Lua) {
+fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
+            if let Err(error) = lua.execute::<()>("way_cooler.handle_termination") {
+                error!("Lua termination callback returned an error: {:?}", error);
+            }
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
             thread_send(request.reply, LuaResponse::Pong);
 
             info!("Lua thread terminating!");
+            return false
         },
-
         LuaQuery::Restart => {
             trace!("Received restart signal!");
-            lua.get(RESTART_LUA_FUNC)
-                .map(|mut f: functions_read::LuaFunction<_>|  f.call().unwrap_or_else(|err| {
-                    error!("Lua function \"{}\" returned an error: {:?}", RESTART_LUA_FUNC, err);
-                }));
-
+            if let Err(error) = lua.execute::<()>("way_cooler.hanle_termination") {
+                error!("Lua restart callback returned an error: {:?}", error);
+            }
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
             thread_send(request.reply, LuaResponse::Pong);
 
@@ -189,9 +191,9 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
                     init();
                 });
 
-            panic!("Lua thread: Restarting!");
+            info!("Lua thread restarting");
+            return false
         },
-
         LuaQuery::Execute(code) => {
             trace!("Received request to execute {}", code);
 
@@ -206,7 +208,6 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
                 }
             }
         },
-
         LuaQuery::ExecFile(name) => {
             info!("Executing {}", name);
 
@@ -217,7 +218,6 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
                 let result = lua.execute_from_reader::<(), File>(file);
                 if let Err(err) = result {
                     warn!("Error executing {}!", name);
-
                     thread_send(request.reply, LuaResponse::Error(err));
                 }
                 else {
@@ -229,7 +229,6 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
                 // Unwrap_err is used because we're in the else of let Ok
                 let read_error =
                     LuaError::ReadError(try_file.unwrap_err());
-
                 thread_send(request.reply, LuaResponse::Error(read_error));
             }
         },
@@ -257,6 +256,7 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) {
             thread_send(request.reply, LuaResponse::Pong);
         },
     }
+    return true
 }
 
 fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {

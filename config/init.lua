@@ -105,6 +105,10 @@ for _, key in pairs(keys) do
     config.register_key(key)
 end
 
+function cleanup_background()
+  os.execute("pkill way-cooler-bg")
+end
+
 
 -- Execute some code after Way Cooler is finished initializing
 function way_cooler_init()
@@ -118,8 +122,13 @@ end
 
 --- Execute some code when Way Cooler restarts
 function way_cooler_restart()
-    os.execute("pkill way-cooler-bg")
+  cleanup_background()
 end
+
+function way_cooler_terminate()
+  cleanup_background()
+end
+
 
 -- To use plugins such as bars, or to start other programs on startup,
 -- call util.exec.spawn_once, which will not spawn copies after a config reload.

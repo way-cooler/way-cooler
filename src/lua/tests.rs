@@ -190,4 +190,3 @@ fn rust_lua_fn(lua: &mut Lua) -> AnyLuaValue {
     assert!(foo.get::<f64, _>("bar").is_some());
     AnyLuaValue::LuaBoolean(true)
 }
-
