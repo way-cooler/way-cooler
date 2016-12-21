@@ -26,6 +26,8 @@ pub const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
 pub const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
 
 const INIT_LUA_FUNC: &'static str = "way_cooler_init";
+const LUA_TERMINATE_CODE: &'static str = "way_cooler.handle_termination()";
+const LUA_RESTART_CODE: &'static str = "way_cooler.handle_restart()";
 
 /// Struct sent to the Lua query
 struct LuaMessage {
@@ -167,7 +169,7 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
-            if let Err(error) = lua.execute::<()>("way_cooler.handle_termination") {
+            if let Err(error) = lua.execute::<()>(LUA_TERMINATE_CODE) {
                 error!("Lua termination callback returned an error: {:?}", error);
             }
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
@@ -178,7 +180,7 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
         },
         LuaQuery::Restart => {
             trace!("Received restart signal!");
-            if let Err(error) = lua.execute::<()>("way_cooler.hanle_termination") {
+            if let Err(error) = lua.execute::<()>(LUA_RESTART_CODE) {
                 error!("Lua restart callback returned an error: {:?}", error);
             }
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
