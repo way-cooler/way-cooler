@@ -7,7 +7,7 @@ use petgraph::graph::NodeIndex;
 use rustwlc::WlcView;
 use uuid::Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FocusError {
     /// Reached a container where we can keep climbing the tree no longer.
     ///
@@ -132,10 +132,26 @@ impl LayoutTree {
     /// tree until either a view is found or the workspace is (in which case
     /// it set the active container to the root container of the workspace)
     pub fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
+        let last_ix;
+        {
+            let path = self.tree.active_path();
+            last_ix = path[path.len() - 1].0;
+        }
+        match self.tree[last_ix] {
+            Container::View { handle, .. } => {
+                handle.focus();
+                self.active_container = Some(last_ix);
+                return
+            },
+            Container::Container { .. } => {
+                parent_ix = last_ix;
+            },
+            _ => {}
+        }
         while self.tree.node_type(parent_ix)
             .expect("Node not part of the tree") != ContainerType::Workspace {
-            if let Ok(view_ix) = self.tree.descendant_of_type_right(parent_ix,
-                                                            ContainerType::View) {
+                if let Ok(view_ix) = self.tree.descendant_of_type(parent_ix,
+                                                                  ContainerType::View) {
                 match self.tree[view_ix]
                                     .get_handle().expect("view had no handle") {
                     Handle::View(view) => view.focus(),

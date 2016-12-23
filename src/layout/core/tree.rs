@@ -18,7 +18,7 @@ use super::super::core::graph_tree::GraphError;
 
 use super::super::commands::CommandResult;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Direction {
     Up,
     Down,
@@ -70,7 +70,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TreeError {
     /// A Node can not be found in the tree with this Node Handle.
     NodeNotFound(Uuid),
@@ -232,6 +232,7 @@ impl LayoutTree {
     }
 
     /// Determines if the active container is the root container
+    #[allow(dead_code)]
     pub fn active_is_root(&self) -> bool {
         if let Some(active_ix) = self.active_container {
             self.tree.is_root_container(active_ix)
@@ -241,10 +242,10 @@ impl LayoutTree {
     }
 
     /// Add a new view container with the given WlcView to the active container
-    pub fn add_view(&mut self, view: WlcView) -> CommandResult {
+    pub fn add_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
         if let Some(mut active_ix) = self.active_container {
-            let parent_ix = self.tree.parent_of(active_ix)
-                .expect("Active container had no parent");
+            let parent_ix = try!(self.tree.parent_of(active_ix)
+                                 .map_err(|err| TreeError::PetGraph(err)));
             // Get the previous position before correcting the container
             let prev_pos = (*self.tree.get_edge_weight_between(parent_ix, active_ix)
                 .expect("Could not get edge weight between active and active parent")).deref()
@@ -258,7 +259,24 @@ impl LayoutTree {
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
-            return self.set_active_node(view_ix)
+            try!(self.set_active_node(view_ix));
+            return Ok(&self.tree[view_ix])
+        }
+        self.validate();
+        Err(TreeError::NoActiveContainer)
+    }
+
+    /// Adds a new view container with the given WlcView to the workspace of the active container.
+    ///
+    /// The view is automatically made floating, with no modifications to its geometry.
+    pub fn add_floating_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
+        if let Some(root_ix) = self.root_container_ix() {
+            let view_ix = self.tree.add_child(root_ix,
+                                             Container::new_view(view),
+                                             false);
+            self.tree[view_ix].set_floating(true)
+                .expect("Could not float view we just made");
+            return Ok(&self.tree[view_ix])
         }
         self.validate();
         Err(TreeError::NoActiveContainer)
@@ -553,14 +571,6 @@ impl LayoutTree {
             }
         }
         validate_edge_count(self, self.tree.root_ix());
-        let root_ix = self.tree.root_ix();
-        for node_ix in self.tree.follow_path_until(root_ix, ContainerType::View) {
-            if self.tree[node_ix].floating() {
-                error!("{:?} cannot be both on the active path and floating!\n{:#?}",
-                       node_ix, self);
-                panic!("Found node that was on the active path and floating!");
-            }
-        }
     }
 
     /// Validates the tree
@@ -1240,5 +1250,14 @@ pub mod tests {
         tree.validate_path();
         tree.switch_to_workspace("2");
         tree.validate_path();
+    }
+
+    #[test]
+    fn empty_workspace_float_test() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("3");
+        assert_eq!(tree.get_active_container().unwrap().get_type(), ContainerType::Container);
+        let uuid = tree.get_active_container().unwrap().get_id();
+        assert_eq!(tree.float_container(uuid), Err(TreeError::InvalidOperationOnRootContainer(uuid)));
     }
 }

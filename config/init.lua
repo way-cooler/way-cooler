@@ -83,9 +83,9 @@ local keys = {
   key({ mod }, "h", "split_horizontal"),
   key({ mod }, "v", "split_vertical"),
   key({ mod }, "e", "horizontal_vertical_switch"),
-  key({ mod }, "q", "close_window"),
-  key({ mod, "Shift"}, "space", "toggle_float_active"),
-  key({ mod }, "space", "toggle_float_focus"),
+  key({ mod, "Shift" }, "q", "close_window"),
+  key({ mod, "Shift" }, "space", "toggle_float_active"),
+  key({ mod }, "space", "toggle_float_focus")
   key({ mod, "Shift" }, "r", "way_cooler_restart")
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
@@ -116,7 +116,7 @@ function way_cooler_init()
   if not status then
     print "Could not find way-cooler-bg! Please install it"
   else
-    os.execute("way-cooler-bg " ..  way_cooler.background .. " ../way-cooler-bg/assets/arrow.png &")
+    os.execute("way-cooler-bg " ..  way_cooler.background .. " &")
   end
 end
 
