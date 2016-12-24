@@ -69,23 +69,23 @@ end
 way_cooler_table.on_restart = function(callback)
     assert(callback, "missing callback")
     assert(type(callback) == 'function', "callback: expected function")
-    __rust.restart_callback = callback
+    rust.restart_callback = callback
 end
 -- Register a function to execute on terminate
 way_cooler_table.on_terminate = function(callback)
     assert(callback, "missing callback")
     assert(type(callback) == 'function', "callback: expected function")
-    __rust.on_terminate = callback
+    rust.on_terminate = callback
 end
 -- This could technically be called by clients if they want, it should be more hidden.
 way_cooler_table.handle_termination = function()
-    if __rust.on_terminate ~= nil then
-        __rust.on_terminate()
+    if rust.on_terminate ~= nil then
+        rust.on_terminate()
     end
 end
 way_cooler_table.handle_restart = function()
-    if __rust.on_restart ~= nil then
-        __rust.on_terminate()
+    if rust.on_restart ~= nil then
+        rust.on_terminate()
     end
 end
 
@@ -94,7 +94,7 @@ way_cooler_mt.__index = function(_table, key)
         if type(key) ~= 'string' then
             error("Invalid key, string expected", 1)
         else
-            return __rust.ipc_get(key)
+            return rust.ipc_get(key)
         end
     else
         return way_cooler[key]
@@ -104,7 +104,7 @@ way_cooler_mt.__new_index = function(_table, key, value)
     if type(key) ~= 'string' then
         error("Invlaid key, string expected", 1)
     else
-        __rust.ipc_set(key, value)
+        rust.ipc_set(key, value)
     end
 end
 way_cooler_mt.__to_string = function(_table)
