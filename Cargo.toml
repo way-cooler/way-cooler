@@ -9,7 +9,7 @@ license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
 
 [dependencies]
-rustwlc = "0.5"
+rustwlc = "0.5.3"
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
@@ -27,3 +27,6 @@ getopts = "0.2"
 
 [dev-dependencies]
 dummy-rustwlc = "0.5.1"
+
+[features]
+static-wlc = ["rustwlc/static-wlc"]
