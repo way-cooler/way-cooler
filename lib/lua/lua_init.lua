@@ -119,5 +119,5 @@ config_mt.__metatable = "Cannot modify"
 config = config_table
 setmetatable(config, config_mt)
 way_cooler = way_cooler_table
-setmetatable(way_cooler, way_cooler_table)
+setmetatable(way_cooler, way_cooler_mt)
 setmetatable(__key_map, { __metatable = "cannot modify" })
