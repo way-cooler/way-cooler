@@ -51,6 +51,16 @@ pub fn init() {
                                .expect("Error reading commands::quit")));
 }
 
+/// Clears all the keys from Way Cooler's memory.
+pub fn clear_keys() {
+    {
+        let mut bindings = BINDINGS.write()
+            .expect("Keybindings/clear_keys: unable to lock keybindings");
+        bindings.drain();
+    }
+    init();
+}
+
 /// Get a key mapping from the list.
 pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     let bindings = BINDINGS.read()

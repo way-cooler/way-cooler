@@ -85,7 +85,8 @@ local keys = {
   key({ mod }, "e", "horizontal_vertical_switch"),
   key({ mod, "Shift" }, "q", "close_window"),
   key({ mod, "Shift" }, "space", "toggle_float_active"),
-  key({ mod }, "space", "toggle_float_focus")
+  key({ mod }, "space", "toggle_float_focus"),
+  key({ mod, "Shift" }, "r", "way_cooler_restart")
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
   -- This my be modifiable in the future
@@ -104,6 +105,10 @@ for _, key in pairs(keys) do
     config.register_key(key)
 end
 
+function cleanup_background()
+  os.execute("pkill way-cooler-bg")
+end
+
 
 -- Execute some code after Way Cooler is finished initializing
 function way_cooler_init()
@@ -114,6 +119,16 @@ function way_cooler_init()
     os.execute("way-cooler-bg " ..  way_cooler.background .. " &")
   end
 end
+
+--- Execute some code when Way Cooler restarts
+function way_cooler_restart()
+  cleanup_background()
+end
+
+function way_cooler_terminate()
+  cleanup_background()
+end
+
 
 -- To use plugins such as bars, or to start other programs on startup,
 -- call util.exec.spawn_once, which will not spawn copies after a config reload.
