@@ -100,7 +100,7 @@ way_cooler_mt.__index = function(_table, key)
         return way_cooler[key]
     end
 end
-way_cooler_mt.__new_index = function(_table, key, value)
+way_cooler_mt.__newindex = function(_table, key, value)
     if type(key) ~= 'string' then
         error("Invlaid key, string expected", 1)
     else
