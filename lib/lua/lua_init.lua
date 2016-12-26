@@ -90,14 +90,10 @@ way_cooler_table.handle_restart = function()
 end
 
 way_cooler_mt.__index = function(_table, key)
-    if way_cooler[key] == nil then
-        if type(key) ~= 'string' then
-            error("Invalid key, string expected", 1)
-        else
-            return rust.ipc_get(key)
-        end
+    if type(key) ~= 'string' then
+        error("Invalid key, string expected", 1)
     else
-        return way_cooler[key]
+        return rust.ipc_get(key)
     end
 end
 way_cooler_mt.__newindex = function(_table, key, value)
