@@ -52,15 +52,17 @@ impl ToJson for LayoutTree {
                     inner_map.insert(format!("Workspace {}", name), Json::Array(children));
                     return Json::Object(inner_map);
                 }
-                &Container::Container { ref layout, .. } => {
+                &Container::Container { ref layout, id, .. } => {
                     let mut inner_map = BTreeMap::new();
                     let children = tree.tree.children_of(node_ix).iter()
                         .map(|node| node_to_json(*node, tree)).collect();
-                    inner_map.insert(format!("Container w/ layout {:?}", layout), Json::Array(children));
+                    inner_map.insert(format!("Container w/ layout {:?} and id {:?}", layout, id),
+                                     Json::Array(children));
                     return Json::Object(inner_map);
                 }
-                &Container::View { ref handle, .. } => {
-                    return Json::String(handle.get_title());
+                &Container::View { ref handle, id, .. } => {
+                    return Json::String(format!("View: title: \"{:?}\", class: \"{:?}\", id: {}",
+                                                handle.get_title(), handle.get_class(), id));
                 },
                 ref container => {
                     let mut inner_map = BTreeMap::new();
