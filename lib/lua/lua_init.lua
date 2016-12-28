@@ -90,17 +90,13 @@ way_cooler_table.handle_restart = function()
 end
 
 way_cooler_mt.__index = function(_table, key)
-    if way_cooler[key] == nil then
-        if type(key) ~= 'string' then
-            error("Invalid key, string expected", 1)
-        else
-            return rust.ipc_get(key)
-        end
+    if type(key) ~= 'string' then
+        error("Invalid key, string expected", 1)
     else
-        return way_cooler[key]
+        return rust.ipc_get(key)
     end
 end
-way_cooler_mt.__new_index = function(_table, key, value)
+way_cooler_mt.__newindex = function(_table, key, value)
     if type(key) ~= 'string' then
         error("Invlaid key, string expected", 1)
     else
@@ -119,5 +115,5 @@ config_mt.__metatable = "Cannot modify"
 config = config_table
 setmetatable(config, config_mt)
 way_cooler = way_cooler_table
-setmetatable(way_cooler, way_cooler_table)
+setmetatable(way_cooler, way_cooler_mt)
 setmetatable(__key_map, { __metatable = "cannot modify" })
