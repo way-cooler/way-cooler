@@ -13,6 +13,7 @@ use hlua::{Lua, LuaError, functions_read};
 use super::types::*;
 use super::rust_interop;
 use super::init_path;
+use super::super::keys;
 
 lazy_static! {
     /// Sends requests to the Lua thread
@@ -193,6 +194,7 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
                 .name("Lua re-init".to_string())
                 .spawn(move || {
                     init();
+                    keys::init();
                 });
 
             info!("Lua thread restarting");
