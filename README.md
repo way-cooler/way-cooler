@@ -115,6 +115,7 @@ Way Cooler was started by @Timidger and @SnirkImmington, but these fine people h
 - @starfys created way-cooler desktop file
 - @toogley fixed a link
 - @paulmenzel fixed a typo
+- @thefarwind made kill way-cooler command rebindable
 
 And of course, thanks to the Rust community and the developers of [wlc].
 
