@@ -387,4 +387,8 @@ impl Tree {
         Ok(())
     }
 
+    pub fn set_pointer_pos(&mut self, point: Point) -> CommandResult {
+        self.0.set_pointer_pos(point)
+    }
+
 }

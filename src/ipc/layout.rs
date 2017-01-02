@@ -7,6 +7,7 @@ use super::utils::{parse_uuid, parse_direction, parse_axis, lock_tree_dbus};
 use dbus::tree::MethodErr;
 
 use super::super::layout::{Layout, commands as layout_cmd};
+use rustwlc::{Point};
 
 dbus_interface! {
     path: "/org/way_cooler/Layout";
@@ -117,5 +118,13 @@ dbus_interface! {
 
     fn Debug() -> success: DBusResult<String> {
         Ok(format!("{}", layout_cmd::tree_as_json()))
+    }
+
+    fn SetPointerPos(x: i32, y: i32) -> success: DBusResult<bool> {
+        let mut tree = try!(lock_tree_dbus());
+        let point = Point { x: x, y: y};
+        tree.set_pointer_pos(point)
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 }
