@@ -12,6 +12,7 @@ impl LayoutTree {
         Ok(())
     }
 
+    /// Places the cursor at the corner of the window behind the UUID.
     pub fn grab_at_corner(&mut self, id: Uuid, edge: ResizeEdge)
                           -> Result<Point, TreeError> {
         let container = try!(self.lookup(id));

@@ -391,4 +391,8 @@ impl Tree {
         self.0.set_pointer_pos(point)
     }
 
+    pub fn grab_at_corner(&mut self, id: Uuid, edge: ResizeEdge) -> CommandResult {
+        self.0.grab_at_corner(id, edge)
+            .and(Ok(()))
+    }
 }
