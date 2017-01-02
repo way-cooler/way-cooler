@@ -69,7 +69,7 @@ end
 way_cooler_table.on_restart = function(callback)
     assert(callback, "missing callback")
     assert(type(callback) == 'function', "callback: expected function")
-    rust.restart_callback = callback
+    rust.on_restart = callback
 end
 -- Register a function to execute on terminate
 way_cooler_table.on_terminate = function(callback)
@@ -85,7 +85,7 @@ way_cooler_table.handle_termination = function()
 end
 way_cooler_table.handle_restart = function()
     if rust.on_restart ~= nil then
-        rust.on_terminate()
+        rust.on_restart()
     end
 end
 
