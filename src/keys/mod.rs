@@ -23,7 +23,7 @@ lazy_static! {
         map
     };
 
-    static ref MOUSE_MODIFIER: RwLock<KeyMod> = RwLock::new(MOD_ALT);
+    static ref MOUSE_MODIFIER: RwLock<KeyMod> = RwLock::new(MOD_CTRL);
 }
 
 /// Parses a KeyMod from key names.
