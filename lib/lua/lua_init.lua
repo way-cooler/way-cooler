@@ -65,6 +65,11 @@ config_table.register_key = function(key)
         error("keybinding action: expected string or a function"..use_key, 2)
     end
 end
+-- Bind a key to use in conjunction with the mouse for certain commands (resize, move floating)
+config_table.register_mouse_modifier = function(mod)
+  assert(type(mod) == 'string', "mod: expected a string")
+  rust.register_mouse_modifier(mod)
+end
 -- Register callback to execute on restart
 way_cooler_table.on_restart = function(callback)
     assert(callback, "missing callback")

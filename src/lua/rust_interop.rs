@@ -25,6 +25,7 @@ pub fn register_libraries(lua: &mut Lua) {
         rust_table.set("init_workspaces", hlua::function1(init_workspaces));
         rust_table.set("register_lua_key", hlua::function2(register_lua_key));
         rust_table.set("register_command_key", hlua::function3(register_command_key));
+        rust_table.set("register_mouse_modifier", hlua::function1(register_mouse_modifier));
         rust_table.set("keypress_index", hlua::function1(keypress_index));
         rust_table.set("ipc_run", hlua::function1(ipc_run));
         rust_table.set("ipc_get", hlua::function1(ipc_get));
@@ -90,6 +91,13 @@ fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
 
 fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {
     error!("Attempting to call `init_workspaces`, this is not implemented");
+    Ok(())
+}
+
+/// Registers a modifier to be used in conjunction with mouse commands
+fn register_mouse_modifier(modifier: String) -> Result<(), String> {
+    let modifier = try!(keys::keymod_from_names(&[modifier.as_str()]));
+    keys::register_mouse_modifier(modifier);
     Ok(())
 }
 
