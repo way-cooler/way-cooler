@@ -23,7 +23,7 @@ pub fn register_defaults() {
         coms.insert(name.to_string(), val);
     };
 
-    register("quit", Arc::new(quit));
+    register("way_cooler_quit", Arc::new(way_cooler_quit));
     register("launch_terminal", Arc::new(launch_terminal));
     register("launch_dmenu", Arc::new(launch_dmenu));
     register("print_pointer", Arc::new(print_pointer));
@@ -138,7 +138,7 @@ fn print_pointer() {
         .expect("Error telling Lua to get pointer coords");
 }
 
-fn quit() {
+fn way_cooler_quit() {
     info!("Closing way cooler!!");
     ::rustwlc::terminate();
 }

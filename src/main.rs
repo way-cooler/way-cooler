@@ -166,7 +166,6 @@ fn main() {
     callbacks::init();
     commands::init();
     registry::init();
-    keys::init();
     ipc::init();
 
     info!("Running wlc...");

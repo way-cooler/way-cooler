@@ -327,6 +327,7 @@ pub extern fn compositor_ready() {
     info!("Preparing compositor!");
     info!("Initializing Lua...");
     lua::init();
+    keys::init();
 }
 
 pub extern fn compositor_terminating() {
