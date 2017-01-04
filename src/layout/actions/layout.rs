@@ -66,9 +66,10 @@ impl LayoutTree {
                     Container::Container { geometry, .. } => geometry,
                     _ => unreachable!()
                 };
+                // TODO Fake vector that doesn't allocate for this case?
                 let mut fullscreen_apps = Vec::new();
                 self.layout_helper(node_ix, geometry, &mut fullscreen_apps);
-                self.layout_fullscreen_apps(fullscreen_apps)
+                // DON'T layout fullscreen apps, would cause infinite recursion.
             }
             ContainerType::View => {
                 let parent_ix = self.tree.parent_of(node_ix)
@@ -607,6 +608,7 @@ impl LayoutTree {
             let maybe_node_ix = match self.tree[node_ix] {
                 Container::View { handle, .. } => {
                     handle.set_geometry(ResizeEdge::empty(), output_geometry);
+                    handle.bring_to_front();
                     None
                 },
                 Container::Container { ref mut geometry, .. } => {
