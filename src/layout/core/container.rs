@@ -69,6 +69,10 @@ pub enum Container {
         /// The size of the workspace on the screen.
         /// Might be different if there is e.g a bar present
         size: Size,
+        /// `Vec` of all children that are fullscreen.
+        /// This is used to disable certain features while there is a fullscreen
+        /// (e.g: focus switching, resizing, and moving containers)
+        fullscreen_c: Vec<Uuid>,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -119,6 +123,7 @@ impl Container {
         Container::Workspace {
             name: name,
             size: size,
+            fullscreen_c: Vec::new(),
             id: Uuid::new_v4()
         }
     }
@@ -304,7 +309,7 @@ impl Container {
 
     /// Determines if a container is fullscreen.
     ///
-    /// Workspaces, Outputs, and the Root are never fullscreen
+    /// Workspaces, Outputs, and the Root are never fullscreen.
     pub fn fullscreen(&self) -> bool {
         match *self {
             Container::View { handle, .. } => {
@@ -312,6 +317,41 @@ impl Container {
             },
             Container::Container { fullscreen, .. } => fullscreen,
             _ => false
+        }
+    }
+
+    /// Updates the workspace (`self`) that the `id` resides in to reflect
+    /// whether the container with the `id` is fullscreen (`toggle`).
+    ///
+    /// If called with a non-workspace an Err is returned with
+    /// the incorrect type.
+    pub fn update_fullscreen_c(&mut self, id: Uuid, toggle: bool)
+                               -> Result<(), ContainerType> {
+        let c_type = self.get_type();
+        match *self {
+            Container::Workspace { ref mut fullscreen_c, .. } => {
+                if !toggle {
+                    let index = fullscreen_c.iter()
+                        .position(|c_id| *c_id == id)
+                        .expect("Could not find ID in workspace \
+                                 fullscreen list!");
+                    fullscreen_c.remove(index);
+                } else {
+                    fullscreen_c.push(id);
+                }
+                Ok(())
+            },
+            _ => Err(c_type)
+        }
+    }
+
+    /// If the container is a workspace, determines how many children
+    /// are fullscreen in O(1) time.
+    pub fn fullscreen_c(&self) -> Option<bool> {
+        match *self {
+            Container::Workspace { ref fullscreen_c, .. } =>
+                Some(fullscreen_c.len() > 0),
+            _ => None
         }
     }
 }

@@ -187,11 +187,11 @@ pub fn set_performing_action(val: Option<Action>) {
     }
 }
 
-/* These commands are the interface that the rest of Way Cooler has to the
- * tree. Any action done, whether through a callback, or from the IPC/Lua thread
- * it will have to go through one of these methods.
- */
+// TODO Remove all instances of self.0.tree, that should be abstracted in LayoutTree.
 
+/// These commands are the interface that the rest of Way Cooler has to the
+/// tree. Any action done, whether through a callback, or from the IPC/Lua thread
+/// it will have to go through one of these methods.
 impl Tree {
     /// Gets the uuid of the active container, if there is an active container
     pub fn active_id(&self) -> Option<Uuid> {
@@ -372,8 +372,26 @@ impl Tree {
         {
             let container = try!(self.0.lookup_mut(id));
             try!(container.set_fullscreen(toggle)
-                .map_err(|_| TreeError::UuidWrongType(id, vec![ContainerType::View,
+                 .map_err(|_| TreeError::UuidWrongType(id, vec![ContainerType::View,
                                                                 ContainerType::Container])));
+        }
+        // Now update the workspace so that it knows which children are fullscreen
+        {
+            /*
+            TODO This needs proper error handling!
+            Correct way is to have active_ix_of to return a proper `Result<NodeIndex, TreeError>`
+            however that would break too much code and needs a branch to itself.
+
+            For now, in order to have the IPC not break Way Cooler, this will return an incorrect error.
+            */
+            if let Some(workspace_ix) = self.0.active_ix_of(ContainerType::Workspace) {
+                let workspace = &mut self.0.tree[workspace_ix];
+                try!(workspace.update_fullscreen_c(id, toggle)
+                     .map_err(|_| TreeError::UuidWrongType(workspace.get_id(), vec![ContainerType::Workspace])));
+            } else {
+                // WRONG ID! See TODO above
+                return Err(TreeError::UuidWrongType(id, vec![ContainerType::Workspace]))
+            }
         }
         // TODO Only do this if in path, or otherwise just tile the workspace the container is in
         // MOST of the time, this isn't a useless operation (read: when keybinding is used),
