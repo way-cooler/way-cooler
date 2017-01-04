@@ -3,8 +3,8 @@
 #![allow(deprecated)] // keysyms
 
 use rustwlc::handle::{WlcOutput, WlcView};
-use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
-                     Point, Geometry, ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_MAXIMIZED,
+use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size, Point, Geometry,
+                     ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_FULLSCREEN, VIEW_MAXIMIZED, VIEW_RESIZING,
                      MOD_NONE, MOD_CTRL, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
 
@@ -123,9 +123,30 @@ pub extern fn view_move_to_output(current: WlcView,
     trace!("view_move_to_output: {:?}, {:?}, {:?}", current, o1, o2);
 }
 
-pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
+pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) {
     trace!("Setting {:?} to state {:?}", view, state);
-    view.set_state(state, handled);
+    if state == VIEW_FULLSCREEN {
+            view.set_state(state, toggle);
+            if toggle {
+                if let Ok(mut tree) = try_lock_tree() {
+                    if let Some(id) = tree.lookup_view(view) {
+                        match tree.container_in_active_workspace(id) {
+                            Ok(true) => {
+                                tree.layout_active_of(ContainerType::Workspace)
+                                    .unwrap_or_else(|err| {
+                                        error!("Could not layout active workspace for view {:?}: {:?}",
+                                               view, err)
+                                    });
+                            },
+                            Ok(false) => {},
+                            Err(err) => error!("Could not set {:?} fullscreen: {:?}", view, err)
+                        }
+                    } else {
+                        warn!("Could not find view {:?} in tree", view);
+                    }
+                }
+            }
+    }
 }
 
 pub extern fn view_request_move(view: WlcView, _dest: &Point) {
