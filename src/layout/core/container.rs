@@ -204,7 +204,6 @@ impl Container {
             }),
             Container::Container { geometry, .. } => Some(geometry),
             Container::View { ref handle, ref prev_geometry, ..} => {
-                error!("{:?}", prev_geometry);
                 prev_geometry.or_else(|| handle.get_geometry())
             },
         }
