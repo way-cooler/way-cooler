@@ -91,6 +91,9 @@ pub enum Container {
         handle: WlcView,
         /// Whether this view is floating
         floating: bool,
+        /// The previous geometry of the view. Used for fullscreen rendering
+        /// This is a bit of a hack, but a fairly elegant one.
+        prev_geometry: Option<Geometry>,
         /// UUID associated with container, client program can use container
         id: Uuid,
     }
@@ -136,6 +139,7 @@ impl Container {
         Container::View {
             handle: handle,
             floating: false,
+            prev_geometry: None,
             id: Uuid::new_v4()
         }
     }
@@ -199,8 +203,10 @@ impl Container {
                 size: size
             }),
             Container::Container { geometry, .. } => Some(geometry),
-            Container::View { ref handle, ..} =>
-                handle.get_geometry(),
+            Container::View { ref handle, ref prev_geometry, ..} => {
+                error!("{:?}", prev_geometry);
+                prev_geometry.or_else(|| handle.get_geometry())
+            },
         }
     }
 
@@ -278,8 +284,15 @@ impl Container {
     pub fn set_fullscreen(&mut self, val: bool) -> Result<(), ContainerType> {
         let c_type = self.get_type();
         match *self {
-            Container::View { handle, .. } => {
+            Container::View { handle, ref mut prev_geometry, .. } => {
                 handle.set_state(VIEW_FULLSCREEN, val);
+                if !val {
+                    if let Some(geo) = prev_geometry.take() {
+                        handle.set_geometry(ResizeEdge::empty(), geo);
+                    }
+                } else {
+                    *prev_geometry = handle.get_geometry()
+                }
                 Ok(())
             },
             Container::Container { ref mut fullscreen, .. } => {
