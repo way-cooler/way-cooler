@@ -345,12 +345,16 @@ impl Container {
         }
     }
 
-    /// If the container is a workspace, determines how many children
-    /// are fullscreen in O(1) time.
-    pub fn fullscreen_c(&self) -> Option<bool> {
+    /// If the container is a workspace, returns the children in the workspace that
+    /// are fullscreen. The last child is the one visible to the user.
+    ///
+    /// Computes in O(1) time.
+    ///
+    /// If the container is not a workspace, None is returned.
+    pub fn fullscreen_c(&self) -> Option<&Vec<Uuid>> {
         match *self {
             Container::Workspace { ref fullscreen_c, .. } =>
-                Some(fullscreen_c.len() > 0),
+                Some(fullscreen_c),
             _ => None
         }
     }
