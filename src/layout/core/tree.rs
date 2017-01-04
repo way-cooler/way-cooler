@@ -477,6 +477,20 @@ impl LayoutTree {
         }
     }
 
+    /// Determines if the container behind the id is in a fullscreen workspace.
+    /// If it is, it returns the id of the fullscreen container.
+    pub fn in_fullscreen_workspace(&self, id: Uuid) -> Result<Option<Uuid>, TreeError> {
+        let node_ix = try!(self.tree.lookup_id(id)
+                           .ok_or(TreeError::NodeNotFound(id)));
+        let workspace_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+                                .map_err(|err| TreeError::PetGraph(err)));
+        let workspace = &self.tree[workspace_ix];
+        let children = try!(workspace.fullscreen_c()
+                            .ok_or(TreeError::UuidWrongType(workspace.get_id(),
+                                                            vec![ContainerType::Workspace])));
+        Ok(children.last().cloned())
+    }
+
     /// Validates the tree
     #[cfg(debug_assertions)]
     pub fn validate(&self) {
