@@ -9,6 +9,9 @@ use super::{DBusResult};
 
 use layout::{Direction, Layout, Tree, try_lock_tree};
 
+use rustwlc::{ResizeEdge, RESIZE_TOP, RESIZE_BOTTOM,
+              RESIZE_LEFT, RESIZE_RIGHT};
+
 pub fn lock_tree_dbus() -> DBusResult<Tree> {
     match try_lock_tree() {
         Ok(tree) => Ok(tree),
@@ -52,5 +55,18 @@ pub fn parse_axis(arg: &'static str, text: &str) -> DBusResult<Layout> {
             &format!("{}: {} is not a valid axis direction. \
                       May be either 'horizontal' or 'vertical'", arg, text)))
     }
+}
+
+pub fn parse_edge(dir: &str) -> DBusResult<ResizeEdge> {
+    let result = Ok(match dir.to_lowercase().as_str() {
+        "up" => RESIZE_TOP,
+        "down" => RESIZE_BOTTOM,
+        "left" => RESIZE_LEFT,
+        "right" => RESIZE_RIGHT,
+        _ => return Err(MethodErr::invalid_arg(
+        &format!("{} is not a valid direction. \
+                  May be one of 'up', 'down', 'left', 'right'.", dir)))
+    });
+    result
 }
 
