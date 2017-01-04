@@ -83,6 +83,7 @@ local keys = {
   key({ mod }, "h", "split_horizontal"),
   key({ mod }, "v", "split_vertical"),
   key({ mod }, "e", "horizontal_vertical_switch"),
+  key({ mod }, "f", "fullscreen_toggle"),
   key({ mod, "Shift" }, "q", "close_window"),
   key({ mod, "Shift" }, "space", "toggle_float_active"),
   key({ mod }, "space", "toggle_float_focus"),

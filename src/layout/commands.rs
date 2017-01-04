@@ -69,6 +69,20 @@ pub fn split_horizontal() {
     }
 }
 
+pub fn fullscreen_toggle() {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Some(id) = tree.active_id() {
+            let toggle = !tree.is_fullscreen(id)
+                .expect("Active ID was invalid!");
+            tree.set_fullscreen(id, toggle)
+                .unwrap_or_else(|_| {
+                    warn!("Could not set {:?} to fullscreen flag to be {:?}",
+                          id, toggle);
+                })
+        }
+    }
+}
+
 pub fn focus_left() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Left)
@@ -355,10 +369,21 @@ impl Tree {
     /// If the container is a non-View/Container, then an error is returned
     /// and the flag is not set (it's only tracked for Views and Containers).
     pub fn set_fullscreen(&mut self, id: Uuid, toggle: bool) -> CommandResult {
-        let container = try!(self.0.lookup_mut(id));
-        container.set_fullscreen(toggle)
-            .map_err(|_| TreeError::UuidWrongType(id, vec![ContainerType::View,
-                                                           ContainerType::Container]))
+        {
+            let container = try!(self.0.lookup_mut(id));
+            try!(container.set_fullscreen(toggle)
+                .map_err(|_| TreeError::UuidWrongType(id, vec![ContainerType::View,
+                                                                ContainerType::Container])));
+        }
+        // TODO Only do this if in path, or otherwise just tile the workspace the container is in
+        // MOST of the time, this isn't a useless operation (read: when keybinding is used),
+        // but still the IPC shouldn't do a useless tile if it can help it.
+        self.layout_active_of(ContainerType::Workspace)
+    }
+
+    pub fn is_fullscreen(&self, id: Uuid) -> Result<bool, TreeError> {
+        let container = try!(self.0.lookup(id));
+        Ok(container.fullscreen())
     }
 
     /// Focuses on the container. If the container is not floating and is a
