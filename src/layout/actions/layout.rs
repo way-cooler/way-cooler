@@ -578,10 +578,8 @@ impl LayoutTree {
     ///
     /// # Panic
     /// This function will panic if the any of the containers are not a `View` or a `Container`
-    pub fn layout_fullscreen_apps(&mut self, containers: Vec<Uuid>) {
-        for id in containers {
-            let node_ix = self.tree.lookup_id(id)
-                .expect("Container UUID was not associated with a NodeIndex");
+    pub fn layout_fullscreen_apps(&mut self, containers: Vec<NodeIndex>) {
+        for node_ix in containers {
             let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
                 .expect("Container did not have an output as an ancestor");
             let output_geometry = self.tree[output_ix].get_geometry()
