@@ -127,4 +127,14 @@ dbus_interface! {
         tree.container_in_active_workspace(uuid)
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
+
+    fn FullScreen(container_id: String, toggle: bool) -> success: DBusResult<bool> {
+        let mut tree = try!(lock_tree_dbus());
+        let uuid = try!(try!(parse_uuid("container_id", &container_id))
+                        .or_else(|| tree.active_id())
+                        .ok_or(MethodErr::failed(&"No active container")));
+        tree.set_fullscreen(uuid, toggle)
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
 }
