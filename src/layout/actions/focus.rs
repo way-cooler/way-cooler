@@ -15,7 +15,10 @@ pub enum FocusError {
     /// container out of a workspace
     ReachedLimit(NodeIndex),
     /// Tried to focus on a container that was not a view.
-    NotAView(Uuid)
+    NotAView(Uuid),
+    /// Tried to focus on a container (first one),
+    /// but that container was superseded by a fullscreen container (second one)
+    BlockedByFullscreen(Uuid, Uuid)
 }
 
 impl LayoutTree {
