@@ -4,7 +4,7 @@
 
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
-                     Point, Geometry, ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_RESIZING,
+                     Point, Geometry, ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_MAXIMIZED,
                      MOD_NONE, MOD_CTRL, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
 
@@ -75,6 +75,7 @@ pub extern fn view_created(view: WlcView) -> bool {
             if view.get_class() == "Background" {
                 return Ok(())
             }
+            view.set_state(VIEW_MAXIMIZED, true);
             tree.set_active_view(view).or_else(|_| {
                 // We still want to focus on the window that appeared
                 // Might need to change later, in case this focus grabbing
