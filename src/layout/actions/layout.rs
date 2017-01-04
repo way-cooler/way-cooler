@@ -117,7 +117,6 @@ impl LayoutTree {
                     self.place_floating(child_ix);
                 }
             },
-            // TODO Add a fullscreen flag to Container, add to fullscreen_apps if set
             ContainerType::Container => {
                 {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
