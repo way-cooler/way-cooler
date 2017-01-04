@@ -127,23 +127,21 @@ pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) 
     trace!("Setting {:?} to state {:?}", view, state);
     if state == VIEW_FULLSCREEN {
             view.set_state(state, toggle);
-            if toggle {
-                if let Ok(mut tree) = try_lock_tree() {
-                    if let Some(id) = tree.lookup_view(view) {
-                        match tree.container_in_active_workspace(id) {
-                            Ok(true) => {
-                                tree.layout_active_of(ContainerType::Workspace)
-                                    .unwrap_or_else(|err| {
-                                        error!("Could not layout active workspace for view {:?}: {:?}",
-                                               view, err)
-                                    });
-                            },
-                            Ok(false) => {},
-                            Err(err) => error!("Could not set {:?} fullscreen: {:?}", view, err)
-                        }
-                    } else {
-                        warn!("Could not find view {:?} in tree", view);
+            if let Ok(mut tree) = try_lock_tree() {
+                if let Some(id) = tree.lookup_view(view) {
+                    match tree.container_in_active_workspace(id) {
+                        Ok(true) => {
+                            tree.layout_active_of(ContainerType::Workspace)
+                                .unwrap_or_else(|err| {
+                                    error!("Could not layout active workspace for view {:?}: {:?}",
+                                            view, err)
+                                });
+                        },
+                        Ok(false) => {},
+                        Err(err) => error!("Could not set {:?} fullscreen: {:?}", view, err)
                     }
+                } else {
+                    warn!("Could not find view {:?} in tree", view);
                 }
             }
     }
