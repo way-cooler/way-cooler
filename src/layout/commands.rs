@@ -189,6 +189,19 @@ impl Tree {
         self.0.lookup_view(view).map(|c| c.get_id())
     }
 
+    /// Determines if the container is in the currently active workspace.
+    pub fn container_in_active_workspace(&self, id: Uuid) -> Result<bool, TreeError> {
+        let view = match try!(self.0.lookup(id)).get_handle() {
+            Some(Handle::View(view)) => view,
+            _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
+        };
+        if let Some(active_workspace) = self.0.active_ix_of(ContainerType::Workspace) {
+            Ok(self.0.tree.descendant_with_handle(active_workspace, &view).is_some())
+        } else {
+            Ok(false)
+        }
+    }
+
     pub fn toggle_float(&mut self) -> CommandResult {
         if let Some(uuid) = self.active_id() {
             let is_floating: Result<bool, _> = self.0.lookup(uuid)
