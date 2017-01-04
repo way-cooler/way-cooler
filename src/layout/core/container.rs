@@ -5,7 +5,7 @@ use uuid::Uuid;
 pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 
 use rustwlc::handle::{WlcView, WlcOutput};
-use rustwlc::{Geometry, ResizeEdge, Point, Size};
+use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -78,6 +78,8 @@ pub enum Container {
         layout: Layout,
         /// If the container is floating
         floating: bool,
+        /// If the container is fullscreen
+        fullscreen: bool,
         /// The geometry of the container, relative to the parent container
         geometry: Geometry,
         /// UUID associated with container, client program can use container
@@ -123,6 +125,7 @@ impl Container {
         Container::Container {
             layout: Layout::Horizontal,
             floating: false,
+            fullscreen: false,
             geometry: geometry,
             id: Uuid::new_v4()
         }
@@ -250,6 +253,9 @@ impl Container {
         }
     }
 
+
+    // TODO Make these set_* functions that can fail return a proper error type.
+
     /// If not set on a view or container, error is returned telling what
     /// container type that this function was (incorrectly) called on.
     pub fn set_floating(&mut self, val: bool) -> Result<ContainerType, ContainerType> {
@@ -263,6 +269,37 @@ impl Container {
             _ => {
                 Err(c_type)
             }
+        }
+    }
+
+    /// Sets the fullscreen flag on the container to the specified value.
+    ///
+    /// If called on a non View/Container, then returns an Err with the wrong type.
+    pub fn set_fullscreen(&mut self, val: bool) -> Result<(), ContainerType> {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { handle, .. } => {
+                handle.set_state(VIEW_FULLSCREEN, val);
+                Ok(())
+            },
+            Container::Container { ref mut fullscreen, .. } => {
+                *fullscreen = val;
+                Ok(())
+            },
+            _ => Err(c_type)
+        }
+    }
+
+    /// Determines if a container is fullscreen.
+    ///
+    /// Workspaces, Outputs, and the Root are never fullscreen
+    pub fn fullscreen(&self) -> bool {
+        match *self {
+            Container::View { handle, .. } => {
+                handle.get_state().intersects(VIEW_FULLSCREEN)
+            },
+            Container::Container { fullscreen, .. } => fullscreen,
+            _ => false
         }
     }
 }

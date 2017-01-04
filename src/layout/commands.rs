@@ -350,6 +350,17 @@ impl Tree {
         self.0.set_active_container(id)
     }
 
+    /// Sets the container behind the UUID to be fullscreen.
+    ///
+    /// If the container is a non-View/Container, then an error is returned
+    /// and the flag is not set (it's only tracked for Views and Containers).
+    pub fn set_fullscreen(&mut self, id: Uuid, toggle: bool) -> CommandResult {
+        let container = try!(self.0.lookup_mut(id));
+        container.set_fullscreen(toggle)
+            .map_err(|_| TreeError::UuidWrongType(id, vec![ContainerType::View,
+                                                           ContainerType::Container]))
+    }
+
     /// Focuses on the container. If the container is not floating and is a
     /// Container or a View, then it is also made the active container.
     pub fn focus(&mut self, id: Uuid) -> CommandResult {

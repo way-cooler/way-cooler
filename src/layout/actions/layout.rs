@@ -1,7 +1,7 @@
 use std::cmp;
 
 use petgraph::graph::NodeIndex;
-use rustwlc::{Geometry, Point, Size, ResizeEdge, VIEW_FULLSCREEN};
+use rustwlc::{Geometry, Point, Size, ResizeEdge};
 
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
@@ -84,6 +84,10 @@ impl LayoutTree {
     /// Generally, this should not be used directly and layout should be used.
     fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry,
                      fullscreen_apps: &mut Vec<NodeIndex>) {
+        if self.tree[node_ix].fullscreen() {
+            fullscreen_apps.push(node_ix);
+            return;
+        }
         match self.tree[node_ix].get_type() {
             ContainerType::Root | ContainerType::Output => {
                 warn!("Ignoring geometry constraint ({:#?}), \
@@ -226,11 +230,7 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                if handle.get_state().intersects(VIEW_FULLSCREEN) {
-                    fullscreen_apps.push(node_ix)
-                } else {
-                    handle.set_geometry(ResizeEdge::empty(), geometry);
-                }
+                handle.set_geometry(ResizeEdge::empty(), geometry);
             }
         }
         self.validate();
