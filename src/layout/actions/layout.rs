@@ -570,6 +570,44 @@ impl LayoutTree {
             }
         }
     }
+
+    /// Tiles these containers above all the other containers in its workspace.
+    ///
+    /// If multiple containers are in the same workspace, each one will be drawn
+    /// on top of the other, with the last one being the one ultimately seen by the user.
+    ///
+    /// # Panic
+    /// This function will panic if the any of the containers are not a `View` or a `Container`
+    pub fn layout_fullscreen_apps(&mut self, containers: Vec<Uuid>) {
+        for id in containers {
+            let node_ix = self.tree.lookup_id(id)
+                .expect("Container UUID was not associated with a NodeIndex");
+            let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
+                .expect("Container did not have an output as an ancestor");
+            let output_geometry = self.tree[output_ix].get_geometry()
+                .expect("Output did not have a geometry associated with it");
+
+            // Sorry, this is an ugly borrow checker hack
+            // Can't do self.layout() in Container::Container, borrowing mutably self mutably here.
+            let maybe_node_ix = match self.tree[node_ix] {
+                Container::View { handle, .. } => {
+                    handle.set_geometry(ResizeEdge::empty(), output_geometry);
+                    None
+                },
+                Container::Container { ref mut geometry, .. } => {
+                    *geometry = output_geometry;
+                    Some(node_ix)
+                },
+                ref container => {
+                    error!("Expected a view or a container, got {:?}", container);
+                    panic!("Expected a View or a Container, got something else");
+                }
+            };
+            if let Some(node_ix) = maybe_node_ix {
+                self.layout(node_ix);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
