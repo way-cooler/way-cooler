@@ -226,9 +226,10 @@ impl LayoutTree {
                     Container::View { ref handle, .. } => handle,
                     _ => unreachable!()
                 };
-                handle.set_geometry(ResizeEdge::empty(), geometry);
                 if handle.get_state().intersects(VIEW_FULLSCREEN) {
                     fullscreen_apps.push(node_ix)
+                } else {
+                    handle.set_geometry(ResizeEdge::empty(), geometry);
                 }
             }
         }
