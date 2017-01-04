@@ -133,6 +133,9 @@ function way_cooler_terminate()
 end
 
 
+way_cooler.on_restart(way_cooler_restart)
+way_cooler.on_terminate(way_cooler_terminate)
+
 -- To use plugins such as bars, or to start other programs on startup,
 -- call util.exec.spawn_once, which will not spawn copies after a config reload.
 
