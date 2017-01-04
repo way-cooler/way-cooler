@@ -2,11 +2,12 @@
 
 /// Dbus macro for Layout code
 
-use super::utils::{parse_uuid, parse_direction, parse_axis, lock_tree_dbus};
+use super::utils::{parse_edge, parse_uuid, parse_direction, parse_axis, lock_tree_dbus};
 
 use dbus::tree::MethodErr;
 
 use super::super::layout::{Layout, commands as layout_cmd};
+use rustwlc::{ResizeEdge, Point};
 
 dbus_interface! {
     path: "/org/way_cooler/Layout";
@@ -134,6 +135,28 @@ dbus_interface! {
                         .or_else(|| tree.active_id())
                         .ok_or(MethodErr::failed(&"No active container")));
         tree.set_fullscreen(uuid, toggle)
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
+    fn SetPointerPos(x: i32, y: i32) -> success: DBusResult<bool> {
+        let mut tree = try!(lock_tree_dbus());
+        let point = Point { x: x, y: y};
+        tree.set_pointer_pos(point)
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
+    fn GrabAtCorner(container_id: String, dir: String) -> success: DBusResult<bool> {
+        let mut tree = try!(lock_tree_dbus());
+        let uuid = try!(try!(parse_uuid("container_id", &container_id))
+                        .or_else(|| tree.active_id())
+                        .ok_or(MethodErr::failed(&"No active container")));
+        let mut edge = ResizeEdge::empty();
+        for word in dir.split(',') {
+            edge |= try!(parse_edge(word))
+        }
+        tree.grab_at_corner(uuid, edge)
             .and(Ok(true))
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }

@@ -105,6 +105,9 @@ for _, key in pairs(keys) do
     config.register_key(key)
 end
 
+-- Register the mod key to also be the mod key for mouse commands
+config.register_mouse_modifier(mod)
+
 function cleanup_background()
   os.execute("pkill way-cooler-bg")
 end

@@ -22,6 +22,8 @@ lazy_static! {
         map.insert("\t", "tab");
         map
     };
+
+    static ref MOUSE_MODIFIER: RwLock<KeyMod> = RwLock::new(MOD_CTRL);
 }
 
 /// Parses a KeyMod from key names.
@@ -67,11 +69,25 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     bindings.get(key).map(KeyEvent::clone)
 }
 
+/// Gets the current key modifier for mouse control
+pub fn mouse_modifier() -> KeyMod {
+    let key_mod = MOUSE_MODIFIER.read()
+        .expect("Keybindings/register_mouse_modifier: unable to lock MOUSE MODIFIER");
+    *key_mod
+}
+
 /// Register a new set of key mappings
 pub fn register(key: KeyPress, event: KeyEvent) -> Option<KeyEvent> {
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
     bindings.insert(key, event)
+}
+
+/// Registers a modifier to be used with mouse commands
+pub fn register_mouse_modifier(modifier: KeyMod) {
+    let mut key_mod = MOUSE_MODIFIER.write()
+        .expect("Keybindings/register_mouse_modifier: unable to lock MOUSE MODIFIER");
+    *key_mod = modifier;
 }
 
 /// Determine if the way_cooler_quit command is already bound

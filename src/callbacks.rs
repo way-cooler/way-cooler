@@ -4,8 +4,8 @@
 
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size, Point, Geometry,
-                     ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_FULLSCREEN, VIEW_MAXIMIZED, VIEW_RESIZING,
-                     MOD_NONE, MOD_CTRL, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+                     ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_FULLSCREEN, VIEW_RESIZING, VIEW_MAXIMIZED,
+                     MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
 
 use super::keys::{self, KeyPress, KeyEvent};
@@ -217,13 +217,14 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                          mods: &KeyboardModifiers, button: u32,
                              state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed {
+        let mouse_mod = keys::mouse_modifier();
         if button == LEFT_CLICK && !view.is_root() {
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).unwrap_or_else(|_| {
                     // still focus on view, even if not in tree.
                     view.focus();
                 });
-                if mods.mods.contains(MOD_CTRL) {
+                if mods.mods.contains(mouse_mod) {
                     let action = Action {
                         view: view,
                         grab: *point,
@@ -237,7 +238,7 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                 tree.set_active_view(view).ok();
             }
             // TODO Make this set in the config file and read here.
-            if mods.mods.contains(MOD_CTRL) {
+            if mods.mods.contains(mouse_mod) {
                 let action = Action {
                     view: view,
                     grab: *point,
