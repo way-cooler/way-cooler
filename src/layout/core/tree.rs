@@ -157,6 +157,12 @@ impl LayoutTree {
 
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
+        if let Some(node_ix) = self.active_container {
+            let id = self.tree[node_ix].get_id();
+            if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
+                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
+            }
+        }
         if self.active_container != Some(node_ix) {
             info!("Active container was {}, is now {}",
                   self.active_container.map(|node| node.index().to_string())
@@ -264,7 +270,11 @@ impl LayoutTree {
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
-            try!(self.set_active_node(view_ix));
+            match self.set_active_node(view_ix) {
+                // Ok, because fullscreen blocks focus grabbing
+                Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {},
+                Err(err) => return Err(err)
+            }
             return Ok(&self.tree[view_ix])
         }
         self.validate();
@@ -300,7 +310,11 @@ impl LayoutTree {
         let new_container_ix = self.tree.add_child(parent_ix, container, false);
         self.tree.move_node(child_ix, new_container_ix);
         self.tree.set_child_pos(new_container_ix, *old_weight);
-        try!(self.set_active_node(new_container_ix));
+        match self.set_active_node(new_container_ix) {
+            // Ok, because fullscreen blocks focus grabbing
+            Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {},
+            Err(err) => return Err(err)
+        }
         self.validate();
         Ok(())
     }
