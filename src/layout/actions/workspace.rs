@@ -105,9 +105,10 @@ impl LayoutTree {
         match self.tree[active_ix].get_type() {
             ContainerType::View  => {
                 match self.tree[active_ix] {
-                    Container::View { ref handle, ..} => {
-                        trace!("View found, focusing on {:?}", handle);
-                        handle.focus();
+                    Container::View { id, ..} => {
+                        self.focus_on(id) .unwrap_or_else(|_| {
+                            warn!("Could not focus on {:?}", id);
+                        });
                     },
                     _ => unreachable!()
                 }

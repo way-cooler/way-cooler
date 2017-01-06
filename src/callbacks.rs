@@ -9,7 +9,8 @@ use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, Scro
 use rustwlc::input::{pointer, keyboard};
 
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType, MovementError, TreeError};
+use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType,
+                    MovementError, TreeError, FocusError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
@@ -71,19 +72,21 @@ pub extern fn view_created(view: WlcView) -> bool {
         return true
     }
     if let Ok(mut tree) = try_lock_tree() {
-        tree.add_view(view).and_then(|_| {
+        let result = tree.add_view(view).and_then(|_| {
             if view.get_class() == "Background" {
                 return Ok(())
             }
             view.set_state(VIEW_MAXIMIZED, true);
-            tree.set_active_view(view).or_else(|_| {
-                // We still want to focus on the window that appeared
-                // Might need to change later, in case this focus grabbing
-                // gets annoying / becomes a security issue.
-                view.focus();
-                Ok(())
-            })
-        }).is_ok()
+            match tree.set_active_view(view) {
+                // If blocked by fullscreen, we don't focus on purpose
+                Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => Ok(()),
+                result => result
+            }
+        });
+        if result.is_err() {
+            warn!("Could not add {:?}. Reason: {:?}", view, result);
+        }
+        result.is_ok()
     } else {
         false
     }
