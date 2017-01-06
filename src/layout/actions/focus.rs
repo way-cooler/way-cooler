@@ -52,7 +52,7 @@ impl LayoutTree {
                 _ => warn!("move_focus returned a non-view, cannot focus")
             }
         } else {
-            warn!("Cannot move active focus when not there is no active container");
+            return Err(TreeError::NoActiveContainer)
         }
         self.validate();
         Ok(())
