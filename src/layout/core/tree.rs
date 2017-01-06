@@ -164,12 +164,17 @@ impl LayoutTree {
                   node_ix.index());
         }
         self.active_container = Some(node_ix);
-        match self.tree[node_ix] {
-            Container::View { ref handle, .. } => handle.focus(),
-            Container::Container { .. } => {},
-            ref container => return Err(
-                TreeError::UuidWrongType(container.get_id(),
-                                         vec!(ContainerType::View, ContainerType::Container)))
+        let c_type; let id;
+        {
+            let container = &self.tree[node_ix];
+            c_type = container.get_type();
+            id = container.get_id();
+        }
+        match c_type {
+            ContainerType::View => try!(self.focus_on(id)),
+            ContainerType::Container => {/* TODO implement this */},
+            _ => return Err(
+                TreeError::UuidWrongType(id, vec!(ContainerType::View, ContainerType::Container)))
         }
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
