@@ -1074,7 +1074,7 @@ pub mod tests {
         tree.active_container = None;
         for direction in &directions {
             // should do nothing when there is no active container
-            tree.move_focus(*direction).unwrap();
+            assert_eq!(tree.move_focus(*direction), Err(TreeError::NoActiveContainer));
             assert_eq!(tree.active_container, None);
         }
         tree.active_container = old_active_ix;
