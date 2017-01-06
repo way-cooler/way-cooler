@@ -68,13 +68,13 @@ pub extern fn view_created(view: WlcView) -> bool {
             size: resolution
         };
         view.set_geometry(ResizeEdge::empty(), fullscreen);
-        return true
+        if let Ok(mut tree) = try_lock_tree() {
+            return tree.add_background(view).is_ok();
+        }
+        return false
     }
     if let Ok(mut tree) = try_lock_tree() {
         tree.add_view(view).and_then(|_| {
-            if view.get_class() == "Background" {
-                return Ok(())
-            }
             view.set_state(VIEW_MAXIMIZED, true);
             tree.set_active_view(view).or_else(|_| {
                 // We still want to focus on the window that appeared

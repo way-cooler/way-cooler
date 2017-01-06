@@ -8,6 +8,8 @@ use uuid::Uuid;
 use rustwlc::{Point, ResizeEdge, WlcView, WlcOutput, ViewType};
 use rustc_serialize::json::{Json, ToJson};
 
+use std::collections::HashSet;
+
 pub type CommandResult = Result<(), TreeError>;
 
 /* These commands are exported to take nothing and return nothing,
@@ -240,6 +242,29 @@ impl Tree {
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
         self.0.add_output(output);
+        Ok(())
+    }
+
+    /// Binds a view to be the background for all outputs.
+    ///
+    /// If there was a previous background, it is removed and deallocated.
+    pub fn add_background(&mut self, view: WlcView) -> CommandResult {
+        let outputs = self.0.tree.children_of(self.0.tree.root_ix());
+        let mut to_remove = HashSet::with_capacity(outputs.len());
+        for output_ix in outputs {
+            match self.0.tree[output_ix] {
+                Container::Output { ref mut background, .. } => {
+                    if let Some(view) = background.take() {
+                        to_remove.insert(view);
+                    }
+                    *background = Some(view);
+                },
+                _ => unreachable!()
+            }
+        }
+        for view in to_remove {
+            view.close();
+        }
         Ok(())
     }
 

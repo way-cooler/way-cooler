@@ -324,6 +324,17 @@ impl LayoutTree {
             self.validate();
             Ok(container)
         } else {
+            // Check if it's a background, and if so invalidate it
+            for output_ix in self.tree.children_of(self.tree.root_ix()) {
+                match self.tree[output_ix] {
+                    Container::Output { ref mut background, .. } => {
+                        if Some(*view) == *background {
+                            background.take();
+                        }
+                    },
+                    _ => unreachable!()
+                }
+            }
             self.validate();
             Err(TreeError::ViewNotFound(view.clone()))
         }
