@@ -25,6 +25,9 @@ impl LayoutTree {
     /// Focuses on the container by the uuid, if it points to a View.
     /// Otherwise, an error is returned.
     pub fn focus_on(&mut self, uuid: Uuid) -> CommandResult {
+        if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(uuid)) {
+            return Err(TreeError::Focus(FocusError::BlockedByFullscreen(uuid, fullscreen_id)))
+        }
         let container = try!(self.lookup(uuid));
         match *container {
             Container::View { handle, .. } => {
@@ -44,6 +47,11 @@ impl LayoutTree {
     /// but moves between ancestor siblings.
     pub fn move_focus(&mut self, direction: Direction) -> CommandResult {
         if let Some(prev_active_ix) = self.active_container {
+            let active_id = self.tree[prev_active_ix].get_id();
+            if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(active_id)) {
+                return Err(TreeError::Focus(
+                    FocusError::BlockedByFullscreen(active_id, fullscreen_id)))
+            }
             let new_active_ix = self.move_focus_recurse(prev_active_ix, direction)
                 .unwrap_or(prev_active_ix);
             try!(self.set_active_node(new_active_ix));
@@ -58,7 +66,8 @@ impl LayoutTree {
         Ok(())
     }
 
-    fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, TreeError> {
+    fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction)
+                          -> Result<NodeIndex, TreeError> {
         match self.tree[node_ix].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
             _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
@@ -134,9 +143,22 @@ impl LayoutTree {
     /// parent node. If a view cannot be found there, it starts climbing the
     /// tree until either a view is found or the workspace is (in which case
     /// it set the active container to the root container of the workspace)
+    ///
+    /// If there is a fullscreen container in this workspace, that is focused on next,
+    /// with the active path updated accordingly.
     pub fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
         let last_ix = self.tree.active_path().last()
             .expect("Active path did not lead anywhere").0;
+        let id = self.tree[last_ix].get_id();
+        // TODO error handling!!!
+        match self.in_fullscreen_workspace(id).unwrap() {
+            Some(fullscreen_id) => {
+                self.set_active_container(fullscreen_id).unwrap();
+                return;
+            },
+            _ => {}
+        }
+        // TODO Change this algorithm when we improve the pathing system
         match self.tree[last_ix] {
             Container::View { handle, .. } => {
                 handle.focus();
@@ -231,7 +253,16 @@ impl LayoutTree {
     /// If there is no currently focused view, does nothing.
     pub fn toggle_floating_focus(&mut self) -> CommandResult {
         let active_ix = try!(self.active_container.ok_or(TreeError::NoActiveContainer));
-        if self.tree[active_ix].floating() {
+        let id; let floating;
+        {
+            let container = &self.tree[active_ix];
+            id = container.get_id();
+            floating = container.floating();
+        }
+        if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
+            return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
+        }
+        if floating {
             let root_ix = self.tree.root_ix();
             let new_ix = self.tree.follow_path(root_ix);
             match self.tree[new_ix].get_type() {
