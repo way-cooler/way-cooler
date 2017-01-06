@@ -386,6 +386,13 @@ impl LayoutTree {
             // If the active container is *not* being removed,
             // we must ensure that it won't be invalidated by the move
             // (i.e: if it is the last index)
+            //
+            // FIXME TODO NOTE
+            // THIS IS BROKEN
+            // Right now, this will panic if a view is fullscreen and
+            // a non-active_container is removed (because that's an err from set_active_node)
+            // the fix is to update to the newest version of petgraph, which doesn't have
+            // this invalidation issue!
             if self.active_container.map(|c| c != node_ix).unwrap_or(false) {
                 if self.tree.is_last_ix(self.active_container.unwrap()) {
                     if let Err(err) = self.set_active_node(node_ix) {
