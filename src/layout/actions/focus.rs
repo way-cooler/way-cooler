@@ -58,7 +58,7 @@ impl LayoutTree {
         Ok(())
     }
 
-    pub fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, TreeError> {
+    fn move_focus_recurse(&mut self, node_ix: NodeIndex, direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_ix].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
             _ => return Err(TreeError::UuidWrongType(self.tree[node_ix].get_id(),
