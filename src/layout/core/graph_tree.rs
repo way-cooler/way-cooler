@@ -405,19 +405,20 @@ impl InnerTree {
     ///
     /// If it doesn't exist in the graph, return None.
     ///
-    /// Apart from a, this invalidates the last node index in the graph
-    /// (that node will adopt the removed node index).
-    /// Edge indices are invalidated as they would be following the removal
-    /// of each edge with an endpoint in a.
-    ///
     /// Computes in O(e') time, where e' is the number of affected edges,
     /// including n calls to .remove_edge() where n is the number of edges
     /// with an endpoint in a, and including the edges with an endpoint in
     /// the displaced node.
     pub fn remove(&mut self, node_ix: NodeIndex) -> Option<Container> {
-        let id = self.graph[node_ix].get_id();
+        {
+            let container = &self.graph[node_ix];
+            let id = container.get_id();
+            self.id_map.remove(&id);
+            if let Container::View { ref handle, .. } = *container {
+                self.view_map.remove(handle);
+            }
+        }
         let maybe_parent_ix = self.parent_of(node_ix);
-        self.id_map.remove(&id);
         if let Ok(parent_ix) = maybe_parent_ix {
             let result = self.graph.remove_node(node_ix);
             // Fix the edge weights of the siblings of this node,
@@ -425,7 +426,6 @@ impl InnerTree {
             self.normalize_edge_weights(parent_ix);
             result
         } else {
-            self.id_map.remove(&id);
             self.graph.remove_node(node_ix)
         }
     }
