@@ -30,3 +30,4 @@ dummy-rustwlc = "0.5.1"
 
 [features]
 static-wlc = ["rustwlc/static-wlc"]
+disable-debug = []

@@ -509,7 +509,7 @@ impl InnerTree {
         let mut neighbors = self.graph
             .neighbors_directed(node_ix, EdgeDirection::Incoming);
         let result = neighbors.next().ok_or(GraphError::NoParent(node_ix));
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) || !cfg!(disable_debug) {
             if neighbors.next().is_some() {
                 error!("{:?}", self);
                 panic!("parent_of: node has multiple parents!")

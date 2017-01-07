@@ -182,7 +182,7 @@ impl LayoutTree {
 
             // Get the root container of the next workspace
             let next_work_children = self.tree.children_of(next_work_ix);
-            if cfg!(debug_assertions) {
+            if cfg!(debug_assertions) || !cfg!(disable_debug) {
                 assert!(next_work_children.len() == 1,
                         "Next workspace has multiple roots!");
             }
