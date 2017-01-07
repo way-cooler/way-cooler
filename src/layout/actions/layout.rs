@@ -6,6 +6,7 @@ use rustwlc::{Geometry, Point, Size, ResizeEdge};
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
+use ::debug_enabled;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -510,7 +511,7 @@ impl LayoutTree {
     pub fn normalize_container(&mut self, node_ix: NodeIndex) {
         // if floating, do not normalize
         if self.tree[node_ix].floating() {
-            if cfg!(debug_assertions) || !cfg!(disable_debug) {
+            if cfg!(debug_assertions) || !debug_enabled() {
                 error!("Tried to normalize {:?}\n{:#?}", node_ix, self);
                 panic!("Tried to normalize a floating view, are you sure you want to do that?")
             } else {

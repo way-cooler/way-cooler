@@ -14,6 +14,7 @@ use uuid::Uuid;
 use rustwlc::WlcView;
 
 use super::path::{Path, PathBuilder};
+use ::debug_enabled;
 
 use layout::{Container, ContainerType, Handle};
 
@@ -509,7 +510,7 @@ impl InnerTree {
         let mut neighbors = self.graph
             .neighbors_directed(node_ix, EdgeDirection::Incoming);
         let result = neighbors.next().ok_or(GraphError::NoParent(node_ix));
-        if cfg!(debug_assertions) || !cfg!(disable_debug) {
+        if cfg!(debug_assertions) || !debug_enabled() {
             if neighbors.next().is_some() {
                 error!("{:?}", self);
                 panic!("parent_of: node has multiple parents!")

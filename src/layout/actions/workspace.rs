@@ -3,6 +3,7 @@ use uuid::Uuid;
 use rustwlc::{Geometry, Point};
 use super::super::LayoutTree;
 use super::super::core::container::{Container, ContainerType};
+use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
 // Need to add some errors for this (such as when trying to move a non-container/view,
@@ -182,7 +183,7 @@ impl LayoutTree {
 
             // Get the root container of the next workspace
             let next_work_children = self.tree.children_of(next_work_ix);
-            if cfg!(debug_assertions) || !cfg!(disable_debug) {
+            if cfg!(debug_assertions) || !debug_enabled() {
                 assert!(next_work_children.len() == 1,
                         "Next workspace has multiple roots!");
             }
