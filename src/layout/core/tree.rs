@@ -871,6 +871,11 @@ pub mod tests {
         let mut tree = basic_tree();
         let active_view_ix = tree.active_container
             .expect("No active container on basic tree");
+        let active_view = match tree.tree[active_view_ix] {
+            Container::View { handle, .. } => handle,
+            _ => panic!("active_view_ix didn't point to a view container")
+        };
+        let active_id = tree.tree[active_view_ix].get_id();
         assert!(tree.tree[active_view_ix].get_type() == ContainerType::View,
                 "Active container was not a view");
         let workspace_of_active = tree.tree.ancestor_of_type(active_view_ix,
@@ -883,6 +888,8 @@ pub mod tests {
         let new_active_container = tree.active_container
             .expect("Remove view invalidated the active container");
         assert_eq!(new_active_container, *new_active_container_ix);
+        assert_eq!(tree.tree.lookup_view(active_view), None);
+        assert_eq!(tree.tree.lookup_id(active_id), None);
 
     }
 
