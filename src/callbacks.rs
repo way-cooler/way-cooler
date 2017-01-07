@@ -69,7 +69,8 @@ pub extern fn view_created(view: WlcView) -> bool {
         };
         view.set_geometry(ResizeEdge::empty(), fullscreen);
         if let Ok(mut tree) = try_lock_tree() {
-            return tree.add_background(view).is_ok();
+            let outputs = tree.outputs();
+            return tree.add_background(view, outputs.as_slice()).is_ok();
         }
         return false
     }

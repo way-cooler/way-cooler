@@ -243,19 +243,30 @@ impl Tree {
         Ok(())
     }
 
-    /// Binds a view to be the background for all outputs.
+    /// Gets a list of UUIDs for all the outputs, in the order they were added.
+    pub fn outputs(&self) -> Vec<Uuid> {
+        let root_ix = self.0.tree.root_ix();
+        self.0.tree.children_of(root_ix).iter()
+            .map(|output_ix| self.0.tree[*output_ix].get_id())
+            .collect()
+    }
+
+    /// Binds a view to be the background for the given outputs.
     ///
     /// If there was a previous background, it is removed and deallocated.
-    pub fn add_background(&mut self, view: WlcView) -> CommandResult {
-        let outputs = self.0.tree.children_of(self.0.tree.root_ix());
-        for output_ix in outputs {
-            match self.0.tree[output_ix] {
+    pub fn add_background(&mut self, view: WlcView, outputs: &[Uuid]) -> CommandResult {
+        for output_id in outputs {
+            match *try!(self.0.lookup_mut(*output_id)) {
                 Container::Output { ref mut background, .. } => {
                     if background.is_none() {
                         *background = Some(view);
+                    } else {
+                        // TODO error handling :P
+                        panic!()
                     }
                 },
-                _ => unreachable!()
+                _ => return Err(TreeError::UuidWrongType(*output_id,
+                                                         vec![ContainerType::Output]))
             }
         }
         Ok(())
