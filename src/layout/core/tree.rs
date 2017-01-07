@@ -381,6 +381,9 @@ impl LayoutTree {
             .expect("No idea where the node is, are you sure the tree is valid?"));
         let container = try!(self.tree.remove(node_ix)
                                 .ok_or(TreeError::NodeWasRemoved(node_ix)));
+        if Some(node_ix) == self.active_container {
+            self.active_container.take();
+        }
         match container {
             Container::View { .. } | Container::Container { .. } => {},
             _ => unreachable!()
