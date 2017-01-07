@@ -864,8 +864,8 @@ pub mod tests {
     #[test]
     fn add_output_test() {
         let mut tree = basic_tree();
-        let new_output = WlcView::root().as_output();
-        tree.add_output(new_output);
+        let new_output = WlcView::dummy(2).as_output();
+        tree.add_output(new_output).expect("Couldn't add output");
         let output_ix = tree.active_ix_of(ContainerType::Output).unwrap();
         let handle = match tree.tree[output_ix].get_handle().unwrap() {
             Handle::Output(output) => output,
