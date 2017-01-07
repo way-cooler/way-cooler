@@ -255,21 +255,7 @@ impl Tree {
     ///
     /// If there was a previous background, it is removed and deallocated.
     pub fn add_background(&mut self, view: WlcView, outputs: &[Uuid]) -> CommandResult {
-        for output_id in outputs {
-            match *try!(self.0.lookup_mut(*output_id)) {
-                Container::Output { ref mut background, .. } => {
-                    if background.is_none() {
-                        *background = Some(view);
-                    } else {
-                        // TODO error handling :P
-                        panic!()
-                    }
-                },
-                _ => return Err(TreeError::UuidWrongType(*output_id,
-                                                         vec![ContainerType::Output]))
-            }
-        }
-        Ok(())
+        self.0.attach_background(view, outputs)
     }
 
     /// Adds a Workspace to the tree. Never fails
