@@ -273,7 +273,8 @@ impl Tree {
             return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
-        if view.get_type() != ViewType::empty() {
+        let has_parent = view.get_parent() != WlcView::root();
+        if view.get_type() != ViewType::empty() || has_parent {
             try!(tree.add_floating_view(view));
         } else {
             try!(tree.add_view(view));
