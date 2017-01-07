@@ -130,6 +130,12 @@ pub fn init_logs() {
     info!("Logger initialized, setting wlc handlers.");
 }
 
+fn log_environment() {
+    for (key, value) in env::vars() {
+        debug!("{}: {}", key, value);
+    }
+}
+
 /// Handler for signals
 extern "C" fn sig_handle(_: nix::libc::c_int) {
     rustwlc::terminate();
@@ -159,6 +165,7 @@ fn main() {
     unsafe {signal::sigaction(signal::SIGINT, &sig_action).unwrap() };
 
     init_logs();
+    log_environment();
     detect_proprietary();
     // This prepares wlc, doesn't run main loop until run_wlc is called
     let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
