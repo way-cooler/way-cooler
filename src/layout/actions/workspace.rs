@@ -97,7 +97,10 @@ impl LayoutTree {
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
             trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
                    .expect("Workspace had no name"));
-            self.remove_container(old_worksp_ix);
+            if let Err(err) = self.remove_container(old_worksp_ix) {
+                warn!("Tried to remove {:?}, got: {:#?}", old_worksp_ix, err);
+                panic!("Could not remove old workspace");
+            }
         }
         workspace_ix = self.tree.workspace_ix_by_name(name)
             .expect("Workspace we just made was deleted!");
@@ -205,7 +208,10 @@ impl LayoutTree {
                     parent_ix, ctype);
                 }
                 if self.tree.can_remove_empty_parent(parent_ix) {
-                    self.remove_view_or_container(parent_ix);
+                    if let Err(err) = self.remove_view_or_container(parent_ix) {
+                        error!("{:#?}\nCould not remove {:#?} from tree {:#?}", err, parent_ix, self);
+                        panic!("Could not remove empty parent!");
+                    }
                 }
             }
             else {

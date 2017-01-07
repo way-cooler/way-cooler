@@ -151,9 +151,17 @@ impl LayoutTree {
             .expect("Active path did not lead anywhere").0;
         let id = self.tree[last_ix].get_id();
         // TODO error handling!!!
-        match self.in_fullscreen_workspace(id).unwrap() {
-            Some(fullscreen_id) => {
-                self.set_active_container(fullscreen_id).unwrap();
+        match self.in_fullscreen_workspace(id) {
+            Ok(Some(fullscreen_id)) => {
+                self.set_active_container(fullscreen_id)
+                    .unwrap_or_else(|err| {
+                        error!("Could not set {:?} to be the active container, \
+                                even though it's the fullscreen container! {:?}",
+                               fullscreen_id, err);
+                        error!("{:#?}", self);
+                        panic!("Could not set the fullscreen container to be \
+                                the active container!")
+                    });
                 return;
             },
             _ => {}
@@ -193,7 +201,13 @@ impl LayoutTree {
                 });
         }
         // If this is reached, parent is workspace
-        let container_ix = self.tree.children_of(parent_ix)[0];
+        let container_ix = self.tree.children_of(parent_ix).get(0).cloned();
+        if container_ix.is_none() {
+            trace!("There were no other containers to focus on, \
+                    focusing on nothing in particular!");
+            return;
+        }
+        let container_ix = container_ix.unwrap();
         let root_c_children = self.tree.grounded_children(container_ix);
         if root_c_children.len() > 0 {
             // Only searches first child of root container, can't be floating view.

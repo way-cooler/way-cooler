@@ -29,7 +29,9 @@ pub fn remove_active() {
                 _ => {}
             }
         }
-        tree.0.remove_active();
+        if let Err(err) = tree.0.remove_active() {
+            warn!("Could not remove the active container! {:#?}\n{:#?}\n{:#?}", tree.0.get_active_container(), err, *tree.0);
+        };
     }
 }
 
