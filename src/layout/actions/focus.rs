@@ -150,7 +150,6 @@ impl LayoutTree {
         let last_ix = self.tree.active_path().last()
             .expect("Active path did not lead anywhere").0;
         let id = self.tree[last_ix].get_id();
-        // TODO error handling!!!
         match self.in_fullscreen_workspace(id) {
             Ok(Some(fullscreen_id)) => {
                 self.set_active_container(fullscreen_id)

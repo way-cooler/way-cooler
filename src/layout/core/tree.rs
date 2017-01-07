@@ -171,7 +171,9 @@ impl LayoutTree {
         if let Some(node_ix) = self.active_container {
             let id = self.tree[node_ix].get_id();
             if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
-                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
+                if fullscreen_id != id {
+                    return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
+                }
             }
         }
         if self.active_container != Some(node_ix) {
