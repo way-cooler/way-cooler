@@ -25,9 +25,16 @@ const RIGHT_CLICK: u32 = 0x111;
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
     if let Ok(mut tree) = try_lock_tree() {
-        tree.add_output(output).and_then(|_|{
+        let result = tree.add_output(output).and_then(|_|{
             tree.switch_to_workspace(&"1")
-        }).is_ok()
+                .map(|_| tree.layout_active_of(ContainerType::Output))
+        });
+        match result {
+            // If the output exists, we just couldn't add it to the tree because
+            // it's already there. That's OK
+            Ok(_) | Err(TreeError::OutputExists(_)) => true,
+            _ => false
+        }
     } else {
         false
     }

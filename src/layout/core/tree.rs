@@ -7,7 +7,7 @@ use uuid::Uuid;
 use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use super::super::LayoutTree;
 use super::super::ActionErr;
-use super::container::{Container, ContainerType, Layout};
+use super::container::{Container, ContainerType, Layout, Handle};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
 use super::super::actions::layout::LayoutErr;
@@ -104,7 +104,9 @@ pub enum TreeError {
     Action(ActionErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
-    PerformingAction(bool)
+    PerformingAction(bool),
+    /// Attempted to add an output to the tree, but it already exists.
+    OutputExists(WlcOutput)
 }
 
 impl LayoutTree {
@@ -310,14 +312,26 @@ impl LayoutTree {
     /// consistency with the tree. By default, it sets this new workspace to
     /// be workspace "1". This will later change to be the first available
     /// workspace if using i3-style workspaces.
-    pub fn add_output(&mut self, output: WlcOutput) {
+    pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
         trace!("Adding new output with {:?}", output);
-        let root_index = self.tree.root_ix();
-        let output_ix = self.tree.add_child(root_index,
+        let root_ix = self.tree.root_ix();
+        let outputs = self.tree.children_of(root_ix);
+        for output_ix in outputs {
+            match self.tree[output_ix].get_handle().expect("Output had no handle!") {
+                Handle::Output(handle) => {
+                    if output == handle {
+                        return Err(TreeError::OutputExists(output))
+                    }
+                },
+                _ => unreachable!()
+            }
+        }
+        let output_ix = self.tree.add_child(root_ix,
                                             Container::new_output(output),
                                             true);
         self.active_container = Some(self.init_workspace("1".to_string(), output_ix));
         self.validate();
+        Ok(())
     }
 
     //// Remove a view container from the tree

@@ -239,8 +239,7 @@ impl Tree {
 
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
-        self.0.add_output(output);
-        Ok(())
+        self.0.add_output(output)
     }
 
     /// Gets a list of UUIDs for all the outputs, in the order they were added.
