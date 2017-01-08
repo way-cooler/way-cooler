@@ -22,8 +22,8 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath{
     }
 */
 
-    f.object_path("/org/way_cooler/pixels", ()).introspectable().add(
-        f.interface("org.way_cooler.pixels", ()).add_m(
+    f.object_path("/org/way_cooler/Pixels", ()).introspectable().add(
+        f.interface("org.way_cooler.Pixels", ()).add_m(
             f.method("hello", (), |m| {
                 // Also can just return a (&*result).into() (a slice) which IS faster...
                 //let result = vec![5u8];
