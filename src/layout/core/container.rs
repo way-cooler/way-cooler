@@ -230,8 +230,12 @@ impl Container {
             Container::Container { ref mut geometry, .. } => {
                 *geometry = geo;
             },
-            Container::View { ref handle, .. } => {
-                handle.set_geometry(edges, geo);
+            Container::View { ref handle, ref mut prev_geometry, .. } => {
+                if prev_geometry.is_some() {
+                    *prev_geometry = Some(geo);
+                } else {
+                    handle.set_geometry(edges, geo);
+                }
             }
         }
     }
