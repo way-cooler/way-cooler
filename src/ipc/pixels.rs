@@ -1,6 +1,9 @@
 use dbus::arg::{Array};
 use dbus::MessageItem;
 
+use rustwlc::render::{read_pixels, wlc_pixel_format};
+use rustwlc::{Geometry, Point, Size};
+
 use super::{DBusFactory, DBusObjPath};
 
 pub fn setup(f: &mut DBusFactory) -> DBusObjPath{
@@ -25,11 +28,14 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath{
     f.object_path("/org/way_cooler/Pixels", ()).introspectable().add(
         f.interface("org.way_cooler.Pixels", ()).add_m(
             f.method("hello", (), |m| {
-                // Also can just return a (&*result).into() (a slice) which IS faster...
-                //let result = vec![5u8];
-                let result: Vec<MessageItem> = vec![MessageItem::UInt32(5u32)];
-                Ok(vec![m.msg.method_return().append((MessageItem::Array(result, "u".into())))])
-            }).outarg::<Array<u32, Vec<u32>>, _>("success")
+                let geo = Geometry {
+                    origin: Point { x: 0, y: 0 },
+                    size: Size { w: 100, h: 100}
+                };
+                let result = read_pixels(wlc_pixel_format::WLC_RGBA8888, geo).1.iter_mut()
+                    .map(|pixel| MessageItem::Byte(*pixel)).collect();
+                Ok(vec![m.msg.method_return().append((MessageItem::Array(result, "y".into())))])
+            }).outarg::<Array<u8, Vec<u8>>, _>("success")
         )
     )
 }
