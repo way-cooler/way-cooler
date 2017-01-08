@@ -30,9 +30,10 @@ impl DBusSession {
 
         let mut factory = Factory::new_fn::<()>();
 
-        let mut tree = factory.tree();
+        let tree = factory.tree()
+            .add(super::layout::setup(&mut factory))
+            .add(super::pixels::setup(&mut factory));
 
-        tree = tree.add(super::layout::setup(&mut factory));
         //super::keybindings::setup(&mut factory);
 
         DBusSession {

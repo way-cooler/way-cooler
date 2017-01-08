@@ -14,6 +14,7 @@ mod session;
 pub use self::session::DBusSession;
 
 mod layout;
+mod pixels;
 
 pub const VERSION: u32 = 1;
 
