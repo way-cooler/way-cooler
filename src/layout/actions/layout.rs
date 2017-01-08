@@ -226,11 +226,7 @@ impl LayoutTree {
             }
 
             ContainerType::View => {
-                let handle = match self.tree[node_ix] {
-                    Container::View { ref handle, .. } => handle,
-                    _ => unreachable!()
-                };
-                handle.set_geometry(ResizeEdge::empty(), geometry);
+                self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
             }
         }
         self.validate();
@@ -278,12 +274,9 @@ impl LayoutTree {
                         y: (output_size.h / 2 - output_size.h / 4) as i32
                     }
                 };
-            match *container {
-                Container::View { handle, .. } => {
-                    handle.set_geometry(ResizeEdge::empty(), new_geometry);
-                },
-                Container::Container { ref mut geometry, .. } => {
-                    *geometry = new_geometry
+            match container.get_type() {
+                ContainerType::View | ContainerType::Container => {
+                    container.set_geometry(ResizeEdge::empty(), new_geometry);
                 },
                 _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
                                                                 ContainerType::Container)))
@@ -542,10 +535,6 @@ impl LayoutTree {
                 }
             },
             ContainerType::View  => {
-                let handle = match self.tree[node_ix] {
-                    Container::View { ref handle, .. } => handle.clone(),
-                    _ => unreachable!()
-                };
                 let parent_ix = self.tree.ancestor_of_type(node_ix,
                                                         ContainerType::Container)
                     .expect("View had no container parent");
@@ -579,7 +568,7 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 };
-                handle.set_geometry(ResizeEdge::empty(), new_geometry);
+                self.tree[node_ix].set_geometry(ResizeEdge::empty(), new_geometry);
             },
             container => {
                 error!("Tried to normalize a {:#?}", container);
