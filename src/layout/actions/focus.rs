@@ -26,7 +26,9 @@ impl LayoutTree {
     /// Otherwise, an error is returned.
     pub fn focus_on(&mut self, uuid: Uuid) -> CommandResult {
         if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(uuid)) {
-            return Err(TreeError::Focus(FocusError::BlockedByFullscreen(uuid, fullscreen_id)))
+            if fullscreen_id != uuid {
+                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(uuid, fullscreen_id)))
+            }
         }
         let container = try!(self.lookup(uuid));
         match *container {
