@@ -285,7 +285,9 @@ impl LayoutTree {
             self.validate();
             match self.set_active_node(view_ix) {
                 // Ok, because fullscreen blocks focus grabbing
-                Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {},
+                Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+                    debug!("Blocked focus by fullscreen");
+                },
                 Err(err) => return Err(err)
             }
             return Ok(&self.tree[view_ix])
@@ -325,7 +327,9 @@ impl LayoutTree {
         self.tree.set_child_pos(new_container_ix, *old_weight);
         match self.set_active_node(new_container_ix) {
             // Ok, because fullscreen blocks focus grabbing
-            Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {},
+            Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+                debug!("Blocked focus by fullscreen");
+            },
             Err(err) => return Err(err)
         }
         self.validate();
@@ -404,14 +408,24 @@ impl LayoutTree {
         if c_type != ContainerType::View && c_type != ContainerType::Container {
             return Err(TreeError::UuidWrongType(uuid, vec!(ContainerType::View, ContainerType::Container)));
         }
+        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+            .expect("Container was not part of a workspace");
         let parent_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Container)
-            .unwrap_or_else(|_| self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
-            .expect("No idea where the node is, are you sure the tree is valid?"));
+            .unwrap_or(workspace_ix);
         let container = try!(self.tree.remove(node_ix)
                                 .ok_or(TreeError::NodeWasRemoved(node_ix)));
+
+        // Make sure we remove other instances of the index
+
+        // Active container
         if Some(node_ix) == self.active_container {
             self.active_container.take();
         }
+
+        // Fullscreen containers
+        self.tree[workspace_ix].update_fullscreen_c(uuid, false)
+            .expect("workspace_ix did not point to a workspace");
+
         match container {
             Container::View { .. } | Container::Container { .. } => {},
             _ => unreachable!()
