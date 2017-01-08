@@ -332,13 +332,12 @@ impl Container {
     pub fn update_fullscreen_c(&mut self, id: Uuid, toggle: bool)
                                -> Result<(), ContainerType> {
         let c_type = self.get_type();
-        let self_id = self.get_id();
         match *self {
             Container::Workspace { ref mut fullscreen_c, .. } => {
                 if !toggle {
                     match fullscreen_c.iter().position(|c_id| *c_id == id) {
                         Some(index) => { fullscreen_c.remove(index); },
-                        None => warn!("Could not find {:?}, {:?}", id, self_id)
+                        None => {}
                     }
                 } else {
                     fullscreen_c.push(id);
