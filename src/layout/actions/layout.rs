@@ -69,7 +69,6 @@ impl LayoutTree {
                 // TODO Fake vector that doesn't allocate for this case?
                 let mut fullscreen_apps = Vec::new();
                 self.layout_helper(node_ix, geometry, &mut fullscreen_apps);
-                // DON'T layout fullscreen apps, would cause infinite recursion.
             }
             ContainerType::View => {
                 let parent_ix = self.tree.parent_of(node_ix)
@@ -87,7 +86,6 @@ impl LayoutTree {
                      fullscreen_apps: &mut Vec<NodeIndex>) {
         if self.tree[node_ix].fullscreen() {
             fullscreen_apps.push(node_ix);
-            return;
         }
         match self.tree[node_ix].get_type() {
             ContainerType::Root | ContainerType::Output => {
