@@ -28,7 +28,7 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath{
                 // Also can just return a (&*result).into() (a slice) which IS faster...
                 //let result = vec![5u8];
                 let result: Vec<MessageItem> = vec![MessageItem::UInt32(5u32)];
-                Ok(vec![m.msg.method_return().append((MessageItem::Array(result, "(u)".into())))])
+                Ok(vec![m.msg.method_return().append((MessageItem::Array(result, "u".into())))])
             }).outarg::<Array<u32, Vec<u32>>, _>("success")
         )
     )
