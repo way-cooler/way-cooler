@@ -116,6 +116,7 @@ Way Cooler was started by @Timidger and @SnirkImmington, but these fine people h
 - @toogley fixed a link
 - @paulmenzel fixed a typo
 - @thefarwind made kill way-cooler command rebindable
+- @bluss for updating our use of `PetGraph` to use `StableGraph`
 
 And of course, thanks to the Rust community and the developers of [wlc].
 

@@ -27,7 +27,7 @@ impl LayoutTree {
         let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraph(err)));
         try!(self.move_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
-            self.remove_container(old_parent_ix);
+            try!(self.remove_container(old_parent_ix));
         }
         self.validate();
         Ok(())
