@@ -50,6 +50,7 @@ use nix::sys::signal::{self, SigHandler, SigSet, SigAction, SaFlags};
 use rustwlc::types::LogType;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 const DRIVER_MOD_PATH: &'static str = "/proc/modules";
 
 /// Callback to route wlc logs into env_logger
@@ -154,7 +155,11 @@ fn main() {
         }
     };
     if matches.opt_present("version") {
-        println!("Way Cooler {}", VERSION);
+        if !GIT_VERSION.is_empty() {
+            println!("Way Cooler {} @ {}", VERSION, GIT_VERSION);
+        } else {
+            println!("Way Cooler {}", VERSION);
+        }
         println!("Way Cooler IPC version {}", ipc::VERSION);
         return
     }
