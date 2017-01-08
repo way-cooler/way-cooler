@@ -168,20 +168,16 @@ impl LayoutTree {
             }
             return Ok(())
         }
-        if let Some(node_ix) = self.active_container {
-            let id = self.tree[node_ix].get_id();
-            if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
-                if fullscreen_id != id {
-                    return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
-                }
+        let id = self.tree[node_ix].get_id();
+        if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
+            if fullscreen_id != id {
+                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
             }
         }
-        if self.active_container != Some(node_ix) {
-            info!("Active container was {}, is now {}",
-                  self.active_container.map(|node| node.index().to_string())
-                    .unwrap_or("not set".into()),
-                  node_ix.index());
-        }
+        info!("Active container was {}, is now {}",
+                self.active_container.map(|node| node.index().to_string())
+                .unwrap_or("not set".into()),
+                node_ix.index());
         self.active_container = Some(node_ix);
         let c_type; let id;
         {
@@ -284,8 +280,8 @@ impl LayoutTree {
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
             match self.set_active_node(view_ix) {
-                // Ok, because fullscreen blocks focus grabbing
-                Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+                Ok(_) => {},
+                Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
                     debug!("Blocked focus by fullscreen");
                 },
                 Err(err) => return Err(err)
@@ -326,8 +322,8 @@ impl LayoutTree {
         self.tree.move_node(child_ix, new_container_ix);
         self.tree.set_child_pos(new_container_ix, *old_weight);
         match self.set_active_node(new_container_ix) {
-            // Ok, because fullscreen blocks focus grabbing
-            Ok(_) | Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+            Ok(_) => {}
+            Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
                 debug!("Blocked focus by fullscreen");
             },
             Err(err) => return Err(err)
