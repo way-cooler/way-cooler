@@ -478,7 +478,7 @@ impl LayoutTree {
     }
 
     /// Validates the tree
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, not(disable_debug)))]
     pub fn validate(&self) {
         // Recursive method to ensure child/parent nodes are connected
         fn validate_node_connections(this: &LayoutTree, parent_ix: NodeIndex) {
@@ -574,7 +574,7 @@ impl LayoutTree {
     }
 
     /// Validates the tree
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, disable_debug))]
     pub fn validate_path(&self) {
         // Ensure there is only one active path from the root
         let mut next_ix = Some(self.tree.root_ix());
@@ -613,10 +613,10 @@ impl LayoutTree {
         }
     }
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(all(not(debug_assertions), not(disable_debug)))]
     pub fn validate(&self) {}
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(all(not(debug_assertions), not(disable_debug)))]
     pub fn validate_path(&self) {}
 }
 

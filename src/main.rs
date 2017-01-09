@@ -118,6 +118,12 @@ fn detect_proprietary() {
     }
 }
 
+#[inline(always)]
+/// Determines if we should build with debug symbols.
+pub fn debug_enabled() -> bool {
+    cfg!(not(disable_debug))
+}
+
 /// Initializes the logging system.
 pub fn init_logs() {
     let mut builder = env_logger::LogBuilder::new();
