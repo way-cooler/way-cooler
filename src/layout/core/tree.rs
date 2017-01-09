@@ -661,7 +661,7 @@ impl LayoutTree {
     }
 
     /// Validates the tree
-    #[cfg(any(debug_assertions, disable_debug))]
+    #[cfg(any(debug_assertions, not(disable_debug)))]
     pub fn validate_path(&self) {
         // Ensure there is only one active path from the root
         let mut next_ix = Some(self.tree.root_ix());
@@ -705,10 +705,10 @@ impl LayoutTree {
         }
     }
 
-    #[cfg(all(not(debug_assertions), not(disable_debug)))]
+    #[cfg(all(not(debug_assertions), disable_debug))]
     pub fn validate(&self) {}
 
-    #[cfg(all(not(debug_assertions), not(disable_debug)))]
+    #[cfg(all(not(debug_assertions), disable_debug))]
     pub fn validate_path(&self) {}
 }
 
