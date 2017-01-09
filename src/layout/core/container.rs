@@ -59,6 +59,8 @@ pub enum Container {
     Output {
         /// Handle to the wlc
         handle: WlcOutput,
+        /// Optional background for the output
+        background: Option<WlcView>,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -112,6 +114,7 @@ impl Container {
     pub fn new_output(handle: WlcOutput) -> Container {
         Container::Output {
             handle: handle,
+            background: None,
             id: Uuid::new_v4()
         }
     }

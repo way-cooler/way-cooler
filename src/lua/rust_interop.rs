@@ -45,7 +45,7 @@ fn ipc_run(command: String) -> Result<(), &'static str> {
 }
 
 /// IPC 'get' handler
-fn ipc_get(key: String) -> Result<AnyLuaValue, &'static str> {
+fn ipc_get(key: String) -> ValueResult {
     match registry::get_data(&key) {
         Ok(regdata) => {
             let (flags, arc_data) = regdata.resolve();

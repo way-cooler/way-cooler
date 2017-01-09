@@ -7,11 +7,12 @@ use uuid::Uuid;
 use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use super::super::LayoutTree;
 use super::super::ActionErr;
-use super::container::{Container, ContainerType, Layout};
+use super::container::{Container, ContainerType, Layout, Handle};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
 use super::super::actions::layout::LayoutErr;
 use super::super::actions::resize::ResizeErr;
+use super::super::actions::background::BackgroundErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -100,11 +101,16 @@ pub enum TreeError {
     Layout(LayoutErr),
     /// An error occurred while trying to resize the layout
     Resize(ResizeErr),
+    /// An error occurred while trying to do something with the background
+    /// of an output
+    Background(BackgroundErr),
     /// An error occurred while attempting to modify or use the main action
     Action(ActionErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
-    PerformingAction(bool)
+    PerformingAction(bool),
+    /// Attempted to add an output to the tree, but it already exists.
+    OutputExists(WlcOutput)
 }
 
 impl LayoutTree {
@@ -161,12 +167,11 @@ impl LayoutTree {
 
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
-        if Some(node_ix) == self.active_container {
-            // Active Container != Container at the end of active path
-            if !self.tree[node_ix].floating() {
-                self.tree.set_ancestor_paths_active(node_ix);
-            }
-            return Ok(())
+        if self.active_container != Some(node_ix) {
+            debug!("Active container was {}, is now {}",
+                  self.active_container.map(|node| node.index().to_string())
+                    .unwrap_or("not set".into()),
+                  node_ix.index());
         }
         let id = self.tree[node_ix].get_id();
         if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
@@ -338,14 +343,26 @@ impl LayoutTree {
     /// consistency with the tree. By default, it sets this new workspace to
     /// be workspace "1". This will later change to be the first available
     /// workspace if using i3-style workspaces.
-    pub fn add_output(&mut self, output: WlcOutput) {
+    pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
         trace!("Adding new output with {:?}", output);
-        let root_index = self.tree.root_ix();
-        let output_ix = self.tree.add_child(root_index,
+        let root_ix = self.tree.root_ix();
+        let outputs = self.tree.children_of(root_ix);
+        for output_ix in outputs {
+            match self.tree[output_ix].get_handle().expect("Output had no handle!") {
+                Handle::Output(handle) => {
+                    if output == handle {
+                        return Err(TreeError::OutputExists(output))
+                    }
+                },
+                _ => unreachable!()
+            }
+        }
+        let output_ix = self.tree.add_child(root_ix,
                                             Container::new_output(output),
                                             true);
         self.active_container = Some(self.init_workspace("1".to_string(), output_ix));
         self.validate();
+        Ok(())
     }
 
     //// Remove a view container from the tree
@@ -356,6 +373,17 @@ impl LayoutTree {
             self.validate();
             Ok(container)
         } else {
+            // Check if it's a background, and if so invalidate it
+            for output_ix in self.tree.children_of(self.tree.root_ix()) {
+                match self.tree[output_ix] {
+                    Container::Output { ref mut background, .. } => {
+                        if Some(*view) == *background {
+                            background.take();
+                        }
+                    },
+                    _ => unreachable!()
+                }
+            }
             self.validate();
             Err(TreeError::ViewNotFound(view.clone()))
         }
@@ -537,7 +565,7 @@ impl LayoutTree {
     }
 
     /// Validates the tree
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, not(disable_debug)))]
     pub fn validate(&self) {
         // Recursive method to ensure child/parent nodes are connected
         fn validate_node_connections(this: &LayoutTree, parent_ix: NodeIndex) {
@@ -633,7 +661,7 @@ impl LayoutTree {
     }
 
     /// Validates the tree
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, disable_debug))]
     pub fn validate_path(&self) {
         // Ensure there is only one active path from the root
         let mut next_ix = Some(self.tree.root_ix());
@@ -677,10 +705,10 @@ impl LayoutTree {
         }
     }
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(all(not(debug_assertions), not(disable_debug)))]
     pub fn validate(&self) {}
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(all(not(debug_assertions), not(disable_debug)))]
     pub fn validate_path(&self) {}
 }
 
@@ -905,8 +933,8 @@ pub mod tests {
     #[test]
     fn add_output_test() {
         let mut tree = basic_tree();
-        let new_output = WlcView::root().as_output();
-        tree.add_output(new_output);
+        let new_output = WlcView::dummy(2).as_output();
+        tree.add_output(new_output).expect("Couldn't add output");
         let output_ix = tree.active_ix_of(ContainerType::Output).unwrap();
         let handle = match tree.tree[output_ix].get_handle().unwrap() {
             Handle::Output(output) => output,
