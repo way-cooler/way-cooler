@@ -189,7 +189,7 @@ impl LayoutTree {
             let next_work_root_ix = next_work_children[0];
 
             // Move the container
-            info!("Moving container {:?} to workspace {}",
+            debug!("Moving container {:?} to workspace {}",
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
 

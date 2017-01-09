@@ -158,7 +158,7 @@ impl LayoutTree {
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
         if self.active_container != Some(node_ix) {
-            info!("Active container was {}, is now {}",
+            debug!("Active container was {}, is now {}",
                   self.active_container.map(|node| node.index().to_string())
                     .unwrap_or("not set".into()),
                   node_ix.index());

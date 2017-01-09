@@ -80,6 +80,7 @@ pub fn mouse_modifier() -> KeyMod {
 pub fn register(key: KeyPress, event: KeyEvent) -> Option<KeyEvent> {
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
+    trace!("Registering {} for {:?}", key, event);
     bindings.insert(key, event)
 }
 

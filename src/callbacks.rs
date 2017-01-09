@@ -55,9 +55,9 @@ pub extern fn output_resolution(output: WlcOutput,
 }
 
 pub extern fn view_created(view: WlcView) -> bool {
-    trace!("view_created: {:?}: \"{}\"", view, view.get_title());
+    debug!("view_created: {:?}: \"{}\"", view, view.get_title());
     if view.get_class().as_str() == "Background" {
-        info!("Setting background: {}", view.get_title());
+        debug!("Setting background: {}", view.get_title());
         view.send_to_back();
         view.set_mask(1);
         let output = view.get_output();
@@ -164,7 +164,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
 
     if state == KeyState::Pressed {
         if let Some(action) = keys::get(&press) {
-            debug!("[key] Found an action for {}", press);
+            info!("[key] Found an action for {}, blocking event", press);
             match action {
                 KeyEvent::Command(func) => {
                     func();
@@ -199,6 +199,7 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
     if state == ButtonState::Pressed {
         let mouse_mod = keys::mouse_modifier();
         if button == LEFT_CLICK && !view.is_root() {
+            info!("User left clicked w/ mods \"{:?}\" on {:?}", mods, view);
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).unwrap_or_else(|_| {
                     // still focus on view, even if not in tree.
@@ -214,10 +215,10 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                 }
             }
         } else if button == RIGHT_CLICK && !view.is_root() {
+            info!("User right clicked w/ mods \"{:?}\" on {:?}", mods, view);
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).ok();
             }
-            // TODO Make this set in the config file and read here.
             if mods.mods.contains(mouse_mod) {
                 let action = Action {
                     view: view,
@@ -262,6 +263,13 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
         }
     } else {
         if let Ok(lock) = try_lock_action() {
+            let unknown = format!("unknown ({})", button);
+            info!("User released {:?} mouse button",
+                  match button {
+                      RIGHT_CLICK => "right",
+                      LEFT_CLICK => "left",
+                      _ => unknown.as_str()
+                  });
             match *lock {
                 Some(action) => {
                     let view = action.view;
