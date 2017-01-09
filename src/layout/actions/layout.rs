@@ -29,25 +29,21 @@ impl LayoutTree {
                 }
             }
             ContainerType::Output => {
-                let geometry = match self.tree[node_ix] {
-                    Container::Output { ref handle, ref mut background, .. } => {
-                        let size = handle.get_resolution()
-                            .expect("Couldn't get resolution");
-                        let geometry = Geometry {
-                            origin: Point { x: 0, y: 0 },
-                            size: size
-                        };
-                        // update the background size
-                        if let Some(background) = *background {
-                            background.set_geometry(ResizeEdge::empty(), geometry)
-                        }
-                        geometry
-                    },
+                let handle = match self.tree[node_ix] {
+                    Container::Output { ref handle, .. } => handle.clone(),
                     _ => unreachable!()
                 };
+                let size = handle.get_resolution()
+                    .expect("Couldn't get resolution");
+                let geometry = Geometry {
+                    origin: Point { x: 0, y: 0 },
+                    size: size
+                };
+                let mut fullscreen_apps = Vec::new();
                 for workspace_ix in self.tree.children_of(node_ix) {
-                    self.layout_helper(workspace_ix, geometry.clone());
+                    self.layout_helper(workspace_ix, geometry.clone(), &mut fullscreen_apps);
                 }
+                self.layout_fullscreen_apps(fullscreen_apps);
             }
             ContainerType::Workspace => {
                 // get geometry from the parent output
@@ -62,14 +58,18 @@ impl LayoutTree {
                     size: handle.get_resolution()
                         .expect("Couldn't get resolution")
                 };
-                self.layout_helper(node_ix, output_geometry);
+                let mut fullscreen_apps = Vec::new();
+                self.layout_helper(node_ix, output_geometry, &mut fullscreen_apps);
+                self.layout_fullscreen_apps(fullscreen_apps)
             }
             ContainerType::Container => {
                 let geometry = match self.tree[node_ix] {
                     Container::Container { geometry, .. } => geometry,
                     _ => unreachable!()
                 };
-                self.layout_helper(node_ix, geometry);
+                // TODO Fake vector that doesn't allocate for this case?
+                let mut fullscreen_apps = Vec::new();
+                self.layout_helper(node_ix, geometry, &mut fullscreen_apps);
             }
             ContainerType::View => {
                 let parent_ix = self.tree.parent_of(node_ix)
@@ -83,7 +83,11 @@ impl LayoutTree {
     /// Helper function to layout a container. The geometry is the constraint geometry,
     /// the container tries to lay itself out within the confines defined by the constraint.
     /// Generally, this should not be used directly and layout should be used.
-    fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry) {
+    fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry,
+                     fullscreen_apps: &mut Vec<NodeIndex>) {
+        if self.tree[node_ix].fullscreen() {
+            fullscreen_apps.push(node_ix);
+        }
         match self.tree[node_ix].get_type() {
             ContainerType::Root | ContainerType::Output => {
                 warn!("Ignoring geometry constraint ({:#?}), \
@@ -104,7 +108,7 @@ impl LayoutTree {
                     };
                 }
                 for child_ix in self.tree.grounded_children(node_ix) {
-                    self.layout_helper(child_ix, geometry.clone());
+                    self.layout_helper(child_ix, geometry.clone(), fullscreen_apps);
                 }
                 // place floating children above everything else
                 let root_ix = self.tree.children_of(node_ix)[0];
@@ -168,7 +172,8 @@ impl LayoutTree {
                                 }
                             };
                             self.generic_tile(node_ix, geometry, children,
-                                              new_size_f, remaining_size_f, new_point_f);
+                                              new_size_f, remaining_size_f, new_point_f,
+                                              fullscreen_apps);
                         }
                     }
                     Layout::Vertical => {
@@ -212,18 +217,15 @@ impl LayoutTree {
                                 }
                             };
                             self.generic_tile(node_ix, geometry, children,
-                                              new_size_f, remaining_size_f, new_point_f);
+                                              new_size_f, remaining_size_f, new_point_f,
+                                              fullscreen_apps);
                         }
                     }
                 }
             }
 
             ContainerType::View => {
-                let handle = match self.tree[node_ix] {
-                    Container::View { ref handle, .. } => handle,
-                    _ => unreachable!()
-                };
-                handle.set_geometry(ResizeEdge::empty(), geometry);
+                self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
             }
         }
         self.validate();
@@ -271,12 +273,9 @@ impl LayoutTree {
                         y: (output_size.h / 2 - output_size.h / 4) as i32
                     }
                 };
-            match *container {
-                Container::View { handle, .. } => {
-                    handle.set_geometry(ResizeEdge::empty(), new_geometry);
-                },
-                Container::Container { ref mut geometry, .. } => {
-                    *geometry = new_geometry
+            match container.get_type() {
+                ContainerType::View | ContainerType::Container => {
+                    container.set_geometry(ResizeEdge::empty(), new_geometry);
                 },
                 _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
                                                                 ContainerType::Container)))
@@ -384,7 +383,9 @@ impl LayoutTree {
                     self.layout(container_ix);
                 }
                 Container::Container { ref geometry, .. } => {
-                    self.layout_helper(container_ix, geometry.clone());
+                    let mut fullscreen_apps = Vec::new();
+                    self.layout_helper(container_ix, geometry.clone(), &mut fullscreen_apps);
+                    self.layout_fullscreen_apps(fullscreen_apps)
                 },
                 Container::View { .. } => {
                     warn!("Cannot simply update a view's geometry without {}",
@@ -456,7 +457,8 @@ impl LayoutTree {
     fn generic_tile<SizeF, RemainF, PointF>
         (&mut self,
          node_ix: NodeIndex, geometry: Geometry, children: Vec<NodeIndex>,
-         new_size_f: SizeF, remaining_size_f: RemainF, new_point_f: PointF)
+         new_size_f: SizeF, remaining_size_f: RemainF, new_point_f: PointF,
+         fullscreen_apps: &mut Vec<NodeIndex>)
         where SizeF:   Fn(Size, Geometry) -> Size,
               RemainF: Fn(Geometry, Geometry) -> Size,
               PointF:  Fn(Size, Geometry) -> Point
@@ -484,7 +486,7 @@ impl LayoutTree {
                     size: new_size
                 };
             }
-            self.layout_helper(*child_ix, sub_geometry.clone());
+            self.layout_helper(*child_ix, sub_geometry.clone(), fullscreen_apps);
 
             // Next sub container needs to start where this one ends
             let new_point = new_point_f(new_size.clone(), sub_geometry.clone());
@@ -532,10 +534,6 @@ impl LayoutTree {
                 }
             },
             ContainerType::View  => {
-                let handle = match self.tree[node_ix] {
-                    Container::View { ref handle, .. } => handle.clone(),
-                    _ => unreachable!()
-                };
                 let parent_ix = self.tree.ancestor_of_type(node_ix,
                                                         ContainerType::Container)
                     .expect("View had no container parent");
@@ -569,11 +567,48 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 };
-                handle.set_geometry(ResizeEdge::empty(), new_geometry);
+                self.tree[node_ix].set_geometry(ResizeEdge::empty(), new_geometry);
             },
             container => {
                 error!("Tried to normalize a {:#?}", container);
                 panic!("Can only normalize the view on a view or container")
+            }
+        }
+    }
+
+    /// Tiles these containers above all the other containers in its workspace.
+    ///
+    /// If multiple containers are in the same workspace, each one will be drawn
+    /// on top of the other, with the last one being the one ultimately seen by the user.
+    ///
+    /// # Panic
+    /// This function will panic if the any of the containers are not a `View` or a `Container`
+    pub fn layout_fullscreen_apps(&mut self, containers: Vec<NodeIndex>) {
+        for node_ix in containers {
+            let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
+                .expect("Container did not have an output as an ancestor");
+            let output_geometry = self.tree[output_ix].get_geometry()
+                .expect("Output did not have a geometry associated with it");
+
+            // Sorry, this is an ugly borrow checker hack
+            // Can't do self.layout() in Container::Container, borrowing mutably self mutably here.
+            let maybe_node_ix = match self.tree[node_ix] {
+                Container::View { handle, .. } => {
+                    handle.set_geometry(ResizeEdge::empty(), output_geometry);
+                    handle.bring_to_front();
+                    None
+                },
+                Container::Container { ref mut geometry, .. } => {
+                    *geometry = output_geometry;
+                    Some(node_ix)
+                },
+                ref container => {
+                    error!("Expected a view or a container, got {:?}", container);
+                    panic!("Expected a View or a Container, got something else");
+                }
+            };
+            if let Some(node_ix) = maybe_node_ix {
+                self.layout(node_ix);
             }
         }
     }

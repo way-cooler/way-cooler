@@ -188,6 +188,7 @@ impl InnerTree {
         if let Some(view) = maybe_view {
             self.view_map.insert(view, child_ix);
         }
+        debug!("Added new child {:?} for {:?}", child_ix, &self[child_ix]);
         child_ix
     }
 

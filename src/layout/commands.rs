@@ -71,6 +71,20 @@ pub fn split_horizontal() {
     }
 }
 
+pub fn fullscreen_toggle() {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Some(id) = tree.active_id() {
+            let toggle = !tree.is_fullscreen(id)
+                .expect("Active ID was invalid!");
+            tree.set_fullscreen(id, toggle)
+                .unwrap_or_else(|_| {
+                    warn!("Could not set {:?} to fullscreen flag to be {:?}",
+                          id, toggle);
+                })
+        }
+    }
+}
+
 pub fn focus_left() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_focus(Direction::Left)
@@ -175,11 +189,11 @@ pub fn set_performing_action(val: Option<Action>) {
     }
 }
 
-/* These commands are the interface that the rest of Way Cooler has to the
- * tree. Any action done, whether through a callback, or from the IPC/Lua thread
- * it will have to go through one of these methods.
- */
+// TODO Remove all instances of self.0.tree, that should be abstracted in LayoutTree.
 
+/// These commands are the interface that the rest of Way Cooler has to the
+/// tree. Any action done, whether through a callback, or from the IPC/Lua thread
+/// it will have to go through one of these methods.
 impl Tree {
     /// Gets the uuid of the active container, if there is an active container
     pub fn active_id(&self) -> Option<Uuid> {
@@ -189,6 +203,19 @@ impl Tree {
 
     pub fn lookup_view(&self, view: WlcView) -> Option<Uuid> {
         self.0.lookup_view(view).map(|c| c.get_id())
+    }
+
+    /// Determines if the container is in the currently active workspace.
+    pub fn container_in_active_workspace(&self, id: Uuid) -> Result<bool, TreeError> {
+        let view = match try!(self.0.lookup(id)).get_handle() {
+            Some(Handle::View(view)) => view,
+            _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
+        };
+        if let Some(active_workspace) = self.0.active_ix_of(ContainerType::Workspace) {
+            Ok(self.0.tree.descendant_with_handle(active_workspace, &view).is_some())
+        } else {
+            Ok(false)
+        }
     }
 
     pub fn toggle_float(&mut self) -> CommandResult {
@@ -352,6 +379,46 @@ impl Tree {
     /// Can also not set floating containers to be active.
     pub fn set_active_container_by_id(&mut self, id: Uuid) -> CommandResult {
         self.0.set_active_container(id)
+    }
+
+    /// Sets the container behind the UUID to be fullscreen.
+    ///
+    /// If the container is a non-View/Container, then an error is returned
+    /// and the flag is not set (it's only tracked for Views and Containers).
+    pub fn set_fullscreen(&mut self, id: Uuid, toggle: bool) -> CommandResult {
+        {
+            let container = try!(self.0.lookup_mut(id));
+            try!(container.set_fullscreen(toggle)
+                 .map_err(|_| TreeError::UuidWrongType(id, vec![ContainerType::View,
+                                                                ContainerType::Container])));
+        }
+        // Now update the workspace so that it knows which children are fullscreen
+        {
+            /*
+            TODO This needs proper error handling!
+            Correct way is to have active_ix_of to return a proper `Result<NodeIndex, TreeError>`
+            however that would break too much code and needs a branch to itself.
+
+            For now, in order to have the IPC not break Way Cooler, this will return an incorrect error.
+            */
+            if let Some(workspace_ix) = self.0.active_ix_of(ContainerType::Workspace) {
+                let workspace = &mut self.0.tree[workspace_ix];
+                try!(workspace.update_fullscreen_c(id, toggle)
+                     .map_err(|_| TreeError::UuidWrongType(workspace.get_id(), vec![ContainerType::Workspace])));
+            } else {
+                // WRONG ID! See TODO above
+                return Err(TreeError::UuidWrongType(id, vec![ContainerType::Workspace]))
+            }
+        }
+        // TODO Only do this if in path, or otherwise just tile the workspace the container is in
+        // MOST of the time, this isn't a useless operation (read: when keybinding is used),
+        // but still the IPC shouldn't do a useless tile if it can help it.
+        self.layout_active_of(ContainerType::Workspace)
+    }
+
+    pub fn is_fullscreen(&self, id: Uuid) -> Result<bool, TreeError> {
+        let container = try!(self.0.lookup(id));
+        Ok(container.fullscreen())
     }
 
     /// Focuses on the container. If the container is not floating and is a

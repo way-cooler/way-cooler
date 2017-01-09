@@ -3,6 +3,7 @@ mod core;
 pub mod commands;
 
 pub use self::actions::movement::MovementError;
+pub use self::actions::focus::FocusError;
 
 pub use self::core::action::{Action, ActionErr};
 pub use self::core::container::{Container, ContainerType, Handle, Layout};

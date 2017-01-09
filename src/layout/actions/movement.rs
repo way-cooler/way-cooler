@@ -35,7 +35,7 @@ impl LayoutTree {
 
     /// Returns the new parent of the active container if the move succeeds,
     /// Otherwise it signals what error occurred in the tree.
-    pub fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
+    fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
                            direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_to_move].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },

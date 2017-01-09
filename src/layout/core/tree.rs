@@ -173,13 +173,28 @@ impl LayoutTree {
                     .unwrap_or("not set".into()),
                   node_ix.index());
         }
+        let id = self.tree[node_ix].get_id();
+        if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
+            if fullscreen_id != id {
+                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
+            }
+        }
+        info!("Active container was {}, is now {}",
+                self.active_container.map(|node| node.index().to_string())
+                .unwrap_or("not set".into()),
+                node_ix.index());
         self.active_container = Some(node_ix);
-        match self.tree[node_ix] {
-            Container::View { ref handle, .. } => handle.focus(),
-            Container::Container { .. } => {},
-            ref container => return Err(
-                TreeError::UuidWrongType(container.get_id(),
-                                         vec!(ContainerType::View, ContainerType::Container)))
+        let c_type; let id;
+        {
+            let container = &self.tree[node_ix];
+            c_type = container.get_type();
+            id = container.get_id();
+        }
+        match c_type {
+            ContainerType::View => try!(self.focus_on(id)),
+            ContainerType::Container => {/* TODO implement this */},
+            _ => return Err(
+                TreeError::UuidWrongType(id, vec!(ContainerType::View, ContainerType::Container)))
         }
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
@@ -269,7 +284,13 @@ impl LayoutTree {
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
-            try!(self.set_active_node(view_ix));
+            match self.set_active_node(view_ix) {
+                Ok(_) => {},
+                Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+                    debug!("Blocked focus by fullscreen");
+                },
+                Err(err) => return Err(err)
+            }
             return Ok(&self.tree[view_ix])
         }
         self.validate();
@@ -305,7 +326,13 @@ impl LayoutTree {
         let new_container_ix = self.tree.add_child(parent_ix, container, false);
         self.tree.move_node(child_ix, new_container_ix);
         self.tree.set_child_pos(new_container_ix, *old_weight);
-        try!(self.set_active_node(new_container_ix));
+        match self.set_active_node(new_container_ix) {
+            Ok(_) => {}
+            Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+                debug!("Blocked focus by fullscreen");
+            },
+            Err(err) => return Err(err)
+        }
         self.validate();
         Ok(())
     }
@@ -405,14 +432,24 @@ impl LayoutTree {
         if c_type != ContainerType::View && c_type != ContainerType::Container {
             return Err(TreeError::UuidWrongType(uuid, vec!(ContainerType::View, ContainerType::Container)));
         }
+        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+            .expect("Container was not part of a workspace");
         let parent_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Container)
-            .unwrap_or_else(|_| self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
-            .expect("No idea where the node is, are you sure the tree is valid?"));
+            .unwrap_or(workspace_ix);
         let container = try!(self.tree.remove(node_ix)
                                 .ok_or(TreeError::NodeWasRemoved(node_ix)));
+
+        // Make sure we remove other instances of the index
+
+        // Active container
         if Some(node_ix) == self.active_container {
             self.active_container.take();
         }
+
+        // Fullscreen containers
+        self.tree[workspace_ix].update_fullscreen_c(uuid, false)
+            .expect("workspace_ix did not point to a workspace");
+
         match container {
             Container::View { .. } | Container::Container { .. } => {},
             _ => unreachable!()
@@ -511,6 +548,20 @@ impl LayoutTree {
             },
             _ => self.container_in_dir(parent.get_id(), dir)
         }
+    }
+
+    /// Determines if the container behind the id is in a fullscreen workspace.
+    /// If it is, it returns the id of the fullscreen container.
+    pub fn in_fullscreen_workspace(&self, id: Uuid) -> Result<Option<Uuid>, TreeError> {
+        let node_ix = try!(self.tree.lookup_id(id)
+                           .ok_or(TreeError::NodeNotFound(id)));
+        let workspace_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+                                .map_err(|err| TreeError::PetGraph(err)));
+        let workspace = &self.tree[workspace_ix];
+        let children = try!(workspace.fullscreen_c()
+                            .ok_or(TreeError::UuidWrongType(workspace.get_id(),
+                                                            vec![ContainerType::Workspace])));
+        Ok(children.last().cloned())
     }
 
     /// Validates the tree
@@ -1114,7 +1165,7 @@ pub mod tests {
         tree.active_container = None;
         for direction in &directions {
             // should do nothing when there is no active container
-            tree.move_focus(*direction).unwrap();
+            assert_eq!(tree.move_focus(*direction), Err(TreeError::NoActiveContainer));
             assert_eq!(tree.active_container, None);
         }
         tree.active_container = old_active_ix;
@@ -1291,6 +1342,7 @@ pub mod tests {
         tree.validate_path();
         tree.switch_to_workspace("3");
         tree.validate_path();
+        println!("{:#?}", tree);
         tree.switch_to_workspace("1");
 
         // Try sending things to other workspaces

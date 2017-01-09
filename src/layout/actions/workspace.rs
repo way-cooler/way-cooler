@@ -109,9 +109,10 @@ impl LayoutTree {
         match self.tree[active_ix].get_type() {
             ContainerType::View  => {
                 match self.tree[active_ix] {
-                    Container::View { ref handle, ..} => {
-                        trace!("View found, focusing on {:?}", handle);
-                        handle.focus();
+                    Container::View { id, ..} => {
+                        self.focus_on(id) .unwrap_or_else(|_| {
+                            warn!("Could not focus on {:?}", id);
+                        });
                     },
                     _ => unreachable!()
                 }
@@ -197,6 +198,9 @@ impl LayoutTree {
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
 
+            // If it's a fullscreen app, then update the fullscreen lists
+            self.transfer_fullscreen(curr_work_ix, next_work_ix, id);
+
             // Update the active container
             if let Ok(parent_ix) = maybe_active_parent {
                 self.tree.set_ancestor_paths_active(parent_ix);
@@ -227,5 +231,21 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
         self.validate();
+    }
+
+    /// Transfers a fullscreen app from this workspace to another.
+    fn transfer_fullscreen(&mut self, cur_work_ix: NodeIndex, next_work_ix: NodeIndex,
+                           fullscreen_id: Uuid) {
+        if let Some(fullscreen_ids) = self.tree[cur_work_ix].fullscreen_c() {
+            if !fullscreen_ids.iter().any(|id| *id == fullscreen_id) {
+                return;
+            }
+        } else {
+            return;
+        }
+        self.tree[cur_work_ix].update_fullscreen_c(fullscreen_id, false)
+            .expect("cur_work_ix was not a workspace");
+        self.tree[next_work_ix].update_fullscreen_c(fullscreen_id, true)
+            .expect("next_work_ix was not a workspace");
     }
 }

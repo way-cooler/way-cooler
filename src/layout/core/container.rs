@@ -5,7 +5,7 @@ use uuid::Uuid;
 pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 
 use rustwlc::handle::{WlcView, WlcOutput};
-use rustwlc::{Geometry, ResizeEdge, Point, Size};
+use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,6 +71,10 @@ pub enum Container {
         /// The size of the workspace on the screen.
         /// Might be different if there is e.g a bar present
         size: Size,
+        /// `Vec` of all children that are fullscreen.
+        /// This is used to disable certain features while there is a fullscreen
+        /// (e.g: focus switching, resizing, and moving containers)
+        fullscreen_c: Vec<Uuid>,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -80,6 +84,8 @@ pub enum Container {
         layout: Layout,
         /// If the container is floating
         floating: bool,
+        /// If the container is fullscreen
+        fullscreen: bool,
         /// The geometry of the container, relative to the parent container
         geometry: Geometry,
         /// UUID associated with container, client program can use container
@@ -91,6 +97,9 @@ pub enum Container {
         handle: WlcView,
         /// Whether this view is floating
         floating: bool,
+        /// The previous geometry of the view. Used for fullscreen rendering
+        /// This is a bit of a hack, but a fairly elegant one.
+        prev_geometry: Option<Geometry>,
         /// UUID associated with container, client program can use container
         id: Uuid,
     }
@@ -117,6 +126,7 @@ impl Container {
         Container::Workspace {
             name: name,
             size: size,
+            fullscreen_c: Vec::new(),
             id: Uuid::new_v4()
         }
     }
@@ -126,6 +136,7 @@ impl Container {
         Container::Container {
             layout: Layout::Horizontal,
             floating: false,
+            fullscreen: false,
             geometry: geometry,
             id: Uuid::new_v4()
         }
@@ -136,6 +147,7 @@ impl Container {
         Container::View {
             handle: handle,
             floating: false,
+            prev_geometry: None,
             id: Uuid::new_v4()
         }
     }
@@ -199,8 +211,9 @@ impl Container {
                 size: size
             }),
             Container::Container { geometry, .. } => Some(geometry),
-            Container::View { ref handle, ..} =>
-                handle.get_geometry(),
+            Container::View { ref handle, ref prev_geometry, ..} => {
+                prev_geometry.or_else(|| handle.get_geometry())
+            },
         }
     }
 
@@ -220,8 +233,12 @@ impl Container {
             Container::Container { ref mut geometry, .. } => {
                 *geometry = geo;
             },
-            Container::View { ref handle, .. } => {
-                handle.set_geometry(edges, geo);
+            Container::View { ref handle, ref mut prev_geometry, .. } => {
+                if prev_geometry.is_some() {
+                    *prev_geometry = Some(geo);
+                } else {
+                    handle.set_geometry(edges, geo);
+                }
             }
         }
     }
@@ -253,6 +270,9 @@ impl Container {
         }
     }
 
+
+    // TODO Make these set_* functions that can fail return a proper error type.
+
     /// If not set on a view or container, error is returned telling what
     /// container type that this function was (incorrectly) called on.
     pub fn set_floating(&mut self, val: bool) -> Result<ContainerType, ContainerType> {
@@ -266,6 +286,82 @@ impl Container {
             _ => {
                 Err(c_type)
             }
+        }
+    }
+
+    /// Sets the fullscreen flag on the container to the specified value.
+    ///
+    /// If called on a non View/Container, then returns an Err with the wrong type.
+    pub fn set_fullscreen(&mut self, val: bool) -> Result<(), ContainerType> {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { handle, ref mut prev_geometry, .. } => {
+                handle.set_state(VIEW_FULLSCREEN, val);
+                if !val {
+                    if let Some(geo) = prev_geometry.take() {
+                        handle.set_geometry(ResizeEdge::empty(), geo);
+                    }
+                } else {
+                    *prev_geometry = handle.get_geometry()
+                }
+                Ok(())
+            },
+            Container::Container { ref mut fullscreen, .. } => {
+                *fullscreen = val;
+                Ok(())
+            },
+            _ => Err(c_type)
+        }
+    }
+
+    /// Determines if a container is fullscreen.
+    ///
+    /// Workspaces, Outputs, and the Root are never fullscreen.
+    pub fn fullscreen(&self) -> bool {
+        match *self {
+            Container::View { handle, .. } => {
+                handle.get_state().intersects(VIEW_FULLSCREEN)
+            },
+            Container::Container { fullscreen, .. } => fullscreen,
+            _ => false
+        }
+    }
+
+    /// Updates the workspace (`self`) that the `id` resides in to reflect
+    /// whether the container with the `id` is fullscreen (`toggle`).
+    ///
+    /// If called with a non-workspace an Err is returned with
+    /// the incorrect type.
+    pub fn update_fullscreen_c(&mut self, id: Uuid, toggle: bool)
+                               -> Result<(), ContainerType> {
+        let c_type = self.get_type();
+        match *self {
+            Container::Workspace { ref mut fullscreen_c, .. } => {
+                if !toggle {
+                    match fullscreen_c.iter().position(|c_id| *c_id == id) {
+                        Some(index) => { fullscreen_c.remove(index); },
+                        None => {}
+                    }
+                } else {
+                    fullscreen_c.push(id);
+                }
+                Ok(())
+            },
+            _ => Err(c_type)
+        }
+    }
+
+    /// If the container is a workspace, returns the children in the workspace that
+    /// are fullscreen. The last child is the one visible to the user.
+    ///
+    /// Computes in O(1) time.
+    ///
+    /// If the container is not a workspace, None is returned.
+    pub fn fullscreen_c(&self) -> Option<&Vec<Uuid>> {
+        match *self {
+            Container::Workspace { ref fullscreen_c, .. } =>
+                Some(fullscreen_c),
+            _ => None
         }
     }
 }

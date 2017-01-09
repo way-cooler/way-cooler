@@ -3,13 +3,14 @@
 #![allow(deprecated)] // keysyms
 
 use rustwlc::handle::{WlcOutput, WlcView};
-use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
-                     Point, Geometry, ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_MAXIMIZED,
+use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size, Point, Geometry,
+                     ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_FULLSCREEN, VIEW_RESIZING, VIEW_MAXIMIZED,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
 
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType, MovementError, TreeError};
+use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType,
+                    MovementError, TreeError, FocusError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
@@ -82,16 +83,18 @@ pub extern fn view_created(view: WlcView) -> bool {
         return false
     }
     if let Ok(mut tree) = try_lock_tree() {
-        tree.add_view(view).and_then(|_| {
+        let result = tree.add_view(view).and_then(|_| {
             view.set_state(VIEW_MAXIMIZED, true);
-            tree.set_active_view(view).or_else(|_| {
-                // We still want to focus on the window that appeared
-                // Might need to change later, in case this focus grabbing
-                // gets annoying / becomes a security issue.
-                view.focus();
-                Ok(())
-            })
-        }).is_ok()
+            match tree.set_active_view(view) {
+                // If blocked by fullscreen, we don't focus on purpose
+                Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => Ok(()),
+                result => result
+            }
+        });
+        if result.is_err() {
+            warn!("Could not add {:?}. Reason: {:?}", view, result);
+        }
+        result.is_ok()
     } else {
         false
     }
@@ -131,9 +134,29 @@ pub extern fn view_move_to_output(current: WlcView,
     trace!("view_move_to_output: {:?}, {:?}, {:?}", current, o1, o2);
 }
 
-pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
+pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) {
     trace!("Setting {:?} to state {:?}", view, state);
-    view.set_state(state, handled);
+    if state == VIEW_FULLSCREEN {
+        if let Ok(mut tree) = try_lock_tree() {
+            if let Some(id) = tree.lookup_view(view) {
+                tree.set_fullscreen(id, toggle)
+                    .expect("The ID was related to a non-view, somehow!");
+                match tree.container_in_active_workspace(id) {
+                    Ok(true) => {
+                        tree.layout_active_of(ContainerType::Workspace)
+                            .unwrap_or_else(|err| {
+                                error!("Could not layout active workspace for view {:?}: {:?}",
+                                        view, err)
+                            });
+                    },
+                    Ok(false) => {},
+                    Err(err) => error!("Could not set {:?} fullscreen: {:?}", view, err)
+                }
+            } else {
+                warn!("Could not find view {:?} in tree", view);
+            }
+        }
+    }
 }
 
 pub extern fn view_request_move(view: WlcView, _dest: &Point) {
