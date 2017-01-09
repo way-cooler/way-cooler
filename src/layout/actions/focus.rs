@@ -171,7 +171,13 @@ impl LayoutTree {
                 });
         }
         // If this is reached, parent is workspace
-        let container_ix = self.tree.children_of(parent_ix)[0];
+        let container_ix = self.tree.children_of(parent_ix).get(0).cloned();
+        if container_ix.is_none() {
+            trace!("There were no other containers to focus on, \
+                    focusing on nothing in particular!");
+            return;
+        }
+        let container_ix = container_ix.unwrap();
         let root_c_children = self.tree.grounded_children(container_ix);
         if root_c_children.len() > 0 {
             // Only searches first child of root container, can't be floating view.
