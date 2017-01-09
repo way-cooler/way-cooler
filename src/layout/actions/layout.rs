@@ -29,15 +29,21 @@ impl LayoutTree {
                 }
             }
             ContainerType::Output => {
-                let handle = match self.tree[node_ix] {
-                    Container::Output { ref handle, .. } => handle.clone(),
+                let geometry = match self.tree[node_ix] {
+                    Container::Output { ref handle, ref mut background, .. } => {
+                        let size = handle.get_resolution()
+                            .expect("Couldn't get resolution");
+                        let geometry = Geometry {
+                            origin: Point { x: 0, y: 0 },
+                            size: size
+                        };
+                        // update the background size
+                        if let Some(background) = *background {
+                            background.set_geometry(ResizeEdge::empty(), geometry)
+                        }
+                        geometry
+                    },
                     _ => unreachable!()
-                };
-                let size = handle.get_resolution()
-                    .expect("Couldn't get resolution");
-                let geometry = Geometry {
-                    origin: Point { x: 0, y: 0 },
-                    size: size
                 };
                 for workspace_ix in self.tree.children_of(node_ix) {
                     self.layout_helper(workspace_ix, geometry.clone());

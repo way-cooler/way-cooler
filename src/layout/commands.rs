@@ -239,8 +239,22 @@ impl Tree {
 
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
-        self.0.add_output(output);
-        Ok(())
+        self.0.add_output(output)
+    }
+
+    /// Gets a list of UUIDs for all the outputs, in the order they were added.
+    pub fn outputs(&self) -> Vec<Uuid> {
+        let root_ix = self.0.tree.root_ix();
+        self.0.tree.children_of(root_ix).iter()
+            .map(|output_ix| self.0.tree[*output_ix].get_id())
+            .collect()
+    }
+
+    /// Binds a view to be the background for the given outputs.
+    ///
+    /// If there was a previous background, it is removed and deallocated.
+    pub fn add_background(&mut self, view: WlcView, outputs: &[Uuid]) -> CommandResult {
+        self.0.attach_background(view, outputs)
     }
 
     /// Adds a Workspace to the tree. Never fails
