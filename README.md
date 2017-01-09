@@ -12,10 +12,10 @@ Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayl
 # Development
 
 Way Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to
-make it user friendly. Here's an example where we run Way Cooler within i3. Everything within the wlc-x11 window is Way Cooler:
+make it user friendly. Here's an example of what Way Cooler looks like today:
 
 
-[![way-cooler demonstration](http://i.imgur.com/UiJbpiv.png)](https://www.youtube.com/watch?v=I2FO5dnOBb0)
+[![](http://imgur.com/A3V5x28)]("http://imgur.com/A3V5x28")
 
 ## Motivation
 
