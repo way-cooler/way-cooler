@@ -648,8 +648,18 @@ impl LayoutTree {
                             }
                         }
                     }
-                    geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
-                    geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
+                    match layout {
+                        Layout::Horizontal => {
+                            geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
+                            geometry.size.h = geometry.size.h.saturating_sub(gap);
+                        },
+                        Layout::Vertical => {
+                            geometry.size.w = geometry.size.w.saturating_sub(gap);
+                            geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
+                        }
+                    }
+                    /*geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
+                    geometry.size.h = geometry.size.h.saturating_sub(gap / 2);*/
                     geometry
                 },
                 // Do nothing, will get in the next recursion cycle
