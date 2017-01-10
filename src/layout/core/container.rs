@@ -140,7 +140,7 @@ impl Container {
             floating: false,
             fullscreen: false,
             geometry: geometry,
-            gap: 0,
+            gap: 50,
             id: Uuid::new_v4()
         }
     }

@@ -174,6 +174,8 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to horizontal container");
                         }
                     }
                     Layout::Vertical => {
@@ -611,6 +613,55 @@ impl LayoutTree {
                 self.layout(node_ix);
             }
         }
+    }
+
+    /// Adds gaps to all the views of the container at the `NodeIndex`
+    ///
+    /// If the `NodeIndex` doesn't point to a container, an error is returned.
+    fn add_gaps(&mut self, node_ix: NodeIndex) -> CommandResult {
+        let (gap, layout) = match self.tree[node_ix] {
+            Container::Container { gap, layout, .. } => (gap, layout),
+            _ => return Err(TreeError::UuidNotAssociatedWith(
+                ContainerType::Container))
+        };
+        let children = self.tree.children_of(node_ix);
+        for (index, child_ix) in children.iter().enumerate() {
+            let child = &mut self.tree[*child_ix];
+            let new_geo = match *child {
+                Container::View { handle, ref mut prev_geometry, .. } => {
+                    let mut geometry = prev_geometry
+                        .clone()
+                        .unwrap_or_else(|| handle.get_geometry()
+                                        .expect("Couldn't get geometry\
+                                                 from WlcView"));
+                    if index == 0 || index == children.len() - 1 {
+                        // TODO This only works with horizontal
+                        /*geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
+                        geometry.size.h = geometry.size.h.saturating_sub(gap);
+                        geometry.origin.x += (gap / 2) as i32;
+                        geometry.origin.y += (gap / 2) as i32;*/
+                    } else {
+                        geometry.size.w = geometry.size.w.saturating_sub(gap);
+                        geometry.size.h = geometry.size.h.saturating_sub(gap);
+                        //geometry.origin.x += (gap / 2) as i32;
+                        geometry.origin.y += (gap / 2) as i32;
+                    }
+                    geometry
+                },
+                // Do nothing, will get in the next recursion cycle
+                Container::Container { .. } => {continue},
+                ref container => {
+                    error!("Iterating over a container, \
+                            found non-view/containers!");
+                    error!("Found: {:#?}", container);
+                    panic!("Applying gaps, found a non-view/container")
+                }
+            };
+            child.set_geometry(ResizeEdge::empty(), new_geo);
+        }
+        let v: Vec<Geometry> = children.iter().map(|ix| self.tree[*ix].get_geometry().unwrap()).collect();
+        warn!("Children {:#?}", v);
+        Ok(())
     }
 }
 
