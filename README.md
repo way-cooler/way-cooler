@@ -15,7 +15,7 @@ Way Cooler is currently in alpha. The core features have been added and it is in
 make it user friendly. Here's an example of what Way Cooler looks like today:
 
 
-[![](http://imgur.com/A3V5x28)]("http://imgur.com/A3V5x28")
+[![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
 
 ## Motivation
 
