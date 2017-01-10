@@ -634,17 +634,11 @@ impl LayoutTree {
                         .unwrap_or_else(|| handle.get_geometry()
                                         .expect("Couldn't get geometry\
                                                  from WlcView"));
-                    if index == 0 || index == children.len() - 1 {
-                        // TODO This only works with horizontal
-                        /*geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
-                        geometry.size.h = geometry.size.h.saturating_sub(gap);
-                        geometry.origin.x += (gap / 2) as i32;
-                        geometry.origin.y += (gap / 2) as i32;*/
-                    } else {
+                    geometry.origin.x += (gap / 2) as i32;
+                    if (index == children.len() - 1) {
                         geometry.size.w = geometry.size.w.saturating_sub(gap);
-                        geometry.size.h = geometry.size.h.saturating_sub(gap);
-                        //geometry.origin.x += (gap / 2) as i32;
-                        geometry.origin.y += (gap / 2) as i32;
+                    } else {
+                        geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
                     }
                     geometry
                 },
