@@ -393,12 +393,16 @@ impl LayoutTree {
             self.validate();
             Ok(container)
         } else {
-            // Check if it's a background, and if so invalidate it
+            // Check if it's a background or a bar, and if so invalidate it
             for output_ix in self.tree.children_of(self.tree.root_ix()) {
                 match self.tree[output_ix] {
-                    Container::Output { ref mut background, .. } => {
+                    Container::Output { ref mut background, ref mut bar, .. } => {
                         if Some(*view) == *background {
                             background.take();
+                        }
+                        let bar_view = bar.as_ref().map(|bar| bar.view());
+                        if Some(*view) == bar_view {
+                            bar.take();
                         }
                     },
                     _ => unreachable!()
