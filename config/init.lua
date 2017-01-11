@@ -52,7 +52,16 @@ way_cooler.background = 0x5E4055
 mod = "Alt"
 local key = config.key -- Alias key so it's faster to type
 
+-- This should be the window tile of the top bar
+-- This is only required for bars that do not have explicit Way Cooler support
+local bar_name = "lemonbar"
+
 way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
+
+-- Specifies what command to run for the topbar
+-- X11 bars need to set the special field way_cooler.bar_x11_name
+way_cooler.bar = "lemonbar -b \"#900\" -n" .. bar_name
+way_cooler.bar_x11_name = bar_name
 
 local keys = {
   -- Open dmenu
