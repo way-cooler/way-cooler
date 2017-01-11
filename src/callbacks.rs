@@ -84,6 +84,8 @@ pub extern fn view_created(view: WlcView) -> bool {
         return false
     }  else if view.get_title().as_str() == "lemonbar"{
         // TODO Move this hack, probably could live somewhere else
+        view.set_mask(1);
+        view.bring_to_front();
         if let Ok(mut tree) = try_lock_tree() {
             for output in WlcOutput::list() {
                 tree.add_bar(view, output).unwrap_or_else(|_| {

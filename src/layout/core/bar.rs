@@ -1,6 +1,6 @@
 //! Defines the operations and data definitions for a top bar program.
 
-use std::ops::Drop;
+use std::ops::Deref;
 use rustwlc::WlcView;
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -16,5 +16,14 @@ impl Bar {
     /// Gets the view that is associated with the bar.
     pub fn view(&self) -> WlcView {
         self.view
+    }
+}
+
+
+impl Deref for Bar {
+    type Target = WlcView;
+
+    fn deref(&self) -> &Self::Target {
+        &self.view
     }
 }

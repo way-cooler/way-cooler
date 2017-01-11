@@ -206,11 +206,24 @@ impl Container {
     pub fn get_geometry(&self) -> Option<Geometry> {
         match *self {
             Container::Root(_)  => None,
-            Container::Output { ref handle, .. } => Some(Geometry {
-                origin: Point { x: 0, y: 0 },
-                size: handle.get_resolution()
-                    .expect("Couldn't get output resolution")
-            }),
+            Container::Output { ref handle, ref bar, .. } => {
+                let mut resolution = handle.get_resolution()
+                    .expect("Couldn't get output resolution");
+                let mut origin = Point { x: 0, y: 0 };
+                if let Some(handle) = bar.as_ref().map(|bar| **bar) {
+                    let bar_g = handle.get_geometry()
+                        .expect("Bar had no geometry");
+                    let Size { w, h } = bar_g.size;
+                    // TODO Allow bars on the horizontal side
+                    // This is for bottom
+                    //resolution.h = resolution.h.saturating_sub(h);
+                    origin.y += h as i32;
+                }
+                Some(Geometry {
+                    origin: origin,
+                    size: resolution
+                })
+            },
             Container::Workspace { size, .. } => Some(Geometry {
                 origin: Point { x: 0, y: 0},
                 size: size

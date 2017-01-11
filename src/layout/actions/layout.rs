@@ -29,19 +29,11 @@ impl LayoutTree {
                 }
             }
             ContainerType::Output => {
-                let handle = match self.tree[node_ix] {
-                    Container::Output { ref handle, .. } => handle.clone(),
-                    _ => unreachable!()
-                };
-                let size = handle.get_resolution()
-                    .expect("Couldn't get resolution");
-                let geometry = Geometry {
-                    origin: Point { x: 0, y: 0 },
-                    size: size
-                };
+                let geometry = self.tree[node_ix].get_geometry()
+                    .expect("Output had no geometry");
                 let mut fullscreen_apps = Vec::new();
                 for workspace_ix in self.tree.children_of(node_ix) {
-                    self.layout_helper(workspace_ix, geometry.clone(), &mut fullscreen_apps);
+                    self.layout_helper(workspace_ix, geometry, &mut fullscreen_apps);
                 }
                 self.layout_fullscreen_apps(fullscreen_apps);
             }
@@ -49,15 +41,8 @@ impl LayoutTree {
                 // get geometry from the parent output
                 let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
                     .expect("Workspace had no output parent");
-                let handle = match self.tree[output_ix] {
-                    Container::Output{ ref handle, .. } => handle.clone(),
-                    _ => unreachable!()
-                };
-                let output_geometry = Geometry {
-                    origin: Point { x: 0, y: 0},
-                    size: handle.get_resolution()
-                        .expect("Couldn't get resolution")
-                };
+                let output_geometry = self.tree[output_ix].get_geometry()
+                    .expect("Could not get output geometry");
                 let mut fullscreen_apps = Vec::new();
                 self.layout_helper(node_ix, output_geometry, &mut fullscreen_apps);
                 self.layout_fullscreen_apps(fullscreen_apps)
@@ -89,12 +74,18 @@ impl LayoutTree {
             fullscreen_apps.push(node_ix);
         }
         match self.tree[node_ix].get_type() {
-            ContainerType::Root | ContainerType::Output => {
+            ContainerType::Root => {
                 warn!("Ignoring geometry constraint ({:#?}), \
                        deferring to each output's constraints",
                       geometry);
                 for child_ix in self.tree.children_of(node_ix) {
                     self.layout(child_ix);
+                }
+            },
+            ContainerType::Output => {
+                self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.layout_helper(child_ix, geometry, fullscreen_apps);
                 }
             }
             ContainerType::Workspace => {

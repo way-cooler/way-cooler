@@ -485,7 +485,7 @@ impl Tree {
     ///
     /// For more information, see bar.rs and container.rs
     pub fn add_bar(&mut self, view: WlcView, output: WlcOutput) -> CommandResult {
-        if let Some(output_c) = self.0.output_by_handle_mut(output) {
+        let result = if let Some(output_c) = self.0.output_by_handle_mut(output) {
             match *output_c {
                 Container::Output { ref mut bar, .. } => {
                     let new_bar = Bar::new(view);
@@ -493,8 +493,13 @@ impl Tree {
                 },
                 _ => unreachable!()
             }
-            return Ok(())
-        }
-        Err(TreeError::OutputNotFound(output))
+            Ok(())
+        } else {
+            Err(TreeError::OutputNotFound(output))
+        };
+        result.and_then(|_| {
+            self.0.layout_active_of(ContainerType::Output);
+            Ok(())
+        })
     }
 }
