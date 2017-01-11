@@ -221,7 +221,8 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            self.add_gaps(node_ix);
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to vertical container");
                         }
                     }
                 }
@@ -658,8 +659,6 @@ impl LayoutTree {
                             geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
                         }
                     }
-                    /*geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
-                    geometry.size.h = geometry.size.h.saturating_sub(gap / 2);*/
                     geometry
                 },
                 // Do nothing, will get in the next recursion cycle
