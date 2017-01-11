@@ -284,9 +284,14 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
                              .map_err(|_| TreeError::NoActiveContainer));
+        let parent_ix = self.tree.parent_of(node_ix)
+            .expect("View had no parent node!");
         try!(self.tree.move_into(node_ix, root_c_ix)
              .map_err(|err| TreeError::PetGraph(err)));
         self.tree.set_ancestor_paths_active(node_ix);
+        if self.tree.can_remove_empty_parent(parent_ix) {
+            try!(self.remove_view_or_container(parent_ix));
+        }
         let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
         self.layout(parent_ix);
         Ok(())
