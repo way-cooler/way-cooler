@@ -81,6 +81,8 @@ pub enum TreeError {
     NodeWasRemoved(NodeIndex),
     /// A WlcView handle could not be found in the tree.
     ViewNotFound(WlcView),
+    /// A WlcOutput handle could not be found in the tree.
+    OutputNotFound(WlcOutput),
     /// A UUID was not associated with the this type of container.
     UuidNotAssociatedWith(ContainerType),
     /// UUID was associated with wrong container type,
@@ -254,6 +256,24 @@ impl LayoutTree {
             None
         }
 
+    }
+
+    /// Gets a reference to the container with the `WlcOutput`.
+    ///
+    /// If one could not be found, `None` is returned
+    pub fn output_by_handle_mut(&mut self, output: WlcOutput)
+                                -> Option<&mut Container> {
+        let root_ix = self.tree.root_ix();
+        let children = self.tree.children_of(root_ix);
+        let ix = children.iter()
+            .find(|child_ix| match self.tree[**child_ix] {
+                Container::Output { handle, .. } => handle == output,
+                _ => panic!("Child of root was not an output")
+            });
+        match ix {
+            Some(ix) => Some(&mut self.tree[*ix]),
+            None => None
+        }
     }
 
     /// Determines if the active container is the root container

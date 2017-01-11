@@ -7,6 +7,8 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
+use super::bar::Bar;
+
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Handle {
@@ -61,6 +63,8 @@ pub enum Container {
         handle: WlcOutput,
         /// Optional background for the output
         background: Option<WlcView>,
+        /// Optional bar for the output
+        bar: Option<Bar>,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -115,6 +119,7 @@ impl Container {
         Container::Output {
             handle: handle,
             background: None,
+            bar: None,
             id: Uuid::new_v4()
         }
     }

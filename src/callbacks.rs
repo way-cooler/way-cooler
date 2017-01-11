@@ -64,7 +64,9 @@ pub extern fn output_resolution(output: WlcOutput,
 
 pub extern fn view_created(view: WlcView) -> bool {
     debug!("view_created: {:?}: \"{}\"", view, view.get_title());
-    if view.get_class().as_str() == "Background" {
+    // TODO Remove this hack
+    let class_name = view.get_class();
+    if class_name.as_str() == "Background" {
         debug!("Setting background: {}", view.get_title());
         view.send_to_back();
         view.set_mask(1);
@@ -81,6 +83,16 @@ pub extern fn view_created(view: WlcView) -> bool {
             return tree.add_background(view, outputs.as_slice()).is_ok();
         }
         return false
+    }  else if class_name.as_str() == "lemonbar"{
+        // TODO Move this hack, probably could live somewhere else
+        if let Ok(mut tree) = try_lock_tree() {
+            for output in WlcOutput::list() {
+                tree.add_bar(view, output).unwrap_or_else(|_| {
+                    warn!("Could not add bar {:#?} to output {:#?}", view, output);
+                });
+            }
+            return true;
+        }
     }
     if let Ok(mut tree) = try_lock_tree() {
         let result = tree.add_view(view).and_then(|_| {

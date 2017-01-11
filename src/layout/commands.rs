@@ -1,7 +1,8 @@
 //! Commands from the user to manipulate the tree
 
 use super::{try_lock_tree, try_lock_action};
-use super::{Action, ActionErr, Container, ContainerType, Direction, Handle, Layout, TreeError};
+use super::{Action, ActionErr, Bar, Container, ContainerType,
+            Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
@@ -478,5 +479,22 @@ impl Tree {
     pub fn grab_at_corner(&mut self, id: Uuid, edge: ResizeEdge) -> CommandResult {
         self.0.grab_at_corner(id, edge)
             .and(Ok(()))
+    }
+
+    /// Adds the view as a bar to the specified output
+    ///
+    /// For more information, see bar.rs and container.rs
+    pub fn add_bar(&mut self, view: WlcView, output: WlcOutput) -> CommandResult {
+        if let Some(output_c) = self.0.output_by_handle_mut(output) {
+            match *output_c {
+                Container::Output { ref mut bar, .. } => {
+                    let new_bar = Bar::new(view);
+                    *bar = Some(new_bar);
+                },
+                _ => unreachable!()
+            }
+            return Ok(())
+        }
+        Err(TreeError::OutputNotFound(output))
     }
 }
