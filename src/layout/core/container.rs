@@ -364,6 +364,29 @@ impl Container {
             _ => None
         }
     }
+
+    /// Gets the name of the container.
+    ///
+    /// Container::Root: returns simply the string "Root Container"
+    /// Container::Output: The name of the output
+    /// Container::Workspace: The name of the workspace
+    /// Container::Container: Layout style (e.g horizontal)
+    /// Container::View: The name taken from `WlcView`
+    pub fn name(&self) -> String {
+        match  *self {
+            Container::Root(_)  => "Root Container".into(),
+            Container::Output { handle, .. } => {
+                handle.get_name()
+            },
+            Container::Workspace { ref name, .. } => name.clone(),
+            Container::Container { layout, .. } => {
+                format!("{:?}", layout)
+            },
+            Container::View { handle, ..} => {
+                handle.get_title()
+            }
+        }
+    }
 }
 
 #[cfg(test)]

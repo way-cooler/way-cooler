@@ -160,4 +160,11 @@ dbus_interface! {
             .and(Ok(true))
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
+
+    fn ActiveWorkspace() -> name: DBusResult<String> {
+        let tree = try!(lock_tree_dbus());
+        tree.active_workspace()
+            .map(|container| container.name())
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
 }
