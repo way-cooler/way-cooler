@@ -89,15 +89,7 @@ impl LayoutTree {
                 }
             }
             ContainerType::Workspace => {
-                {
-                    let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    match *container_mut {
-                        Container::Workspace { ref mut size, .. } => {
-                            *size = geometry.size.clone();
-                        }
-                        _ => unreachable!()
-                    };
-                }
+                self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
                 for child_ix in self.tree.grounded_children(node_ix) {
                     self.layout_helper(child_ix, geometry.clone(), fullscreen_apps);
                 }

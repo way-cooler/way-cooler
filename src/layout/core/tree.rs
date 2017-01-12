@@ -769,12 +769,12 @@ pub mod tests {
         let output_ix = tree.add_child(root_ix, Container::new_output(fake_output), false);
         let workspace_1_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("1".to_string(),
-                                                                   fake_size.clone()), false);
+                                                                   fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
-                                                                     fake_size.clone()), false);
+                                                                     fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */
