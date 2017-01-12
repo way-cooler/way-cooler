@@ -14,6 +14,8 @@ use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType,
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
+use registry::{self, RegistryError, RegistryGetData};
+
 /// If the event is handled by way-cooler
 const EVENT_BLOCKED: bool = true;
 
@@ -64,6 +66,26 @@ pub extern fn output_resolution(output: WlcOutput,
 
 pub extern fn view_created(view: WlcView) -> bool {
     debug!("view_created: {:?}: \"{}\"", view, view.get_title());
+    let bar = registry::get_data("bar")
+        .map(RegistryGetData::resolve).and_then(|(_, data)| {
+            data.as_string().map(str::to_string)
+                .ok_or(RegistryError::KeyNotFound)
+        });
+    // TODO Move this hack, probably could live somewhere else
+    if let Ok(bar_name) = bar {
+        if view.get_title().as_str() == bar_name {
+            view.set_mask(1);
+            view.bring_to_front();
+            if let Ok(mut tree) = try_lock_tree() {
+                for output in WlcOutput::list() {
+                    tree.add_bar(view, output).unwrap_or_else(|_| {
+                        warn!("Could not add bar {:#?} to output {:#?}", view, output);
+                    });
+                }
+                return true;
+            }
+        }
+    }
     // TODO Remove this hack
     if view.get_class().as_str() == "Background" {
         debug!("Setting background: {}", view.get_title());
@@ -82,18 +104,6 @@ pub extern fn view_created(view: WlcView) -> bool {
             return tree.add_background(view, outputs.as_slice()).is_ok();
         }
         return false
-    }  else if view.get_title().as_str() == "lemonbar"{
-        // TODO Move this hack, probably could live somewhere else
-        view.set_mask(1);
-        view.bring_to_front();
-        if let Ok(mut tree) = try_lock_tree() {
-            for output in WlcOutput::list() {
-                tree.add_bar(view, output).unwrap_or_else(|_| {
-                    warn!("Could not add bar {:#?} to output {:#?}", view, output);
-                });
-            }
-            return true;
-        }
     }
     if let Ok(mut tree) = try_lock_tree() {
         let result = tree.add_view(view).and_then(|_| {
