@@ -25,7 +25,7 @@ config.init_workspaces(workspace_settings) -- Not implemented yet
 -- Background
 --
 --
--- A background can either be a 6 digit hex value or an image path (not yet supported)
+-- A background can either be a 6 digit hex value or an image path
 way_cooler.background = 0x5E4055
 
 --
