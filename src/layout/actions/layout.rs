@@ -91,7 +91,7 @@ impl LayoutTree {
             ContainerType::Workspace => {
                 self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
                 for child_ix in self.tree.grounded_children(node_ix) {
-                    self.layout_helper(child_ix, geometry.clone(), fullscreen_apps);
+                    self.layout_helper(child_ix, geometry, fullscreen_apps);
                 }
                 // place floating children above everything else
                 let root_ix = self.tree.children_of(node_ix)[0];
@@ -104,7 +104,7 @@ impl LayoutTree {
                     let container_mut = self.tree.get_mut(node_ix).unwrap();
                     match *container_mut {
                         Container::Container { geometry: ref mut c_geometry, .. } => {
-                            *c_geometry = geometry.clone();
+                            *c_geometry = geometry;
                         },
                         _ => unreachable!()
                     };

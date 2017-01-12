@@ -207,7 +207,7 @@ impl Container {
         match *self {
             Container::Root(_)  => None,
             Container::Output { ref handle, ref bar, .. } => {
-                let resolution = handle.get_resolution()
+                let mut resolution = handle.get_resolution()
                     .expect("Couldn't get output resolution");
                 let mut origin = Point { x: 0, y: 0 };
                 if let Some(handle) = bar.as_ref().map(|bar| **bar) {
@@ -218,6 +218,7 @@ impl Container {
                     // This is for bottom
                     //resolution.h = resolution.h.saturating_sub(h);
                     origin.y += h as i32;
+                    resolution.h = resolution.h.saturating_sub(h)
                 }
                 Some(Geometry {
                     origin: origin,
