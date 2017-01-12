@@ -372,23 +372,23 @@ impl LayoutTree {
     // If the active container is a view, it starts at the parent container.
     pub fn layout_active_of(&mut self, c_type: ContainerType) {
         if let Some(container_ix) = self.active_ix_of(c_type) {
-            match self.tree[container_ix].clone() {
-                Container::Root(_)  |
-                Container::Output { .. } |
-                Container::Workspace { .. } => {
+            match c_type {
+                ContainerType::Root |
+                ContainerType::Output |
+                ContainerType::Workspace => {
                     self.layout(container_ix);
-                }
-                Container::Container { ref geometry, .. } => {
-                    let mut fullscreen_apps = Vec::new();
-                    self.layout_helper(container_ix, geometry.clone(), &mut fullscreen_apps);
-                    self.layout_fullscreen_apps(fullscreen_apps)
                 },
-                Container::View { .. } => {
+                ContainerType::Container => {
+                    let mut fullscreen_apps = Vec::new();
+                    let geometry = self.tree[container_ix].get_geometry()
+                        .expect("Container didn't have a geometry");
+                    self.layout_helper(container_ix, geometry, &mut fullscreen_apps);
+                },
+                ContainerType::View => {
                     warn!("Cannot simply update a view's geometry without {}",
                           "consulting container, updating it's parent");
                     self.layout_active_of(ContainerType::Container);
-                },
-
+                }
             }
         } else {
             warn!("{:#?} did not have a parent of type {:?}, doing nothing!",
