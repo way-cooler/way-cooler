@@ -338,7 +338,12 @@ impl Tree {
 
     /// Attempts to remove a view from the tree. If it is not in the tree it fails.
     ///
-    /// This will close the handle behind the view.
+    /// # Safety
+    /// This will **NOT** close the handle behind the view.
+    /// The main use of this function is to be called from the `view_destroyed`
+    /// callback. If you are calling this function from somewhere else,
+    /// you should instead simply call `view.close`. This will be triggered
+    /// in the callback.
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         let result;
         match self.0.remove_view(&view) {
@@ -346,9 +351,8 @@ impl Tree {
                 result = Err(err)
             },
             Ok(Container::View { handle, id, .. }) => {
-                trace!("Removed container {:?}", id);
-                handle.close();
-                trace!("Close wlc view {:?}", handle);
+                trace!("Removed container {:?} with id {:?}",
+                       handle, id);
                 result = Ok(())
             },
             _ => unreachable!()
