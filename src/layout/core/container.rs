@@ -216,14 +216,8 @@ impl Container {
                 size: size
             }),
             Container::Container { geometry, .. } => Some(geometry),
-            Container::View { ref handle, ref effective_geometry,
-                              ref prev_geometry, ..} => {
-                let actual_geo = prev_geometry.or_else(|| handle.get_geometry());
-                if actual_geo != Some(*effective_geometry) {
-                    Some(*effective_geometry)
-                } else {
-                    actual_geo
-                }
+            Container::View { effective_geometry, prev_geometry, ..} => {
+                Some(prev_geometry.unwrap_or(effective_geometry))
             },
         }
     }
