@@ -54,9 +54,7 @@ local key = config.key -- Alias key so it's faster to type
 
 way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
 
--- The width of gaps between windows in pixels
--- Setting it to anything <= 0 puts no gaps between windows.
-way_cooler.gap_size = 0
+way_cooler.gap_size = 0 -- The width of gaps between windows in pixels
 
 local keys = {
   -- Open dmenu
