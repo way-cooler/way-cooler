@@ -672,7 +672,6 @@ impl LayoutTree {
             }
         }
         let v: Vec<Geometry> = children.iter().map(|ix| self.tree[*ix].get_geometry().unwrap()).collect();
-        warn!("Children {:#?}", v);
         Ok(())
     }
 }
