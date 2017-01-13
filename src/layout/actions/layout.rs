@@ -31,6 +31,15 @@ impl LayoutTree {
             ContainerType::Output => {
                 let geometry = self.tree[node_ix].get_geometry()
                     .expect("Output had no geometry");
+                match self.tree[node_ix] {
+                    Container::Output { ref mut background, .. } => {
+                        // update the background size
+                        if let Some(background) = *background {
+                            background.set_geometry(ResizeEdge::empty(), geometry)
+                        }
+                    }
+                    _ => unreachable!()
+                }
                 let mut fullscreen_apps = Vec::new();
                 for workspace_ix in self.tree.children_of(node_ix) {
                     self.layout_helper(workspace_ix, geometry, &mut fullscreen_apps);

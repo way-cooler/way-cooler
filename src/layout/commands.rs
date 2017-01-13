@@ -219,6 +219,15 @@ impl Tree {
         }
     }
 
+    /// Gets a reference to the container that is the active workspace
+    pub fn active_workspace(&self) -> Result<&Container, TreeError> {
+        if let Some(node_ix) = self.0.active_ix_of(ContainerType::Workspace) {
+            Ok(&self.0.tree[node_ix])
+        } else {
+            Err(TreeError::NoActiveContainer)
+        }
+    }
+
     pub fn toggle_float(&mut self) -> CommandResult {
         if let Some(uuid) = self.active_id() {
             let is_floating: Result<bool, _> = self.0.lookup(uuid)
@@ -330,7 +339,12 @@ impl Tree {
 
     /// Attempts to remove a view from the tree. If it is not in the tree it fails.
     ///
-    /// This will close the handle behind the view.
+    /// # Safety
+    /// This will **NOT** close the handle behind the view.
+    /// The main use of this function is to be called from the `view_destroyed`
+    /// callback. If you are calling this function from somewhere else,
+    /// you should instead simply call `view.close`. This will be triggered
+    /// in the callback.
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         let result;
         match self.0.remove_view(&view) {
@@ -338,9 +352,8 @@ impl Tree {
                 result = Err(err)
             },
             Ok(Container::View { handle, id, .. }) => {
-                trace!("Removed container {:?}", id);
-                handle.close();
-                trace!("Close wlc view {:?}", handle);
+                trace!("Removed container {:?} with id {:?}",
+                       handle, id);
                 result = Ok(())
             },
             _ => unreachable!()
