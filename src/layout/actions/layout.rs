@@ -628,7 +628,6 @@ impl LayoutTree {
     ///
     /// If the `NodeIndex` doesn't point to a container, an error is returned.
     fn add_gaps(&mut self, node_ix: NodeIndex) -> CommandResult {
-        // TODO Fullscreen with gaps doesn't normalize properly when un-fullscreening
         let layout = match self.tree[node_ix] {
             Container::Container { layout, .. } => layout,
             _ => return Err(TreeError::UuidNotAssociatedWith(
@@ -648,12 +647,8 @@ impl LayoutTree {
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
             match *child {
-                Container::View { handle, ref mut prev_geometry, .. } => {
-                    let mut geometry = prev_geometry
-                        .clone()
-                        .unwrap_or_else(|| handle.get_geometry()
-                                        .expect("Couldn't get geometry\
-                                                 from WlcView"));
+                Container::View { handle, effective_geometry, .. } => {
+                    let mut geometry = effective_geometry;
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
                     if index == children.len() - 1 {
