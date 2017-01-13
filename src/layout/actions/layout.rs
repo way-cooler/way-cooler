@@ -630,7 +630,7 @@ impl LayoutTree {
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
-            let new_geo = match *child {
+            match *child {
                 Container::View { handle, ref mut prev_geometry, .. } => {
                     let mut geometry = prev_geometry
                         .clone()
@@ -659,7 +659,7 @@ impl LayoutTree {
                             geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
                         }
                     }
-                    geometry
+                    handle.set_geometry(ResizeEdge::empty(), geometry);
                 },
                 // Do nothing, will get in the next recursion cycle
                 Container::Container { .. } => {continue},
@@ -669,8 +669,7 @@ impl LayoutTree {
                     error!("Found: {:#?}", container);
                     panic!("Applying gaps, found a non-view/container")
                 }
-            };
-            child.set_geometry(ResizeEdge::empty(), new_geo);
+            }
         }
         let v: Vec<Geometry> = children.iter().map(|ix| self.tree[*ix].get_geometry().unwrap()).collect();
         warn!("Children {:#?}", v);

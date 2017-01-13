@@ -102,6 +102,8 @@ pub enum Container {
         /// The previous geometry of the view. Used for fullscreen rendering
         /// This is a bit of a hack, but a fairly elegant one.
         prev_geometry: Option<Geometry>,
+        /// Effective geometry
+        effective_geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
     }
@@ -147,10 +149,13 @@ impl Container {
 
     /// Creates a new view container with the given handle
     pub fn new_view(handle: WlcView) -> Container {
+        let geometry = handle.get_geometry()
+            .expect("Handle had no geometry");
         Container::View {
             handle: handle,
             floating: false,
             prev_geometry: None,
+            effective_geometry: geometry,
             id: Uuid::new_v4()
         }
     }
@@ -214,8 +219,14 @@ impl Container {
                 size: size
             }),
             Container::Container { geometry, .. } => Some(geometry),
-            Container::View { ref handle, ref prev_geometry, ..} => {
-                prev_geometry.or_else(|| handle.get_geometry())
+            Container::View { ref handle, ref effective_geometry,
+                              ref prev_geometry, ..} => {
+                let actual_geo = prev_geometry.or_else(|| handle.get_geometry());
+                if actual_geo != Some(*effective_geometry) {
+                    Some(*effective_geometry)
+                } else {
+                    actual_geo
+                }
             },
         }
     }
@@ -236,12 +247,14 @@ impl Container {
             Container::Container { ref mut geometry, .. } => {
                 *geometry = geo;
             },
-            Container::View { ref handle, ref mut prev_geometry, .. } => {
+            Container::View { ref handle, ref mut effective_geometry,
+                              ref mut prev_geometry, .. } => {
                 if prev_geometry.is_some() {
                     *prev_geometry = Some(geo);
                 } else {
                     handle.set_geometry(edges, geo);
                 }
+                *effective_geometry = geo;
             }
         }
     }
