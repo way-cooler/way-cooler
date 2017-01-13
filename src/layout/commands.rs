@@ -218,6 +218,15 @@ impl Tree {
         }
     }
 
+    /// Gets a reference to the container that is the active workspace
+    pub fn active_workspace(&self) -> Result<&Container, TreeError> {
+        if let Some(node_ix) = self.0.active_ix_of(ContainerType::Workspace) {
+            Ok(&self.0.tree[node_ix])
+        } else {
+            Err(TreeError::NoActiveContainer)
+        }
+    }
+
     pub fn toggle_float(&mut self) -> CommandResult {
         if let Some(uuid) = self.active_id() {
             let is_floating: Result<bool, _> = self.0.lookup(uuid)
