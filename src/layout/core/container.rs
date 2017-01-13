@@ -231,6 +231,22 @@ impl Container {
         }
     }
 
+    /// Gets the actual geometry for a `WlcView`.
+    ///
+    /// Unlike `get_geometry`, this does not account for borders/gaps,
+    /// and instead is just a thin wrapper around `handle.get_geometry`.
+    ///
+    /// Most of the time you want `get_geometry`, as you should consider
+    /// the view + borders to be the "window".
+    ///
+    /// For non-view containers, this always returns `None`
+    pub fn get_actual_geometry(&self) -> Option<Geometry> {
+        match *self {
+            Container::View { handle, .. } => handle.get_geometry(),
+            _ => None
+        }
+    }
+
     /// Sets the geometry behind the container. Does nothing if container is root.
     ///
     /// For view you need to set the appropriate edges (which can be empty).
