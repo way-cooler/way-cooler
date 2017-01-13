@@ -9,6 +9,8 @@ use super::super::core::container::{Container, ContainerType, Layout};
 use ::debug_enabled;
 use uuid::Uuid;
 
+use registry::{self, RegistryGetData};
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
     /// The node behind the UUID was asked to ground when it was already grounded.
@@ -622,11 +624,21 @@ impl LayoutTree {
     /// If the `NodeIndex` doesn't point to a container, an error is returned.
     fn add_gaps(&mut self, node_ix: NodeIndex) -> CommandResult {
         // TODO Fullscreen with gaps doesn't normalize properly when un-fullscreening
-        let (gap, layout) = match self.tree[node_ix] {
-            Container::Container { gap, layout, .. } => (gap, layout),
+        let layout = match self.tree[node_ix] {
+            Container::Container { layout, .. } => layout,
             _ => return Err(TreeError::UuidNotAssociatedWith(
                 ContainerType::Container))
         };
+        let gap = registry::get_data("gap_size")
+            .map(RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num <= 0.0 {
+                        0u32
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0u32))
+            }).unwrap_or(0u32);
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];

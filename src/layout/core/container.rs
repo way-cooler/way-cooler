@@ -88,8 +88,6 @@ pub enum Container {
         fullscreen: bool,
         /// The geometry of the container, relative to the parent container
         geometry: Geometry,
-        /// The width of the gap to put between windows
-        gap: u32,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -142,7 +140,6 @@ impl Container {
             floating: false,
             fullscreen: false,
             geometry: geometry,
-            gap: 50,
             id: Uuid::new_v4()
         }
     }
