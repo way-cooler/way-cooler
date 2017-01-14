@@ -68,6 +68,10 @@ impl BaseDraw {
         self.borders.geometry = border_g;
         self.borders
     }
+
+    pub fn borders(&self) -> &Borders {
+        &self.borders
+    }
 }
 
 impl Deref for BaseDraw {

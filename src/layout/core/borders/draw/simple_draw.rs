@@ -15,26 +15,24 @@ use super::color::Color;
 /// Draws the borders simply, with a solid color at the same thickness.
 pub struct SimpleDraw {
     base: BaseDraw,
-    color: Color,
-    thickness: u32
+    color: Color
 }
 
 impl SimpleDraw {
-    pub fn new(base: BaseDraw, color: Color, thickness: u32) -> Self {
+    pub fn new(base: BaseDraw, color: Color) -> Self {
         SimpleDraw {
             base: base,
-            color: color,
-            thickness: thickness
+            color: color
         }
     }
 }
 
 impl Drawable for SimpleDraw {
     fn draw(self, mut border_g: Geometry) -> Result<Borders, DrawErr> {
-        border_g.size.w += self.thickness;
-        border_g.size.h += self.thickness;
-        border_g.origin.x -= self.thickness as i32 / 2;
-        border_g.origin.y -= self.thickness as i32 / 2;
+        border_g.size.w += self.base.borders().thickness;
+        border_g.size.h += self.base.borders().thickness;
+        border_g.origin.x -= self.base.borders().thickness as i32 / 2;
+        border_g.origin.y -= self.base.borders().thickness as i32 / 2;
         warn!("Drawing: {:#?}", border_g);
 
         let mut base = self.base;

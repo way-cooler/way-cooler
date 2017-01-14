@@ -16,6 +16,8 @@ use super::draw::BaseDraw;
 pub struct Borders {
     /// The surface that contains the bytes we give to wlc to draw.
     surface: ImageSurface,
+    /// How thick the borders should be. This affects how big the geometry is.
+    pub thickness: u32,
     /// The geometry where the buffer is written.
     ///
     /// Should correspond with the geometry of the container.
@@ -23,12 +25,17 @@ pub struct Borders {
 }
 
 impl Borders {
-    pub fn new(geometry: Geometry) -> Self {
+    pub fn new(mut geometry: Geometry, thickness: u32) -> Self {
+        // Add the thickness to the geometry.
+        geometry.origin.x -= thickness as i32;
+        geometry.origin.y -= thickness as i32;
+        geometry.size.w += thickness;
+        geometry.size.h += thickness;
         error!("Initial geometry: {:?}", geometry);
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
         // TODO Remove 100 so that we don't start with a gray ghost box
-        let data: Vec<u8> = iter::repeat(100).take(h as usize * stride as usize).collect();
+        let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
         let buffer = data.into_boxed_slice();
         let surface = ImageSurface::create_for_data(buffer,
                                                     drop_data,
@@ -38,6 +45,7 @@ impl Borders {
                                                     stride);
         Borders {
             surface: surface,
+            thickness: thickness,
             geometry: geometry
         }
     }
