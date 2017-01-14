@@ -3,12 +3,11 @@ use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
 use std::ops::{Deref, DerefMut};
 use rustwlc::{Geometry, Size, Point};
-use rustwlc::render::{write_pixels, wlc_pixel_format};
+use rustwlc::render::{write_pixels, wlc_pixel_format, BITS_PER_PIXEL};
 use cairo::{self, Context, ImageSurface, Format, Operator, Status, SolidPattern};
 use cairo::prelude::{SurfaceExt};
 
 use super::draw::BaseDraw;
-
 
 /// The borders of a container.
 ///
@@ -27,13 +26,13 @@ impl Borders {
     pub fn new(geometry: Geometry) -> Self {
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
-        let data: Vec<u8> = iter::repeat(100).take(w as usize * stride as usize).collect();
+        let data: Vec<u8> = iter::repeat(100).take(h as usize * stride as usize).collect();
         let buffer = data.into_boxed_slice();
         let surface = ImageSurface::create_for_data(buffer,
                                                     drop_data,
                                                     Format::ARgb32,
-                                                    h as i32,
                                                     w as i32,
+                                                    h as i32,
                                                     stride);
         Borders {
             surface: surface,
@@ -103,7 +102,8 @@ unsafe impl Sync for Borders {}
 fn calculate_stride(width: u32) -> u32 {
     // function stolen from CAIRO_STRIDE_FOR_WIDTH macro in cairoint.h
     // Can be found in the most recent version of the cairo source
-    (32 * width + 7) / 8 + 4 & !4
+    let stride_alignment = ::std::mem::size_of::<u32>() as u32;
+    ((BITS_PER_PIXEL * width + 7 ) / 8 + (stride_alignment - 1))  & (stride_alignment.overflowing_neg().0)
 }
 
 #[allow(dead_code)]
