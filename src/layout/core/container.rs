@@ -247,6 +247,7 @@ impl Container {
                 *geometry = geo;
             },
             Container::View { ref handle, ref mut borders, .. } => {
+                handle.set_geometry(edges, geo);
                 borders.as_mut().map(|b| b.reallocate_buffer(geo));
             }
         }
