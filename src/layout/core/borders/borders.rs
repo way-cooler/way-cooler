@@ -72,6 +72,7 @@ impl Borders {
     /// bad performance.
     pub fn reallocate_buffer(&mut self, mut geometry: Geometry) {
         // Add the thickness to the geometry.
+        error!("Reallocating buffer!");
         geometry.origin.x -= self.thickness as i32;
         geometry.origin.y -= self.thickness as i32;
         geometry.size.w += self.thickness;
