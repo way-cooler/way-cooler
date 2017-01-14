@@ -1,15 +1,16 @@
 [package]
 name = "way-cooler"
 description = "Customizeable Wayland compositor written in Rust"
-version = "0.4.0"
+version = "0.4.2"
 repository = "https://github.com/Immington-Industries/way-cooler/"
 keywords = ["Wayland", "compositor", "window", "manager", "wlc"]
 readme = "README.md"
 license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
+build = "build.rs"
 
 [dependencies]
-#rustwlc = "0.5.2"
+#rustwlc = "0.5.3"
 rustwlc = { path = "../rust-wlc", version = "0.5.2" }
 lazy_static = "0.2"
 log = "0.3"
@@ -18,7 +19,7 @@ dbus = "0.4"
 dbus-macros = "0.0.6"
 hlua = "0.1"
 bitflags = "0.7"
-petgraph = "0.3"
+petgraph = "0.4.2"
 rustc-serialize = "0.3"
 json_macro = "0.1"
 nix = "0.6"
@@ -29,3 +30,7 @@ cairo-rs = "0.1.1"
 
 [dev-dependencies]
 dummy-rustwlc = "0.5.1"
+
+[features]
+static-wlc = ["rustwlc/static-wlc"]
+disable-debug = []

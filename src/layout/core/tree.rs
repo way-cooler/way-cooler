@@ -7,11 +7,12 @@ use uuid::Uuid;
 use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use super::super::LayoutTree;
 use super::super::ActionErr;
-use super::container::{Container, ContainerType, Layout};
+use super::container::{Container, ContainerType, Layout, Handle};
 use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
 use super::super::actions::layout::LayoutErr;
 use super::super::actions::resize::ResizeErr;
+use super::super::actions::background::BackgroundErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -74,6 +75,10 @@ impl Direction {
 pub enum TreeError {
     /// A Node can not be found in the tree with this Node Handle.
     NodeNotFound(Uuid),
+    /// The node was removed from the tree already.
+    /// Depending on this operation this can be ignored, or should
+    /// raise some flags that something is up
+    NodeWasRemoved(NodeIndex),
     /// A WlcView handle could not be found in the tree.
     ViewNotFound(WlcView),
     /// A UUID was not associated with the this type of container.
@@ -96,11 +101,16 @@ pub enum TreeError {
     Layout(LayoutErr),
     /// An error occurred while trying to resize the layout
     Resize(ResizeErr),
+    /// An error occurred while trying to do something with the background
+    /// of an output
+    Background(BackgroundErr),
     /// An error occurred while attempting to modify or use the main action
     Action(ActionErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
-    PerformingAction(bool)
+    PerformingAction(bool),
+    /// Attempted to add an output to the tree, but it already exists.
+    OutputExists(WlcOutput)
 }
 
 impl LayoutTree {
@@ -158,18 +168,33 @@ impl LayoutTree {
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
         if self.active_container != Some(node_ix) {
-            info!("Active container was {}, is now {}",
+            debug!("Active container was {}, is now {}",
                   self.active_container.map(|node| node.index().to_string())
                     .unwrap_or("not set".into()),
                   node_ix.index());
         }
+        let id = self.tree[node_ix].get_id();
+        if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
+            if fullscreen_id != id {
+                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
+            }
+        }
+        info!("Active container was {}, is now {}",
+                self.active_container.map(|node| node.index().to_string())
+                .unwrap_or("not set".into()),
+                node_ix.index());
         self.active_container = Some(node_ix);
-        match self.tree[node_ix] {
-            Container::View { ref handle, .. } => handle.focus(),
-            Container::Container { .. } => {},
-            ref container => return Err(
-                TreeError::UuidWrongType(container.get_id(),
-                                         vec!(ContainerType::View, ContainerType::Container)))
+        let c_type; let id;
+        {
+            let container = &self.tree[node_ix];
+            c_type = container.get_type();
+            id = container.get_id();
+        }
+        match c_type {
+            ContainerType::View => try!(self.focus_on(id)),
+            ContainerType::Container => {/* TODO implement this */},
+            _ => return Err(
+                TreeError::UuidWrongType(id, vec!(ContainerType::View, ContainerType::Container)))
         }
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
@@ -242,7 +267,6 @@ impl LayoutTree {
     }
 
     /// Add a new view container with the given WlcView to the active container
-    #[allow(dead_code)]
     pub fn add_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
         if let Some(mut active_ix) = self.active_container {
             let parent_ix = try!(self.tree.parent_of(active_ix)
@@ -260,7 +284,13 @@ impl LayoutTree {
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
-            try!(self.set_active_node(view_ix));
+            match self.set_active_node(view_ix) {
+                Ok(_) => {},
+                Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+                    debug!("Blocked focus by fullscreen");
+                },
+                Err(err) => return Err(err)
+            }
             return Ok(&self.tree[view_ix])
         }
         self.validate();
@@ -296,7 +326,13 @@ impl LayoutTree {
         let new_container_ix = self.tree.add_child(parent_ix, container, false);
         self.tree.move_node(child_ix, new_container_ix);
         self.tree.set_child_pos(new_container_ix, *old_weight);
-        try!(self.set_active_node(new_container_ix));
+        match self.set_active_node(new_container_ix) {
+            Ok(_) => {}
+            Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
+                debug!("Blocked focus by fullscreen");
+            },
+            Err(err) => return Err(err)
+        }
         self.validate();
         Ok(())
     }
@@ -307,14 +343,26 @@ impl LayoutTree {
     /// consistency with the tree. By default, it sets this new workspace to
     /// be workspace "1". This will later change to be the first available
     /// workspace if using i3-style workspaces.
-    pub fn add_output(&mut self, output: WlcOutput) {
+    pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
         trace!("Adding new output with {:?}", output);
-        let root_index = self.tree.root_ix();
-        let output_ix = self.tree.add_child(root_index,
+        let root_ix = self.tree.root_ix();
+        let outputs = self.tree.children_of(root_ix);
+        for output_ix in outputs {
+            match self.tree[output_ix].get_handle().expect("Output had no handle!") {
+                Handle::Output(handle) => {
+                    if output == handle {
+                        return Err(TreeError::OutputExists(output))
+                    }
+                },
+                _ => unreachable!()
+            }
+        }
+        let output_ix = self.tree.add_child(root_ix,
                                             Container::new_output(output),
                                             true);
         self.active_container = Some(self.init_workspace("1".to_string(), output_ix));
         self.validate();
+        Ok(())
     }
 
     //// Remove a view container from the tree
@@ -325,6 +373,17 @@ impl LayoutTree {
             self.validate();
             Ok(container)
         } else {
+            // Check if it's a background, and if so invalidate it
+            for output_ix in self.tree.children_of(self.tree.root_ix()) {
+                match self.tree[output_ix] {
+                    Container::Output { ref mut background, .. } => {
+                        if Some(*view) == *background {
+                            background.take();
+                        }
+                    },
+                    _ => unreachable!()
+                }
+            }
             self.validate();
             Err(TreeError::ViewNotFound(view.clone()))
         }
@@ -337,74 +396,87 @@ impl LayoutTree {
     /// Note that because this causes N indices to be changed (where N is the
     /// number of descendants of the container), any node indices should be
     /// considered invalid after this operation (except for the active_container)
-    pub fn remove_container(&mut self, container_ix: NodeIndex) {
+    pub fn remove_container(&mut self, container_ix: NodeIndex) -> CommandResult {
         let mut children = self.tree.all_descendants_of(container_ix);
         // add current container to the list as well
         children.push(container_ix);
         for node_ix in children {
             trace!("Removing index {:?}: {:?}", node_ix, self.tree[node_ix]);
-            match self.tree[node_ix] {
-                Container::View { .. } | Container::Container { .. } => {
-                    self.remove_view_or_container(node_ix);
+            match self.tree.get(node_ix) {
+                None => return Err(TreeError::NodeWasRemoved(container_ix)),
+                Some(&Container::View { .. }) | Some(&Container::Container { .. }) => {
+                    try!(self.remove_view_or_container(node_ix));
                 },
-                _ => { self.tree.remove(node_ix); },
+                Some(_) => {
+                    try!(self.tree.remove(node_ix)
+                         .ok_or(TreeError::NodeWasRemoved(container_ix)));
+                },
             }
         }
         self.validate();
+        Ok(())
     }
 
     /// Special code to handle removing a View or Container.
     /// We have to ensure that we aren't invalidating the active container
     /// when we remove a view or container.
-    pub fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Option<Container> {
+    pub fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Result<Container, TreeError> {
         // Only the root container has a non-container parent, and we can't remove that
-        let mut result = None;
-        if let Ok(mut parent_ix) = self.tree.ancestor_of_type(node_ix,
-                                                                    ContainerType::Container) {
-            // If it'll move, fix that before that happens
-            if self.tree.is_last_ix(parent_ix) {
-                parent_ix = node_ix;
-            }
-            // If the active container is *not* being removed,
-            // we must ensure that it won't be invalidated by the move
-            // (i.e: if it is the last index)
-            if self.active_container.map(|c| c != node_ix).unwrap_or(false) {
-                if self.tree.is_last_ix(self.active_container.unwrap()) {
-                    if let Err(err) = self.set_active_node(node_ix) {
-                        error!("remove_view_or_container: {:?}", err);
-                        panic!(err);
-                    }
-                }
-            }
-            let container = self.tree.remove(node_ix)
-                .expect("Could not remove container");
-            match container {
-                Container::View { .. } | Container::Container { .. } => {},
-                _ => unreachable!()
-            };
-            result = Some(container);
-            self.focus_on_next_container(parent_ix);
-            // Remove parent container if it is a non-root container and has no other children
-            match self.tree[parent_ix].get_type() {
-                ContainerType::Container => {
-                    if self.tree.can_remove_empty_parent(parent_ix) {
-                        self.remove_view_or_container(parent_ix);
-                    }
-                }
-                _ => {},
-            }
-            trace!("Removed container {:?}, index {:?}", result, node_ix);
+        let c_type: ContainerType;
+        let uuid: Uuid;
+        {
+            let container = &try!(self.tree.get(node_ix).ok_or(TreeError::NodeWasRemoved(node_ix)));
+            c_type = container.get_type();
+            uuid = container.get_id();
         }
-        self.validate();
+        if c_type != ContainerType::View && c_type != ContainerType::Container {
+            return Err(TreeError::UuidWrongType(uuid, vec!(ContainerType::View, ContainerType::Container)));
+        }
+        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+            .expect("Container was not part of a workspace");
+        let parent_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Container)
+            .unwrap_or(workspace_ix);
+        let container = try!(self.tree.remove(node_ix)
+                                .ok_or(TreeError::NodeWasRemoved(node_ix)));
+
+        // Make sure we remove other instances of the index
+
+        // Active container
+        if Some(node_ix) == self.active_container {
+            self.active_container.take();
+        }
+
+        // Fullscreen containers
+        self.tree[workspace_ix].update_fullscreen_c(uuid, false)
+            .expect("workspace_ix did not point to a workspace");
+
+        match container {
+            Container::View { .. } | Container::Container { .. } => {},
+            _ => unreachable!()
+        };
+        let result = Ok(container);
+        self.focus_on_next_container(parent_ix);
+        // Remove parent container if it is a non-root container and has no other children
+        let parent_type = self.tree[parent_ix].get_type();
+        match parent_type {
+            ContainerType::Container => {
+                if self.tree.can_remove_empty_parent(parent_ix) {
+                    try!(self.remove_view_or_container(parent_ix));
+                }
+                self.validate();
+            }
+            _ => {},
+        }
+        trace!("Removed container {:?}, index {:?}", result, node_ix);
         result
     }
 
     /// Removes the current active container
-    pub fn remove_active(&mut self) -> Option<Container> {
+    pub fn remove_active(&mut self) -> Result<Container, TreeError> {
         if let Some(active_ix) = self.active_container {
             self.remove_view_or_container(active_ix)
         } else {
-            None
+            Err(TreeError::NoActiveContainer)
         }
     }
 
@@ -478,8 +550,22 @@ impl LayoutTree {
         }
     }
 
+    /// Determines if the container behind the id is in a fullscreen workspace.
+    /// If it is, it returns the id of the fullscreen container.
+    pub fn in_fullscreen_workspace(&self, id: Uuid) -> Result<Option<Uuid>, TreeError> {
+        let node_ix = try!(self.tree.lookup_id(id)
+                           .ok_or(TreeError::NodeNotFound(id)));
+        let workspace_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+                                .map_err(|err| TreeError::PetGraph(err)));
+        let workspace = &self.tree[workspace_ix];
+        let children = try!(workspace.fullscreen_c()
+                            .ok_or(TreeError::UuidWrongType(workspace.get_id(),
+                                                            vec![ContainerType::Workspace])));
+        Ok(children.last().cloned())
+    }
+
     /// Validates the tree
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, not(disable_debug)))]
     pub fn validate(&self) {
         // Recursive method to ensure child/parent nodes are connected
         fn validate_node_connections(this: &LayoutTree, parent_ix: NodeIndex) {
@@ -575,7 +661,7 @@ impl LayoutTree {
     }
 
     /// Validates the tree
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, not(disable_debug)))]
     pub fn validate_path(&self) {
         // Ensure there is only one active path from the root
         let mut next_ix = Some(self.tree.root_ix());
@@ -612,12 +698,17 @@ impl LayoutTree {
                 }
             }
         }
+
+        // ensure that the active container is valid
+        if let Some(node_ix) = self.active_container {
+            assert!(self.tree.get(node_ix).is_some());
+        }
     }
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(all(not(debug_assertions), disable_debug))]
     pub fn validate(&self) {}
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(all(not(debug_assertions), disable_debug))]
     pub fn validate_path(&self) {}
 }
 
@@ -628,6 +719,8 @@ pub mod tests {
     use super::super::super::core::InnerTree;
     use super::*;
     use rustwlc::*;
+
+    use uuid::Uuid;
 
     /// Makes a very basic tree.
     /// There is only one output,
@@ -813,11 +906,15 @@ pub mod tests {
         assert_eq!(tree.tree.children_of(parent_container).len(), 1);
         let old_active_view = tree.active_ix_of(ContainerType::View)
             .expect("Active container was not a view");
-        tree.add_view(WlcView::root()).unwrap();
+        let uuid_of_added: Uuid = tree.add_view(WlcView::root()).unwrap().get_id();
         assert_eq!(tree.tree.children_of(parent_container).len(), 2);
         assert!(! (old_active_view == tree.active_ix_of(ContainerType::View).unwrap()));
-        tree.remove_view(&WlcView::root())
-            .expect("Could not remove view");
+        let added_container_ix = tree.tree.lookup_id(uuid_of_added)
+            .expect("Id of just added container doesn't match with a container!");
+        tree.remove_container(added_container_ix)
+            .expect("Could not remove container we just added!");
+        // Can't remove a node twice without it giving us an error
+        assert!(tree.remove_container(added_container_ix).is_err());
         assert_eq!(tree.active_ix_of(ContainerType::View).unwrap(), old_active_view);
         assert_eq!(tree.tree.children_of(parent_container).len(), 1);
         for _ in 1..2 {
@@ -829,15 +926,15 @@ pub mod tests {
     fn remove_active_test() {
         let mut tree = basic_tree();
         let root_container = tree.tree[tree.tree.parent_of(tree.active_container.unwrap()).unwrap()].clone();
-        tree.remove_active();
+        tree.remove_active().unwrap();
         assert_eq!(tree.tree[tree.active_container.unwrap()], root_container);
     }
 
     #[test]
     fn add_output_test() {
         let mut tree = basic_tree();
-        let new_output = WlcView::root().as_output();
-        tree.add_output(new_output);
+        let new_output = WlcView::dummy(2).as_output();
+        tree.add_output(new_output).expect("Couldn't add output");
         let output_ix = tree.active_ix_of(ContainerType::Output).unwrap();
         let handle = match tree.tree[output_ix].get_handle().unwrap() {
             Handle::Output(output) => output,
@@ -857,6 +954,11 @@ pub mod tests {
         let mut tree = basic_tree();
         let active_view_ix = tree.active_container
             .expect("No active container on basic tree");
+        let active_view = match tree.tree[active_view_ix] {
+            Container::View { handle, .. } => handle,
+            _ => panic!("active_view_ix didn't point to a view container")
+        };
+        let active_id = tree.tree[active_view_ix].get_id();
         assert!(tree.tree[active_view_ix].get_type() == ContainerType::View,
                 "Active container was not a view");
         let workspace_of_active = tree.tree.ancestor_of_type(active_view_ix,
@@ -865,10 +967,12 @@ pub mod tests {
         // The next active container should be the root container of this workspace
         let new_active_container_ix = &tree.tree.children_of(workspace_of_active)[0];
 
-        tree.remove_view_or_container(active_view_ix);
+        tree.remove_view_or_container(active_view_ix).unwrap();
         let new_active_container = tree.active_container
             .expect("Remove view invalidated the active container");
         assert_eq!(new_active_container, *new_active_container_ix);
+        assert_eq!(tree.tree.lookup_view(active_view), None);
+        assert_eq!(tree.tree.lookup_id(active_id), None);
 
     }
 
@@ -959,11 +1063,11 @@ pub mod tests {
         assert_eq!(num_children, 1);
         let active_view_ix = tree.active_container.unwrap();
         assert_eq!(tree.tree[active_view_ix].get_type(), ContainerType::View);
-        tree.remove_view_or_container(active_view_ix);
+        tree.remove_view_or_container(active_view_ix).unwrap();
         /* Remove the other view*/
         let active_view_ix = tree.active_container.unwrap();
         assert_eq!(tree.tree[active_view_ix].get_type(), ContainerType::View);
-        tree.remove_view_or_container(active_view_ix);
+        tree.remove_view_or_container(active_view_ix).unwrap();
         /* This should remove the other container,
         the count of the root container should be 0 */
         let active_ix = tree.active_container.unwrap();
@@ -972,7 +1076,7 @@ pub mod tests {
                                                    .expect("No active workspace"))[0];
         let num_children = tree.tree.children_of(root_container).len();
         assert_eq!(num_children, 0);
-        assert!(tree.remove_view_or_container(active_view_ix).is_none());
+        assert!(tree.remove_view_or_container(active_view_ix).is_err());
     }
 
     #[test]
@@ -1061,7 +1165,7 @@ pub mod tests {
         tree.active_container = None;
         for direction in &directions {
             // should do nothing when there is no active container
-            tree.move_focus(*direction).unwrap();
+            assert_eq!(tree.move_focus(*direction), Err(TreeError::NoActiveContainer));
             assert_eq!(tree.active_container, None);
         }
         tree.active_container = old_active_ix;
@@ -1133,11 +1237,11 @@ pub mod tests {
     fn active_is_root_test() {
         let mut tree = basic_tree();
         assert_eq!(tree.active_is_root(), false);
-        tree.remove_active();
+        tree.remove_active().unwrap();
         assert_eq!(tree.active_is_root(), true);
         tree.active_container = None;
         assert_eq!(tree.active_is_root(), false);
-        assert!(tree.remove_active().is_none());
+        assert!(tree.remove_active().is_err());
     }
 
     #[test]

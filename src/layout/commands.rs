@@ -29,7 +29,9 @@ pub fn remove_active() {
                 _ => {}
             }
         }
-        tree.0.remove_active();
+        if let Err(err) = tree.0.remove_active() {
+            warn!("Could not remove the active container! {:#?}\n{:#?}\n{:#?}", tree.0.get_active_container(), err, *tree.0);
+        };
     }
 }
 
@@ -66,6 +68,20 @@ pub fn split_vertical() {
 pub fn split_horizontal() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.0.toggle_active_layout(Layout::Horizontal).ok();
+    }
+}
+
+pub fn fullscreen_toggle() {
+    if let Ok(mut tree) = try_lock_tree() {
+        if let Some(id) = tree.active_id() {
+            let toggle = !tree.is_fullscreen(id)
+                .expect("Active ID was invalid!");
+            tree.set_fullscreen(id, toggle)
+                .unwrap_or_else(|_| {
+                    warn!("Could not set {:?} to fullscreen flag to be {:?}",
+                          id, toggle);
+                })
+        }
     }
 }
 
@@ -173,11 +189,16 @@ pub fn set_performing_action(val: Option<Action>) {
     }
 }
 
+// TODO Remove all instances of self.0.tree, that should be abstracted in LayoutTree.
+
 /* These commands are the interface that the rest of Way Cooler has to the
  * tree. Any action done, whether through a callback, or from the IPC/Lua thread
  * it will have to go through one of these methods.
  */
 
+/// These commands are the interface that the rest of Way Cooler has to the
+/// tree. Any action done, whether through a callback, or from the IPC/Lua thread
+/// it will have to go through one of these methods.
 impl Tree {
     /// Gets the uuid of the active container, if there is an active container
     pub fn active_id(&self) -> Option<Uuid> {
@@ -191,6 +212,28 @@ impl Tree {
 
     pub fn get_container_mut(&mut self, id: Uuid) -> Result<&mut Container, TreeError> {
         self.0.lookup_mut(id)
+    }
+
+    /// Determines if the container is in the currently active workspace.
+    pub fn container_in_active_workspace(&self, id: Uuid) -> Result<bool, TreeError> {
+        let view = match try!(self.0.lookup(id)).get_handle() {
+            Some(Handle::View(view)) => view,
+            _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
+        };
+        if let Some(active_workspace) = self.0.active_ix_of(ContainerType::Workspace) {
+            Ok(self.0.tree.descendant_with_handle(active_workspace, &view).is_some())
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Gets a reference to the container that is the active workspace
+    pub fn active_workspace(&self) -> Result<&Container, TreeError> {
+        if let Some(node_ix) = self.0.active_ix_of(ContainerType::Workspace) {
+            Ok(&self.0.tree[node_ix])
+        } else {
+            Err(TreeError::NoActiveContainer)
+        }
     }
 
     pub fn toggle_float(&mut self) -> CommandResult {
@@ -243,8 +286,22 @@ impl Tree {
 
     /// Adds an Output to the tree. Never fails
     pub fn add_output(&mut self, output: WlcOutput) -> CommandResult {
-        self.0.add_output(output);
-        Ok(())
+        self.0.add_output(output)
+    }
+
+    /// Gets a list of UUIDs for all the outputs, in the order they were added.
+    pub fn outputs(&self) -> Vec<Uuid> {
+        let root_ix = self.0.tree.root_ix();
+        self.0.tree.children_of(root_ix).iter()
+            .map(|output_ix| self.0.tree[*output_ix].get_id())
+            .collect()
+    }
+
+    /// Binds a view to be the background for the given outputs.
+    ///
+    /// If there was a previous background, it is removed and deallocated.
+    pub fn add_background(&mut self, view: WlcView, outputs: &[Uuid]) -> CommandResult {
+        self.0.attach_background(view, outputs)
     }
 
     /// Adds a Workspace to the tree. Never fails
@@ -277,11 +334,12 @@ impl Tree {
             return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
-        if view.get_type() != ViewType::empty() {
+        let has_parent = view.get_parent() != WlcView::root();
+        if view.get_type() != ViewType::empty() || has_parent {
             try!(tree.add_floating_view(view));
         } else {
-            try!(tree.add_floating_view(view));
-            //tree.normalize_view(view);
+            try!(tree.add_view(view));
+            tree.normalize_view(view);
         }
         tree.layout_active_of(ContainerType::Workspace);
         Ok(())
@@ -289,7 +347,12 @@ impl Tree {
 
     /// Attempts to remove a view from the tree. If it is not in the tree it fails.
     ///
-    /// This will close the handle behind the view.
+    /// # Safety
+    /// This will **NOT** close the handle behind the view.
+    /// The main use of this function is to be called from the `view_destroyed`
+    /// callback. If you are calling this function from somewhere else,
+    /// you should instead simply call `view.close`. This will be triggered
+    /// in the callback.
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         let result;
         match self.0.remove_view(&view) {
@@ -297,9 +360,8 @@ impl Tree {
                 result = Err(err)
             },
             Ok(Container::View { handle, id, .. }) => {
-                trace!("Removed container {:?}", id);
-                handle.close();
-                trace!("Close wlc view {:?}", handle);
+                trace!("Removed container {:?} with id {:?}",
+                       handle, id);
                 result = Ok(())
             },
             _ => unreachable!()
@@ -339,6 +401,46 @@ impl Tree {
     /// Can also not set floating containers to be active.
     pub fn set_active_container_by_id(&mut self, id: Uuid) -> CommandResult {
         self.0.set_active_container(id)
+    }
+
+    /// Sets the container behind the UUID to be fullscreen.
+    ///
+    /// If the container is a non-View/Container, then an error is returned
+    /// and the flag is not set (it's only tracked for Views and Containers).
+    pub fn set_fullscreen(&mut self, id: Uuid, toggle: bool) -> CommandResult {
+        {
+            let container = try!(self.0.lookup_mut(id));
+            try!(container.set_fullscreen(toggle)
+                 .map_err(|_| TreeError::UuidWrongType(id, vec![ContainerType::View,
+                                                                ContainerType::Container])));
+        }
+        // Now update the workspace so that it knows which children are fullscreen
+        {
+            /*
+            TODO This needs proper error handling!
+            Correct way is to have active_ix_of to return a proper `Result<NodeIndex, TreeError>`
+            however that would break too much code and needs a branch to itself.
+
+            For now, in order to have the IPC not break Way Cooler, this will return an incorrect error.
+            */
+            if let Some(workspace_ix) = self.0.active_ix_of(ContainerType::Workspace) {
+                let workspace = &mut self.0.tree[workspace_ix];
+                try!(workspace.update_fullscreen_c(id, toggle)
+                     .map_err(|_| TreeError::UuidWrongType(workspace.get_id(), vec![ContainerType::Workspace])));
+            } else {
+                // WRONG ID! See TODO above
+                return Err(TreeError::UuidWrongType(id, vec![ContainerType::Workspace]))
+            }
+        }
+        // TODO Only do this if in path, or otherwise just tile the workspace the container is in
+        // MOST of the time, this isn't a useless operation (read: when keybinding is used),
+        // but still the IPC shouldn't do a useless tile if it can help it.
+        self.layout_active_of(ContainerType::Workspace)
+    }
+
+    pub fn is_fullscreen(&self, id: Uuid) -> Result<bool, TreeError> {
+        let container = try!(self.0.lookup(id));
+        Ok(container.fullscreen())
     }
 
     /// Focuses on the container. If the container is not floating and is a
@@ -391,4 +493,12 @@ impl Tree {
         Ok(())
     }
 
+    pub fn set_pointer_pos(&mut self, point: Point) -> CommandResult {
+        self.0.set_pointer_pos(point)
+    }
+
+    pub fn grab_at_corner(&mut self, id: Uuid, edge: ResizeEdge) -> CommandResult {
+        self.0.grab_at_corner(id, edge)
+            .and(Ok(()))
+    }
 }

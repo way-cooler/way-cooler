@@ -27,7 +27,7 @@ impl LayoutTree {
         let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraph(err)));
         try!(self.move_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
-            self.remove_container(old_parent_ix);
+            try!(self.remove_container(old_parent_ix));
         }
         self.validate();
         Ok(())
@@ -35,7 +35,7 @@ impl LayoutTree {
 
     /// Returns the new parent of the active container if the move succeeds,
     /// Otherwise it signals what error occurred in the tree.
-    pub fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
+    fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
                            direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_to_move].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },

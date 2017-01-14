@@ -4,12 +4,14 @@
 
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
-                     Point, Geometry, ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_RESIZING,
+                     Point, Geometry, ResizeEdge, ViewState,
+                     VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, MOD_CTRL, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
 
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType, MovementError, TreeError};
+use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType,
+                    MovementError, TreeError, FocusError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
@@ -25,9 +27,16 @@ const RIGHT_CLICK: u32 = 0x111;
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
     if let Ok(mut tree) = try_lock_tree() {
-        tree.add_output(output).and_then(|_|{
+        let result = tree.add_output(output).and_then(|_|{
             tree.switch_to_workspace(&"1")
-        }).is_ok()
+                .map(|_| tree.layout_active_of(ContainerType::Output))
+        });
+        match result {
+            // If the output exists, we just couldn't add it to the tree because
+            // it's already there. That's OK
+            Ok(_) | Err(TreeError::OutputExists(_)) => true,
+            _ => false
+        }
     } else {
         false
     }
@@ -55,9 +64,9 @@ pub extern fn output_resolution(output: WlcOutput,
 }
 
 pub extern fn view_created(view: WlcView) -> bool {
-    trace!("view_created: {:?}: \"{}\"", view, view.get_title());
+    debug!("view_created: {:?}: \"{}\"", view, view.get_title());
     if view.get_class().as_str() == "Background" {
-        info!("Setting background: {}", view.get_title());
+        debug!("Setting background: {}", view.get_title());
         view.send_to_back();
         view.set_mask(1);
         let output = view.get_output();
@@ -68,21 +77,25 @@ pub extern fn view_created(view: WlcView) -> bool {
             size: resolution
         };
         view.set_geometry(ResizeEdge::empty(), fullscreen);
-        return true
+        if let Ok(mut tree) = try_lock_tree() {
+            let outputs = tree.outputs();
+            return tree.add_background(view, outputs.as_slice()).is_ok();
+        }
+        return false
     }
     if let Ok(mut tree) = try_lock_tree() {
-        tree.add_view(view).and_then(|_| {
-            if view.get_class() == "Background" {
-                return Ok(())
+        let result = tree.add_view(view).and_then(|_| {
+            view.set_state(VIEW_MAXIMIZED, true);
+            match tree.set_active_view(view) {
+                // If blocked by fullscreen, we don't focus on purpose
+                Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => Ok(()),
+                result => result
             }
-            tree.set_active_view(view).or_else(|_| {
-                // We still want to focus on the window that appeared
-                // Might need to change later, in case this focus grabbing
-                // gets annoying / becomes a security issue.
-                view.focus();
-                Ok(())
-            })
-        }).is_ok()
+        });
+        if result.is_err() {
+            warn!("Could not add {:?}. Reason: {:?}", view, result);
+        }
+        result.is_ok()
     } else {
         false
     }
@@ -122,9 +135,29 @@ pub extern fn view_move_to_output(current: WlcView,
     trace!("view_move_to_output: {:?}, {:?}, {:?}", current, o1, o2);
 }
 
-pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
+pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) {
     trace!("Setting {:?} to state {:?}", view, state);
-    view.set_state(state, handled);
+    if state == VIEW_FULLSCREEN {
+        if let Ok(mut tree) = try_lock_tree() {
+            if let Some(id) = tree.lookup_view(view) {
+                tree.set_fullscreen(id, toggle)
+                    .expect("The ID was related to a non-view, somehow!");
+                match tree.container_in_active_workspace(id) {
+                    Ok(true) => {
+                        tree.layout_active_of(ContainerType::Workspace)
+                            .unwrap_or_else(|err| {
+                                error!("Could not layout active workspace for view {:?}: {:?}",
+                                        view, err)
+                            });
+                    },
+                    Ok(false) => {},
+                    Err(err) => error!("Could not set {:?} fullscreen: {:?}", view, err)
+                }
+            } else {
+                warn!("Could not find view {:?} in tree", view);
+            }
+        }
+    }
 }
 
 pub extern fn view_request_move(view: WlcView, _dest: &Point) {
@@ -163,7 +196,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
 
     if state == KeyState::Pressed {
         if let Some(action) = keys::get(&press) {
-            debug!("[key] Found an action for {}", press);
+            info!("[key] Found an action for {}, blocking event", press);
             match action {
                 KeyEvent::Command(func) => {
                     func();
@@ -196,13 +229,14 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                          mods: &KeyboardModifiers, button: u32,
                              state: ButtonState, point: &Point) -> bool {
     if state == ButtonState::Pressed {
+        let mouse_mod = keys::mouse_modifier();
         if button == LEFT_CLICK && !view.is_root() {
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).unwrap_or_else(|_| {
                     // still focus on view, even if not in tree.
                     view.focus();
                 });
-                if mods.mods.contains(MOD_CTRL) {
+                if mods.mods.contains(mouse_mod) {
                     let action = Action {
                         view: view,
                         grab: *point,
@@ -212,11 +246,11 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                 }
             }
         } else if button == RIGHT_CLICK && !view.is_root() {
+            info!("User right clicked w/ mods \"{:?}\" on {:?}", mods, view);
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).ok();
             }
-            // TODO Make this set in the config file and read here.
-            if mods.mods.contains(MOD_CTRL) {
+            if mods.mods.contains(mouse_mod) {
                 let action = Action {
                     view: view,
                     grab: *point,
@@ -260,6 +294,13 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
         }
     } else {
         if let Ok(lock) = try_lock_action() {
+            let unknown = format!("unknown ({})", button);
+            info!("User released {:?} mouse button",
+                  match button {
+                      RIGHT_CLICK => "right",
+                      LEFT_CLICK => "left",
+                      _ => unknown.as_str()
+                  });
             match *lock {
                 Some(action) => {
                     let view = action.view;
@@ -327,6 +368,7 @@ pub extern fn compositor_ready() {
     info!("Preparing compositor!");
     info!("Initializing Lua...");
     lua::init();
+    keys::init();
 }
 
 pub extern fn compositor_terminating() {

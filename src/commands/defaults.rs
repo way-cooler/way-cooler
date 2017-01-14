@@ -10,6 +10,7 @@ use registry::{self, RegistryError, RegistryGetData};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
+use super::super::keys;
 
 /// Register the default commands in the API.
 ///
@@ -22,12 +23,13 @@ pub fn register_defaults() {
         coms.insert(name.to_string(), val);
     };
 
-    register("quit", Arc::new(quit));
+    register("way_cooler_quit", Arc::new(way_cooler_quit));
     register("launch_terminal", Arc::new(launch_terminal));
     register("launch_dmenu", Arc::new(launch_dmenu));
     register("print_pointer", Arc::new(print_pointer));
 
     register("dmenu_eval", Arc::new(dmenu_eval));
+    register("way_cooler_restart", Arc::new(way_cooler_restart));
     register("dmenu_lua_dofile", Arc::new(dmenu_lua_dofile));
 
     /// Generate switch_workspace methods and register them
@@ -88,6 +90,7 @@ pub fn register_defaults() {
     register("horizontal_vertical_switch", Arc::new(layout_cmds::tile_switch));
     register("split_vertical", Arc::new(layout_cmds::split_vertical));
     register("split_horizontal", Arc::new(layout_cmds::split_horizontal));
+    register("fullscreen_toggle", Arc::new(layout_cmds::fullscreen_toggle));
     register("focus_left", Arc::new(layout_cmds::focus_left));
     register("focus_right", Arc::new(layout_cmds::focus_right));
     register("focus_up", Arc::new(layout_cmds::focus_up));
@@ -109,7 +112,7 @@ fn launch_terminal() {
         .map(RegistryGetData::resolve).and_then(|(_, data)| {
         data.as_string().map(str::to_string)
             .ok_or(RegistryError::KeyNotFound)
-    }).unwrap_or("weston_terminal".to_string());
+    }).unwrap_or("weston-terminal".to_string());
 
     Command::new("sh").arg("-c")
         .arg(command)
@@ -136,7 +139,7 @@ fn print_pointer() {
         .expect("Error telling Lua to get pointer coords");
 }
 
-fn quit() {
+fn way_cooler_quit() {
     info!("Closing way cooler!!");
     ::rustwlc::terminate();
 }
@@ -181,4 +184,11 @@ fn dmenu_eval() {
                .expect("Unable to contact Lua").recv().expect("Can't get reply");
            trace!("Lua result: {:?}", result)
     }).expect("Unable to spawn thread");
+}
+
+fn way_cooler_restart() {
+    keys::clear_keys();
+    if let Err(err) = lua::send(lua::LuaQuery::Restart) {
+        warn!("Could not send restart signal, {:?}", err);
+    }
 }

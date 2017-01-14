@@ -1,7 +1,5 @@
-use rustwlc::{input, Point, ResizeEdge, Geometry,
-              RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM,
-              RESIZE_TOPLEFT, RESIZE_TOPRIGHT, RESIZE_BOTTOMLEFT, RESIZE_BOTTOMRIGHT,
-};
+use rustwlc::{Point, ResizeEdge, Geometry,
+              RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 
 use super::super::{Action, Direction, LayoutTree, TreeError};
 use super::super::commands::{CommandResult};
@@ -17,29 +15,6 @@ pub enum ResizeErr {
 }
 
 impl LayoutTree {
-    /// Updates pointer position for the node behind the id,
-    /// in the same direction as the edge.
-    pub fn update_pointer_pos(&self, id: Uuid, edge: ResizeEdge) -> CommandResult {
-        let container = try!(self.lookup(id));
-        let Geometry { mut origin, size } = container.get_geometry()
-            .expect("Container had no geometry");
-        drop(container);
-        if edge.contains(RESIZE_TOPLEFT) {
-            input::pointer::set_position(origin);
-        } else if edge.contains(RESIZE_TOPRIGHT) {
-            origin.x += size.w as i32;
-            input::pointer::set_position(origin);
-        } else if edge.contains(RESIZE_BOTTOMLEFT) {
-            origin.y += size.h as i32;
-            input::pointer::set_position(origin);
-        } else if edge.contains(RESIZE_BOTTOMRIGHT) {
-            origin.x += size.w as i32;
-            origin.y += size.h as i32;
-            input::pointer::set_position(origin);
-        }
-        Ok(())
-    }
-
     /// Resizes a floating container. If the container was not floating, an Err is returned.
     pub fn resize_floating(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
                            action: &mut Action) -> CommandResult {
@@ -57,11 +32,12 @@ impl LayoutTree {
                 .expect("Could not get geometry of the container");
 
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
-            action.grab = pointer;
             container.set_geometry(edge, new_geo);
             container.draw_borders();
         }
-        self.update_pointer_pos(id, edge)
+        action.grab = self.grab_at_corner(id, edge)
+            .expect("Could not update pointer position");
+        Ok(())
     }
 
     pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
@@ -124,11 +100,12 @@ impl LayoutTree {
                 .expect("Id no longer points to node!");
             container.set_geometry(edge, geo);
         }
-        action.grab = pointer;
         let node_ix = self.tree.lookup_id(id).unwrap();
         let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace).unwrap();
         self.layout(workspace_ix);
-        self.update_pointer_pos(id, edge)
+        action.grab = self.grab_at_corner(id, edge)
+            .expect("Could not update pointer position");
+        Ok(())
     }
 }
 

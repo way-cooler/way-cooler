@@ -22,6 +22,8 @@ lazy_static! {
         map.insert("\t", "tab");
         map
     };
+
+    static ref MOUSE_MODIFIER: RwLock<KeyMod> = RwLock::new(MOD_CTRL);
 }
 
 /// Parses a KeyMod from key names.
@@ -46,9 +48,18 @@ pub fn keymod_from_names(keys: &[&str]) -> Result<KeyMod, String> {
 pub fn init() {
     use rustwlc::xkb::keysyms;
     use commands;
-    register(KeyPress::new(MOD_ALT | MOD_SHIFT, keysyms::KEY_Escape),
-             KeyEvent::Command(commands::get("quit")
-                               .expect("Error reading commands::quit")));
+    if !is_quit_bound() {
+        register(KeyPress::new(MOD_ALT | MOD_SHIFT, keysyms::KEY_Escape),
+                 KeyEvent::Command(commands::get("way_cooler_quit")
+                                   .expect("Error reading commands::way_cooler_quit")));
+    }
+}
+
+/// Clears all the keys from Way Cooler's memory.
+pub fn clear_keys() {
+    let mut bindings = BINDINGS.write()
+        .expect("Keybindings/clear_keys: unable to lock keybindings");
+    bindings.drain();
 }
 
 /// Get a key mapping from the list.
@@ -58,11 +69,45 @@ pub fn get(key: &KeyPress) -> Option<KeyEvent> {
     bindings.get(key).map(KeyEvent::clone)
 }
 
+/// Gets the current key modifier for mouse control
+pub fn mouse_modifier() -> KeyMod {
+    let key_mod = MOUSE_MODIFIER.read()
+        .expect("Keybindings/register_mouse_modifier: unable to lock MOUSE MODIFIER");
+    *key_mod
+}
+
 /// Register a new set of key mappings
 pub fn register(key: KeyPress, event: KeyEvent) -> Option<KeyEvent> {
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
+    trace!("Registering {} for {:?}", key, event);
     bindings.insert(key, event)
+}
+
+/// Registers a modifier to be used with mouse commands
+pub fn register_mouse_modifier(modifier: KeyMod) {
+    let mut key_mod = MOUSE_MODIFIER.write()
+        .expect("Keybindings/register_mouse_modifier: unable to lock MOUSE MODIFIER");
+    *key_mod = modifier;
+}
+
+/// Determine if the way_cooler_quit command is already bound
+pub fn is_quit_bound() -> bool {
+    use commands;
+
+    let bindings = BINDINGS.read()
+        .expect("Keybindings/get: unable to lock keybindings");
+    let quit = commands::get("way_cooler_quit")
+        .expect("Error reading commands::way_cooler_quit");
+
+    for value in bindings.values() {
+        if let KeyEvent::Command(ref cmd) = *value {
+            if (&**cmd as *const _) == (&*quit as *const _) {
+                return true;
+            }
+        }
+    };
+    false
 }
 
 #[cfg(test)]
