@@ -160,9 +160,10 @@ impl LayoutTree {
             .ok_or(TreeError::NodeNotFound(id))
     }
 
-    pub fn lookup_view(&self, view: WlcView) -> Option<&Container> {
+    pub fn lookup_view(&self, view: WlcView) -> Result<&Container, TreeError> {
         self.tree.lookup_view(view)
             .map(|node_ix| &self.tree[node_ix])
+            .ok_or(TreeError::ViewNotFound(view))
     }
 
     /// Sets the active container to be the given node.

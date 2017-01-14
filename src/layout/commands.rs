@@ -201,7 +201,7 @@ impl Tree {
             .map(|active_ix| self.0.tree[active_ix].get_id())
     }
 
-    pub fn lookup_view(&self, view: WlcView) -> Option<Uuid> {
+    pub fn lookup_view(&self, view: WlcView) -> Result<Uuid, TreeError> {
         self.0.lookup_view(view).map(|c| c.get_id())
     }
 
