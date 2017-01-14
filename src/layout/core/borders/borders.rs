@@ -26,6 +26,7 @@ impl Borders {
     pub fn new(geometry: Geometry) -> Self {
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
+        // TODO Remove 100 so that we don't start with a gray ghost box
         let data: Vec<u8> = iter::repeat(100).take(h as usize * stride as usize).collect();
         let buffer = data.into_boxed_slice();
         let surface = ImageSurface::create_for_data(buffer,

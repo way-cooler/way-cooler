@@ -155,12 +155,18 @@ impl Container {
     pub fn new_view(handle: WlcView) -> Container {
         let geometry = handle.get_geometry()
             .expect("View had no geometry");
+        let mut border_geo = geometry;
+        // TODO Remove, use border width val
+        border_geo.origin.y -= 50;
+        border_geo.origin.x -= 50;
+        border_geo.size.w += 50;
+        border_geo.size.h += 50;
         Container::View {
             handle: handle,
             floating: false,
             effective_geometry: geometry,
             id: Uuid::new_v4(),
-            borders: Some(Borders::new(geometry))
+            borders: Some(Borders::new(border_geo))
         }
     }
 
