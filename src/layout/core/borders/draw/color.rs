@@ -1,4 +1,5 @@
 /// Color to draw to the screen, including the alpha channel.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Color {
     red: u8,
     green: u8,
