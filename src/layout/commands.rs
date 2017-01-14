@@ -5,7 +5,7 @@ use super::{Action, ActionErr, Container, ContainerType, Direction, Handle, Layo
 use super::Tree;
 
 use uuid::Uuid;
-use rustwlc::{Point, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -491,5 +491,18 @@ impl Tree {
     pub fn grab_at_corner(&mut self, id: Uuid, edge: ResizeEdge) -> CommandResult {
         self.0.grab_at_corner(id, edge)
             .and(Ok(()))
+    }
+
+    /// Updates the geometry of the view from an external request
+    /// (such a request can come from the view itself)
+    ///
+    /// This is only applied to the view if it is floating.
+    pub fn update_geometry(&mut self, view: WlcView,
+                           geometry: Geometry) -> CommandResult {
+        let container = try!(self.0.lookup_view_mut(view));
+        if container.floating() {
+            container.set_geometry(ResizeEdge::empty(), geometry)
+        }
+        Ok(())
     }
 }

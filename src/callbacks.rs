@@ -221,7 +221,14 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
     return EVENT_PASS_THROUGH
 }
 
-pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
+pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.update_geometry(view, *geometry).unwrap_or_else(|_| {
+            warn!("Could not find view {:#?} \
+                   in order to update geometry w/ {:#?}",
+                  view, *geometry);
+        });
+    }
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
