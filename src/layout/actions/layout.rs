@@ -6,6 +6,7 @@ use rustwlc::{Geometry, Point, Size, ResizeEdge};
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
+use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
 
@@ -341,9 +342,12 @@ impl LayoutTree {
             error!("Tried to absolutely place a non-floating view!");
             return
         }
+        let geo = self.tree[node_ix].get_geometry().unwrap();
         match self.tree[node_ix] {
             Container::Container { .. } => { unimplemented!() },
-            Container::View { ref handle, .. } => {
+            Container::View { ref handle, ref mut borders, .. } => {
+                // TODO Shouldn't this go in movement/resize? But then it lags a shitton if I swap...
+                borders.as_mut().map(|b| *b = Borders::new(geo));
                 handle.bring_to_front();
             },
             _ => unreachable!()
