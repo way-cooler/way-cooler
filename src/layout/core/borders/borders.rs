@@ -53,6 +53,7 @@ impl Borders {
     pub fn render(&mut self) {
         let mut buffer = self.surface.get_data()
             .expect("Could not get border surface buffer");
+        error!("Rendering (abs) @ {:#?}", self.geometry);
         write_pixels(wlc_pixel_format::WLC_RGBA8888, self.geometry, &mut buffer);
     }
 

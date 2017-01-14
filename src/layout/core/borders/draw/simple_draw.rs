@@ -29,8 +29,17 @@ impl SimpleDraw {
 
 impl Drawable for SimpleDraw {
     fn draw(self, mut border_g: Geometry) -> Result<Borders, DrawErr> {
-        border_g.size.w += self.base.borders().thickness;
-        border_g.size.h += self.base.borders().thickness;
+        let thickness = self.base.borders().thickness;
+        // Even though we ignore these values,
+        // the renderer needs to know where to start drawing the box.
+        border_g.origin.x -= thickness as i32 / 2;
+        border_g.origin.y -= thickness as i32 / 2;
+        border_g.size.w += thickness;
+        border_g.size.h += thickness;
+        warn!("Drawing at {:#?}", Geometry {
+            origin: Point { x: 0, y: 0 },
+            size: border_g.size
+        });
 
         let mut base = self.base;
         base.set_color_source(self.color);
