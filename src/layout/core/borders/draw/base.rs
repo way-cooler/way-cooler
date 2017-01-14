@@ -54,6 +54,15 @@ impl BaseDraw {
         }
     }
 
+    /// Sets the source to paint with the provided color.
+    pub fn set_color_source(&mut self, color: Color) {
+        let (r, g, b, a) = color.values();
+        self.cairo.set_source_rgba(r as f64 / 255.0,
+                                   g as f64 / 255.0,
+                                   b as f64 / 255.0,
+                                   a as f64 / 255.0);
+    }
+
     /// Finishes drawing on the border, yielding renderable `Borders`.
     pub fn finish(mut self, border_g: Geometry) -> Borders {
         self.borders.geometry = border_g;

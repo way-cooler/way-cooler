@@ -51,10 +51,6 @@ impl Borders {
     /// Since this is a common operation, and does not resize the buffer,
     /// this is a method is here instead of in a draw struct
     /// for ergonomic and performance reasons.
-    ///
-    /// # Rendering
-    /// Note that this not actually cause a rerender, but sets the internal
-    /// flag so that wlc can render it on the next render cycle.
     pub fn update_pos(&mut self, origin: Point) {
         self.geometry.origin = origin;
     }

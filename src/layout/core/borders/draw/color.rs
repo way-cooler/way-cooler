@@ -17,4 +17,10 @@ impl Color {
             alpha: 255
         }
     }
+
+    /// Gets the values of the colors, in this order:
+    /// (Red, Green, Blue, Alpha)
+    pub fn values(&self) -> (u8, u8, u8, u8) {
+        (self.red, self.green, self.blue, self.alpha)
+    }
 }

@@ -37,6 +37,7 @@ impl Drawable for SimpleDraw {
         border_g.origin.y -= self.thickness as i32 / 2;
 
         let mut base = self.base;
+        base.set_color_source(self.color);
         base.rectangle(border_g.origin.x as f64,
                        border_g.origin.y as f64,
                        border_g.size.w as f64,
