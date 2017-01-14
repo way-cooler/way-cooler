@@ -147,7 +147,7 @@ impl Container {
             fullscreen: false,
             geometry: geometry,
             id: Uuid::new_v4(),
-            borders: None// Some(Borders::new(geometry))
+            borders: Some(Borders::new(geometry))
         }
     }
 
@@ -160,7 +160,7 @@ impl Container {
             floating: false,
             effective_geometry: geometry,
             id: Uuid::new_v4(),
-            borders: None// Some(Borders::new(geometry))
+            borders: Some(Borders::new(geometry))
         }
     }
 
