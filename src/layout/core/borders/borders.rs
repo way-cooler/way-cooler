@@ -65,6 +65,33 @@ impl Borders {
         self.geometry.origin = origin;
     }
 
+    /// Updates/Creates the underlying geometry for the surface/buffer.
+    ///
+    /// This causes a reallocation of the buffer, do not call this
+    /// in a tight loop unless you want memory fragmentation and
+    /// bad performance.
+    pub fn reallocate_buffer(&mut self, mut geometry: Geometry) {
+        // Add the thickness to the geometry.
+        geometry.origin.x -= self.thickness as i32;
+        geometry.origin.y -= self.thickness as i32;
+        geometry.size.w += self.thickness;
+        geometry.size.h += self.thickness;
+        let Size { w, h } = geometry.size;
+        let stride = calculate_stride(w) as i32;
+        // TODO Remove 100 so that we don't start with a gray ghost box
+        //let data = Vec::with_capacity(h as usize * stride as usize);
+        let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
+        let buffer = data.into_boxed_slice();
+        let surface = ImageSurface::create_for_data(buffer,
+                                                    drop_data,
+                                                    Format::ARgb32,
+                                                    w as i32,
+                                                    h as i32,
+                                                    stride);
+        self.geometry = geometry;
+        self.surface = surface;
+    }
+
     /// Enables Cairo drawing capabilities on the borders.
     ///
     /// While drawing with Cairo, the underlying surface cannot be read.
