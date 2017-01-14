@@ -345,11 +345,12 @@ impl LayoutTree {
         let geo = self.tree[node_ix].get_geometry().unwrap();
         match self.tree[node_ix] {
             Container::Container { .. } => { unimplemented!() },
-            Container::View { ref handle, ref mut borders, .. } => {
+            Container::View { ref handle, .. } => {
                 handle.bring_to_front();
             },
             _ => unreachable!()
         }
+        self.tree[node_ix].draw_borders();
         for child_ix in self.tree.floating_children(node_ix) {
             self.place_floating(child_ix);
         }
