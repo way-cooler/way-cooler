@@ -267,6 +267,7 @@ impl LayoutTree {
     }
 
     /// Add a new view container with the given WlcView to the active container
+    #[allow(dead_code)]
     pub fn add_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
         if let Some(mut active_ix) = self.active_container {
             let parent_ix = try!(self.tree.parent_of(active_ix)
