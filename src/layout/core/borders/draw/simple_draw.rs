@@ -35,6 +35,7 @@ impl Drawable for SimpleDraw {
         border_g.size.h += self.thickness;
         border_g.origin.x -= self.thickness as i32 / 2;
         border_g.origin.y -= self.thickness as i32 / 2;
+        warn!("Drawing: {:#?}", border_g);
 
         let mut base = self.base;
         base.set_color_source(self.color);

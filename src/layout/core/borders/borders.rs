@@ -24,6 +24,7 @@ pub struct Borders {
 
 impl Borders {
     pub fn new(geometry: Geometry) -> Self {
+        error!("Initial geometry: {:?}", geometry);
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
         // TODO Remove 100 so that we don't start with a gray ghost box
@@ -104,4 +105,4 @@ fn calculate_stride(width: u32) -> u32 {
 }
 
 #[allow(dead_code)]
-fn drop_data(_: Box<[u8]>) {}
+fn drop_data(_: Box<[u8]>) { error!("Freeing data") }

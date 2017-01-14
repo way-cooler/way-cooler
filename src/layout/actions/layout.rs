@@ -346,8 +346,6 @@ impl LayoutTree {
         match self.tree[node_ix] {
             Container::Container { .. } => { unimplemented!() },
             Container::View { ref handle, ref mut borders, .. } => {
-                // TODO Shouldn't this go in movement/resize? But then it lags a shitton if I swap...
-                borders.as_mut().map(|b| *b = Borders::new(geo));
                 handle.bring_to_front();
             },
             _ => unreachable!()

@@ -421,7 +421,7 @@ impl Container {
                     // TODO Don't hard code color
                     *borders = SimpleDraw::new(borders_.enable_cairo().unwrap(),
                                                      Color::solid_color(0, 0, 255),
-                                                     100)
+                                                     50)
                         .draw(geometry).ok();
                 }
             },
@@ -429,7 +429,7 @@ impl Container {
                 if let Some(borders_) = borders.take() {
                     *borders = SimpleDraw::new(borders_.enable_cairo().unwrap(),
                                                Color::solid_color(0, 0, 255),
-                                               100)
+                                               50)
                         .draw(geometry).ok();
                 }
             },
