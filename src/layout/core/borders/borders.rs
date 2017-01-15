@@ -2,7 +2,7 @@ use std::iter;
 use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
 use std::ops::{Deref, DerefMut};
-use rustwlc::{Geometry, Size, Point};
+use rustwlc::{Geometry, Size, Point, WlcOutput};
 use rustwlc::render::{write_pixels, wlc_pixel_format, BITS_PER_PIXEL};
 use cairo::{self, Context, ImageSurface, Format, Operator, Status, SolidPattern};
 use cairo::prelude::{SurfaceExt};
@@ -53,8 +53,30 @@ impl Borders {
     pub fn render(&mut self) {
         let mut buffer = self.surface.get_data()
             .expect("Could not get border surface buffer");
-        error!("Rendering (abs) @ {:#?}", self.geometry);
-        write_pixels(wlc_pixel_format::WLC_RGBA8888, self.geometry, &mut buffer);
+        // TODO This doesn't seem right, wouldn't this break on multi-head output?
+        let output_res = WlcOutput::focused().get_resolution()
+            .expect("Could not get focused output's resolution");
+        let mut geometry = self.geometry;
+
+        // If the buffer would clip the side, keep it within the bounds
+        // This is done because wlc wraps if it goes beyond, which we don't
+        // want for the borders.
+        if geometry.origin.x < 0 {
+            geometry.origin.x = 0;
+        }
+        if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
+            let offset = (geometry.origin.x as u32 + geometry.size.w) - output_res.w;
+            geometry.origin.x -= offset as i32;
+        }
+        if geometry.origin.y + geometry.size.h as i32 > output_res.h as i32 {
+            let offset = (geometry.origin.y as u32 + geometry.size.h) - output_res.h;
+            geometry.origin.y -= offset as i32;
+        }
+        if geometry.origin.y < 0 {
+            geometry.origin.y = 0;
+        }
+        //error!("Rendering (abs) @ {:#?}", geometry);
+        write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &mut buffer);
     }
 
     /// Updates the position at which we render the buffer.

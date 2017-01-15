@@ -30,7 +30,7 @@ impl SimpleDraw {
 impl Drawable for SimpleDraw {
     fn draw(self, mut border_g: Geometry) -> Result<Borders, DrawErr> {
         let thickness = self.base.borders().thickness;
-        // Even though we ignore these values,
+        // Even though we ignore these origin values,
         // the renderer needs to know where to start drawing the box.
         border_g.origin.x -= thickness as i32 / 2;
         border_g.origin.y -= thickness as i32 / 2;
@@ -43,7 +43,7 @@ impl Drawable for SimpleDraw {
 
         let mut base = self.base;
         base.set_color_source(self.color);
-        // This draws _relatively_ compared to the rest of Way Cooler
+        // This draws does not draw relatively compared to the rest of Way Cooler
         // Thus, 0,0 is top left of the buffer, not of the entire window.
         base.rectangle(0f64,
                        0f64,
