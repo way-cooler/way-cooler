@@ -102,6 +102,10 @@ impl Borders {
         geometry.size.w += self.thickness;
         geometry.size.h += self.thickness;
         let Size { w, h } = geometry.size;
+        if w == self.geometry.size.w && h == self.geometry.size.h {
+            warn!("Geometry is same size, not reallocating");
+            return;
+        }
         let stride = calculate_stride(w) as i32;
         // TODO Remove 100 so that we don't start with a gray ghost box
         //let data = Vec::with_capacity(h as usize * stride as usize);
