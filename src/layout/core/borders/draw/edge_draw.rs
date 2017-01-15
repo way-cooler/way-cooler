@@ -46,11 +46,11 @@ impl EdgeDraw {
         x = 0.0;
         y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32{
-            let offset = (border_geometry.origin.x as u32 + border_geometry.size.w) - output_res.w;
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
             x += offset as f64;
         }
         if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (border_geometry.origin.y as u32 + border_geometry.size.h) - output_res.h;
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32) - output_res.h as i32;
             y += offset as f64;
         }
         self.base.rectangle(x, y, w, h);
@@ -77,11 +77,11 @@ impl EdgeDraw {
         }
         y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (border_geometry.origin.x as u32 + border_geometry.size.w) - output_res.w;
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
             x += offset as f64;
         }
         if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (border_geometry.origin.y as u32 + border_geometry.size.h) - output_res.h;
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32) - output_res.h as i32;
             y += offset as f64;
         }
         self.base.rectangle(x, y, w, h);
@@ -109,11 +109,11 @@ impl EdgeDraw {
         x = 0.0;
         y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (border_geometry.origin.x as u32 + border_geometry.size.w) - output_res.w;
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
             x += offset as f64;
         }
         if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (border_geometry.origin.y as u32 + border_geometry.size.h) - output_res.h;
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32) - output_res.h as i32;
             y += offset as f64;
         }
         self.base.rectangle(x, y, w, h);
@@ -140,7 +140,7 @@ impl EdgeDraw {
         }
         x = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (border_geometry.origin.x as u32 + border_geometry.size.w) - output_res.w;
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
             x += offset as f64;
         }
         self.base.rectangle(x, y, w, h);
@@ -165,6 +165,7 @@ impl Drawable for EdgeDraw {
         border_g.origin.y -= edge_thickness as i32;
         border_g.size.w += thickness;
         border_g.size.h += thickness;
+        warn!("Drawing EdgeDraw @ {:#?}", border_g);
 
         self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
         self.base.paint();
