@@ -112,7 +112,6 @@ pub enum Container {
     }
 }
 
-
 impl Container {
     /// Creates a new root container.
     pub fn new_root() -> Container {
@@ -225,8 +224,25 @@ impl Container {
                 size: size
             }),
             Container::Container { geometry, .. } => Some(geometry),
-            Container::View { ref handle, ..} =>
-                handle.get_geometry(),
+            Container::View { effective_geometry, .. } => {
+                Some(effective_geometry)
+            },
+        }
+    }
+
+    /// Gets the actual geometry for a `WlcView`.
+    ///
+    /// Unlike `get_geometry`, this does not account for borders/gaps,
+    /// and instead is just a thin wrapper around `handle.get_geometry`.
+    ///
+    /// Most of the time you want `get_geometry`, as you should consider
+    /// the view + borders to be the "window".
+    ///
+    /// For non-view containers, this always returns `None`
+    pub fn get_actual_geometry(&self) -> Option<Geometry> {
+        match *self {
+            Container::View { handle, .. } => handle.get_geometry(),
+            _ => None
         }
     }
 
@@ -246,8 +262,10 @@ impl Container {
             Container::Container { ref mut geometry, .. } => {
                 *geometry = geo;
             },
-            Container::View { ref handle, ref mut borders, .. } => {
+            Container::View { ref handle, ref mut effective_geometry,
+                              ref mut borders,  .. } => {
                 handle.set_geometry(edges, geo);
+                *effective_geometry = geo;
                 borders.as_mut().map(|b| b.reallocate_buffer(geo));
             }
         }
@@ -308,7 +326,7 @@ impl Container {
             Container::View { handle, effective_geometry, .. } => {
                 handle.set_state(VIEW_FULLSCREEN, val);
                 if !val {
-                    handle.set_geometry(ResizeEdge::empty(), effective_geometry);
+                    handle.set_geometry(ResizeEdge::empty(), effective_geometry)
                 }
                 Ok(())
             },
