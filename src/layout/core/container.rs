@@ -147,7 +147,7 @@ impl Container {
             geometry: geometry,
             id: Uuid::new_v4(),
             // TODO Remove hardcoded 0
-            borders: Some(Borders::new(geometry, 0))
+            borders: None
         }
     }
 
@@ -441,9 +441,9 @@ impl Container {
             },
             Container::Container { ref mut borders, geometry, .. } => {
                 if let Some(borders_) = borders.take() {
-                    *borders = SimpleDraw::new(borders_.enable_cairo().unwrap(),
+                    *borders = None/*EdgeDraw::new(borders_.enable_cairo().unwrap(),
                                                Color::solid_color(0, 0, 255))
-                        .draw(geometry).ok();
+                        .draw(geometry).ok()*/;
                 }
             },
             _ => panic!("Tried to render a non-view / non-container")

@@ -51,6 +51,7 @@ impl Borders {
     }
 
     pub fn render(&mut self) {
+        warn!("Rendering {:#?}", self);
         let mut buffer = self.surface.get_data()
             .expect("Could not get border surface buffer");
         // TODO This doesn't seem right, wouldn't this break on multi-head output?
@@ -65,11 +66,11 @@ impl Borders {
             geometry.origin.x = 0;
         }
         if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (geometry.origin.x as u32 + geometry.size.w) - output_res.w;
+            let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
             geometry.origin.x -= offset as i32;
         }
         if geometry.origin.y + geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (geometry.origin.y as u32 + geometry.size.h) - output_res.h;
+            let offset = (geometry.origin.y + geometry.size.h as i32) - output_res.h as i32;
             geometry.origin.y -= offset as i32;
         }
         if geometry.origin.y < 0 {
@@ -137,8 +138,9 @@ impl Borders {
 
 impl Debug for Borders {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Debug")
+        f.debug_struct("Borders")
             .field("geometry", &self.geometry as &Debug)
+            .field("thickness", &self.thickness as &Debug)
             .finish()
     }
 }

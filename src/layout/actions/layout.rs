@@ -185,6 +185,9 @@ impl LayoutTree {
                                               fullscreen_apps);
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
+                            self.add_borders(node_ix)
+                                .expect("Couldn't add border gaps to horizontal container");
+                            self.tree[node_ix].draw_borders();
                         }
                     }
                     Layout::Vertical => {
@@ -232,13 +235,18 @@ impl LayoutTree {
                                               fullscreen_apps);
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
+                            self.add_borders(node_ix)
+                                .expect("Couldn't add border gaps to horizontal container");
+                            self.tree[node_ix].draw_borders();
                         }
                     }
                 }
             }
 
             ContainerType::View => {
-                self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
+                let container = &mut self.tree[node_ix];
+                container.set_geometry(ResizeEdge::empty(), geometry);
+                container.draw_borders();
             }
         }
         self.validate();
@@ -633,9 +641,10 @@ impl LayoutTree {
         }
     }
 
-    /// Adds gaps to all the views of the container at the `NodeIndex`
+    /// Adds gaps between all the views of the container at the `NodeIndex`
+    /// This does not recurse if a container is found.
     ///
-    /// If the `NodeIndex` doesn't point to a container, an error is returned.
+    /// If the `NodeIndex` doesn't point to a `Container``, an error is returned.
     fn add_gaps(&mut self, node_ix: NodeIndex) -> CommandResult {
         let layout = match self.tree[node_ix] {
             Container::Container { layout, .. } => layout,
@@ -691,6 +700,39 @@ impl LayoutTree {
                     panic!("Applying gaps, found a non-view/container")
                 }
             }
+        }
+        Ok(())
+    }
+
+    /// Adds spacing for borders between the windows.
+    fn add_borders(&mut self, node_ix: NodeIndex) -> CommandResult {
+        {
+            let container = &mut self.tree[node_ix];
+            let mut geometry = container.get_geometry()
+                .expect("Container had no geometry");
+            match *container {
+                Container::View { handle, ref mut borders, .. } => {
+                    warn!("Adding gap for border: {:#?}", borders);
+                    if let Some(borders) = borders.as_mut() {
+                        let gap = borders.thickness;
+                        geometry.origin.x += (gap / 2) as i32;
+                        geometry.origin.y += (gap / 2) as i32;
+                        geometry.size.w = geometry.size.w.saturating_sub(gap);
+                        geometry.size.h = geometry.size.h.saturating_sub(gap);
+                        handle.set_geometry(ResizeEdge::empty(), geometry);
+                    }
+                    return Ok(())
+                },
+                Container::Container { .. } => {/*recurse*/},
+                ref container => {
+                    error!("Attempted to add borders to non-view/container");
+                    error!("Found {:#?}", container);
+                    panic!("Applying gaps for borders, found non-view/container")
+                }
+            }
+        }
+        for child_ix in self.tree.children_of(node_ix) {
+            try!(self.add_borders(child_ix))
         }
         Ok(())
     }
