@@ -335,13 +335,12 @@ impl Tree {
         }
         view.set_mask(output.get_mask());
         let has_parent = view.get_parent() != WlcView::root();
-        // TODO uncomment
-        //if view.get_type() != ViewType::empty() || has_parent {
+        if view.get_type() != ViewType::empty() || has_parent {
             try!(tree.add_floating_view(view));
-        /*} else {
+        } else {
             try!(tree.add_view(view));
             tree.normalize_view(view);
-        }*/
+        }
         tree.layout_active_of(ContainerType::Workspace);
         Ok(())
     }
