@@ -15,6 +15,8 @@ use super::rust_interop;
 use super::init_path;
 use super::super::keys;
 
+use ::layout::{try_lock_tree, ContainerType};
+
 lazy_static! {
     /// Sends requests to the Lua thread
     static ref SENDER: Mutex<Option<Sender<LuaMessage>>> = Mutex::new(None);
@@ -130,6 +132,14 @@ pub fn init() {
         .map(|mut f: functions_read::LuaFunction<_>|  f.call().unwrap_or_else(|err| {
             error!("Lua function \"{}\" returned an error: {:?}", INIT_LUA_FUNC, err);
         }));
+
+    // Re-tile the layout tree, to make any changes appear immediantly.
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.layout_active_of(ContainerType::Root)
+            .unwrap_or_else(|_| {
+                warn!("Lua thread could not re-tile the layout tree");
+            })
+    }
 
     // Only ready after loading libs
     *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;

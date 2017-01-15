@@ -97,9 +97,10 @@ pub enum Container {
         handle: WlcView,
         /// Whether this view is floating
         floating: bool,
-        /// The previous geometry of the view. Used for fullscreen rendering
-        /// This is a bit of a hack, but a fairly elegant one.
-        prev_geometry: Option<Geometry>,
+        /// Effective geometry. This is the size of the container including
+        /// borders and gaps. It does _not_ change when an app becomes
+        /// fullscreen. E.g to get the fullscreen size use `handle.get_geometry`
+        effective_geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
     }
@@ -144,10 +145,12 @@ impl Container {
 
     /// Creates a new view container with the given handle
     pub fn new_view(handle: WlcView) -> Container {
+        let geometry = handle.get_geometry()
+            .expect("Handle had no geometry");
         Container::View {
             handle: handle,
             floating: false,
-            prev_geometry: None,
+            effective_geometry: geometry,
             id: Uuid::new_v4()
         }
     }
@@ -211,9 +214,25 @@ impl Container {
                 size: size
             }),
             Container::Container { geometry, .. } => Some(geometry),
-            Container::View { ref handle, ref prev_geometry, ..} => {
-                prev_geometry.or_else(|| handle.get_geometry())
+            Container::View { effective_geometry, .. } => {
+                Some(effective_geometry)
             },
+        }
+    }
+
+    /// Gets the actual geometry for a `WlcView`.
+    ///
+    /// Unlike `get_geometry`, this does not account for borders/gaps,
+    /// and instead is just a thin wrapper around `handle.get_geometry`.
+    ///
+    /// Most of the time you want `get_geometry`, as you should consider
+    /// the view + borders to be the "window".
+    ///
+    /// For non-view containers, this always returns `None`
+    pub fn get_actual_geometry(&self) -> Option<Geometry> {
+        match *self {
+            Container::View { handle, .. } => handle.get_geometry(),
+            _ => None
         }
     }
 
@@ -233,12 +252,9 @@ impl Container {
             Container::Container { ref mut geometry, .. } => {
                 *geometry = geo;
             },
-            Container::View { ref handle, ref mut prev_geometry, .. } => {
-                if prev_geometry.is_some() {
-                    *prev_geometry = Some(geo);
-                } else {
-                    handle.set_geometry(edges, geo);
-                }
+            Container::View { ref handle, ref mut effective_geometry, .. } => {
+                handle.set_geometry(edges, geo);
+                *effective_geometry = geo;
             }
         }
     }
@@ -295,14 +311,10 @@ impl Container {
     pub fn set_fullscreen(&mut self, val: bool) -> Result<(), ContainerType> {
         let c_type = self.get_type();
         match *self {
-            Container::View { handle, ref mut prev_geometry, .. } => {
+            Container::View { handle, effective_geometry, .. } => {
                 handle.set_state(VIEW_FULLSCREEN, val);
                 if !val {
-                    if let Some(geo) = prev_geometry.take() {
-                        handle.set_geometry(ResizeEdge::empty(), geo);
-                    }
-                } else {
-                    *prev_geometry = handle.get_geometry()
+                    handle.set_geometry(ResizeEdge::empty(), effective_geometry)
                 }
                 Ok(())
             },
