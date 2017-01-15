@@ -126,7 +126,7 @@ pub fn move_active_left() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Left)
             .unwrap_or_else(|_| {
-                warn!("Could not focus right");
+                warn!("Could not focus left");
             })
     }
 }
@@ -135,7 +135,7 @@ pub fn move_active_right() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Right)
             .unwrap_or_else(|_| {
-                error!("Could not focus right");
+                warn!("Could not focus right");
             })
     }
 }
@@ -144,7 +144,7 @@ pub fn move_active_up() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Up)
             .unwrap_or_else(|_| {
-                warn!("Could not focus right");
+                warn!("Could not focus up");
             })
     }
 }
@@ -153,7 +153,7 @@ pub fn move_active_down() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Down)
             .unwrap_or_else(|_| {
-                warn!("Could not focus right");
+                warn!("Could not focus down");
             })
     }
 }

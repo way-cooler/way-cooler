@@ -16,7 +16,7 @@ impl LayoutTree {
     pub fn grab_at_corner(&mut self, id: Uuid, edge: ResizeEdge)
                           -> Result<Point, TreeError> {
         let container = try!(self.lookup(id));
-        let Geometry { mut origin, size } = container.get_geometry()
+        let Geometry { mut origin, size } = container.get_actual_geometry()
             .expect("Container had no geometry");
         drop(container);
         if edge.contains(RESIZE_TOPLEFT) {

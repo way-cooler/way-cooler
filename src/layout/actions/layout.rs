@@ -9,6 +9,8 @@ use super::super::core::container::{Container, ContainerType, Layout};
 use ::debug_enabled;
 use uuid::Uuid;
 
+use registry::{self, RegistryGetData};
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
     /// The node behind the UUID was asked to ground when it was already grounded.
@@ -166,6 +168,8 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to horizontal container");
                         }
                     }
                     Layout::Vertical => {
@@ -211,6 +215,8 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to vertical container");
                         }
                     }
                 }
@@ -608,6 +614,68 @@ impl LayoutTree {
                 self.layout(node_ix);
             }
         }
+    }
+
+    /// Adds gaps to all the views of the container at the `NodeIndex`
+    ///
+    /// If the `NodeIndex` doesn't point to a container, an error is returned.
+    fn add_gaps(&mut self, node_ix: NodeIndex) -> CommandResult {
+        let layout = match self.tree[node_ix] {
+            Container::Container { layout, .. } => layout,
+            _ => return Err(TreeError::UuidNotAssociatedWith(
+                ContainerType::Container))
+        };
+        let gap = registry::get_data("gap_size")
+            .map(RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num <= 0.0 {
+                        0u32
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0u32))
+            }).unwrap_or(0u32);
+        let children = self.tree.children_of(node_ix);
+        for (index, child_ix) in children.iter().enumerate() {
+            let child = &mut self.tree[*child_ix];
+            match *child {
+                Container::View { handle, effective_geometry, .. } => {
+                    let mut geometry = effective_geometry;
+                    geometry.origin.x += (gap / 2) as i32;
+                    geometry.origin.y += (gap / 2) as i32;
+                    if index == children.len() - 1 {
+                        match layout {
+                            Layout::Horizontal => {
+                                geometry.size.w = geometry.size.w.saturating_sub(gap / 2)
+                            },
+                            Layout::Vertical => {
+                                geometry.size.h = geometry.size.h.saturating_sub(gap / 2)
+                            }
+                        }
+                    }
+                    match layout {
+                        Layout::Horizontal => {
+                            geometry.size.w = geometry.size.w.saturating_sub(gap / 2);
+                            geometry.size.h = geometry.size.h.saturating_sub(gap);
+                        },
+                        Layout::Vertical => {
+                            geometry.size.w = geometry.size.w.saturating_sub(gap);
+                            geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
+                        }
+                    }
+                    handle.set_geometry(ResizeEdge::empty(), geometry);
+                },
+                // Do nothing, will get in the next recursion cycle
+                Container::Container { .. } => {continue},
+                ref container => {
+                    error!("Iterating over a container, \
+                            found non-view/containers!");
+                    error!("Found: {:#?}", container);
+                    panic!("Applying gaps, found a non-view/container")
+                }
+            }
+        }
+        Ok(())
     }
 }
 
