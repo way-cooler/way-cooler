@@ -45,6 +45,7 @@ impl EdgeDraw {
         }
         x = 0.0;
         y = 0.0;
+        warn!("border_geo {:#?}\noutput_res: {:#?}", border_geometry, output_res);
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32{
             let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
             x += offset as f64;
@@ -53,7 +54,10 @@ impl EdgeDraw {
             let offset = (border_geometry.origin.y + border_geometry.size.h as i32) - output_res.h as i32;
             y += offset as f64;
         }
+        warn!("Drawing left border @ ({}, {})", x, y);
+        // TODO Uncomment
         self.base.rectangle(x, y, w, h);
+
         self.base = try!(self.base.check_cairo());
         self.base.fill();
         self.base = try!(self.base.check_cairo());
@@ -159,13 +163,13 @@ impl Drawable for EdgeDraw {
         // TODO This doesn't seem right, wouldn't this break on multi-head output?
         let output_res = WlcOutput::focused().get_resolution()
             .expect("Could not get focused output's resolution");
-        // Even though we ignore these origin values,
-        // the renderer needs to know where to start drawing the box.
         border_g.origin.x -= edge_thickness as i32;
         border_g.origin.y -= edge_thickness as i32;
         border_g.size.w += thickness;
         border_g.size.h += thickness;
+
         warn!("Drawing EdgeDraw @ {:#?}", border_g);
+
 
         self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
         self.base.paint();

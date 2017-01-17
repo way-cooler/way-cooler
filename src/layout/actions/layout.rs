@@ -244,9 +244,11 @@ impl LayoutTree {
             }
 
             ContainerType::View => {
-                let container = &mut self.tree[node_ix];
-                container.set_geometry(ResizeEdge::empty(), geometry);
-                container.draw_borders();
+                //let container = &mut self.tree[node_ix];
+                self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
+                self.add_borders(node_ix)
+                    .expect("Couldn't add border gaps to horizontal container");
+                self.tree[node_ix].draw_borders();
             }
         }
         self.validate();
@@ -359,8 +361,9 @@ impl LayoutTree {
         let geo = self.tree[node_ix].get_geometry().unwrap();
         match self.tree[node_ix] {
             Container::Container { .. } => { unimplemented!() },
-            Container::View { ref handle, .. } => {
+            Container::View { ref handle, ref mut borders, .. } => {
                 handle.bring_to_front();
+                borders.as_mut().map(|b| b.reallocate_buffer(geo));
             },
             _ => unreachable!()
         }
@@ -712,7 +715,7 @@ impl LayoutTree {
                 .expect("Container had no geometry");
             match *container {
                 Container::View { handle, ref mut borders, .. } => {
-                    warn!("Adding gap for border: {:#?}", borders);
+                    //warn!("Adding gap for border: {:#?}", borders);
                     if let Some(borders) = borders.as_mut() {
                         let gap = borders.thickness;
                         geometry.origin.x += (gap / 2) as i32;
@@ -720,6 +723,7 @@ impl LayoutTree {
                         geometry.size.w = geometry.size.w.saturating_sub(gap);
                         geometry.size.h = geometry.size.h.saturating_sub(gap);
                         handle.set_geometry(ResizeEdge::empty(), geometry);
+                        borders.reallocate_buffer(geometry);
                     }
                     return Ok(())
                 },

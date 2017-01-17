@@ -51,7 +51,6 @@ impl Borders {
     }
 
     pub fn render(&mut self) {
-        warn!("Rendering {:#?}", self);
         let mut buffer = self.surface.get_data()
             .expect("Could not get border surface buffer");
         // TODO This doesn't seem right, wouldn't this break on multi-head output?
@@ -62,9 +61,6 @@ impl Borders {
         // If the buffer would clip the side, keep it within the bounds
         // This is done because wlc wraps if it goes beyond, which we don't
         // want for the borders.
-        if geometry.origin.x < 0 {
-            geometry.origin.x = 0;
-        }
         if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
             let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
             geometry.origin.x -= offset as i32;
@@ -72,6 +68,9 @@ impl Borders {
         if geometry.origin.y + geometry.size.h as i32 > output_res.h as i32 {
             let offset = (geometry.origin.y + geometry.size.h as i32) - output_res.h as i32;
             geometry.origin.y -= offset as i32;
+        }
+        if geometry.origin.x < 0 {
+            geometry.origin.x = 0;
         }
         if geometry.origin.y < 0 {
             geometry.origin.y = 0;

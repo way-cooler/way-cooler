@@ -266,7 +266,7 @@ impl Container {
                               ref mut borders,  .. } => {
                 handle.set_geometry(edges, geo);
                 *effective_geometry = geo;
-                borders.as_mut().map(|b| b.reallocate_buffer(geo));
+                //borders.as_mut().map(|b| b.reallocate_buffer(geo));
             }
         }
     }

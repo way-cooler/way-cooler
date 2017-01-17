@@ -3,7 +3,7 @@ use rustwlc::{Point, ResizeEdge, Geometry,
 
 use super::super::{Action, Direction, LayoutTree, TreeError};
 use super::super::commands::{CommandResult};
-use super::super::core::container::{ContainerType, MIN_SIZE};
+use super::super::core::container::{Container, ContainerType, MIN_SIZE};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -33,6 +33,12 @@ impl LayoutTree {
 
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
             container.set_geometry(edge, new_geo);
+            match *container {
+                Container::View { ref mut borders, ..} => {
+                    borders.as_mut().map(|b| b.reallocate_buffer(new_geo));
+                },
+                _ => panic!("lalalal fix me laallala")
+            }
             container.draw_borders();
         }
         action.grab = self.grab_at_corner(id, edge)
