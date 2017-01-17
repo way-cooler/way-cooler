@@ -76,7 +76,7 @@ impl Borders {
         if geometry.origin.y < 0 {
             geometry.origin.y = 0;
         }
-        //error!("Rendering (abs) @ {:#?}", geometry);
+        error!("Rendering (abs) @ {:#?}", geometry);
         write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &mut buffer);
     }
 
@@ -96,14 +96,15 @@ impl Borders {
     /// bad performance.
     pub fn reallocate_buffer(&mut self, mut geometry: Geometry) {
         // Add the thickness to the geometry.
-        error!("Reallocating buffer!");
+        error!("setting underlying border geometry to {:#?}", geometry);
+        //error!("Reallocating buffer!");
         geometry.origin.x -= self.thickness as i32;
         geometry.origin.y -= self.thickness as i32;
         geometry.size.w += self.thickness;
         geometry.size.h += self.thickness;
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
-            warn!("Geometry is same size, not reallocating");
+            //warn!("Geometry is same size, not reallocating");
             return;
         }
         let stride = calculate_stride(w) as i32;
@@ -170,4 +171,4 @@ fn calculate_stride(width: u32) -> u32 {
 }
 
 #[allow(dead_code)]
-fn drop_data(_: Box<[u8]>) { error!("Freeing data") }
+fn drop_data(_: Box<[u8]>) { /*error!("Freeing data")*/ }
