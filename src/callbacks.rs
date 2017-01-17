@@ -365,8 +365,6 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
         Some(action) => {
             if action.edges.bits() != 0 {
                 if let Ok(mut tree) = try_lock_tree() {
-                    // TODO Change to id of _view
-                    // Need to implement a map of view to uuid first though...
                     if let Ok(active_id) = tree.lookup_view(view) {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer

@@ -518,8 +518,6 @@ impl Tree {
 
     /// Updates the geometry of the view from an external request
     /// (such a request can come from the view itself)
-    ///
-    /// This is only applied to the view if it is floating.
     pub fn update_floating_geometry(&mut self, view: WlcView,
                            geometry: Geometry) -> CommandResult {
         let container = try!(self.0.lookup_view_mut(view));
