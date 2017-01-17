@@ -223,7 +223,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
 
 pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
     if let Ok(mut tree) = try_lock_tree() {
-        tree.update_geometry(view, *geometry).unwrap_or_else(|_| {
+        tree.update_floating_geometry(view, *geometry).unwrap_or_else(|_| {
             warn!("Could not find view {:#?} \
                    in order to update geometry w/ {:#?}",
                   view, *geometry);
