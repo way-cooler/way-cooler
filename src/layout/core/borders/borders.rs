@@ -27,14 +27,13 @@ pub struct Borders {
 impl Borders {
     pub fn new(mut geometry: Geometry, thickness: u32) -> Self {
         // Add the thickness to the geometry.
+        // TODO Consolidate this and reallocate_buffer into one function
         geometry.origin.x -= thickness as i32;
         geometry.origin.y -= thickness as i32;
         geometry.size.w += thickness;
         geometry.size.h += thickness;
-        error!("Initial geometry: {:?}", geometry);
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
-        // TODO Remove 100 so that we don't start with a gray ghost box
         let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
         let buffer = data.into_boxed_slice();
         let surface = ImageSurface::create_for_data(buffer,
@@ -53,7 +52,7 @@ impl Borders {
     pub fn render(&mut self) {
         let mut buffer = self.surface.get_data()
             .expect("Could not get border surface buffer");
-        // TODO This doesn't seem right, wouldn't this break on multi-head output?
+        // TODO Replace this with output of handle.get_output().get_resolution()
         let output_res = WlcOutput::focused().get_resolution()
             .expect("Could not get focused output's resolution");
         let mut geometry = self.geometry;
@@ -75,7 +74,6 @@ impl Borders {
         if geometry.origin.y < 0 {
             geometry.origin.y = 0;
         }
-        error!("Rendering (abs) @ {:#?}", geometry);
         write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &mut buffer);
     }
 
@@ -95,20 +93,16 @@ impl Borders {
     /// bad performance.
     pub fn reallocate_buffer(&mut self, mut geometry: Geometry) {
         // Add the thickness to the geometry.
-        error!("setting underlying border geometry to {:#?}", geometry);
-        //error!("Reallocating buffer!");
         geometry.origin.x -= self.thickness as i32;
         geometry.origin.y -= self.thickness as i32;
         geometry.size.w += self.thickness;
         geometry.size.h += self.thickness;
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
-            //warn!("Geometry is same size, not reallocating");
+            warn!("Geometry is same size, not reallocating");
             return;
         }
         let stride = calculate_stride(w) as i32;
-        // TODO Remove 100 so that we don't start with a gray ghost box
-        //let data = Vec::with_capacity(h as usize * stride as usize);
         let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
         let buffer = data.into_boxed_slice();
         let surface = ImageSurface::create_for_data(buffer,

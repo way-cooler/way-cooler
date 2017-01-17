@@ -647,7 +647,7 @@ impl LayoutTree {
     /// Adds gaps between all the views of the container at the `NodeIndex`
     /// This does not recurse if a container is found.
     ///
-    /// If the `NodeIndex` doesn't point to a `Container``, an error is returned.
+    /// If the `NodeIndex` doesn't point to a `Container`, an error is returned.
     fn add_gaps(&mut self, node_ix: NodeIndex) -> CommandResult {
         let layout = match self.tree[node_ix] {
             Container::Container { layout, .. } => layout,
