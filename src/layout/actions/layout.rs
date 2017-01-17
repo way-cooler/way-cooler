@@ -590,7 +590,7 @@ impl LayoutTree {
         for node_ix in containers {
             let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
                 .expect("Container did not have an output as an ancestor");
-            let output_geometry = self.tree[output_ix].get_geometry()
+            let output_geometry = self.tree[output_ix].get_actual_geometry()
                 .expect("Output did not have a geometry associated with it");
 
             // Sorry, this is an ugly borrow checker hack

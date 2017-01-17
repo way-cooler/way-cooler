@@ -236,18 +236,27 @@ impl Container {
         }
     }
 
-    /// Gets the actual geometry for a `WlcView`.
+    /// Gets the actual geometry for a `WlcView` or `WlcOutput`
     ///
     /// Unlike `get_geometry`, this does not account for borders/gaps,
-    /// and instead is just a thin wrapper around `handle.get_geometry`.
+    /// and instead is just a thin wrapper around
+    /// `handle.get_geometry`/`handle.get_resolution`.
     ///
-    /// Most of the time you want `get_geometry`, as you should consider
-    /// the view + borders to be the "window".
+    /// Most of the time you want `get_geometry`, as you should account for the
+    /// borders, gaps, and top bar.
     ///
-    /// For non-view containers, this always returns `None`
+    /// For non-`View`/`Output` containers, this always returns `None`
     pub fn get_actual_geometry(&self) -> Option<Geometry> {
         match *self {
             Container::View { handle, .. } => handle.get_geometry(),
+            Container::Output { handle, .. } => {
+                handle.get_resolution()
+                    .map(|size|
+                         Geometry {
+                             origin: Point { x: 0, y: 0 },
+                             size: size
+                         })
+            },
             _ => None
         }
     }
