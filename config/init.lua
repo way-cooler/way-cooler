@@ -54,6 +54,14 @@ local key = config.key -- Alias key so it's faster to type
 
 way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
 
+-- Name of the window that will be the bar window.
+-- This is a hack to get X11 bars and non-Way Cooler supported bars working.
+--
+-- Make sure you add the script to start your bar in the init function!
+way_cooler.bar = "lemonbar"
+
+way_cooler.gap_size = 0 -- The width of gaps between windows in pixels
+
 local keys = {
   -- Open dmenu
   key({ mod }, "d", "launch_dmenu"),

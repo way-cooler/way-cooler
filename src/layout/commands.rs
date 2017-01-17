@@ -1,7 +1,8 @@
 //! Commands from the user to manipulate the tree
 
 use super::{try_lock_tree, try_lock_action};
-use super::{Action, ActionErr, Container, ContainerType, Direction, Handle, Layout, TreeError};
+use super::{Action, ActionErr, Bar, Container, ContainerType,
+            Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
@@ -125,7 +126,7 @@ pub fn move_active_left() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Left)
             .unwrap_or_else(|_| {
-                warn!("Could not focus right");
+                warn!("Could not focus left");
             })
     }
 }
@@ -134,7 +135,7 @@ pub fn move_active_right() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Right)
             .unwrap_or_else(|_| {
-                error!("Could not focus right");
+                warn!("Could not focus right");
             })
     }
 }
@@ -143,7 +144,7 @@ pub fn move_active_up() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Up)
             .unwrap_or_else(|_| {
-                warn!("Could not focus right");
+                warn!("Could not focus up");
             })
     }
 }
@@ -152,7 +153,7 @@ pub fn move_active_down() {
     if let Ok(mut tree) = try_lock_tree() {
         tree.move_active(None, Direction::Down)
             .unwrap_or_else(|_| {
-                warn!("Could not focus right");
+                warn!("Could not focus down");
             })
     }
 }
@@ -492,6 +493,28 @@ impl Tree {
         self.0.grab_at_corner(id, edge)
             .and(Ok(()))
     }
+
+    /// Adds the view as a bar to the specified output
+    ///
+    /// For more information, see bar.rs and container.rs
+    pub fn add_bar(&mut self, view: WlcView, output: WlcOutput) -> CommandResult {
+        let result = if let Some(output_c) = self.0.output_by_handle_mut(output) {
+            match *output_c {
+                Container::Output { ref mut bar, .. } => {
+                    let new_bar = Bar::new(view);
+                    *bar = Some(new_bar);
+                },
+                _ => unreachable!()
+            }
+            Ok(())
+        } else {
+            Err(TreeError::OutputNotFound(output))
+        };
+        result.and_then(|_| {
+            self.0.layout_active_of(ContainerType::Output);
+            Ok(())
+        })
+   }
 
     /// Updates the geometry of the view from an external request
     /// (such a request can come from the view itself)
