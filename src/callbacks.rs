@@ -161,7 +161,7 @@ pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) 
     trace!("Setting {:?} to state {:?}", view, state);
     if state == VIEW_FULLSCREEN {
         if let Ok(mut tree) = try_lock_tree() {
-            if let Some(id) = tree.lookup_view(view) {
+            if let Ok(id) = tree.lookup_view(view) {
                 tree.set_fullscreen(id, toggle)
                     .expect("The ID was related to a non-view, somehow!");
                 match tree.container_in_active_workspace(id) {
@@ -195,7 +195,7 @@ pub extern fn view_request_resize(view: WlcView, edge: ResizeEdge, point: &Point
         match try_lock_action() {
             Ok(guard) => {
                 if guard.is_some() {
-                    if let Some(id) = tree.lookup_view(view) {
+                    if let Ok(id) = tree.lookup_view(view) {
                         if let Err(err) = tree.resize_container(id, edge, *point) {
                             error!("Problem: Command returned error: {:#?}", err);
                         }
@@ -244,7 +244,14 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
     return EVENT_PASS_THROUGH
 }
 
-pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
+pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.update_floating_geometry(view, *geometry).unwrap_or_else(|_| {
+            warn!("Could not find view {:#?} \
+                   in order to update geometry w/ {:#?}",
+                  view, *geometry);
+        });
+    }
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
@@ -358,9 +365,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
         Some(action) => {
             if action.edges.bits() != 0 {
                 if let Ok(mut tree) = try_lock_tree() {
-                    // TODO Change to id of _view
-                    // Need to implement a map of view to uuid first though...
-                    if let Some(active_id) = tree.lookup_view(view) {
+                    if let Ok(active_id) = tree.lookup_view(view) {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
                             Ok(_) => return EVENT_BLOCKED,

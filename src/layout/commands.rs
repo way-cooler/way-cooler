@@ -6,7 +6,7 @@ use super::{Action, ActionErr, Bar, Container, ContainerType,
 use super::Tree;
 
 use uuid::Uuid;
-use rustwlc::{Point, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -202,7 +202,7 @@ impl Tree {
             .map(|active_ix| self.0.tree[active_ix].get_id())
     }
 
-    pub fn lookup_view(&self, view: WlcView) -> Option<Uuid> {
+    pub fn lookup_view(&self, view: WlcView) -> Result<Uuid, TreeError> {
         self.0.lookup_view(view).map(|c| c.get_id())
     }
 
@@ -514,5 +514,16 @@ impl Tree {
             self.0.layout_active_of(ContainerType::Output);
             Ok(())
         })
+   }
+
+    /// Updates the geometry of the view from an external request
+    /// (such a request can come from the view itself)
+    pub fn update_floating_geometry(&mut self, view: WlcView,
+                           geometry: Geometry) -> CommandResult {
+        let container = try!(self.0.lookup_view_mut(view));
+        if container.floating() {
+            container.set_geometry(ResizeEdge::empty(), geometry)
+        }
+        Ok(())
     }
 }
