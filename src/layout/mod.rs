@@ -8,6 +8,7 @@ pub use self::actions::focus::FocusError;
 pub use self::core::action::{Action, ActionErr};
 pub use self::core::container::{Container, ContainerType, Handle, Layout};
 pub use self::core::tree::{Direction, TreeError};
+pub use self::core::bar::Bar;
 use self::core::InnerTree;
 
 use petgraph::graph::NodeIndex;

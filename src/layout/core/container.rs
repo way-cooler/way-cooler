@@ -7,6 +7,8 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
+use super::bar::Bar;
+
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Handle {
@@ -61,6 +63,8 @@ pub enum Container {
         handle: WlcOutput,
         /// Optional background for the output
         background: Option<WlcView>,
+        /// Optional bar for the output
+        bar: Option<Bar>,
         /// UUID associated with container, client program can use container
         id: Uuid,
     },
@@ -68,9 +72,9 @@ pub enum Container {
     Workspace {
         /// Name of the workspace
         name: String,
-        /// The size of the workspace on the screen.
+        /// The geometry of the workspace on the screen.
         /// Might be different if there is e.g a bar present
-        size: Size,
+        geometry: Geometry,
         /// `Vec` of all children that are fullscreen.
         /// This is used to disable certain features while there is a fullscreen
         /// (e.g: focus switching, resizing, and moving containers)
@@ -116,6 +120,7 @@ impl Container {
         Container::Output {
             handle: handle,
             background: None,
+            bar: None,
             id: Uuid::new_v4()
         }
     }
@@ -123,10 +128,10 @@ impl Container {
     /// Creates a new workspace container with the given name and size.
     /// Usually the size is the same as the output it resides on,
     /// unless there is a bar or something.
-    pub fn new_workspace(name: String, size: Size) -> Container {
+    pub fn new_workspace(name: String, geometry: Geometry) -> Container {
         Container::Workspace {
             name: name,
-            size: size,
+            geometry: geometry,
             fullscreen_c: Vec::new(),
             id: Uuid::new_v4()
         }
@@ -204,15 +209,26 @@ impl Container {
     pub fn get_geometry(&self) -> Option<Geometry> {
         match *self {
             Container::Root(_)  => None,
-            Container::Output { ref handle, .. } => Some(Geometry {
-                origin: Point { x: 0, y: 0 },
-                size: handle.get_resolution()
-                    .expect("Couldn't get output resolution")
-            }),
-            Container::Workspace { size, .. } => Some(Geometry {
-                origin: Point { x: 0, y: 0},
-                size: size
-            }),
+            Container::Output { ref handle, ref bar, .. } => {
+                let mut resolution = handle.get_resolution()
+                    .expect("Couldn't get output resolution");
+                let mut origin = Point { x: 0, y: 0 };
+                if let Some(handle) = bar.as_ref().map(|bar| **bar) {
+                    let bar_g = handle.get_geometry()
+                        .expect("Bar had no geometry");
+                    let Size { h, .. } = bar_g.size;
+                    // TODO Allow bars on the horizontal side
+                    // This is for bottom
+                    //resolution.h = resolution.h.saturating_sub(h);
+                    origin.y += h as i32;
+                    resolution.h = resolution.h.saturating_sub(h)
+                }
+                Some(Geometry {
+                    origin: origin,
+                    size: resolution
+                })
+            },
+            Container::Workspace { geometry, .. } |
             Container::Container { geometry, .. } => Some(geometry),
             Container::View { effective_geometry, .. } => {
                 Some(effective_geometry)
@@ -246,9 +262,7 @@ impl Container {
             Container::Output { ref handle, .. } => {
                 handle.set_resolution(geo.size, 1);
             },
-            Container::Workspace { ref mut size, .. } => {
-                *size = geo.size;
-            },
+            Container::Workspace { ref mut geometry, .. } |
             Container::Container { ref mut geometry, .. } => {
                 *geometry = geo;
             },
@@ -465,7 +479,10 @@ mod tests {
         let output = Container::new_output(WlcView::root().as_output());
 
         let workspace = Container::new_workspace("1".to_string(),
-                                                     Size { w: 500, h: 500 });
+                                                 Geometry {
+                                                     origin: Point { x: 0, y: 0},
+                                                     size: Size { w: 500, h: 500 }
+                                                 });
         assert_eq!(workspace.get_geometry(), Some(Geometry {
             size: Size { w: 500, h: 500},
             origin: Point { x: 0, y: 0}
@@ -477,7 +494,10 @@ mod tests {
         let root = Container::new_root();
         let output = Container::new_output(WlcView::root().as_output());
         let workspace = Container::new_workspace("1".to_string(),
-                                                     Size { w: 500, h: 500 });
+                                                 Geometry {
+                                                     origin: Point { x: 0, y: 0},
+                                                     size: Size { w: 500, h: 500 }
+                                                 });
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
@@ -514,7 +534,10 @@ mod tests {
         let mut root = Container::new_root();
         let mut output = Container::new_output(WlcView::root().as_output());
         let mut workspace = Container::new_workspace("1".to_string(),
-                                                 Size { w: 500, h: 500 });
+                                                     Geometry {
+                                                         origin: Point { x: 0, y: 0},
+                                                         size: Size { w: 500, h: 500 }
+                                                     });
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
