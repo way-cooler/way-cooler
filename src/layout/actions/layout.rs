@@ -358,16 +358,20 @@ impl LayoutTree {
             error!("Tried to absolutely place a non-floating view!");
             return
         }
-        let geo = self.tree[node_ix].get_geometry().unwrap();
-        match self.tree[node_ix] {
-            Container::Container { .. } => { unimplemented!() },
-            Container::View { ref handle, ref mut borders, .. } => {
-                handle.bring_to_front();
-                borders.as_mut().map(|b| b.reallocate_buffer(geo));
-            },
-            _ => unreachable!()
+        {
+            let container = &mut self.tree[node_ix];
+            let geo = container.get_geometry()
+                .expect("Container had no geometry");
+            match *container {
+                Container::Container { .. } => { unimplemented!() },
+                Container::View { ref handle, .. } => {
+                    handle.bring_to_front();
+                },
+                _ => unreachable!()
+            }
+            container.resize_borders(geo);
+            container.draw_borders();
         }
-        self.tree[node_ix].draw_borders();
         for child_ix in self.tree.floating_children(node_ix) {
             self.place_floating(child_ix);
         }
@@ -722,10 +726,8 @@ impl LayoutTree {
                         geometry.origin.y += (gap / 2) as i32;
                         geometry.size.w = geometry.size.w.saturating_sub(gap);
                         geometry.size.h = geometry.size.h.saturating_sub(gap);
-                        handle.set_geometry(ResizeEdge::empty(), geometry);
-                        borders.reallocate_buffer(geometry);
                     }
-                    return Ok(())
+                    handle.set_geometry(ResizeEdge::empty(), geometry);
                 },
                 Container::Container { .. } => {/*recurse*/},
                 ref container => {
@@ -734,6 +736,7 @@ impl LayoutTree {
                     panic!("Applying gaps for borders, found non-view/container")
                 }
             }
+            container.resize_borders(geometry);
         }
         for child_ix in self.tree.children_of(node_ix) {
             try!(self.add_borders(child_ix))

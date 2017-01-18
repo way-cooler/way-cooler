@@ -441,12 +441,28 @@ impl Container {
             },
             Container::Container { ref mut borders, geometry, .. } => {
                 if let Some(borders_) = borders.take() {
-                    *borders = None/*EdgeDraw::new(borders_.enable_cairo().unwrap(),
-                                               Color::solid_color(0, 0, 255))
-                        .draw(geometry).ok()*/;
+                    *borders = None
                 }
             },
             _ => panic!("Tried to render a non-view / non-container")
+        }
+    }
+
+    /// Resizes the border buffer to fit within this geometry, if the
+    /// `View`/`Container` has a border wrapping it.
+    ///
+    /// # Panics
+    /// Panics on non-`View`/`Container`s
+    pub fn resize_borders(&mut self, geo: Geometry) {
+        match *self {
+            Container::View { ref mut borders, ..} |
+            Container::Container {  ref mut borders, ..} => {
+                borders.as_mut().map(|b| b.reallocate_buffer(geo));
+            },
+            ref container => {
+                error!("Tried to resize border to {:#?} on {:#?}", geo, container);
+                panic!("Expected a View/Container, got a different type")
+            }
         }
     }
 }
