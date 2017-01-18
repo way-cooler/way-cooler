@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
 use std::ops::{Deref, DerefMut};
 use rustwlc::{Geometry, Size, Point, WlcOutput};
-use rustwlc::render::{write_pixels, wlc_pixel_format, BITS_PER_PIXEL};
+use rustwlc::render::{write_pixels, wlc_pixel_format, calculate_stride, BITS_PER_PIXEL};
 use cairo::{self, Context, ImageSurface, Format, Operator, Status, SolidPattern};
 use cairo::prelude::{SurfaceExt};
 
@@ -174,13 +174,14 @@ unsafe impl Send for Borders {}
 unsafe impl Sync for Borders {}
 
 
+/*
 /// Calculates the stride for ARgb32 encoded buffers
 fn calculate_stride(width: u32) -> u32 {
     // function stolen from CAIRO_STRIDE_FOR_WIDTH macro in cairoint.h
     // Can be found in the most recent version of the cairo source
     let stride_alignment = ::std::mem::size_of::<u32>() as u32;
     ((BITS_PER_PIXEL * width + 7 ) / 8 + (stride_alignment - 1))  & (stride_alignment.overflowing_neg().0)
-}
+}*/
 
 #[allow(dead_code)]
 fn drop_data(_: Box<[u8]>) { /*error!("Freeing data")*/ }
