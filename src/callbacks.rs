@@ -384,11 +384,9 @@ pub extern fn compositor_terminating() {
 
 pub extern fn view_pre_render(view: WlcView) {
     if let Ok(mut tree) = try_lock_tree() {
-        if let Some(id) = tree.lookup_view(view) {
-            if let Ok(mut container) = tree.get_container_mut(id) {
-                container.render_borders();
-            }
-        }
+        tree.render_borders(view).unwrap_or_else(|err| {
+            warn!("Error while rendering borders: {:?}", err);
+        })
     }
 }
 

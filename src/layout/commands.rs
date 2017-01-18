@@ -210,10 +210,6 @@ impl Tree {
         self.0.lookup_view(view).map(|c| c.get_id())
     }
 
-    pub fn get_container_mut(&mut self, id: Uuid) -> Result<&mut Container, TreeError> {
-        self.0.lookup_mut(id)
-    }
-
     /// Determines if the container is in the currently active workspace.
     pub fn container_in_active_workspace(&self, id: Uuid) -> Result<bool, TreeError> {
         let view = match try!(self.0.lookup(id)).get_handle() {
@@ -500,5 +496,14 @@ impl Tree {
     pub fn grab_at_corner(&mut self, id: Uuid, edge: ResizeEdge) -> CommandResult {
         self.0.grab_at_corner(id, edge)
             .and(Ok(()))
+    }
+
+    /// Renders the borders for the view.
+    pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
+        let id = try!(self.lookup_view(view)
+                      .ok_or(TreeError::ViewNotFound(view)));
+        let container = try!(self.0.lookup_mut(id));
+        container.render_borders();
+        Ok(())
     }
 }
