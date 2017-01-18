@@ -385,7 +385,11 @@ pub extern fn compositor_terminating() {
 pub extern fn view_pre_render(view: WlcView) {
     if let Ok(mut tree) = try_lock_tree() {
         tree.render_borders(view).unwrap_or_else(|err| {
-            warn!("Error while rendering borders: {:?}", err);
+            match err {
+                // TODO Only filter if background or bar
+                TreeError::ViewNotFound(_) => {},
+                err => warn!("Error while rendering borders: {:?}", err)
+            }
         })
     }
 }
