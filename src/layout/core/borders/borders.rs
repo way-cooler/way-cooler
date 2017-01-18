@@ -8,6 +8,7 @@ use cairo::{self, Context, ImageSurface, Format, Operator, Status, SolidPattern}
 use cairo::prelude::{SurfaceExt};
 
 use super::draw::BaseDraw;
+use ::registry;
 
 /// The borders of a container.
 ///
@@ -16,8 +17,6 @@ use super::draw::BaseDraw;
 pub struct Borders {
     /// The surface that contains the bytes we give to wlc to draw.
     surface: ImageSurface,
-    /// How thick the borders should be. This affects how big the geometry is.
-    pub thickness: u32,
     /// The geometry where the buffer is written.
     ///
     /// Should correspond with the geometry of the container.
@@ -25,7 +24,11 @@ pub struct Borders {
 }
 
 impl Borders {
-    pub fn new(mut geometry: Geometry, thickness: u32) -> Self {
+    pub fn new(mut geometry: Geometry) -> Option<Self> {
+        let thickness = Borders::thickness();
+        if thickness == 0 {
+            return None
+        }
         // Add the thickness to the geometry.
         // TODO Consolidate this and reallocate_buffer into one function
         geometry.origin.x -= thickness as i32;
@@ -42,11 +45,10 @@ impl Borders {
                                                     w as i32,
                                                     h as i32,
                                                     stride);
-        Borders {
+        Some(Borders {
             surface: surface,
-            thickness: thickness,
             geometry: geometry
-        }
+        })
     }
 
     pub fn render(&mut self) {
@@ -91,16 +93,20 @@ impl Borders {
     /// This causes a reallocation of the buffer, do not call this
     /// in a tight loop unless you want memory fragmentation and
     /// bad performance.
-    pub fn reallocate_buffer(&mut self, mut geometry: Geometry) {
+    pub fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
         // Add the thickness to the geometry.
-        geometry.origin.x -= self.thickness as i32;
-        geometry.origin.y -= self.thickness as i32;
-        geometry.size.w += self.thickness;
-        geometry.size.h += self.thickness;
+        let thickness = Borders::thickness();
+        if thickness == 0 {
+            return None;
+        }
+        geometry.origin.x -= thickness as i32;
+        geometry.origin.y -= thickness as i32;
+        geometry.size.w += thickness;
+        geometry.size.h += thickness;
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
             warn!("Geometry is same size, not reallocating");
-            return;
+            return Some(self);
         }
         let stride = calculate_stride(w) as i32;
         let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
@@ -113,6 +119,7 @@ impl Borders {
                                                     stride);
         self.geometry = geometry;
         self.surface = surface;
+        Some(self)
     }
 
     /// Enables Cairo drawing capabilities on the borders.
@@ -132,13 +139,25 @@ impl Borders {
         }
         Ok(BaseDraw::new(self, cairo))
     }
+
+    pub fn thickness() -> u32 {
+        registry::get_data("border_size")
+            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num <= 0.0 {
+                        0u32
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0u32))
+            }).unwrap_or(0u32)
+    }
 }
 
 impl Debug for Borders {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Borders")
             .field("geometry", &self.geometry as &Debug)
-            .field("thickness", &self.thickness as &Debug)
             .finish()
     }
 }

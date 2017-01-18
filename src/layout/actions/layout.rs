@@ -721,7 +721,7 @@ impl LayoutTree {
                 Container::View { handle, ref mut borders, .. } => {
                     //warn!("Adding gap for border: {:#?}", borders);
                     if let Some(borders) = borders.as_mut() {
-                        let gap = borders.thickness;
+                        let gap = Borders::thickness();
                         geometry.origin.x += (gap / 2) as i32;
                         geometry.origin.y += (gap / 2) as i32;
                         geometry.size.w = geometry.size.w.saturating_sub(gap);

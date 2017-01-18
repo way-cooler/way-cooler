@@ -158,7 +158,7 @@ impl EdgeDraw {
 impl Drawable for EdgeDraw {
     fn draw(mut self, view_g: Geometry) -> Result<Borders, DrawErr> {
         let mut border_g = view_g;
-        let thickness = self.base.borders().thickness;
+        let thickness = Borders::thickness();
         let edge_thickness = thickness / 2;
         // TODO This doesn't seem right, wouldn't this break on multi-head output?
         let output_res = WlcOutput::focused().get_resolution()

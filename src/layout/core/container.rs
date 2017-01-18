@@ -7,7 +7,7 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
-use super::borders::{Borders, Color, Drawable, EdgeDraw, SimpleDraw};
+use super::borders::{Borders, Color, Drawable, EdgeDraw};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -160,8 +160,7 @@ impl Container {
             floating: false,
             effective_geometry: geometry,
             id: Uuid::new_v4(),
-            // TODO Remove hardcoded thickness
-            borders: Some(Borders::new(geometry, 50))
+            borders: Borders::new(geometry)
         }
     }
 
@@ -457,7 +456,8 @@ impl Container {
         match *self {
             Container::View { ref mut borders, ..} |
             Container::Container {  ref mut borders, ..} => {
-                borders.as_mut().map(|b| b.reallocate_buffer(geo));
+                *borders = borders.take().and_then(|b| b.reallocate_buffer(geo))
+                    .or_else(|| Borders::new(geo));
             },
             ref container => {
                 error!("Tried to resize border to {:#?} on {:#?}", geo, container);
