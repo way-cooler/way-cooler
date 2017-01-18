@@ -1,0 +1,7 @@
+borders:
+
+draw_borders should automatically call reallocate_buffer, because otherwise everyone else has to and that's dumb. Oh also don't make it be passed in, just use the WlcView`s geometry _obviously_
+
+remove get_container_mut, make it a method on the tree to render the borders (make a new actions/render.rs or something)
+
+gotta abstract the draw trait, for some T instead of using borders. Hopefully I don't need to restrict T, but I think I'll have to
