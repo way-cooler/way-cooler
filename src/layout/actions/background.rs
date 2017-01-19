@@ -7,12 +7,6 @@ use rustwlc::{WlcView};
 
 use std::collections::HashSet;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum BackgroundErr {
-    /// A background (the `WlcView`) is already attached to the output (`UUID`)
-    AlreadyAttached(Uuid, WlcView)
-}
-
 impl LayoutTree {
     /// Attempts to attach the `bg` to the `outputs`.
     ///

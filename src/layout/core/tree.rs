@@ -12,7 +12,6 @@ use super::super::actions::focus::FocusError;
 use super::super::actions::movement::MovementError;
 use super::super::actions::layout::LayoutErr;
 use super::super::actions::resize::ResizeErr;
-use super::super::actions::background::BackgroundErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -101,9 +100,6 @@ pub enum TreeError {
     Layout(LayoutErr),
     /// An error occurred while trying to resize the layout
     Resize(ResizeErr),
-    /// An error occurred while trying to do something with the background
-    /// of an output
-    Background(BackgroundErr),
     /// An error occurred while attempting to modify or use the main action
     Action(ActionErr),
     /// The tree was (true) or was not (false) performing an action,

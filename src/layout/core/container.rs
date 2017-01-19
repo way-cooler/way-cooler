@@ -261,11 +261,9 @@ impl Container {
             Container::Container { ref mut geometry, .. } => {
                 *geometry = geo;
             },
-            Container::View { ref handle, ref mut effective_geometry,
-                              ref mut borders,  .. } => {
+            Container::View { ref handle, ref mut effective_geometry, .. } => {
                 handle.set_geometry(edges, geo);
                 *effective_geometry = geo;
-                //borders.as_mut().map(|b| b.reallocate_buffer(geo));
             }
         }
     }
@@ -438,10 +436,8 @@ impl Container {
                         .draw(geometry).ok();
                 }
             },
-            Container::Container { ref mut borders, geometry, .. } => {
-                if let Some(borders_) = borders.take() {
-                    *borders = None
-                }
+            Container::Container { ref mut borders, .. } => {
+                borders.take();
             },
             _ => panic!("Tried to render a non-view / non-container")
         }

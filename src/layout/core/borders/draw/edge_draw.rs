@@ -1,11 +1,4 @@
-use std::iter;
-use std::fmt::{self, Debug};
-use std::cmp::{Eq, PartialEq};
-use std::ops::{Deref, DerefMut};
 use rustwlc::{Geometry, Size, Point, WlcOutput};
-use rustwlc::render::{write_pixels, wlc_pixel_format};
-use cairo::{Context, ImageSurface, Format, Operator, Status, SolidPattern};
-use cairo::prelude::{SurfaceExt};
 
 use super::super::borders::Borders;
 use super::base::{BaseDraw, Drawable, DrawErr};
@@ -67,7 +60,7 @@ impl EdgeDraw {
     fn draw_right_border(mut self,
                          mut x: f64,
                          mut y: f64,
-                         mut w: f64,
+                         w: f64,
                          mut h: f64,
                          border_geometry: Geometry,
                          output_res: Size)
@@ -131,7 +124,7 @@ impl EdgeDraw {
                             mut x: f64,
                             mut y: f64,
                             mut w: f64,
-                            mut h: f64,
+                            h: f64,
                             border_geometry: Geometry,
                             output_res: Size)
                             -> Result<Self, DrawErr> {

@@ -3,7 +3,7 @@
 
 use std::iter::Iterator;
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
@@ -697,36 +697,7 @@ impl InnerTree {
             node_ix = parent_ix;
         }
     }
-
-    /// Gets the next sibling (if any) to focus on, assuming node_ix would be removed
-    /// from its parent.
-    pub fn next_sibling(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
-        let parent_ix = self.parent_of(node_ix)
-            .expect("Could not get parent of node!");
-        let children = self.children_of(parent_ix);
-        let mut prev_index = None;
-        for (index, sibling_ix) in children.iter().enumerate() {
-            if node_ix == *sibling_ix {
-                prev_index = Some(index);
-                break;
-            }
-        }
-        if prev_index.is_none() {
-            panic!("Could not find child in parent node");
-        }
-        let prev_index = prev_index.unwrap();
-        if children.len() == 1 {
-            return None
-        }
-        if prev_index == children.len() - 1 {
-            Some(children[children.len() - 2])
-        } else {
-            Some(children[prev_index + 1])
-        }
-    }
 }
-
-use std::ops::{Index, IndexMut};
 
 impl Index<NodeIndex> for InnerTree {
     type Output = Container;

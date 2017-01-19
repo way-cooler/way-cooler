@@ -718,15 +718,13 @@ impl LayoutTree {
             let mut geometry = container.get_geometry()
                 .expect("Container had no geometry");
             match *container {
-                Container::View { handle, ref mut borders, .. } => {
+                Container::View { handle, .. } => {
                     //warn!("Adding gap for border: {:#?}", borders);
-                    if let Some(borders) = borders.as_mut() {
-                        let gap = Borders::thickness();
-                        geometry.origin.x += (gap / 2) as i32;
-                        geometry.origin.y += (gap / 2) as i32;
-                        geometry.size.w = geometry.size.w.saturating_sub(gap);
-                        geometry.size.h = geometry.size.h.saturating_sub(gap);
-                    }
+                    let gap = Borders::thickness();
+                    geometry.origin.x += (gap / 2) as i32;
+                    geometry.origin.y += (gap / 2) as i32;
+                    geometry.size.w = geometry.size.w.saturating_sub(gap);
+                    geometry.size.h = geometry.size.h.saturating_sub(gap);
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 },
                 Container::Container { .. } => {/*recurse*/},

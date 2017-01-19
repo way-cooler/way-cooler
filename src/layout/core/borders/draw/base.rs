@@ -1,11 +1,6 @@
-use std::iter;
-use std::fmt::{self, Debug};
-use std::cmp::{Eq, PartialEq};
 use std::ops::{Deref, DerefMut};
-use rustwlc::{Geometry, Size, Point};
-use rustwlc::render::{write_pixels, wlc_pixel_format};
-use cairo::{self, Context, Operator};
-use cairo::prelude::{SurfaceExt};
+use rustwlc::{Geometry};
+use cairo::{self, Context};
 
 use super::super::borders::Borders;
 use super::color::Color;
@@ -24,7 +19,7 @@ pub trait Drawable {
     /// to suit the `Drawable`'s way of drawing to the buffer.
     ///
     /// On success, returns a renderable `Borders`
-    fn draw(self, mut border_g: Geometry) -> Result<Borders, DrawErr>;
+    fn draw(self, border_g: Geometry) -> Result<Borders, DrawErr>;
 }
 
 /// Implements basic draw functionality.
@@ -67,10 +62,6 @@ impl BaseDraw {
     pub fn finish(mut self, border_g: Geometry) -> Borders {
         self.borders.geometry = border_g;
         self.borders
-    }
-
-    pub fn borders(&self) -> &Borders {
-        &self.borders
     }
 }
 

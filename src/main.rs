@@ -180,7 +180,8 @@ fn main() {
     log_environment();
     detect_proprietary();
     // This prepares wlc, doesn't run main loop until run_wlc is called
-    let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
+    let run_wlc = rustwlc::init()
+        .expect("Unable to initialize wlc!");
     rustwlc::log_set_rust_handler(log_handler);
     callbacks::init();
     commands::init();

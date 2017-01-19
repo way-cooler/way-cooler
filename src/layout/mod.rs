@@ -13,7 +13,7 @@ use self::core::InnerTree;
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
 
-use std::sync::{Mutex, MutexGuard, LockResult, TryLockError, PoisonError};
+use std::sync::{Mutex, MutexGuard, TryLockError, PoisonError};
 
 /// A wrapper around tree, to hide its methods
 pub struct Tree(TreeGuard);

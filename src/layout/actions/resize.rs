@@ -3,7 +3,7 @@ use rustwlc::{Point, ResizeEdge, Geometry,
 
 use super::super::{Action, Direction, LayoutTree, TreeError};
 use super::super::commands::{CommandResult};
-use super::super::core::container::{Container, ContainerType, MIN_SIZE};
+use super::super::core::container::{ContainerType, MIN_SIZE};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

@@ -1,11 +1,9 @@
 use std::iter;
 use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
-use std::ops::{Deref, DerefMut};
-use rustwlc::{Geometry, Size, Point, WlcOutput};
-use rustwlc::render::{write_pixels, wlc_pixel_format, calculate_stride, BITS_PER_PIXEL};
-use cairo::{self, Context, ImageSurface, Format, Operator, Status, SolidPattern};
-use cairo::prelude::{SurfaceExt};
+use rustwlc::{Geometry, Size, WlcOutput};
+use rustwlc::render::{write_pixels, wlc_pixel_format, calculate_stride};
+use cairo::{self, Context, ImageSurface, Format, Operator};
 
 use super::draw::BaseDraw;
 use ::registry;
@@ -77,15 +75,6 @@ impl Borders {
             geometry.origin.y = 0;
         }
         write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &mut buffer);
-    }
-
-    /// Updates the position at which we render the buffer.
-    ///
-    /// Since this is a common operation, and does not resize the buffer,
-    /// this is a method is here instead of in a draw struct
-    /// for ergonomic and performance reasons.
-    pub fn update_pos(&mut self, origin: Point) {
-        self.geometry.origin = origin;
     }
 
     /// Updates/Creates the underlying geometry for the surface/buffer.
