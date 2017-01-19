@@ -3,5 +3,5 @@ mod draw;
 
 
 pub use self::borders::{Borders};
-pub use self::draw::{Color, Drawable, EdgeDraw};
+pub use self::draw::{Color, Drawable, BorderDraw};
 

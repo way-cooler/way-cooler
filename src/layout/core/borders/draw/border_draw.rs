@@ -6,14 +6,14 @@ use super::color::Color;
 
 /// Draws the borders around windows.
 /// They are all of the same size, including the top.
-pub struct EdgeDraw {
+pub struct BorderDraw {
     base: BaseDraw,
     color: Color
 }
 
-impl EdgeDraw {
+impl BorderDraw {
     pub fn new(base: BaseDraw, color: Color) -> Self {
-        EdgeDraw {
+        BorderDraw {
             base: base,
             color: color
         }
@@ -155,7 +155,7 @@ impl EdgeDraw {
     }
 }
 
-impl Drawable for EdgeDraw {
+impl Drawable for BorderDraw {
     fn draw(mut self, view_g: Geometry) -> Result<Borders, DrawErr> {
         let mut border_g = view_g;
         let thickness = Borders::thickness();
@@ -167,9 +167,6 @@ impl Drawable for EdgeDraw {
         border_g.origin.y -= edge_thickness as i32;
         border_g.size.w += thickness;
         border_g.size.h += thickness;
-
-        warn!("Drawing EdgeDraw @ {:#?}", border_g);
-
 
         self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
         self.base.paint();
