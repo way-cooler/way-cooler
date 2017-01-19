@@ -252,7 +252,6 @@ impl LayoutTree {
                 geo.origin.x += dx;
                 geo.origin.y += dy;
                 handle.set_geometry(ResizeEdge::empty(), geo);
-                // TODO Shouldn't this go in layout though? But then it lags a shit ton if I swap...
                 container.draw_borders();
                 Ok(())
             },

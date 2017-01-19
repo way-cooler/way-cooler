@@ -4,10 +4,8 @@ use super::super::borders::Borders;
 use super::base::{BaseDraw, Drawable, DrawErr};
 use super::color::Color;
 
-/// Draws the borders with variable width.
-///
-/// This can be used to hide certain borders,
-/// eg when touching the side of the screen.
+/// Draws the borders around windows.
+/// They are all of the same size, including the top.
 pub struct EdgeDraw {
     base: BaseDraw,
     color: Color

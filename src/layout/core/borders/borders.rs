@@ -28,7 +28,6 @@ impl Borders {
             return None
         }
         // Add the thickness to the geometry.
-        // TODO Consolidate this and reallocate_buffer into one function
         geometry.origin.x -= thickness as i32;
         geometry.origin.y -= thickness as i32;
         geometry.size.w += thickness;
@@ -162,15 +161,5 @@ impl Eq for Borders {}
 unsafe impl Send for Borders {}
 unsafe impl Sync for Borders {}
 
-
-/*
-/// Calculates the stride for ARgb32 encoded buffers
-fn calculate_stride(width: u32) -> u32 {
-    // function stolen from CAIRO_STRIDE_FOR_WIDTH macro in cairoint.h
-    // Can be found in the most recent version of the cairo source
-    let stride_alignment = ::std::mem::size_of::<u32>() as u32;
-    ((BITS_PER_PIXEL * width + 7 ) / 8 + (stride_alignment - 1))  & (stride_alignment.overflowing_neg().0)
-}*/
-
 #[allow(dead_code)]
-fn drop_data(_: Box<[u8]>) { /*error!("Freeing data")*/ }
+fn drop_data(_: Box<[u8]>) { }

@@ -244,7 +244,6 @@ impl LayoutTree {
             }
 
             ContainerType::View => {
-                //let container = &mut self.tree[node_ix];
                 self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
                 self.add_borders(node_ix)
                     .expect("Couldn't add border gaps to horizontal container");
@@ -719,7 +718,6 @@ impl LayoutTree {
                 .expect("Container had no geometry");
             match *container {
                 Container::View { handle, .. } => {
-                    //warn!("Adding gap for border: {:#?}", borders);
                     let gap = Borders::thickness();
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
