@@ -36,17 +36,16 @@ impl EdgeDraw {
         }
         x = 0.0;
         y = 0.0;
-        warn!("border_geo {:#?}\noutput_res: {:#?}", border_geometry, output_res);
-        if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32{
-            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
+        if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
+                - output_res.w as i32;
             x += offset as f64;
         }
         if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (border_geometry.origin.y + border_geometry.size.h as i32) - output_res.h as i32;
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32)
+                - output_res.h as i32;
             y += offset as f64;
         }
-        warn!("Drawing left border @ ({}, {})", x, y);
-        // TODO Uncomment
         self.base.rectangle(x, y, w, h);
 
         self.base = try!(self.base.check_cairo());
@@ -72,11 +71,13 @@ impl EdgeDraw {
         }
         y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
+                - output_res.w as i32;
             x += offset as f64;
         }
         if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (border_geometry.origin.y + border_geometry.size.h as i32) - output_res.h as i32;
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32)
+                - output_res.h as i32;
             y += offset as f64;
         }
         self.base.rectangle(x, y, w, h);
@@ -104,11 +105,13 @@ impl EdgeDraw {
         x = 0.0;
         y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
+                - output_res.w as i32;
             x += offset as f64;
         }
         if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (border_geometry.origin.y + border_geometry.size.h as i32) - output_res.h as i32;
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32)
+                - output_res.h as i32;
             y += offset as f64;
         }
         self.base.rectangle(x, y, w, h);
@@ -135,8 +138,14 @@ impl EdgeDraw {
         }
         x = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (border_geometry.origin.x + border_geometry.size.w as i32) - output_res.w as i32;
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
+                - output_res.w as i32;
             x += offset as f64;
+        }
+        if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32)
+                - output_res.h as i32;
+            y += offset as f64;
         }
         self.base.rectangle(x, y, w, h);
         self.base = try!(self.base.check_cairo());
