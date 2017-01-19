@@ -10,8 +10,7 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-#rustwlc = "0.5.3"
-rustwlc = { path = "../rust-wlc", version = "0.5.2" }
+rustwlc = "0.5.4"
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
@@ -29,7 +28,7 @@ getopts = "0.2"
 cairo-rs = "0.1.1"
 
 [dev-dependencies]
-dummy-rustwlc = "0.5.1"
+dummy-rustwlc = "0.4.2"
 
 [features]
 static-wlc = ["rustwlc/static-wlc"]
