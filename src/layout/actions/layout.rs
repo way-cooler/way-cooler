@@ -732,7 +732,11 @@ impl LayoutTree {
                     panic!("Applying gaps for borders, found non-view/container")
                 }
             }
-            container.resize_borders(geometry);
+            // TODO Hack to make the resizing on tiled works
+            // Should restructure code so I don't need to do this check
+            if container.get_type() == ContainerType::View {
+                container.resize_borders(geometry);
+            }
         }
         for child_ix in self.tree.children_of(node_ix) {
             try!(self.add_borders(child_ix))
