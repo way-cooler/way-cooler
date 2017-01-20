@@ -2,10 +2,9 @@ use std::iter;
 use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
 use rustwlc::{Geometry, Size, WlcOutput};
-use rustwlc::render::{write_pixels, wlc_pixel_format, calculate_stride};
-use cairo::{self, Context, ImageSurface, Format, Operator};
+use rustwlc::render::{calculate_stride};
+use cairo::{ImageSurface, Format};
 
-use super::draw::BaseDraw;
 use ::registry;
 use ::render::Renderable;
 

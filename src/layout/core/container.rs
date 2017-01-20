@@ -7,8 +7,8 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
-use super::borders::{Borders, Color, Drawable, BorderDraw};
-use ::render::Renderable;
+use super::borders::{Borders, BordersDraw};
+use ::render::{Renderable, Drawable, Color};
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -433,7 +433,7 @@ impl Container {
                     let geometry = handle.get_geometry()
                         .expect("View had no geometry");
                     // TODO Don't hard code color
-                    *borders = BorderDraw::new(borders_.enable_cairo().unwrap(),
+                    *borders = BordersDraw::new(borders_.enable_cairo().unwrap(),
                                                      Color::solid_color(0, 0, 255))
                         .draw(geometry).ok();
                 }

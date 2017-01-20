@@ -1,7 +1,6 @@
 mod borders;
-mod draw;
-
+mod borders_draw;
 
 pub use self::borders::{Borders};
-pub use self::draw::{Color, Drawable, BorderDraw};
+pub use self::borders_draw::{BordersDraw};
 

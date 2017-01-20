@@ -1,19 +1,18 @@
 use rustwlc::{Geometry, Size, Point, WlcOutput};
 
 use super::super::borders::Borders;
-use super::base::{BaseDraw, Drawable, DrawErr};
-use super::color::Color;
+use ::render::{BaseDraw, Drawable, DrawErr, Color};
 
 /// Draws the borders around windows.
 /// They are all of the same size, including the top.
-pub struct BorderDraw {
-    base: BaseDraw,
+pub struct BordersDraw {
+    base: BaseDraw<Borders>,
     color: Color
 }
 
-impl BorderDraw {
-    pub fn new(base: BaseDraw, color: Color) -> Self {
-        BorderDraw {
+impl BordersDraw {
+    pub fn new(base: BaseDraw<Borders>, color: Color) -> Self {
+        BordersDraw {
             base: base,
             color: color
         }
@@ -26,7 +25,7 @@ impl BorderDraw {
                         mut h: f64,
                         border_geometry: Geometry,
                         output_res: Size)
-                        -> Result<Self, DrawErr> {
+                        -> Result<Self, DrawErr<Borders>> {
         // yay clamping
         if x < 0.0 {
             w += x;
@@ -61,7 +60,7 @@ impl BorderDraw {
                          mut h: f64,
                          border_geometry: Geometry,
                          output_res: Size)
-                         -> Result<Self, DrawErr> {
+                         -> Result<Self, DrawErr<Borders>> {
         // yay clamping
         if border_geometry.origin.x < 0 {
             x += border_geometry.origin.x as f64;
@@ -94,7 +93,7 @@ impl BorderDraw {
                          mut h: f64,
                          border_geometry: Geometry,
                          output_res: Size)
-                         -> Result<Self, DrawErr> {
+                         -> Result<Self, DrawErr<Borders>> {
         // yay clamping
         if x < 0.0 {
             w += x;
@@ -128,7 +127,7 @@ impl BorderDraw {
                             h: f64,
                             border_geometry: Geometry,
                             output_res: Size)
-                            -> Result<Self, DrawErr> {
+                            -> Result<Self, DrawErr<Borders>> {
         // yay clamping
         if x < 0.0 {
             w += x;
@@ -155,8 +154,8 @@ impl BorderDraw {
     }
 }
 
-impl Drawable for BorderDraw {
-    fn draw(mut self, view_g: Geometry) -> Result<Borders, DrawErr> {
+impl Drawable<Borders> for BordersDraw {
+    fn draw(mut self, view_g: Geometry) -> Result<Borders, DrawErr<Borders>> {
         let mut border_g = view_g;
         let thickness = Borders::thickness();
         let edge_thickness = thickness / 2;

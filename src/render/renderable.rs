@@ -5,7 +5,7 @@
 use rustwlc::{Geometry, WlcOutput};
 use rustwlc::render::{write_pixels, wlc_pixel_format};
 use cairo::{self, Context, ImageSurface, Operator};
-use super::base::BaseDraw;
+use super::draw::BaseDraw;
 
 /// Something that can be rendered by wlc.
 /// At minimum, it must store a buffer of bytes to write to wlc,
