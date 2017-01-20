@@ -704,6 +704,9 @@ impl LayoutTree {
             match *container {
                 Container::View { handle, .. } => {
                     let gap = Borders::thickness();
+                    if gap == 0 {
+                        return Ok(())
+                    }
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
                     geometry.size.w = geometry.size.w.saturating_sub(gap);
