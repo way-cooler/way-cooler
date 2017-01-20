@@ -80,6 +80,8 @@ pub enum TreeError {
     NodeWasRemoved(NodeIndex),
     /// A WlcView handle could not be found in the tree.
     ViewNotFound(WlcView),
+    /// A WlcOutput handle could not be found in the tree.
+    OutputNotFound(WlcOutput),
     /// A UUID was not associated with the this type of container.
     UuidNotAssociatedWith(ContainerType),
     /// UUID was associated with wrong container type,
@@ -156,9 +158,16 @@ impl LayoutTree {
             .ok_or(TreeError::NodeNotFound(id))
     }
 
-    pub fn lookup_view(&self, view: WlcView) -> Option<&Container> {
+    pub fn lookup_view(&self, view: WlcView) -> Result<&Container, TreeError> {
         self.tree.lookup_view(view)
             .map(|node_ix| &self.tree[node_ix])
+            .ok_or(TreeError::ViewNotFound(view))
+    }
+
+    pub fn lookup_view_mut(&mut self, view: WlcView) -> Result<&mut Container, TreeError> {
+        let node_ix = try!(self.tree.lookup_view(view)
+                           .ok_or(TreeError::ViewNotFound(view)));
+        Ok(&mut self.tree[node_ix])
     }
 
     /// Sets the active container to be the given node.
@@ -250,6 +259,24 @@ impl LayoutTree {
             None
         }
 
+    }
+
+    /// Gets a reference to the container with the `WlcOutput`.
+    ///
+    /// If one could not be found, `None` is returned
+    pub fn output_by_handle_mut(&mut self, output: WlcOutput)
+                                -> Option<&mut Container> {
+        let root_ix = self.tree.root_ix();
+        let children = self.tree.children_of(root_ix);
+        let ix = children.iter()
+            .find(|child_ix| match self.tree[**child_ix] {
+                Container::Output { handle, .. } => handle == output,
+                _ => panic!("Child of root was not an output")
+            });
+        match ix {
+            Some(ix) => Some(&mut self.tree[*ix]),
+            None => None
+        }
     }
 
     /// Determines if the active container is the root container
@@ -370,12 +397,16 @@ impl LayoutTree {
             self.validate();
             Ok(container)
         } else {
-            // Check if it's a background, and if so invalidate it
+            // Check if it's a background or a bar, and if so invalidate it
             for output_ix in self.tree.children_of(self.tree.root_ix()) {
                 match self.tree[output_ix] {
-                    Container::Output { ref mut background, .. } => {
+                    Container::Output { ref mut background, ref mut bar, .. } => {
                         if Some(*view) == *background {
                             background.take();
+                        }
+                        let bar_view = bar.as_ref().map(|bar| bar.view());
+                        if Some(*view) == bar_view {
+                            bar.take();
                         }
                     },
                     _ => unreachable!()
@@ -742,12 +773,12 @@ pub mod tests {
         let output_ix = tree.add_child(root_ix, Container::new_output(fake_output), false);
         let workspace_1_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("1".to_string(),
-                                                                   fake_size.clone()), false);
+                                                                   fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
-                                                                     fake_size.clone()), false);
+                                                                     fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */

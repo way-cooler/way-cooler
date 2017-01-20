@@ -15,6 +15,8 @@ use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, Container
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
+use registry::{self, RegistryError, RegistryGetData};
+
 /// If the event is handled by way-cooler
 const EVENT_BLOCKED: bool = true;
 
@@ -65,6 +67,27 @@ pub extern fn output_resolution(output: WlcOutput,
 
 pub extern fn view_created(view: WlcView) -> bool {
     debug!("view_created: {:?}: \"{}\"", view, view.get_title());
+    let bar = registry::get_data("bar")
+        .map(RegistryGetData::resolve).and_then(|(_, data)| {
+            data.as_string().map(str::to_string)
+                .ok_or(RegistryError::KeyNotFound)
+        });
+    // TODO Move this hack, probably could live somewhere else
+    if let Ok(bar_name) = bar {
+        if view.get_title().as_str() == bar_name {
+            view.set_mask(1);
+            view.bring_to_front();
+            if let Ok(mut tree) = try_lock_tree() {
+                for output in WlcOutput::list() {
+                    tree.add_bar(view, output).unwrap_or_else(|_| {
+                        warn!("Could not add bar {:#?} to output {:#?}", view, output);
+                    });
+                }
+                return true;
+            }
+        }
+    }
+    // TODO Remove this hack
     if view.get_class().as_str() == "Background" {
         debug!("Setting background: {}", view.get_title());
         view.send_to_back();
@@ -145,7 +168,7 @@ pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) 
     trace!("Setting {:?} to state {:?}", view, state);
     if state == VIEW_FULLSCREEN {
         if let Ok(mut tree) = try_lock_tree() {
-            if let Some(id) = tree.lookup_view(view) {
+            if let Ok(id) = tree.lookup_view(view) {
                 tree.set_fullscreen(id, toggle)
                     .expect("The ID was related to a non-view, somehow!");
                 match tree.container_in_active_workspace(id) {
@@ -179,7 +202,7 @@ pub extern fn view_request_resize(view: WlcView, edge: ResizeEdge, point: &Point
         match try_lock_action() {
             Ok(guard) => {
                 if guard.is_some() {
-                    if let Some(id) = tree.lookup_view(view) {
+                    if let Ok(id) = tree.lookup_view(view) {
                         if let Err(err) = tree.resize_container(id, edge, *point) {
                             error!("Problem: Command returned error: {:#?}", err);
                         }
@@ -228,7 +251,14 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
     return EVENT_PASS_THROUGH
 }
 
-pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
+pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.update_floating_geometry(view, *geometry).unwrap_or_else(|_| {
+            warn!("Could not find view {:#?} \
+                   in order to update geometry w/ {:#?}",
+                  view, *geometry);
+        });
+    }
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
@@ -341,9 +371,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
         Some(action) => {
             if action.edges.bits() != 0 {
                 if let Ok(mut tree) = try_lock_tree() {
-                    // TODO Change to id of _view
-                    // Need to implement a map of view to uuid first though...
-                    if let Some(active_id) = tree.lookup_view(view) {
+                    if let Ok(active_id) = tree.lookup_view(view) {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
                             Ok(_) => return EVENT_BLOCKED,

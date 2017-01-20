@@ -1,6 +1,5 @@
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use rustwlc::{Geometry, Point};
 use super::super::LayoutTree;
 use super::super::core::container::{Container, ContainerType};
 use ::debug_enabled;
@@ -31,16 +30,13 @@ impl LayoutTree {
     /// Initializes a workspace and gets the index of the root container
     pub fn init_workspace(&mut self, name: String, output_ix: NodeIndex)
                       -> NodeIndex {
-        let size = self.tree.get(output_ix)
+        let geometry = self.tree.get(output_ix)
             .expect("init_workspace: invalid output").get_geometry()
-            .expect("init_workspace: no geometry for output").size;
-        let worksp = Container::new_workspace(name.to_string(), size.clone());
+            .expect("init_workspace: no geometry for output");
+        let worksp = Container::new_workspace(name.to_string(), geometry);
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let geometry = Geometry {
-            size: size, origin: Point { x: 0, y: 0 }
-        };
         let container_ix = self.tree.add_child(worksp_ix,
                                                Container::new_container(geometry), false);
         self.tree.set_ancestor_paths_active(container_ix);

@@ -1,11 +1,12 @@
 //! Commands from the user to manipulate the tree
 
 use super::{try_lock_tree, try_lock_action};
-use super::{Action, ActionErr, Container, ContainerType, Direction, Handle, Layout, TreeError};
+use super::{Action, ActionErr, Bar, Container, ContainerType,
+            Direction, Handle, Layout, TreeError};
 use super::Tree;
 
 use uuid::Uuid;
-use rustwlc::{Point, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -206,7 +207,7 @@ impl Tree {
             .map(|active_ix| self.0.tree[active_ix].get_id())
     }
 
-    pub fn lookup_view(&self, view: WlcView) -> Option<Uuid> {
+    pub fn lookup_view(&self, view: WlcView) -> Result<Uuid, TreeError> {
         self.0.lookup_view(view).map(|c| c.get_id())
     }
 
@@ -498,10 +499,43 @@ impl Tree {
             .and(Ok(()))
     }
 
+    /// Adds the view as a bar to the specified output
+    ///
+    /// For more information, see bar.rs and container.rs
+    pub fn add_bar(&mut self, view: WlcView, output: WlcOutput) -> CommandResult {
+        let result = if let Some(output_c) = self.0.output_by_handle_mut(output) {
+            match *output_c {
+                Container::Output { ref mut bar, .. } => {
+                    let new_bar = Bar::new(view);
+                    *bar = Some(new_bar);
+                },
+                _ => unreachable!()
+            }
+            Ok(())
+        } else {
+            Err(TreeError::OutputNotFound(output))
+        };
+        result.and_then(|_| {
+            self.0.layout_active_of(ContainerType::Output);
+            Ok(())
+        })
+   }
+
+    /// Updates the geometry of the view from an external request
+    /// (such a request can come from the view itself)
+    pub fn update_floating_geometry(&mut self, view: WlcView,
+                           geometry: Geometry) -> CommandResult {
+        let container = try!(self.0.lookup_view_mut(view));
+        if container.floating() {
+            container.set_geometry(ResizeEdge::empty(), geometry)
+        }
+        Ok(())
+    }
+
     /// Renders the borders for the view.
     pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
         let id = try!(self.lookup_view(view)
-                      .ok_or(TreeError::ViewNotFound(view)));
+                      .map_err(|_|TreeError::ViewNotFound(view)));
         let container = try!(self.0.lookup_mut(id));
         container.render_borders();
         Ok(())
