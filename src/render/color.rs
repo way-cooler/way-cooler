@@ -1,3 +1,7 @@
+//! Colors used for drawing to a Cairo buffer
+
+use std::convert::From;
+
 /// Color to draw to the screen, including the alpha channel.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Color {
@@ -23,5 +27,14 @@ impl Color {
     /// (Red, Green, Blue, Alpha)
     pub fn values(&self) -> (u8, u8, u8, u8) {
         (self.red, self.green, self.blue, self.alpha)
+    }
+}
+
+impl From<u32> for Color {
+    fn from(mut val: u32) -> Self {
+        // Ignore first two bits, we don't care about alpha
+        val <<= 2;
+        let values = unsafe { ::std::mem::transmute::<u32, [u8; 4]>(val) };
+        Color::solid_color(values[2], values[1], values[0])
     }
 }

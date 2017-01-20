@@ -1,20 +1,18 @@
 use std::ops::{Deref, DerefMut};
 use rustwlc::{Geometry, Size, Point};
 use super::super::borders::Borders;
-use ::render::{BaseDraw, Drawable, DrawErr, Color};
+use ::render::{BaseDraw, Drawable, DrawErr};
 
 /// Draws the borders around windows.
 /// They are all of the same size, including the top.
 pub struct BordersDraw {
-    base: BaseDraw<Borders>,
-    color: Color
+    base: BaseDraw<Borders>
 }
 
 impl BordersDraw {
-    pub fn new(base: BaseDraw<Borders>, color: Color) -> Self {
+    pub fn new(base: BaseDraw<Borders>) -> Self {
         BordersDraw {
-            base: base,
-            color: color
+            base: base
         }
     }
 
@@ -168,7 +166,8 @@ impl Drawable<Borders> for BordersDraw {
 
         self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
         self.base.paint();
-        self.base.set_color_source(self.color);
+        let color = Borders::color();
+        self.base.set_color_source(color);
 
         let Size { w, h } = border_g.size;
         let Point { x, y } = border_g.origin;

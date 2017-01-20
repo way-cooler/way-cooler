@@ -6,7 +6,7 @@ use rustwlc::render::{calculate_stride};
 use cairo::{ImageSurface, Format};
 
 use ::registry;
-use ::render::Renderable;
+use ::render::{Color, Renderable};
 
 /// The borders of a container.
 ///
@@ -114,6 +114,20 @@ impl Borders {
                     }
                 }).unwrap_or(0u32))
             }).unwrap_or(0u32)
+    }
+
+    pub fn color() -> Color {
+        let val = registry::get_data("border_color")
+            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num <= 0.0 {
+                        0u32
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0u32))
+            }).unwrap_or(0u32);
+        (val).into()
     }
 
     pub fn get_output(&self) -> WlcOutput {
