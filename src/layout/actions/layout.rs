@@ -302,6 +302,8 @@ impl LayoutTree {
                 _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
                                                                 ContainerType::Container)))
             }
+            container.resize_borders(new_geometry);
+            container.draw_borders();
         }
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
@@ -368,7 +370,6 @@ impl LayoutTree {
                 },
                 _ => unreachable!()
             }
-            container.resize_borders(geo);
             container.draw_borders();
         }
         for child_ix in self.tree.floating_children(node_ix) {
