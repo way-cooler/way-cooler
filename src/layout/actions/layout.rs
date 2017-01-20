@@ -361,8 +361,6 @@ impl LayoutTree {
         }
         {
             let container = &mut self.tree[node_ix];
-            let geo = container.get_geometry()
-                .expect("Container had no geometry");
             match *container {
                 Container::Container { .. } => { unimplemented!() },
                 Container::View { ref handle, .. } => {
