@@ -28,8 +28,6 @@ pub trait Renderable {
     /// Gets the geometry for where the buffer should be rendered on the output.
     fn get_geometry(&self) -> Geometry;
 
-    // TODO Why can't I just use reallocate_buffer here?
-
     /// Sets the geometry for where the buffer should be render on the output.
     fn set_geometry(&mut self, geometry: Geometry);
 
