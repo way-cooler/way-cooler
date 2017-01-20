@@ -39,6 +39,8 @@ mod ipc;
 
 mod layout;
 
+mod render;
+
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
