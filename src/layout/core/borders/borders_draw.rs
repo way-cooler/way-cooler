@@ -1,5 +1,5 @@
-use rustwlc::{Geometry, Size, Point, WlcOutput};
-
+use std::ops::{Deref, DerefMut};
+use rustwlc::{Geometry, Size, Point};
 use super::super::borders::Borders;
 use ::render::{BaseDraw, Drawable, DrawErr, Color};
 
@@ -159,8 +159,7 @@ impl Drawable<Borders> for BordersDraw {
         let mut border_g = view_g;
         let thickness = Borders::thickness();
         let edge_thickness = thickness / 2;
-        // TODO This doesn't seem right, wouldn't this break on multi-head output?
-        let output_res = WlcOutput::focused().get_resolution()
+        let output_res = self.inner().get_output().get_resolution()
             .expect("Could not get focused output's resolution");
         border_g.origin.x -= edge_thickness as i32;
         border_g.origin.y -= edge_thickness as i32;
@@ -186,5 +185,19 @@ impl Drawable<Borders> for BordersDraw {
         .draw_bottom_border(x, h, w, -edge_thickness, border_g, output_res)?;
 
         Ok(self.base.finish(border_g))
+    }
+}
+
+impl Deref for BordersDraw {
+    type Target = BaseDraw<Borders>;
+
+    fn deref(&self) -> &BaseDraw<Borders> {
+        &self.base
+    }
+}
+
+impl DerefMut for BordersDraw {
+    fn deref_mut(&mut self) -> &mut BaseDraw<Borders> {
+        &mut self.base
     }
 }

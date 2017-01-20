@@ -147,7 +147,6 @@ impl Container {
             fullscreen: false,
             geometry: geometry,
             id: Uuid::new_v4(),
-            // TODO Remove hardcoded 0
             borders: None
         }
     }

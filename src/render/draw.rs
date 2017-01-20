@@ -64,6 +64,12 @@ impl<T: Renderable> BaseDraw<T> {
         self.inner.set_geometry(border_g);
         self.inner
     }
+
+    /// Gets a reference to the inner T, which may have additional data
+    /// to use for rendering.
+    pub fn inner(&self) -> &T {
+        &self.inner
+    }
 }
 
 impl<T: Renderable> Deref for BaseDraw<T> {

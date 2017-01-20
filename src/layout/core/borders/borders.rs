@@ -115,6 +115,10 @@ impl Borders {
                 }).unwrap_or(0u32))
             }).unwrap_or(0u32)
     }
+
+    pub fn get_output(&self) -> WlcOutput {
+        self.output
+    }
 }
 
 impl Debug for Borders {
