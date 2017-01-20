@@ -84,7 +84,6 @@ impl Renderable for Borders {
         geometry.size.h += thickness;
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
-            warn!("Geometry is same size, not reallocating");
             return Some(self);
         }
         let stride = calculate_stride(w) as i32;
