@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/home/timidger/.config/way-cooler/bar.py", line 64, in <module>
-    main()
-  File "/home/timidger/.config/way-cooler/bar.py", line 34, in main
-    sys.stdout.flush()
-BrokenPipeError: [Errno 32] Broken pipe
-Exception ignored in: <_io.TextIOWrapper name='<stdout>' mode='w' encoding='UTF-8'>
-BrokenPipeError: [Errno 32] Broken pipe
