@@ -6,7 +6,7 @@ dependencies = [
  "cairo-rs 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dbus 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dbus-macros 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "dummy-rustwlc 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dummy-rustwlc 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hlua 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -111,7 +111,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "dummy-rustwlc"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -469,7 +469,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum dbus-macros 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "e1e013b945c57472e5c016f3695114b00c774f03feed9b03df78a9759bb42beb"
 "checksum dlib 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "148bce4ce1c36c4509f29cb54e62c2bd265551a9b00b38070fad551a851866ec"
 "checksum dtoa 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0dd841b58510c9618291ffa448da2e4e0f699d984d436122372f446dae62263d"
-"checksum dummy-rustwlc 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "80fd0e8a469407c0bee0b4cbc51df5827538bb22660efb1d5eb57a2dbffebb2c"
+"checksum dummy-rustwlc 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "00edc9e575e691ba41d0a22133554c236e598ad19bfd36a25140be56e7cfefbe"
 "checksum env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
 "checksum fixedbitset 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "88c3c33fc4c00db33f5174eb98aea809c4c007db0b71351d810a7e094ea3b64d"
 "checksum gcc 0.3.41 (registry+https://github.com/rust-lang/crates.io-index)" = "3689e1982a563af74960ae3a4758aa632bb8fd984cfc3cc3b60ee6109477ab6e"

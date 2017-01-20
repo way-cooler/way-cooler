@@ -8,6 +8,7 @@ use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
 use super::borders::{Borders, Color, Drawable, BorderDraw};
+use ::render::Renderable;
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -155,12 +156,13 @@ impl Container {
     pub fn new_view(handle: WlcView) -> Container {
         let geometry = handle.get_geometry()
             .expect("View had no geometry");
+        let output = handle.get_output();
         Container::View {
             handle: handle,
             floating: false,
             effective_geometry: geometry,
             id: Uuid::new_v4(),
-            borders: Borders::new(geometry)
+            borders: Borders::new(geometry, output)
         }
     }
 
@@ -450,11 +452,17 @@ impl Container {
     /// Panics on non-`View`/`Container`s
     pub fn resize_borders(&mut self, geo: Geometry) {
         match *self {
-            Container::View { ref mut borders, ..} |
-            Container::Container {  ref mut borders, ..} => {
+            Container::View { handle, ref mut borders, ..}  => {
+                let output = handle.get_output();
                 *borders = borders.take().and_then(|b| b.reallocate_buffer(geo))
-                    .or_else(|| Borders::new(geo));
+                    .or_else(|| Borders::new(geo, output));
             },
+            Container::Container { ref mut borders, ..} => {
+                // TODO FIXME
+                let output = WlcOutput::focused();
+                *borders = borders.take().and_then(|b| b.reallocate_buffer(geo))
+                    .or_else(|| Borders::new(geo, output));
+            }
             ref container => {
                 error!("Tried to resize border to {:#?} on {:#?}", geo, container);
                 panic!("Expected a View/Container, got a different type")

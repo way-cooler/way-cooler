@@ -28,7 +28,7 @@ getopts = "0.2"
 cairo-rs = "0.1.1"
 
 [dev-dependencies]
-dummy-rustwlc = "0.4.3"
+dummy-rustwlc = "0.4.4"
 
 [features]
 static-wlc = ["rustwlc/static-wlc"]

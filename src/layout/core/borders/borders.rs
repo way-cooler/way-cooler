@@ -7,6 +7,7 @@ use cairo::{self, Context, ImageSurface, Format, Operator};
 
 use super::draw::BaseDraw;
 use ::registry;
+use ::render::Renderable;
 
 /// The borders of a container.
 ///
@@ -18,11 +19,13 @@ pub struct Borders {
     /// The geometry where the buffer is written.
     ///
     /// Should correspond with the geometry of the container.
-    pub geometry: Geometry
+    pub geometry: Geometry,
+    /// The output where the buffer is written to.
+    output: WlcOutput
 }
 
-impl Borders {
-    pub fn new(mut geometry: Geometry) -> Option<Self> {
+impl Renderable for Borders {
+    fn new(mut geometry: Geometry, output: WlcOutput) -> Option<Self> {
         let thickness = Borders::thickness();
         if thickness == 0 {
             return None
@@ -44,36 +47,25 @@ impl Borders {
                                                     stride);
         Some(Borders {
             surface: surface,
-            geometry: geometry
+            geometry: geometry,
+            output: output
         })
     }
 
-    pub fn render(&mut self) {
-        let mut buffer = self.surface.get_data()
-            .expect("Could not get border surface buffer");
-        // TODO Replace this with output of handle.get_output().get_resolution()
-        let output_res = WlcOutput::focused().get_resolution()
-            .expect("Could not get focused output's resolution");
-        let mut geometry = self.geometry;
+    fn get_surface(&mut self) -> &mut ImageSurface {
+        &mut self.surface
+    }
 
-        // If the buffer would clip the side, keep it within the bounds
-        // This is done because wlc wraps if it goes beyond, which we don't
-        // want for the borders.
-        if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
-            geometry.origin.x -= offset as i32;
-        }
-        if geometry.origin.y + geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (geometry.origin.y + geometry.size.h as i32) - output_res.h as i32;
-            geometry.origin.y -= offset as i32;
-        }
-        if geometry.origin.x < 0 {
-            geometry.origin.x = 0;
-        }
-        if geometry.origin.y < 0 {
-            geometry.origin.y = 0;
-        }
-        write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &mut buffer);
+    fn get_geometry(&self) -> Geometry {
+        self.geometry
+    }
+
+    fn set_geometry(&mut self, geometry: Geometry) {
+        self.geometry = geometry;
+    }
+
+    fn get_output(&self) -> WlcOutput {
+        self.output
     }
 
     /// Updates/Creates the underlying geometry for the surface/buffer.
@@ -81,7 +73,7 @@ impl Borders {
     /// This causes a reallocation of the buffer, do not call this
     /// in a tight loop unless you want memory fragmentation and
     /// bad performance.
-    pub fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
+    fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
         // Add the thickness to the geometry.
         let thickness = Borders::thickness();
         if thickness == 0 {
@@ -109,25 +101,9 @@ impl Borders {
         self.surface = surface;
         Some(self)
     }
+}
 
-    /// Enables Cairo drawing capabilities on the borders.
-    ///
-    /// While drawing with Cairo, the underlying surface cannot be read.
-    /// Borders is consumed in order for this to be checked at compile time.
-    pub fn enable_cairo(self) -> Result<BaseDraw, cairo::Status> {
-        let cairo = Context::new(&self.surface);
-        match cairo.status() {
-            cairo::Status::Success => {},
-            err => return Err(err)
-        }
-        cairo.set_operator(Operator::Source);
-        match cairo.status() {
-            cairo::Status::Success => {},
-            err => return Err(err)
-        }
-        Ok(BaseDraw::new(self, cairo))
-    }
-
+impl Borders {
     pub fn thickness() -> u32 {
         registry::get_data("border_size")
             .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
