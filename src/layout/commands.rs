@@ -333,7 +333,7 @@ impl Tree {
         view.set_mask(output.get_mask());
         let has_parent = view.get_parent() != WlcView::root();
         if view.get_type() != ViewType::empty() || has_parent {
-            try!(tree.add_floating_view(view));
+            try!(tree.add_floating_view(view, None));
         } else {
             try!(tree.add_view(view));
             tree.normalize_view(view);

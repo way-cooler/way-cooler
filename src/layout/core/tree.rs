@@ -5,13 +5,15 @@ use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+use ::render::{Renderable};
 use super::super::LayoutTree;
 use super::super::ActionErr;
 use super::container::{Container, ContainerType, Layout, Handle};
-use super::super::actions::focus::FocusError;
-use super::super::actions::movement::MovementError;
-use super::super::actions::layout::LayoutErr;
-use super::super::actions::resize::ResizeErr;
+use super::borders::{Borders};
+use ::layout::actions::focus::FocusError;
+use ::layout::actions::movement::MovementError;
+use ::layout::actions::layout::LayoutErr;
+use ::layout::actions::resize::ResizeErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -290,7 +292,6 @@ impl LayoutTree {
     }
 
     /// Add a new view container with the given WlcView to the active container
-    #[allow(dead_code)]
     pub fn add_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
         if let Some(mut active_ix) = self.active_container {
             let parent_ix = try!(self.tree.parent_of(active_ix)
@@ -303,8 +304,12 @@ impl LayoutTree {
                 active_ix = try!(self.tree.parent_of(active_ix)
                                  .map_err(|err| TreeError::PetGraph(err)));
             }
+            let geometry = view.get_geometry()
+                .expect("View had no geometry");
+            let output = view.get_output();
+            let borders = Borders::new(geometry, output);
             let view_ix = self.tree.add_child(active_ix,
-                                              Container::new_view(view),
+                                              Container::new_view(view, borders),
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
@@ -324,10 +329,11 @@ impl LayoutTree {
     /// Adds a new view container with the given WlcView to the workspace of the active container.
     ///
     /// The view is automatically made floating, with no modifications to its geometry.
-    pub fn add_floating_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
+    pub fn add_floating_view(&mut self, view: WlcView, borders: Option<Borders>)
+                             -> Result<&Container, TreeError> {
         if let Some(root_ix) = self.root_container_ix() {
             let view_ix = self.tree.add_child(root_ix,
-                                             Container::new_view(view),
+                                             Container::new_view(view, borders),
                                              false);
             self.tree[view_ix].set_floating(true)
                 .expect("Could not float view we just made");

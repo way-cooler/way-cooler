@@ -156,16 +156,15 @@ impl Container {
     }
 
     /// Creates a new view container with the given handle
-    pub fn new_view(handle: WlcView) -> Container {
+    pub fn new_view(handle: WlcView, borders: Option<Borders>) -> Container {
         let geometry = handle.get_geometry()
             .expect("View had no geometry");
-        let output = handle.get_output();
         Container::View {
             handle: handle,
             floating: false,
             effective_geometry: geometry,
             id: Uuid::new_v4(),
-            borders: Borders::new(geometry, output)
+            borders: borders
         }
     }
 
@@ -472,10 +471,10 @@ impl Container {
     /// Panics on non-`View`/`Container`s
     pub fn resize_borders(&mut self, geo: Geometry) {
         match *self {
-            Container::View { handle, ref mut borders, ..}  => {
-                let output = handle.get_output();
-                *borders = borders.take().and_then(|b| b.reallocate_buffer(geo))
-                    .or_else(|| Borders::new(geo, output));
+            Container::View { ref mut borders, ..}  => {
+                if let Some(borders_) = borders.take() {
+                    *borders = borders_.reallocate_buffer(geo)
+                }
             },
             Container::Container { ref mut borders, ..} => {
                 // TODO FIXME
