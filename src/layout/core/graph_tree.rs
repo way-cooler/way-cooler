@@ -754,14 +754,14 @@ mod tests {
                                                 Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         tree
     }
 
@@ -798,7 +798,7 @@ mod tests {
         }
         let fake_view = WlcView::root();
         let root_container_ix = tree.descendant_of_type(root_ix, ContainerType::Container).unwrap();
-        let container = Container::new_view(fake_view);
+        let container = Container::new_view(fake_view, None);
         let container_uuid = container.get_id();
         tree.add_child(root_container_ix, container.clone(), false);
         let only_view = &tree[tree.descendant_of_type(root_ix, ContainerType::View).unwrap()];

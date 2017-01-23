@@ -577,7 +577,7 @@ mod tests {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
         });
-        let view = Container::new_view(WlcView::root());
+        let view = Container::new_view(WlcView::root(), None);
 
         /* Container first, the only thing we can set the layout on */
         let layout = match container {
@@ -617,7 +617,7 @@ mod tests {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
         });
-        let mut view = Container::new_view(WlcView::root());
+        let mut view = Container::new_view(WlcView::root(), None);
         // by default, none are floating.
         assert!(!root.floating());
         assert!(!output.floating());

@@ -789,14 +789,14 @@ pub mod tests {
                                                 Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), true);
+                                                Container::new_view(fake_view_1.clone(), None), true);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         let mut layout_tree = LayoutTree {
             tree: tree,
             active_container: None
