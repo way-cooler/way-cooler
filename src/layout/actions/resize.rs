@@ -28,7 +28,7 @@ impl LayoutTree {
                 _ => return Err(TreeError::UuidWrongType(container.get_id(),
                                                         vec!(ContainerType::View)))
             }
-            let geo = container.get_geometry()
+            let geo = container.get_actual_geometry()
                 .expect("Could not get geometry of the container");
 
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
