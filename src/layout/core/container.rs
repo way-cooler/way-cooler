@@ -471,9 +471,15 @@ impl Container {
     /// Panics on non-`View`/`Container`s
     pub fn resize_borders(&mut self, geo: Geometry) {
         match *self {
-            Container::View { ref mut borders, ..}  => {
+            Container::View { handle, ref mut borders, ..}  => {
                 if let Some(borders_) = borders.take() {
                     *borders = borders_.reallocate_buffer(geo)
+                } else {
+                    let thickness = Borders::thickness();
+                    if thickness > 0 {
+                        let output = handle.get_output();
+                        *borders = Borders::new(geo, output);
+                    }
                 }
             },
             Container::Container { ref mut borders, ..} => {
