@@ -502,7 +502,6 @@ impl LayoutTree {
             _ => unreachable!()
         };
         let result = Ok(container);
-        self.focus_on_next_container(parent_ix);
         // Remove parent container if it is a non-root container and has no other children
         let parent_type = self.tree[parent_ix].get_type();
         match parent_type {
@@ -514,6 +513,7 @@ impl LayoutTree {
             }
             _ => {},
         }
+        self.focus_on_next_container(parent_ix);
         trace!("Removed container {:?}, index {:?}", result, node_ix);
         result
     }
