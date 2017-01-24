@@ -113,7 +113,9 @@ pub fn init() {
         match maybe_init_file {
             Ok(init_file) => {
                 let _: () = lua.execute_from_reader(init_file)
-                    .expect("Unable to load init file");
+                    .map(|r| { debug!("Read init.lua successfully"); r })
+                    .or_else(|_| lua.execute(init_path::DEFAULT_CONFIG))
+                    .expect("Unable to load pre-compiled init file");
                 debug!("Read init.lua successfully");
             }
             Err(_) => {
