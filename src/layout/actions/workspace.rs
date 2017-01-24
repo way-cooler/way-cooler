@@ -245,3 +245,18 @@ impl LayoutTree {
             .expect("next_work_ix was not a workspace");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ::layout::core::tree::tests::basic_tree;
+
+    #[test]
+    pub fn switch_empty_workspaces() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("5");
+        tree.switch_to_workspace("4");
+        tree.switch_to_workspace("5");
+        tree.switch_to_workspace("4");
+        tree.switch_to_workspace("2");
+    }
+}

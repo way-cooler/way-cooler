@@ -4,15 +4,17 @@
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+use rustwlc::{ResizeEdge, WlcView, WlcOutput,
+              RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+use ::render::{Renderable};
 use super::super::LayoutTree;
 use super::super::ActionErr;
-use super::container::{Container, ContainerType, Layout, Handle};
-use super::super::actions::focus::FocusError;
-use super::super::actions::movement::MovementError;
-use super::super::actions::layout::LayoutErr;
-use super::super::actions::resize::ResizeErr;
-use super::super::actions::background::BackgroundErr;
+use super::container::{Container, ContainerType, ContainerErr, Layout, Handle};
+use super::borders::{Borders};
+use ::layout::actions::focus::FocusError;
+use ::layout::actions::movement::MovementError;
+use ::layout::actions::layout::LayoutErr;
+use ::layout::actions::resize::ResizeErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -103,11 +105,10 @@ pub enum TreeError {
     Layout(LayoutErr),
     /// An error occurred while trying to resize the layout
     Resize(ResizeErr),
-    /// An error occurred while trying to do something with the background
-    /// of an output
-    Background(BackgroundErr),
     /// An error occurred while attempting to modify or use the main action
     Action(ActionErr),
+    /// An error occurred while trying to do something with a container
+    Container(ContainerErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
     PerformingAction(bool),
@@ -192,6 +193,12 @@ impl LayoutTree {
                 self.active_container.map(|node| node.index().to_string())
                 .unwrap_or("not set".into()),
                 node_ix.index());
+        if let Some(active_ix) = self.active_container {
+            self.tree[active_ix].clear_border_color()
+                .expect("Could not clear border color");
+        }
+        self.tree[node_ix].active_border_color()
+            .expect("Could set active border color");
         self.active_container = Some(node_ix);
         let c_type; let id;
         {
@@ -208,6 +215,10 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
+        /// Need to layout workspace to set active border correctly.
+        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+            .expect("View/Container did not have a workspace associated with it");
+        self.layout(workspace_ix);
         Ok(())
     }
 
@@ -306,8 +317,12 @@ impl LayoutTree {
                 active_ix = try!(self.tree.parent_of(active_ix)
                                  .map_err(|err| TreeError::PetGraph(err)));
             }
+            let geometry = view.get_geometry()
+                .expect("View had no geometry");
+            let output = view.get_output();
+            let borders = Borders::new(geometry, output);
             let view_ix = self.tree.add_child(active_ix,
-                                              Container::new_view(view),
+                                              Container::new_view(view, borders),
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
@@ -327,10 +342,11 @@ impl LayoutTree {
     /// Adds a new view container with the given WlcView to the workspace of the active container.
     ///
     /// The view is automatically made floating, with no modifications to its geometry.
-    pub fn add_floating_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
+    pub fn add_floating_view(&mut self, view: WlcView, borders: Option<Borders>)
+                             -> Result<&Container, TreeError> {
         if let Some(root_ix) = self.root_container_ix() {
             let view_ix = self.tree.add_child(root_ix,
-                                             Container::new_view(view),
+                                             Container::new_view(view, borders),
                                              false);
             self.tree[view_ix].set_floating(true)
                 .expect("Could not float view we just made");
@@ -486,7 +502,6 @@ impl LayoutTree {
             _ => unreachable!()
         };
         let result = Ok(container);
-        self.focus_on_next_container(parent_ix);
         // Remove parent container if it is a non-root container and has no other children
         let parent_type = self.tree[parent_ix].get_type();
         match parent_type {
@@ -498,6 +513,7 @@ impl LayoutTree {
             }
             _ => {},
         }
+        self.focus_on_next_container(parent_ix);
         trace!("Removed container {:?}, index {:?}", result, node_ix);
         result
     }
@@ -786,14 +802,14 @@ pub mod tests {
                                                 Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), true);
+                                                Container::new_view(fake_view_1.clone(), None), true);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         let mut layout_tree = LayoutTree {
             tree: tree,
             active_container: None
@@ -1373,7 +1389,6 @@ pub mod tests {
         tree.validate_path();
         tree.switch_to_workspace("3");
         tree.validate_path();
-        println!("{:#?}", tree);
         tree.switch_to_workspace("1");
 
         // Try sending things to other workspaces

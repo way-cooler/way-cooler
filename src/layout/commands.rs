@@ -192,6 +192,11 @@ pub fn set_performing_action(val: Option<Action>) {
 
 // TODO Remove all instances of self.0.tree, that should be abstracted in LayoutTree.
 
+/* These commands are the interface that the rest of Way Cooler has to the
+ * tree. Any action done, whether through a callback, or from the IPC/Lua thread
+ * it will have to go through one of these methods.
+ */
+
 /// These commands are the interface that the rest of Way Cooler has to the
 /// tree. Any action done, whether through a callback, or from the IPC/Lua thread
 /// it will have to go through one of these methods.
@@ -328,7 +333,7 @@ impl Tree {
         view.set_mask(output.get_mask());
         let has_parent = view.get_parent() != WlcView::root();
         if view.get_type() != ViewType::empty() || has_parent {
-            try!(tree.add_floating_view(view));
+            try!(tree.add_floating_view(view, None));
         } else {
             try!(tree.add_view(view));
             tree.normalize_view(view);
@@ -524,6 +529,15 @@ impl Tree {
         if container.floating() {
             container.set_geometry(ResizeEdge::empty(), geometry)
         }
+        Ok(())
+    }
+
+    /// Renders the borders for the view.
+    pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
+        let id = try!(self.lookup_view(view)
+                      .map_err(|_|TreeError::ViewNotFound(view)));
+        let container = try!(self.0.lookup_mut(id));
+        container.render_borders();
         Ok(())
     }
 }

@@ -7,6 +7,10 @@ pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
+use super::borders::{Borders, BordersDraw};
+use super::tree::TreeError;
+use ::render::{Renderable, Drawable};
+use ::layout::commands::CommandResult;
 use super::bar::Bar;
 
 /// A handle to either a view or output
@@ -29,6 +33,13 @@ pub enum ContainerType {
     Container,
     /// A view (window)
     View
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContainerErr {
+    /// A bad operation on the container type.
+    /// The human readable string provides more context.
+    BadOperationOn(ContainerType, &'static str)
 }
 
 impl ContainerType {
@@ -94,6 +105,8 @@ pub enum Container {
         geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
+        /// The border drawn to the screen
+        borders: Option<Borders>,
     },
     /// View or window
     View {
@@ -107,6 +120,8 @@ pub enum Container {
         effective_geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
+        /// The border drawn to the screen
+        borders: Option<Borders>,
     }
 }
 
@@ -144,19 +159,21 @@ impl Container {
             floating: false,
             fullscreen: false,
             geometry: geometry,
-            id: Uuid::new_v4()
+            id: Uuid::new_v4(),
+            borders: None
         }
     }
 
     /// Creates a new view container with the given handle
-    pub fn new_view(handle: WlcView) -> Container {
+    pub fn new_view(handle: WlcView, borders: Option<Borders>) -> Container {
         let geometry = handle.get_geometry()
-            .expect("Handle had no geometry");
+            .expect("View had no geometry");
         Container::View {
             handle: handle,
             floating: false,
             effective_geometry: geometry,
-            id: Uuid::new_v4()
+            id: Uuid::new_v4(),
+            borders: borders
         }
     }
 
@@ -422,6 +439,109 @@ impl Container {
             }
         }
     }
+
+
+    pub fn render_borders(&mut self) {
+        match *self {
+            Container::View { ref mut borders, .. } |
+            Container::Container { ref mut borders, .. } => {
+                if let Some(borders) = borders.as_mut() {
+                    borders.render();
+                }
+            },
+            _ => panic!("Tried to render a non-view / non-container")
+        }
+    }
+
+    pub fn draw_borders(&mut self) {
+        // TODO Eventually, we should use an enum to choose which way to draw the
+        // border, but for now this will do.
+        match *self {
+            Container::View { ref mut borders, handle, .. } => {
+                if let Some(borders_) = borders.take() {
+                    let geometry = handle.get_geometry()
+                        .expect("View had no geometry");
+                    // TODO Don't hard code color
+                    *borders = BordersDraw::new(borders_.enable_cairo().unwrap())
+                        .draw(geometry).ok();
+                }
+            },
+            Container::Container { ref mut borders, .. } => {
+                borders.take();
+            },
+            _ => panic!("Tried to render a non-view / non-container")
+        }
+    }
+
+    /// Resizes the border buffer to fit within this geometry, if the
+    /// `View`/`Container` has a border wrapping it.
+    ///
+    /// # Panics
+    /// Panics on non-`View`/`Container`s
+    pub fn resize_borders(&mut self, geo: Geometry) {
+        match *self {
+            Container::View { handle, ref mut borders, ..}  => {
+                if let Some(borders_) = borders.take() {
+                    *borders = borders_.reallocate_buffer(geo)
+                } else {
+                    let thickness = Borders::thickness();
+                    if thickness > 0 {
+                        let output = handle.get_output();
+                        *borders = Borders::new(geo, output);
+                    }
+                }
+            },
+            Container::Container { ref mut borders, ..} => {
+                // TODO FIXME
+                let output = WlcOutput::focused();
+                *borders = borders.take().and_then(|b| b.reallocate_buffer(geo))
+                    .or_else(|| Borders::new(geo, output));
+            }
+            ref container => {
+                error!("Tried to resize border to {:#?} on {:#?}", geo, container);
+                panic!("Expected a View/Container, got a different type")
+            }
+        }
+    }
+
+    /// Set the border color on a view or container to be the active color.
+    ///
+    /// If called on a non-view/container, returns an appropriate error.
+    pub fn active_border_color(&mut self) -> CommandResult {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { ref mut borders, .. } |
+            Container::Container { ref mut borders, .. }=> {
+                if let Some(borders_) = borders.as_mut() {
+                    let color = Borders::active_color();
+                    borders_.set_color(color);
+                }
+                Ok(())
+            },
+            _ => Err(TreeError::Container(
+                ContainerErr::BadOperationOn(c_type,
+                                               "active_border_color")))
+        }
+    }
+
+    /// Clears the border color on a view or container.
+    ///
+    /// If called on a non-view/container, returns an appropriate error.
+    pub fn clear_border_color(&mut self) -> CommandResult {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { ref mut borders, .. } |
+            Container::Container { ref mut borders, .. }=> {
+                if let Some(borders_) = borders.as_mut() {
+                    borders_.set_color(None);
+                }
+                Ok(())
+            },
+            _ => Err(TreeError::Container(
+                ContainerErr::BadOperationOn(c_type,
+                                             "active_border_color")))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -511,7 +631,7 @@ mod tests {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
         });
-        let view = Container::new_view(WlcView::root());
+        let view = Container::new_view(WlcView::root(), None);
 
         /* Container first, the only thing we can set the layout on */
         let layout = match container {
@@ -551,7 +671,7 @@ mod tests {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
         });
-        let mut view = Container::new_view(WlcView::root());
+        let mut view = Container::new_view(WlcView::root(), None);
         // by default, none are floating.
         assert!(!root.floating());
         assert!(!output.floating());
