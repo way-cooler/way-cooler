@@ -726,7 +726,7 @@ impl LayoutTree {
                 container.resize_borders(geometry);
             }
         }
-        for child_ix in self.tree.children_of(node_ix) {
+        for child_ix in self.tree.grounded_children(node_ix) {
             try!(self.add_borders(child_ix))
         }
         Ok(())

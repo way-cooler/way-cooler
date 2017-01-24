@@ -166,7 +166,7 @@ impl Drawable<Borders> for BordersDraw {
 
         self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
         self.base.paint();
-        let color = Borders::color();
+        let color = self.base.inner().color();
         self.base.set_color_source(color);
 
         let Size { w, h } = border_g.size;

@@ -4,11 +4,12 @@
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+use rustwlc::{ResizeEdge, WlcView, WlcOutput,
+              RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use ::render::{Renderable};
 use super::super::LayoutTree;
 use super::super::ActionErr;
-use super::container::{Container, ContainerType, Layout, Handle};
+use super::container::{Container, ContainerType, ContainerErr, Layout, Handle};
 use super::borders::{Borders};
 use ::layout::actions::focus::FocusError;
 use ::layout::actions::movement::MovementError;
@@ -106,6 +107,8 @@ pub enum TreeError {
     Resize(ResizeErr),
     /// An error occurred while attempting to modify or use the main action
     Action(ActionErr),
+    /// An error occurred while trying to do something with a container
+    Container(ContainerErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
     PerformingAction(bool),
@@ -190,6 +193,12 @@ impl LayoutTree {
                 self.active_container.map(|node| node.index().to_string())
                 .unwrap_or("not set".into()),
                 node_ix.index());
+        if let Some(active_ix) = self.active_container {
+            self.tree[active_ix].clear_border_color()
+                .expect("Could not clear border color");
+        }
+        self.tree[node_ix].active_border_color()
+            .expect("Could set active border color");
         self.active_container = Some(node_ix);
         let c_type; let id;
         {
@@ -206,6 +215,10 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
+        /// Need to layout workspace to set active border correctly.
+        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
+            .expect("View/Container did not have a workspace associated with it");
+        self.layout(workspace_ix);
         Ok(())
     }
 

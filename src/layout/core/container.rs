@@ -8,7 +8,9 @@ use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
 
 use super::borders::{Borders, BordersDraw};
+use super::tree::TreeError;
 use ::render::{Renderable, Drawable};
+use ::layout::commands::CommandResult;
 use super::bar::Bar;
 
 /// A handle to either a view or output
@@ -31,6 +33,13 @@ pub enum ContainerType {
     Container,
     /// A view (window)
     View
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContainerErr {
+    /// A bad operation on the container type.
+    /// The human readable string provides more context.
+    BadOperationOn(ContainerType, &'static str)
 }
 
 impl ContainerType {
@@ -492,6 +501,45 @@ impl Container {
                 error!("Tried to resize border to {:#?} on {:#?}", geo, container);
                 panic!("Expected a View/Container, got a different type")
             }
+        }
+    }
+
+    /// Set the border color on a view or container to be the active color.
+    ///
+    /// If called on a non-view/container, returns an appropriate error.
+    pub fn active_border_color(&mut self) -> CommandResult {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { ref mut borders, .. } |
+            Container::Container { ref mut borders, .. }=> {
+                if let Some(borders_) = borders.as_mut() {
+                    let color = Borders::active_color();
+                    borders_.set_color(color);
+                }
+                Ok(())
+            },
+            _ => Err(TreeError::Container(
+                ContainerErr::BadOperationOn(c_type,
+                                               "active_border_color")))
+        }
+    }
+
+    /// Clears the border color on a view or container.
+    ///
+    /// If called on a non-view/container, returns an appropriate error.
+    pub fn clear_border_color(&mut self) -> CommandResult {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { ref mut borders, .. } |
+            Container::Container { ref mut borders, .. }=> {
+                if let Some(borders_) = borders.as_mut() {
+                    borders_.set_color(None);
+                }
+                Ok(())
+            },
+            _ => Err(TreeError::Container(
+                ContainerErr::BadOperationOn(c_type,
+                                             "active_border_color")))
         }
     }
 }
