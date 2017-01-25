@@ -1,6 +1,6 @@
 //! Commands from the user to manipulate the tree
 
-use super::{try_lock_tree, try_lock_action};
+use super::{try_lock_tree, lock_tree, try_lock_action};
 use super::{Action, ActionErr, Bar, Container, ContainerType,
             Direction, Handle, Layout, TreeError};
 use super::Tree;
@@ -159,7 +159,7 @@ pub fn move_active_down() {
 }
 
 pub fn tree_as_json() -> Json {
-    if let Ok(tree) = try_lock_tree() {
+    if let Ok(tree) = lock_tree() {
         tree.0.to_json()
     } else {
         Json::Null
