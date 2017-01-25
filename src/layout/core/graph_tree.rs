@@ -3,7 +3,7 @@
 
 use std::iter::Iterator;
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 
@@ -697,36 +697,7 @@ impl InnerTree {
             node_ix = parent_ix;
         }
     }
-
-    /// Gets the next sibling (if any) to focus on, assuming node_ix would be removed
-    /// from its parent.
-    pub fn next_sibling(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
-        let parent_ix = self.parent_of(node_ix)
-            .expect("Could not get parent of node!");
-        let children = self.children_of(parent_ix);
-        let mut prev_index = None;
-        for (index, sibling_ix) in children.iter().enumerate() {
-            if node_ix == *sibling_ix {
-                prev_index = Some(index);
-                break;
-            }
-        }
-        if prev_index.is_none() {
-            panic!("Could not find child in parent node");
-        }
-        let prev_index = prev_index.unwrap();
-        if children.len() == 1 {
-            return None
-        }
-        if prev_index == children.len() - 1 {
-            Some(children[children.len() - 2])
-        } else {
-            Some(children[prev_index + 1])
-        }
-    }
 }
-
-use std::ops::{Index, IndexMut};
 
 impl Index<NodeIndex> for InnerTree {
     type Output = Container;
@@ -783,14 +754,14 @@ mod tests {
                                                 Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         tree
     }
 
@@ -827,7 +798,7 @@ mod tests {
         }
         let fake_view = WlcView::root();
         let root_container_ix = tree.descendant_of_type(root_ix, ContainerType::Container).unwrap();
-        let container = Container::new_view(fake_view);
+        let container = Container::new_view(fake_view, None);
         let container_uuid = container.get_id();
         tree.add_child(root_container_ix, container.clone(), false);
         let only_view = &tree[tree.descendant_of_type(root_ix, ContainerType::View).unwrap()];

@@ -15,7 +15,7 @@ use super::rust_interop;
 use super::init_path;
 use super::super::keys;
 
-use ::layout::{try_lock_tree, ContainerType};
+use ::layout::{lock_tree, ContainerType};
 
 lazy_static! {
     /// Sends requests to the Lua thread
@@ -113,7 +113,9 @@ pub fn init() {
         match maybe_init_file {
             Ok(init_file) => {
                 let _: () = lua.execute_from_reader(init_file)
-                    .expect("Unable to load init file");
+                    .map(|r| { debug!("Read init.lua successfully"); r })
+                    .or_else(|_| lua.execute(init_path::DEFAULT_CONFIG))
+                    .expect("Unable to load pre-compiled init file");
                 debug!("Read init.lua successfully");
             }
             Err(_) => {
@@ -134,11 +136,16 @@ pub fn init() {
         }));
 
     // Re-tile the layout tree, to make any changes appear immediantly.
-    if let Ok(mut tree) = try_lock_tree() {
+    if let Ok(mut tree) = lock_tree() {
         tree.layout_active_of(ContainerType::Root)
             .unwrap_or_else(|_| {
                 warn!("Lua thread could not re-tile the layout tree");
-            })
+            });
+        // Yeah this is silly, it's so the active border can be updated properly.
+        if let Some(active_id) = tree.active_id() {
+            tree.focus(active_id)
+                .expect("Could not focus on the focused id");
+        }
     }
 
     // Only ready after loading libs

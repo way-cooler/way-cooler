@@ -64,7 +64,6 @@ pub fn write_lock<'a>() -> RwLockWriteGuard<'a, RegMap> {
 pub fn get_field(name: &str) -> Option<RegistryField> {
     // clone() will either clone an Arc or an Arc+AccessFlags
     let result = read_lock().get(name).map(|v| v.clone());
-    trace!("get: {} => {:?}", name, &result);
     return result;
 }
 

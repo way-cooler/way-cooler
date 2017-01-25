@@ -61,6 +61,9 @@ way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
 way_cooler.bar = "lemonbar"
 
 way_cooler.gap_size = 0 -- The width of gaps between windows in pixels
+way_cooler.border_size = 20 -- The width of the borders between windows
+way_cooler.border_color = 0x386890 -- The color of the borders
+way_cooler.active_border_color = 0x57beb9 -- Color of active container borders
 
 local keys = {
   -- Open dmenu

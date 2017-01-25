@@ -10,7 +10,7 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-rustwlc = "0.5.3"
+rustwlc = "0.5.5"
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
@@ -25,9 +25,10 @@ nix = "0.6"
 uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
 wayland-sys = { version = "^0.6.0", features = ["client", "dlopen"] }
 getopts = "0.2"
+cairo-rs = "0.1.1"
 
 [dev-dependencies]
-dummy-rustwlc = "0.5.1"
+dummy-rustwlc = "0.4.4"
 
 [features]
 static-wlc = ["rustwlc/static-wlc"]

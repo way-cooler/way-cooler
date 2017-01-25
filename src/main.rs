@@ -23,6 +23,7 @@ extern crate nix;
 extern crate petgraph;
 extern crate uuid;
 extern crate dbus;
+extern crate cairo;
 
 #[macro_use]
 mod macros;
@@ -37,6 +38,8 @@ mod commands;
 mod ipc;
 
 mod layout;
+
+mod render;
 
 use std::env;
 use std::fs::File;
@@ -179,7 +182,8 @@ fn main() {
     log_environment();
     detect_proprietary();
     // This prepares wlc, doesn't run main loop until run_wlc is called
-    let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
+    let run_wlc = rustwlc::init()
+        .expect("Unable to initialize wlc!");
     rustwlc::log_set_rust_handler(log_handler);
     callbacks::init();
     commands::init();

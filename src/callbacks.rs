@@ -3,13 +3,14 @@
 #![allow(deprecated)] // keysyms
 
 use rustwlc::handle::{WlcOutput, WlcView};
-use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size, Point, Geometry,
-                     ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_FULLSCREEN, VIEW_RESIZING, VIEW_MAXIMIZED,
+use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
+                     Point, Geometry, ResizeEdge, ViewState,
+                     VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
 
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType,
+use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, ContainerType,
                     MovementError, TreeError, FocusError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
@@ -99,13 +100,19 @@ pub extern fn view_created(view: WlcView) -> bool {
             size: resolution
         };
         view.set_geometry(ResizeEdge::empty(), fullscreen);
-        if let Ok(mut tree) = try_lock_tree() {
+        if let Ok(mut tree) = lock_tree() {
             let outputs = tree.outputs();
-            return tree.add_background(view, outputs.as_slice()).is_ok();
+            return tree.add_background(view, outputs.as_slice()).map(|_| true)
+                .unwrap_or_else(|err| {
+                    error!("Could not add background due to {:?}", err);
+                    true
+                })
+        } else {
+            error!("Could not lock tree");
         }
         return false
     }
-    if let Ok(mut tree) = try_lock_tree() {
+    if let Ok(mut tree) = lock_tree() {
         let result = tree.add_view(view).and_then(|_| {
             view.set_state(VIEW_MAXIMIZED, true);
             match tree.set_active_view(view) {
@@ -260,7 +267,6 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
     if state == ButtonState::Pressed {
         let mouse_mod = keys::mouse_modifier();
         if button == LEFT_CLICK && !view.is_root() {
-            info!("User left clicked w/ mods \"{:?}\" on {:?}", mods, view);
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).unwrap_or_else(|_| {
                     // still focus on view, even if not in tree.
@@ -410,6 +416,18 @@ pub extern fn compositor_terminating() {
 
 }
 
+pub extern fn view_pre_render(view: WlcView) {
+    if let Ok(mut tree) = lock_tree() {
+        tree.render_borders(view).unwrap_or_else(|err| {
+            match err {
+                // TODO Only filter if background or bar
+                TreeError::ViewNotFound(_) => {},
+                err => warn!("Error while rendering borders: {:?}", err)
+            }
+        })
+    }
+}
+
 
 pub fn init() {
     use rustwlc::callback;
@@ -432,5 +450,6 @@ pub fn init() {
     callback::pointer_motion(pointer_motion);
     callback::compositor_ready(compositor_ready);
     callback::compositor_terminate(compositor_terminating);
+    callback::view_render_pre(view_pre_render);
     trace!("Registered wlc callbacks");
 }
