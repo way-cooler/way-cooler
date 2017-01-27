@@ -244,7 +244,7 @@ impl LayoutTree {
             return Err(TreeError::Movement(MovementError::NotFloating(node_ix)))
         }
         match *container {
-            Container::View { handle, .. } => {
+            Container::View { handle, ref mut effective_geometry, .. } => {
                 let dx = point.x - old_point.x;
                 let dy = point.y - old_point.y;
                 let mut geo = handle.get_geometry()
@@ -252,14 +252,15 @@ impl LayoutTree {
                 geo.origin.x += dx;
                 geo.origin.y += dy;
                 handle.set_geometry(ResizeEdge::empty(), geo);
-                container.draw_borders();
-                Ok(())
+                effective_geometry.origin = geo.origin;
             },
             Container::Container { id, .. } | Container::Workspace { id, .. } |
             Container::Output { id, .. } | Container::Root(id) => {
-                Err(TreeError::UuidWrongType(id, vec!(ContainerType::View)))
+                return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View)))
             }
         }
+        container.draw_borders();
+        Ok(())
     }
 }
 
