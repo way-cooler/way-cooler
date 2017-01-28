@@ -196,6 +196,7 @@ impl LayoutTree {
         if let Some(active_ix) = self.active_container {
             self.tree[active_ix].clear_border_color()
                 .expect("Could not clear border color");
+            self.tree[active_ix].draw_borders();
         }
         self.tree[node_ix].active_border_color()
             .expect("Could set active border color");
@@ -215,10 +216,7 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
-        /// Need to layout workspace to set active border correctly.
-        let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace)
-            .expect("View/Container did not have a workspace associated with it");
-        self.layout(workspace_ix);
+        self.tree[node_ix].draw_borders();
         Ok(())
     }
 
