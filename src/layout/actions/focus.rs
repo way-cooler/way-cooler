@@ -302,17 +302,4 @@ impl LayoutTree {
             Ok(())
         }
     }
-
-
-    /// Normalizes the geometry of a view to be the same size as it's siblings,
-    /// based on the parent container's layout, at the 0 point of the parent container.
-    /// Note this does not auto-tile, only modifies this one view.
-    ///
-    /// Useful if a container's children want to be evenly distributed, or a new view
-    /// is being added.
-    pub fn normalize_view(&mut self, view: WlcView) {
-        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
-            self.normalize_container(view_ix);
-        }
-    }
 }
