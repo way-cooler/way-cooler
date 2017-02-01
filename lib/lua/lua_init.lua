@@ -1,4 +1,14 @@
 -- Private table of Rust functions
+
+-- TODO
+-- remove "config", put everything into way_cooler table
+-- it'll have windows, keys, etc. No way to just "set a value",
+-- because the "registry" will actually have order to it now
+-- You'll need to add it to some category, which we will allow to be done
+-- e.g way_cooler.foo = { baz: 5}
+-- this will make a new table for foo that has one entry baz set to 5
+-- will need ugly check in get_index to make sure we know what we are accessing,
+-- but hey whatever it'll look nice and let it be extended later easily
 local rust = __rust
 __rust = nil
 
@@ -6,6 +16,8 @@ local way_cooler_table = {}
 local way_cooler_mt = {}
 local config_table = {}
 local config_mt = {}
+local windows_table = {}
+local windows_mt = {}
 __key_map = {}
 
 -- Initialize the workspaces
@@ -116,9 +128,13 @@ config_mt.__to_string = function(_table)
 end
 way_cooler_mt.__metatable = "Cannot modify"
 config_mt.__metatable = "Cannot modify"
+windows_table.__metatable = "Cannot modify"
 
 config = config_table
-setmetatable(config, config_mt)
+config.windows = windows_table
 way_cooler = way_cooler_table
+
+setmetatable(config.windows, windows_mt)
+setmetatable(config, config_mt)
 setmetatable(way_cooler, way_cooler_mt)
 setmetatable(__key_map, { __metatable = "cannot modify" })

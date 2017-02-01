@@ -1,26 +1,6 @@
--- Lua configuration file for way-cooler.
+-- Lua configuration file for way-cooler. Ran at startup and when restarted.
 
---
--- Layouts
---
-
---[[ Layout code is not implemented at this time, sorry.
-
--- The default layout options are no names, mode = "default" (use keybindings).
--- For a list of tiling options, see way-cooler docs or `man way-cooler-tiling`.
--- Workspaces, like arrays in Lua, start with 1.
-local workspace_settings = {
-  -- The first workspace is named web
-  [1] = { name = "web" },
-  -- The 9th workspace is named "free", and all windows sent there float.
-  [9] = { name = "free", mode = "float" },
-}
-
--- Create 9 workspaces with the given settings.
-config.init_workspaces(workspace_settings) -- Not implemented yet
-
-]]
-
+-- TODO Move somewhere, or just remove
 --
 -- Background
 --
@@ -50,7 +30,10 @@ way_cooler.background = 0x5E4055
 
 -- Modifier key used in keybindings. Mod3 = Alt, Mod4 = Super/Logo key
 mod = "Alt"
-local key = config.key -- Alias key so it's faster to type
+
+-- Aliases to save on typing
+local key = config.key
+local windows = config.windows
 
 way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
 
@@ -60,10 +43,18 @@ way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
 -- Make sure you add the script to start your bar in the init function!
 way_cooler.bar = "lemonbar"
 
-way_cooler.gap_size = 0 -- The width of gaps between windows in pixels
-way_cooler.border_size = 20 -- The width of the borders between windows
-way_cooler.border_color = 0x386890 -- The color of the borders
-way_cooler.active_border_color = 0x57beb9 -- Color of active container borders
+
+-- These options are applied to all windows.
+windows.all = {
+  gaps = { -- Options for gaps
+    size = 0, -- The width of gaps between windows in pixels
+  },
+  borders = { -- Options for borders
+    size = 20, -- The width of the borders between windows in pixels
+    inactive_color = 0x386890, -- Color of the borders for inactive containers
+    active_color = 0x57beb9 -- Color of active container borders
+  }
+}
 
 local keys = {
   -- Open dmenu
@@ -101,7 +92,7 @@ local keys = {
   key({ mod, "Shift" }, "r", "way_cooler_restart")
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
-  -- This my be modifiable in the future
+  -- If rebound, then clears the keybinding for Alt+Shift+Esc
 }
 
 -- Add Mod + X bindings to switch to workspace X, Mod+Shift+X send active to X
@@ -135,6 +126,7 @@ function way_cooler_init()
   end
 end
 
+-- TODO can I just set these inline?
 --- Execute some code when Way Cooler restarts
 function way_cooler_restart()
   cleanup_background()
@@ -155,6 +147,3 @@ way_cooler.on_terminate(way_cooler_terminate)
 
 -- To add your own Lua files:
 -- require("my-config.lua") -- Or use utils.hostname
-
--- !! Do not place any code after this comment.
--- !! way-cooler and plugins may insert auto-generated code.
