@@ -5,6 +5,9 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use rustc_serialize::json::{Json};
 
+mod registry;
+mod category;
+
 #[cfg(test)]
 pub mod tests;
 
