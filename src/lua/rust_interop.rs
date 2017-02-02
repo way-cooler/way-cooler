@@ -47,13 +47,10 @@ fn ipc_run(command: String) -> Result<(), &'static str> {
 /// IPC 'get' handler
 fn ipc_get(key: String) -> ValueResult {
     match registry::get_data(&key) {
-        Ok(regdata) => {
-            let arc_data = regdata.resolve();
-            Ok(json_to_lua(arc_data.deref().clone()))
+        Ok(data) => {
+            Ok(json_to_lua(data.deref().clone()))
         },
         Err(err) => match err {
-            RegistryError::InvalidOperation =>
-                Err("Cannot get that key, use set or assign"),
             RegistryError::KeyNotFound =>
                 Err("Key not found")
         }
@@ -71,18 +68,14 @@ fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
         false => {
             registry::set_json(key.clone(), json.clone())
         }
-    }.map(|data| data.call(json.clone()))
-        .or_else(|err| {
-            match err {
-                RegistryError::InvalidOperation => {
-                    Err("That value can not be set!")
-                },
-                RegistryError::KeyNotFound => {
-                    registry::insert_json(key, json.clone());
-                    Ok(())
-                }
+    }.map(|_| ()).or_else(|err| {
+        match err {
+            RegistryError::KeyNotFound => {
+                registry::insert_json(key, json.clone());
+                Ok(())
             }
-        })
+        }
+    })
 }
 
 fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {

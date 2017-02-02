@@ -108,8 +108,7 @@ impl Renderable for Borders {
 
 impl Borders {
     pub fn thickness() -> u32 {
-        registry::get_data("border_size")
-            .map(registry::RegistryGetData::resolve).and_then(|data| {
+        registry::get_data("border_size").and_then(|data| {
                 Ok(data.as_f64().map(|num| {
                     if num <= 0.0 {
                         0u32
@@ -124,8 +123,7 @@ impl Borders {
     ///
     /// If the value is unset, black borders are returned.
     pub fn default_color() -> Color {
-        let val = registry::get_data("border_color")
-            .map(registry::RegistryGetData::resolve).and_then(|data| {
+        let val = registry::get_data("border_color").and_then(|data| {
                 Ok(data.as_f64().map(|num| {
                     if num <= 0.0 {
                         0u32
@@ -139,8 +137,7 @@ impl Borders {
 
     /// Gets the active border color, if one is set.
     pub fn active_color() -> Option<Color> {
-        let val = registry::get_data("active_border_color")
-            .map(registry::RegistryGetData::resolve).and_then(|data| {
+        let val = registry::get_data("active_border_color").and_then(|data| {
                 Ok(data.as_f64().map(|num| {
                     if num <= 0.0 {
                         0u32

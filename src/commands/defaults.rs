@@ -6,7 +6,7 @@ use std::thread;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
-use registry::{self, RegistryError, RegistryGetData};
+use registry::{self, RegistryError};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
@@ -108,8 +108,7 @@ pub fn register_defaults() {
 #[deny(dead_code)]
 
 fn launch_terminal() {
-    let command = registry::get_data("terminal")
-        .map(RegistryGetData::resolve).and_then(|data| {
+    let command = registry::get_data("terminal").and_then(|data| {
         data.as_string().map(str::to_string)
             .ok_or(RegistryError::KeyNotFound)
     }).unwrap_or("weston-terminal".to_string());

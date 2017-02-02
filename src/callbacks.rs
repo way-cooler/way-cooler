@@ -15,7 +15,7 @@ use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, Container
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
-use registry::{self, RegistryError, RegistryGetData};
+use registry::{self, RegistryError};
 
 /// If the event is handled by way-cooler
 const EVENT_BLOCKED: bool = true;
@@ -67,8 +67,7 @@ pub extern fn output_resolution(output: WlcOutput,
 
 pub extern fn view_created(view: WlcView) -> bool {
     debug!("view_created: {:?}: \"{}\"", view, view.get_title());
-    let bar = registry::get_data("bar")
-        .map(RegistryGetData::resolve).and_then(|data| {
+    let bar = registry::get_data("bar").and_then(|data| {
             data.as_string().map(str::to_string)
                 .ok_or(RegistryError::KeyNotFound)
         });

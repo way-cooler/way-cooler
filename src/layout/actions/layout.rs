@@ -10,7 +10,7 @@ use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
 
-use registry::{self, RegistryGetData};
+use registry::{self};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
@@ -656,8 +656,7 @@ impl LayoutTree {
             _ => return Err(TreeError::UuidNotAssociatedWith(
                 ContainerType::Container))
         };
-        let gap = registry::get_data("gap_size")
-            .map(RegistryGetData::resolve).and_then(|data| {
+        let gap = registry::get_data("gap_size").and_then(|data| {
                 Ok(data.as_f64().map(|num| {
                     if num <= 0.0 {
                         0u32
