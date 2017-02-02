@@ -109,7 +109,7 @@ pub fn register_defaults() {
 
 fn launch_terminal() {
     let command = registry::get_data("terminal")
-        .map(RegistryGetData::resolve).and_then(|(_, data)| {
+        .map(RegistryGetData::resolve).and_then(|data| {
         data.as_string().map(str::to_string)
             .ok_or(RegistryError::KeyNotFound)
     }).unwrap_or("weston-terminal".to_string());

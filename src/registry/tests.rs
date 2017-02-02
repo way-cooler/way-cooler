@@ -7,31 +7,30 @@ use rustc_serialize::json::{Json, ToJson};
 
 use registry;
 use registry::{RegMap, RegistryField, GetFn, SetFn,
-               AccessFlags, FieldType};
+               FieldType};
 
 /// Gets the initial HashMap used by the registry
 pub fn registry_map() -> RegMap {
     let mut map = HashMap::new();
 
-    let values: Vec<(&str, AccessFlags, Json)> = vec![
-        ("bool",  AccessFlags::all(), BOOL.to_json()),
-        ("u64",   AccessFlags::all(), U64.to_json()),
-        ("i64",   AccessFlags::all(), I64.to_json()),
-        ("f64",   AccessFlags::all(), F64.to_json()),
-        ("text",  AccessFlags::all(), TEXT.to_json()),
-        ("point", AccessFlags::all(), POINT.to_json()),
-        ("null",  AccessFlags::all(), Json::Null),
-        ("u64s",  AccessFlags::all(), Json::Array(u64s())),
+    let values: Vec<(&str, Json)> = vec![
+        ("bool",  BOOL.to_json()),
+        ("u64",   U64.to_json()),
+        ("i64",   I64.to_json()),
+        ("f64",   F64.to_json()),
+        ("text",  TEXT.to_json()),
+        ("point", POINT.to_json()),
+        ("null",  Json::Null),
+        ("u64s",  Json::Array(u64s())),
 
-        ("readonly",  AccessFlags::READ(),  READONLY.to_json()),
-        ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
-        ("noperms",   AccessFlags::empty(), NO_PERMS.to_json())
+        ("readonly",  READONLY.to_json()),
+        ("writeonly", WRITEONLY.to_json()),
+        ("noperms",   NO_PERMS.to_json())
     ];
 
-    for (name, flags, json) in values.into_iter() {
+    for (name, json) in values.into_iter() {
         assert!(map.insert(name.to_string(),
                            RegistryField::Object {
-                               flags: flags,
                                data: Arc::new(json)
                            }).is_none(), "Duplicate element inserted!");
     }
@@ -124,17 +123,17 @@ fn contains_keys() {
 #[test]
 fn key_info() {
     let keys = [
-        ("bool", FieldType::Object, AccessFlags::all()),
-        ("u64",  FieldType::Object, AccessFlags::all()),
-        ("readonly", FieldType::Object, AccessFlags::READ()),
-        ("writeonly", FieldType::Object, AccessFlags::WRITE()),
-        ("prop", FieldType::Property, AccessFlags::all()),
-        ("noperms", FieldType::Object, AccessFlags::empty()),
-        ("get_prop", FieldType::Property, AccessFlags::READ()),
-        ("set_prop", FieldType::Property, AccessFlags::WRITE()),
+        ("bool", FieldType::Object),
+        ("u64",  FieldType::Object),
+        ("readonly", FieldType::Object),
+        ("writeonly", FieldType::Object),
+        ("prop", FieldType::Property),
+        ("noperms", FieldType::Object),
+        ("get_prop", FieldType::Property),
+        ("set_prop", FieldType::Property)
     ];
-    for &(key, type_, flags) in keys.into_iter() {
-        assert!(registry::key_info(key) == Some((type_, flags)),
+    for &(key, type_) in keys.into_iter() {
+        assert!(registry::key_info(key) == Some((type_)),
                 "Invalid flags for {}", key);
     }
 }
@@ -142,25 +141,24 @@ fn key_info() {
 #[test]
 fn objects_and_keys_equal() {
     let values = vec![
-        ("bool",  AccessFlags::all(), BOOL.to_json()),
-        ("u64",   AccessFlags::all(), U64.to_json()),
-        ("i64",   AccessFlags::all(), I64.to_json()),
-        ("f64",   AccessFlags::all(), F64.to_json()),
-        ("text",  AccessFlags::all(), TEXT.to_json()),
-        ("point", AccessFlags::all(), POINT.to_json()),
-        ("null",  AccessFlags::all(), Json::Null),
-        ("u64s",  AccessFlags::all(), Json::Array(u64s())),
+        ("bool",  BOOL.to_json()),
+        ("u64",   U64.to_json()),
+        ("i64",   I64.to_json()),
+        ("f64",   F64.to_json()),
+        ("text",  TEXT.to_json()),
+        ("point", POINT.to_json()),
+        ("null",  Json::Null),
+        ("u64s",  Json::Array(u64s())),
 
-        ("readonly",  AccessFlags::READ(),  READONLY.to_json()),
-        ("writeonly", AccessFlags::WRITE(), WRITEONLY.to_json()),
-        ("noperms",   AccessFlags::empty(), NO_PERMS.to_json())
+        ("readonly",  READONLY.to_json()),
+        ("writeonly", WRITEONLY.to_json()),
+        ("noperms",   NO_PERMS.to_json())
     ];
 
-    for (name, flags, json) in values.into_iter() {
-        let (found_flags, found) = registry::get_data(name)
+    for (name, json) in values.into_iter() {
+        let found = registry::get_data(name)
             .expect(&format!("Unable to get key {}", name))
             .resolve();
-        assert_eq!(found_flags, flags);
         assert_eq!(*found, json);
     }
 }
@@ -168,21 +166,20 @@ fn objects_and_keys_equal() {
 #[test]
 fn key_perms() {
     let perms = vec![
-        ("bool",      AccessFlags::all()),
-        ("readonly",  AccessFlags::READ()),
-        ("writeonly", AccessFlags::WRITE()),
-        ("prop",      AccessFlags::all()),
-        ("get_prop", AccessFlags::READ()),
+        ("bool"),
+        ("readonly"),
+        ("writeonly"),
+        ("prop"),
+        ("get_prop"),
         //("set_prop", AccessFlags::WRITE())
     ];
 
-    for (name, flags) in perms.into_iter() {
+    for name in perms.into_iter() {
         let found_data = registry::get_data(name)
             .expect(&format!("Could not get data for {}", name));
 
-        let (found_flags, _) = found_data.resolve();
+        let _ = found_data.resolve();
         println!("Testing flags for {}", name);
-        assert_eq!(found_flags, flags);
     }
 }
 
@@ -191,7 +188,7 @@ fn property_get() {
     let prop_read = registry::get_data("get_prop")
         .expect("Couldn't get prop_read");
 
-    assert_eq!(*prop_read.resolve().1, PROP_GET_RESULT.to_json());
+    assert_eq!(*prop_read.resolve(), PROP_GET_RESULT.to_json());
 }
 
 #[test]
@@ -200,7 +197,7 @@ fn panicking_property_get() {
     let prop_read = registry::get_data("get_panic_prop")
         .expect("Couldn't get prop_read");
 
-    assert_eq!(*prop_read.resolve().1, PROP_GET_RESULT.to_json());
+    assert_eq!(*prop_read.resolve(), PROP_GET_RESULT.to_json());
 }
 
 #[test]

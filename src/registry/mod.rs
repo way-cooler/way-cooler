@@ -72,16 +72,12 @@ pub fn get_field(name: &str) -> Option<RegistryField> {
 pub fn get_data(name: &str) -> RegistryResult<RegistryGetData> {
     get_field(name).ok_or(RegistryError::KeyNotFound)
         .and_then(|val| match val {
-            RegistryField::Object { flags, data } =>
-                Ok(RegistryGetData::Object(flags, data)),
-            RegistryField::Property { get: maybe_get, set: maybe_set } =>
+            RegistryField::Object { data } =>
+                Ok(RegistryGetData::Object(data)),
+            RegistryField::Property { get: maybe_get, .. } =>
                 match maybe_get {
                     Some(get) => {
-                        let mut flags = AccessFlags::READ();
-                        if maybe_set.is_some() {
-                            flags.insert(AccessFlags::WRITE());
-                        }
-                        Ok(RegistryGetData::Property(flags, get))
+                        Ok(RegistryGetData::Property(get))
                     }
                     None => Err(RegistryError::InvalidOperation)
                 },
@@ -91,11 +87,11 @@ pub fn get_data(name: &str) -> RegistryResult<RegistryGetData> {
 /// Get a Rust structure from the registry
 #[allow(dead_code)]
 pub fn get_struct<T>(name: &str)
-                     -> RegistryResult<(AccessFlags, Result<T, DecoderError>)>
+                     -> RegistryResult<Result<T, DecoderError>>
 where T: Decodable {
     get_data(name).map(|data| data.resolve())
-        .map(|(flags, json)|
-             (flags, T::decode(&mut Decoder::new(json.deref().clone()))))
+        .map(|json|
+             T::decode(&mut Decoder::new(json.deref().clone())))
 }
 
 /// Set a value to the given registry field.
@@ -105,11 +101,10 @@ pub fn insert_field(key: String, value: RegistryField) -> Option<RegistryField> 
 }
 
 /// Add the json object to the registry
-pub fn insert_json(key: String, flags: AccessFlags, value: Json)
+pub fn insert_json(key: String, value: Json)
                    -> Option<RegistryField> {
     write_lock().insert(key,
                         RegistryField::Object {
-                            flags: flags,
                             data: Arc::new(value)
                         })
 }
@@ -123,21 +118,17 @@ pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
         },
         Entry::Occupied(mut entry) => {
             let first_type = entry.get().get_type();
-            let flags = entry.get().get_flags();
-            if !flags.contains(AccessFlags::WRITE()) {
-                return Err(RegistryError::InvalidOperation)
-            }
             if first_type == FieldType::Object {
                 return Ok(RegistrySetData::Displaced(
                     entry.insert(RegistryField::Object {
-                        flags: flags, data: Arc::new(json)
+                        data: Arc::new(json)
                     }).as_object()
-                        .expect("Just created object").1));
+                        .expect("Just created object")));
             }
             else if first_type == FieldType::Property {
                 match entry.get().clone().as_property_set() {
                     Some(func) =>
-                        return Ok(RegistrySetData::Property(flags, func)),
+                        return Ok(RegistrySetData::Property(func)),
                     // None: should not happen
                     None => return Err(RegistryError::InvalidOperation)
                 }
@@ -158,18 +149,17 @@ pub fn set_json_ignore_flags(key: String, json: Json) -> RegistryResult<Registry
         },
         Entry::Occupied(mut entry) => {
             let first_type = entry.get().get_type();
-            let flags = entry.get().get_flags();
             if first_type == FieldType::Object {
                 return Ok(RegistrySetData::Displaced(
                     entry.insert(RegistryField::Object {
-                        flags: flags, data: Arc::new(json)
+                        data: Arc::new(json)
                     }).as_object()
-                        .expect("Just created object").1));
+                        .expect("Just created object")));
             }
             else if first_type == FieldType::Property {
                 match entry.get().clone().as_property_set() {
                     Some(func) =>
-                        return Ok(RegistrySetData::Property(flags, func)),
+                        return Ok(RegistrySetData::Property(func)),
                     // None: should not happen
                     None => return Err(RegistryError::InvalidOperation)
                 }
@@ -183,10 +173,9 @@ pub fn set_json_ignore_flags(key: String, json: Json) -> RegistryResult<Registry
 
 /// Set an object/property in the registry to a value using a ToJson.
 #[allow(dead_code)]
-pub fn insert_struct<T: ToJson>(key: String, flags: AccessFlags, value: T)
+pub fn insert_struct<T: ToJson>(key: String, value: T)
                              -> Option<RegistryField> {
     insert_field(key, RegistryField::Object {
-        flags: flags,
         data: Arc::new(value.to_json()) })
 }
 
@@ -201,8 +190,8 @@ pub fn insert_property(key: String, get_fn: Option<GetFn>, set_fn: Option<SetFn>
 ///
 /// Returns `None` if the key does not exist.
 #[allow(dead_code)]
-pub fn key_info(key: &str) -> Option<(FieldType, AccessFlags)> {
+pub fn key_info(key: &str) -> Option<FieldType> {
     trace!("key_info: {}", key);
     let read_reg = read_lock();
-    read_reg.get(key).map(|field| (field.get_type(), field.get_flags()))
+    read_reg.get(key).map(|field| (field.get_type()))
 }

@@ -68,7 +68,7 @@ pub extern fn output_resolution(output: WlcOutput,
 pub extern fn view_created(view: WlcView) -> bool {
     debug!("view_created: {:?}: \"{}\"", view, view.get_title());
     let bar = registry::get_data("bar")
-        .map(RegistryGetData::resolve).and_then(|(_, data)| {
+        .map(RegistryGetData::resolve).and_then(|data| {
             data.as_string().map(str::to_string)
                 .ok_or(RegistryError::KeyNotFound)
         });

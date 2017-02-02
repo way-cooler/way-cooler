@@ -6,7 +6,7 @@ use std::ops::Deref;
 use hlua::{self, Lua, LuaTable};
 use hlua::any::AnyLuaValue;
 
-use registry::{self, RegistryError, AccessFlags};
+use registry::{self, RegistryError};
 use commands;
 use keys::{self, KeyPress, KeyEvent};
 use convert::json::{json_to_lua, lua_to_json};
@@ -48,12 +48,8 @@ fn ipc_run(command: String) -> Result<(), &'static str> {
 fn ipc_get(key: String) -> ValueResult {
     match registry::get_data(&key) {
         Ok(regdata) => {
-            let (flags, arc_data) = regdata.resolve();
-            if flags.contains(AccessFlags::READ()) {
-                Ok(json_to_lua(arc_data.deref().clone()))
-            } else {
-                Err("Cannot read that key")
-            }
+            let arc_data = regdata.resolve();
+            Ok(json_to_lua(arc_data.deref().clone()))
         },
         Err(err) => match err {
             RegistryError::InvalidOperation =>
@@ -82,7 +78,7 @@ fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
                     Err("That value can not be set!")
                 },
                 RegistryError::KeyNotFound => {
-                    registry::insert_json(key, AccessFlags::READ(), json.clone());
+                    registry::insert_json(key, json.clone());
                     Ok(())
                 }
             }

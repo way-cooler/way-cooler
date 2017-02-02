@@ -9,6 +9,8 @@
 -- this will make a new table for foo that has one entry baz set to 5
 -- will need ugly check in get_index to make sure we know what we are accessing,
 -- but hey whatever it'll look nice and let it be extended later easily
+
+-- Our connection to Rust functions exposed by Way Cooler
 local rust = __rust
 __rust = nil
 

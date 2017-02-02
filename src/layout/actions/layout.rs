@@ -657,7 +657,7 @@ impl LayoutTree {
                 ContainerType::Container))
         };
         let gap = registry::get_data("gap_size")
-            .map(RegistryGetData::resolve).and_then(|(_, data)| {
+            .map(RegistryGetData::resolve).and_then(|data| {
                 Ok(data.as_f64().map(|num| {
                     if num <= 0.0 {
                         0u32

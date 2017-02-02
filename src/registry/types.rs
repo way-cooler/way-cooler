@@ -6,41 +6,6 @@ use std::fmt::Result as FmtResult;
 
 use rustc_serialize::json::{Json, ToJson};
 
-bitflags! {
-    /// Access permissions for items in the registry
-    pub flags AccessFlags: u8 {
-        /// Clients can read/get the data
-        const READ    = 1 << 0,
-        /// Clients can write/set the data
-        const WRITE   = 1 << 1,
-    }
-}
-
-impl AccessFlags {
-    /// Read permissions
-    #[inline]
-    #[allow(non_snake_case)]
-    pub fn READ() -> AccessFlags { READ }
-
-    /// Write permissions
-    #[inline]
-    #[allow(non_snake_case)]
-    pub fn WRITE() -> AccessFlags { WRITE }
-}
-
-impl ToJson for AccessFlags {
-    fn to_json(&self) -> Json {
-        let mut arr = Vec::with_capacity(2);
-        if self.contains(READ) {
-            arr.push(Json::String("read".to_string()));
-        }
-        if self.contains(WRITE) {
-            arr.push(Json::String("write".to_string()))
-        }
-        Json::Array(arr)
-    }
-}
-
 /// Function which will yield an object
 pub type GetFn = Arc<Fn() -> Json + Send + Sync>;
 
@@ -56,8 +21,6 @@ pub enum FieldType { Object, Property }
 pub enum RegistryField {
     /// An object with permission flags
     Object {
-        /// Permission flags for Lua get/setting the value
-        flags: AccessFlags,
         /// Data associated with this value
         data: Arc<Json>
     },
@@ -74,9 +37,9 @@ pub enum RegistryField {
 #[derive(Clone)]
 pub enum RegistryGetData {
     /// An object in the registry
-    Object(AccessFlags, Arc<Json>),
+    Object(Arc<Json>),
     /// Get field of a property in the registry
-    Property(AccessFlags, GetFn)
+    Property(GetFn)
 }
 
 /// Result of what can be set to a registry value.
@@ -85,15 +48,14 @@ pub enum RegistrySetData {
     /// Some data was displaced, here it is
     Displaced(Arc<Json>),
     /// A property was retrieved, you should run it
-    Property(AccessFlags, SetFn)
+    Property(SetFn)
 }
 
 impl Debug for RegistryField {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            &RegistryField::Object { ref flags, ref data } =>
+            &RegistryField::Object { ref data } =>
                 f.debug_struct("RegistryField::Object")
-                .field("flags", flags as &Debug)
                 .field("data", data as &Debug).finish(),
             &RegistryField::Property { ref get, ref set } => {
                 let new_get = match get { &Some(_) => Some(true), &None => None };
@@ -110,12 +72,11 @@ impl Debug for RegistryField {
 impl Debug for RegistryGetData {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            &RegistryGetData::Object(ref flags, ref data) =>
+            &RegistryGetData::Object(ref data) =>
                 f.debug_struct("RegistryGetData::Object")
-                .field("flags", flags as &Debug)
                 .field("data", data as &Debug).finish(),
-            &RegistryGetData::Property(ref flags, _) =>
-                write!(f, "RegistryGetData::Property({:?})", flags)
+            &RegistryGetData::Property(_) =>
+                write!(f, "RegistryGetData::Property()")
         }
     }
 }
@@ -126,7 +87,7 @@ impl Debug for RegistrySetData {
             &RegistrySetData::Displaced(ref data) =>
                 f.debug_struct("RegistrySetData::Displaced")
                 .field("data", data as &Debug).finish(),
-            &RegistrySetData::Property(_, _) =>
+            &RegistrySetData::Property(_) =>
                 write!(f, "RegistrySetData::Property(...)")
         }
     }
@@ -143,9 +104,9 @@ impl ToJson for FieldType {
 
 impl RegistryField {
     /// Converts this RegistryField to maybe an object. Does not call property methods.
-    pub fn as_object(self) -> Option<(AccessFlags, Arc<Json>)> {
+    pub fn as_object(self) -> Option<Arc<Json>> {
         match self {
-            RegistryField::Object { flags, data } => Some((flags, data)),
+            RegistryField::Object { data } => Some(data),
             _ => None
         }
     }
@@ -176,20 +137,6 @@ impl RegistryField {
             &RegistryField::Property { .. } => FieldType::Property,
         }
     }
-
-    /// Gets the set of AccessFlags needed for a registry field with said
-    /// options
-    pub fn get_flags(&self) -> AccessFlags {
-        match *self {
-            RegistryField::Object { ref flags, .. } => flags.clone(),
-            RegistryField::Property { ref get, ref set } => {
-                let mut flags = AccessFlags::empty();
-                if get.is_some() { flags.insert(AccessFlags::READ()) }
-                if set.is_some() { flags.insert(AccessFlags::WRITE()) }
-                flags
-            }
-        }
-    }
 }
 
 impl RegistryGetData {
@@ -197,11 +144,11 @@ impl RegistryGetData {
     ///
     /// If this is a Json, returns the Json data. If this is a property, runs the
     /// method and returns the output.
-    pub fn resolve(self) -> (AccessFlags, Arc<Json>) {
+    pub fn resolve(self) -> Arc<Json> {
         match self {
-            RegistryGetData::Object(flags, data) => (flags, data),
-            RegistryGetData::Property(flags, get) =>
-                (flags, Arc::new(get()))
+            RegistryGetData::Object(data) => data,
+            RegistryGetData::Property(get) =>
+                Arc::new(get())
         }
     }
 
@@ -209,8 +156,8 @@ impl RegistryGetData {
     #[allow(dead_code)]
     pub fn get_type(&self) -> FieldType {
         match self {
-            &RegistryGetData::Property(_, _) => FieldType::Property,
-            &RegistryGetData::Object(_, _) => FieldType::Object
+            &RegistryGetData::Property(_) => FieldType::Property,
+            &RegistryGetData::Object(_) => FieldType::Object
         }
     }
 }
@@ -220,7 +167,7 @@ impl RegistrySetData {
     pub fn call(self, json: Json) {
         match self {
             RegistrySetData::Displaced(_) => (),
-            RegistrySetData::Property(_flags, set) => set(json)
+            RegistrySetData::Property(set) => set(json)
         }
     }
 
@@ -229,7 +176,7 @@ impl RegistrySetData {
     pub fn get_type(&self) -> FieldType {
         match *self {
             RegistrySetData::Displaced(_) => FieldType::Object,
-            RegistrySetData::Property(_, _) => FieldType::Property
+            RegistrySetData::Property(_) => FieldType::Property
         }
     }
 }
@@ -243,13 +190,12 @@ mod tests {
     #[test]
     fn registry_field_debug() {
         let field_obj = RegistryField::Object {
-            flags: AccessFlags::READ(),
             data: Arc::new(Json::String("foo".to_string()))
         };
         let field_prop = RegistryField::Property { get: None, set: None };
 
         assert_eq!(format!("{:?}", field_obj),
-            "RegistryField::Object { flags: READ, data: String(\"foo\") }");
+            "RegistryField::Object { data: String(\"foo\") }");
         assert_eq!(format!("{:?}", field_prop),
                    "RegistryField::Property { get: None, set: None }");
     }
@@ -257,9 +203,9 @@ mod tests {
     #[test]
     fn registry_get_data_debug() {
         let get_obj = RegistryGetData::Object(
-            AccessFlags::READ(), Arc::new(Json::String("foo".to_string())));
+            Arc::new(Json::String("foo".to_string())));
         assert_eq!(format!("{:?}", get_obj),
-              "RegistryGetData::Object { flags: READ, data: String(\"foo\") }");
+              "RegistryGetData::Object { data: String(\"foo\") }");
     }
 
     #[test]
@@ -270,13 +216,12 @@ mod tests {
         assert_eq!(prop.get_type(), FieldType::Property);
 
         let null_field = RegistryField::Object {
-            flags: AccessFlags::READ(),
             data: Arc::new(Json::Null)
         };
 
         /* Set Data */
         assert_eq!(null_field.get_type(), FieldType::Object);
-        let null_data = null_field.clone().as_object().unwrap().1;
+        let null_data = null_field.clone().as_object().unwrap();
         assert_eq!(*null_data, Json::Null);
         let prop = RegistrySetData::Displaced(null_data);
         assert_eq!(prop.get_type(), FieldType::Object);
@@ -284,23 +229,20 @@ mod tests {
         // send function
         fn send(_json: Json) {}
 
-        let set_prop = RegistrySetData::Property(AccessFlags::WRITE(),
-                                                 Arc::new(send));
+        let set_prop = RegistrySetData::Property(Arc::new(send));
         assert_eq!(set_prop.get_type(), FieldType::Property);
 
         /* Get Data */
         assert_eq!(null_field.get_type(), FieldType::Object);
-        let null_data = null_field.as_object().unwrap().1;
+        let null_data = null_field.as_object().unwrap();
         assert_eq!(*null_data, Json::Null);
-        let prop = RegistryGetData::Object(AccessFlags::READ(),
-                                           null_data.clone());
+        let prop = RegistryGetData::Object(null_data.clone());
         assert_eq!(prop.get_type(), FieldType::Object);
 
         // send function
         fn _get() -> Json { panic!()}
 
-        let set_prop = RegistryGetData::Property(AccessFlags::WRITE(),
-                                                 Arc::new(_get));
+        let set_prop = RegistryGetData::Property(Arc::new(_get));
         assert_eq!(set_prop.get_type(), FieldType::Property);
     }
 }
