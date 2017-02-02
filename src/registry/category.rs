@@ -13,6 +13,7 @@ pub type DataMap = HashMap<String, Json>;
 /// A category that has a canonical name, and some data.
 ///
 /// The `Category` can be used exactly like a hash map.
+#[derive(Clone, Debug)]
 pub struct Category<'category> {
     name: Cow<'category, str>,
     data: HashMap<String, Json>

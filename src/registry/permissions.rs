@@ -13,16 +13,31 @@
 //! This is the only way to access the registry, allowing the underlying
 //! implementation to be simple and allow later optimizations.
 
+use std::borrow::Cow;
 use std::collections::hash_map::HashMap;
 use super::category::Category;
+use super::REGISTRY2;
 
 /// The mapping of category to the permissions the client has for that category.
-pub type AccessMapping<'category> = HashMap<Category<'category>, Permissions>;
+pub type AccessMapping<'category> = HashMap<Cow<'category, str>, Permissions>;
+/// The result of trying to use a `Client` to access a `Category`.
+pub type ClientResult<'category, T> = Result<T, ClientErr<'category>>;
+
+/// The different ways the `Client` can fail trying to access a `Category`.
+#[derive(Clone, Debug)]
+pub enum ClientErr<'category> {
+    /// A Category does not exist (from the `Client`s perspective)
+    DoesNotExist(Cow<'category, str>),
+    /// The `Client` has insufficient permissions to do that operation on
+    /// the provided category.
+    InsufficientPermissions
+}
 
 /// The different ways a client can access the data in a `Category`.
 ///
 /// If a permission for a particular `Category` is omitted, the client by
 /// definition cannot access the `Category` from its `Client`.
+#[derive(Clone, Copy, Debug)]
 pub enum Permissions {
     /// The client can read all data associated with a `Category`.
     Read,
@@ -33,6 +48,7 @@ pub enum Permissions {
 /// The way a client program accesses the categories in the registry.
 ///
 /// Has a mapping of known `Category`s and its associated permissions.
+#[derive(Clone, Debug)]
 pub struct Client<'category> {
     access: AccessMapping<'category>
 }
@@ -43,5 +59,17 @@ impl<'category> Client<'category> {
         Client {
             access: access
         }
+    }
+
+    /// Returns read access to the category.
+    pub fn read(&self, category: Cow<'category, str>) -> ClientResult<Category> {
+        if !self.access.contains_key(&category) {
+            return Err(ClientErr::DoesNotExist(category))
+        }
+        // If it is contained in our mapping, we automatically have sufficient
+        // permissions to read it.
+        let reg = REGISTRY2.read().expect("Unable to read from registry!");
+        reg.category(category.clone()).or(Err(ClientErr::DoesNotExist(category)))
+            .map(|c| c.clone())
     }
 }
