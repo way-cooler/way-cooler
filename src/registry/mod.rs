@@ -7,6 +7,9 @@ use rustc_serialize::json::{Json};
 
 mod registry;
 mod category;
+mod permissions;
+
+use self::registry::Registry;
 
 #[cfg(test)]
 pub mod tests;
@@ -28,6 +31,7 @@ fn new_map() -> RegMap {
 lazy_static! {
     /// Static HashMap for the registry
     static ref REGISTRY: RwLock<RegMap> = RwLock::new(new_map());
+    static ref REGISTRY2: RwLock<Registry<'static>> = RwLock::new(Registry::new());
 }
 
 /// Error types that can happen

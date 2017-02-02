@@ -43,6 +43,10 @@ pub struct Registry<'category> {
 }
 
 impl<'category> Registry<'category> {
+    /// Makes a new registry, with no categories or data.
+    pub fn new() -> Self {
+        Registry { map: HashMap::new() }
+    }
     /// Looks up a category by its canonical name immutably.
     pub fn category(&self, category: Cow<'category, str>)
                     -> RegistryResult<&Category<'category>> {
