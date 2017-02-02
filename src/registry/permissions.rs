@@ -19,15 +19,15 @@ use super::category::Category;
 use super::REGISTRY2;
 
 /// The mapping of category to the permissions the client has for that category.
-pub type AccessMapping<'category> = HashMap<Cow<'category, str>, Permissions>;
+pub type AccessMapping = HashMap<String, Permissions>;
 /// The result of trying to use a `Client` to access a `Category`.
-pub type ClientResult<'category, T> = Result<T, ClientErr<'category>>;
+pub type ClientResult<T> = Result<T, ClientErr>;
 
 /// The different ways the `Client` can fail trying to access a `Category`.
 #[derive(Clone, Debug)]
-pub enum ClientErr<'category> {
+pub enum ClientErr {
     /// A Category does not exist (from the `Client`s perspective)
-    DoesNotExist(Cow<'category, str>),
+    DoesNotExist(String),
     /// The `Client` has insufficient permissions to do that operation on
     /// the provided category.
     InsufficientPermissions
@@ -49,20 +49,20 @@ pub enum Permissions {
 ///
 /// Has a mapping of known `Category`s and its associated permissions.
 #[derive(Clone, Debug)]
-pub struct Client<'category> {
-    access: AccessMapping<'category>
+pub struct Client {
+    access: AccessMapping
 }
 
-impl<'category> Client<'category> {
+impl Client {
     /// Makes a new client, with the given permissions.
-    pub fn new(access: AccessMapping<'category>) -> Self {
+    pub fn new(access: AccessMapping) -> Self {
         Client {
             access: access
         }
     }
 
     /// Returns read access to the category.
-    pub fn read(&self, category: Cow<'category, str>) -> ClientResult<Category> {
+    pub fn read(&self, category: String) -> ClientResult<Category> {
         if !self.access.contains_key(&category) {
             return Err(ClientErr::DoesNotExist(category))
         }

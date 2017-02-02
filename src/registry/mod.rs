@@ -31,7 +31,7 @@ fn new_map() -> RegMap {
 lazy_static! {
     /// Static HashMap for the registry
     static ref REGISTRY: RwLock<RegMap> = RwLock::new(new_map());
-    static ref REGISTRY2: RwLock<Registry<'static>> = RwLock::new(Registry::new());
+    static ref REGISTRY2: RwLock<Registry> = RwLock::new(Registry::new());
 }
 
 /// Error types that can happen

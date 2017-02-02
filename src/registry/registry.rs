@@ -15,20 +15,19 @@
 //! that the user of the registry can actually access the values its
 //! trying to access
 
-use std::borrow::Cow;
 use std::collections::hash_map::{Entry, HashMap};
 
 use super::category::Category;
 
 /// The result of doing an operation on the registry.
-pub type RegistryResult<'category, T> = Result<T, RegistryErr<'category>>;
+pub type RegistryResult<T> = Result<T, RegistryErr>;
 
 /// Ways accessing of accessing the registry incorrectly
-pub enum RegistryErr<'category> {
+pub enum RegistryErr {
     /// The category already exists, you cannot overwrite it.
-    CategoryExists(Cow<'category, str>),
+    CategoryExists(String),
     /// The category does not exist, it needs to be created.
-    CategoryDoesNotExist(Cow<'category, str>)
+    CategoryDoesNotExist(String)
 }
 
 /// The main store for the registry values. It tracks category names with
@@ -38,31 +37,30 @@ pub enum RegistryErr<'category> {
 ///
 /// All public access of the registry should go through an `registry::Access`
 /// object, to ensure that permissions are upheld.
-pub struct Registry<'category> {
-    map: HashMap<Cow<'category, str>, Category<'category>>
+pub struct Registry {
+    map: HashMap<String, Category>
 }
 
-impl<'category> Registry<'category> {
+impl Registry {
     /// Makes a new registry, with no categories or data.
     pub fn new() -> Self {
         Registry { map: HashMap::new() }
     }
     /// Looks up a category by its canonical name immutably.
-    pub fn category(&self, category: Cow<'category, str>)
-                    -> RegistryResult<&Category<'category>> {
+    pub fn category(&self, category: String) -> RegistryResult<&Category> {
         self.map.get(&category)
             .ok_or_else(|| RegistryErr::CategoryDoesNotExist(category))
     }
 
     /// Looks up a category by its canonical name mutably.
-    pub fn category_mut(&mut self, category: Cow<'category, str>)
-                        -> RegistryResult<&mut Category<'category>> {
+    pub fn category_mut(&mut self, category: String)
+                        -> RegistryResult<&mut Category> {
         self.map.get_mut(&category)
             .ok_or_else(|| RegistryErr::CategoryDoesNotExist(category))
     }
 
     /// Adds a new category to the registry. Fails if it already exists.
-    pub fn add_category(&mut self, category: Cow<'category, str>)
+    pub fn add_category(&mut self, category: String)
                         -> RegistryResult<()> {
         match self.map.entry(category.clone()) {
             Entry::Occupied(_) =>

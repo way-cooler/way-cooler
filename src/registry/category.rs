@@ -2,7 +2,6 @@
 //! These are the main stores of the data used by Way Cooler and its clients.
 
 use std::ops::{Deref, DerefMut};
-use std::borrow::{Borrow, Cow};
 use std::collections::hash_map::HashMap;
 
 use rustc_serialize::json::{Json};
@@ -14,16 +13,16 @@ pub type DataMap = HashMap<String, Json>;
 ///
 /// The `Category` can be used exactly like a hash map.
 #[derive(Clone, Debug)]
-pub struct Category<'category> {
-    name: Cow<'category, str>,
+pub struct Category {
+    name: String,
     data: HashMap<String, Json>
 }
 
 
-impl<'category> Category<'category> {
+impl Category {
     /// Makes a new category that has some name.
     /// Data mapping is initially empty.
-    pub fn new(name: Cow<'category, str>) -> Self {
+    pub fn new(name: String) -> Self {
         Category {
             name: name,
             data: HashMap::new()
@@ -32,11 +31,11 @@ impl<'category> Category<'category> {
 
     /// Gets the name of the Category.
     pub fn name(&self) -> &str {
-        self.name.borrow()
+        self.name.as_str()
     }
 }
 
-impl<'category> Deref for Category<'category> {
+impl Deref for Category {
     type Target = DataMap;
 
     fn deref(&self) -> &Self::Target {
@@ -44,7 +43,7 @@ impl<'category> Deref for Category<'category> {
     }
 }
 
-impl<'category> DerefMut for Category<'category> {
+impl DerefMut for Category {
     fn deref_mut(&mut self) -> &mut DataMap {
         &mut self.data
     }
