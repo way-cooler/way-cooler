@@ -109,14 +109,13 @@ impl Renderable for Borders {
 impl Borders {
     pub fn thickness() -> u32 {
         registry::get_data("border_size").and_then(|data| {
-                Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32)
+            let data = data.as_f64().unwrap_or(0f64);
+            if data <= 0.0 {
+                Ok(0u32)
+            } else {
+                Ok(data as u32)
+            }
+        }).unwrap_or(0u32)
     }
 
     /// Fetches the default color from the registry.
@@ -124,28 +123,26 @@ impl Borders {
     /// If the value is unset, black borders are returned.
     pub fn default_color() -> Color {
         let val = registry::get_data("border_color").and_then(|data| {
-                Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32);
+            let data = data.as_f64().unwrap_or(0f64);
+            if data <= 0.0 {
+                Ok(0u32)
+            } else {
+                Ok(data as u32)
+            }
+        }).unwrap_or(0u32);
         val.into()
     }
 
     /// Gets the active border color, if one is set.
     pub fn active_color() -> Option<Color> {
         let val = registry::get_data("active_border_color").and_then(|data| {
-                Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).ok();
+            let data = data.as_f64().unwrap_or(0f64);
+            if data <= 0.0 {
+                Ok(0u32)
+            } else {
+                Ok(data as u32)
+            }
+        }).ok();
         val.map(|c| c.into())
     }
 
