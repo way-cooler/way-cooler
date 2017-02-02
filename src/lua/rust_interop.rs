@@ -63,18 +63,15 @@ fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
                     .map_err(|_| "Unable to convert value to JSON!"));
     match *RUNNING.read().expect(ERR_LOCK_RUNNING) {
         true => {
-            registry::set_json(key.clone(), json.clone())
+            registry::set_data(key.clone(), json.clone())
         },
         false => {
-            registry::set_json(key.clone(), json.clone())
+            registry::set_data(key.clone(), json.clone())
         }
-    }.map(|_| ()).or_else(|err| {
-        match err {
-            RegistryError::KeyNotFound => {
-                registry::insert_json(key, json.clone());
-                Ok(())
-            }
-        }
+    }.map(|_| ()).map_err(|err| {
+        error!("Could not set {} to value {:#?}, because {:#?}",
+               key, json, err);
+        "Could not set registry value from Lua"
     })
 }
 
