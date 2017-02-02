@@ -69,7 +69,7 @@ fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
             registry::set_json(key.clone(), json.clone())
         },
         false => {
-            registry::set_json_ignore_flags(key.clone(), json.clone())
+            registry::set_json(key.clone(), json.clone())
         }
     }.map(|data| data.call(json.clone()))
         .or_else(|err| {

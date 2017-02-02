@@ -140,37 +140,6 @@ pub fn set_json(key: String, json: Json) -> RegistryResult<RegistrySetData> {
     }
 }
 
-/// Set a value to the given JSON value. Ignores access flags, VERY UNSAFE.
-pub fn set_json_ignore_flags(key: String, json: Json) -> RegistryResult<RegistrySetData> {
-    let mut reg = write_lock();
-    match reg.entry(key) {
-        Entry::Vacant(_vacancy) => {
-            return Err(RegistryError::KeyNotFound)
-        },
-        Entry::Occupied(mut entry) => {
-            let first_type = entry.get().get_type();
-            if first_type == FieldType::Object {
-                return Ok(RegistrySetData::Displaced(
-                    entry.insert(RegistryField::Object {
-                        data: Arc::new(json)
-                    }).as_object()
-                        .expect("Just created object")));
-            }
-            else if first_type == FieldType::Property {
-                match entry.get().clone().as_property_set() {
-                    Some(func) =>
-                        return Ok(RegistrySetData::Property(func)),
-                    // None: should not happen
-                    None => return Err(RegistryError::InvalidOperation)
-                }
-            }
-            else {
-                return Err(RegistryError::InvalidOperation);
-            }
-        }
-    }
-}
-
 /// Set an object/property in the registry to a value using a ToJson.
 #[allow(dead_code)]
 pub fn insert_struct<T: ToJson>(key: String, value: T)
