@@ -6,7 +6,7 @@
 --
 --
 -- A background can either be a 6 digit hex value or an image path
-way_cooler.background = 0x5E4055
+local background = 0x5E4055
 
 --
 -- Keybindings
@@ -122,7 +122,7 @@ function way_cooler_init()
   if not status then
     print "Could not find way-cooler-bg! Please install it"
   else
-    os.execute("way-cooler-bg " ..  way_cooler.background .. " &")
+    os.execute("way-cooler-bg " .. background .. " &")
   end
 end
 
