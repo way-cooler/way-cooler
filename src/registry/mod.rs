@@ -47,7 +47,7 @@ pub fn init() {
     let mut registry = REGISTRY.write()
         .expect("Could not write to the registry");
     // Construct the layout category
-    registry.add_category("layout".into());
+    registry.add_category("windows".into());
     // Construct the programs category
     registry.add_category("programs".into());
 }
