@@ -7,7 +7,7 @@ use rustc_serialize::json::{Json};
 
 mod registry;
 mod category;
-mod permissions;
+mod client;
 
 use self::registry::Registry;
 

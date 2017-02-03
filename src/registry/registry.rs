@@ -16,13 +16,17 @@
 //! trying to access
 
 use std::collections::hash_map::{Entry, HashMap};
+use std::sync::{RwLockReadGuard, RwLockWriteGuard, LockResult};
 
 use super::category::Category;
+use super::client::{Client, ClientErr, ClientResult, Permissions};
+use super::REGISTRY2;
 
 /// The result of doing an operation on the registry.
 pub type RegistryResult<T> = Result<T, RegistryErr>;
 
 /// Ways accessing of accessing the registry incorrectly
+#[derive(Debug, Clone)]
 pub enum RegistryErr {
     /// The category already exists, you cannot overwrite it.
     CategoryExists(String),
@@ -70,5 +74,74 @@ impl Registry {
                 Ok(())
             }
         }
+    }
+}
+
+/// A handle for accessing the registry behind a read lock.
+/// Holds the lock and a reference to the client who is using the
+/// handle to access the registry.
+pub struct ReadHandle<'lock> {
+    handle: LockResult<RwLockReadGuard<'lock, Registry>>,
+    client: &'lock Client
+}
+
+impl<'lock> ReadHandle<'lock> {
+    /// Makes a new handle to the registry with the given permissions.
+    pub fn new(client: &'lock Client) -> Self {
+        ReadHandle {
+            handle: REGISTRY2.read(),
+            client: client
+        }
+    }
+
+    /// Attempts to access the data behind the category.
+    pub fn read(&mut self, category: String) -> ClientResult<&Category> {
+        if !self.client.categories().any(|permission| *permission.0 == category) {
+            return Err(ClientErr::DoesNotExist(category))
+        }
+        // if we have it in our permissions, we automatically can read it.
+        let handle = self.handle.as_ref().expect("handle.was poisoned!");
+        handle.category(category.clone())
+            .or(Err(ClientErr::DoesNotExist(category)))
+    }
+}
+
+/// A handle for accessing the registry behind a write lock.
+/// Holds the lock and a reference to the client who is using the
+/// handle to access the registry.
+pub struct WriteHandle<'lock> {
+    handle: LockResult<RwLockWriteGuard<'lock, Registry>>,
+    client: &'lock Client
+}
+
+impl<'lock> WriteHandle<'lock> {
+    /// Makes a new handle to the registry with the given permissions.
+    pub fn new(client: &'lock Client) -> Self {
+        WriteHandle {
+            handle: REGISTRY2.write(),
+            client: client
+        }
+    }
+
+    /// Writes to the data behind a category.
+    ///
+    /// If the category does not exist, it is automatically created.
+    pub fn write(&mut self, category: String) -> ClientResult<&mut Category> {
+        let mut categories = self.client.categories();
+        try!(categories.find(|cat| *cat.0 == category)
+            .ok_or_else(|| ClientErr::DoesNotExist(category.clone()))
+            .map(|category| {
+                if *category.1 != Permissions::Write {
+                    Err(ClientErr::InsufficientPermissions)
+                } else {
+                    Ok(())
+                }
+            }));
+        let handle = self.handle.as_mut().expect("handle.was poisoned!");
+        if !self.client.categories().any(|permission| *permission.0 == category) {
+            handle.add_category(category.clone());
+        }
+        handle.category_mut(category.clone())
+            .or(Err(ClientErr::DoesNotExist(category)))
     }
 }

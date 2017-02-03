@@ -10,12 +10,13 @@
 //! category, effectively making those permissions `None` (because it doesn't
 //! even know that it exists).
 //!
-//! This is the only way to access the registry, allowing the underlying
-//! implementation to be simple and allow later optimizations.
+//! Using a client is the only way to access the registry,
+//! allowing the underlying registry implementation to be simple.
 
 use std::borrow::Cow;
-use std::collections::hash_map::HashMap;
+use std::collections::hash_map::{self, HashMap};
 use super::category::Category;
+use super::registry::{Registry, RegistryResult};
 use super::REGISTRY2;
 
 /// The mapping of category to the permissions the client has for that category.
@@ -37,7 +38,7 @@ pub enum ClientErr {
 ///
 /// If a permission for a particular `Category` is omitted, the client by
 /// definition cannot access the `Category` from its `Client`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Permissions {
     /// The client can read all data associated with a `Category`.
     Read,
@@ -61,15 +62,8 @@ impl Client {
         }
     }
 
-    /// Returns read access to the category.
-    pub fn read(&self, category: String) -> ClientResult<Category> {
-        if !self.access.contains_key(&category) {
-            return Err(ClientErr::DoesNotExist(category))
-        }
-        // If it is contained in our mapping, we automatically have sufficient
-        // permissions to read it.
-        let reg = REGISTRY2.read().expect("Unable to read from registry!");
-        reg.category(category.clone()).or(Err(ClientErr::DoesNotExist(category)))
-            .map(|c| c.clone())
+    /// Gets an iterator to the categories that the client can access
+    pub fn categories<'a>(&'a self) -> hash_map::Iter<'a, String, Permissions> {
+        self.access.iter()
     }
 }
