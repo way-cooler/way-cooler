@@ -5,7 +5,8 @@ use rustwlc::{Geometry, Size, WlcOutput};
 use rustwlc::render::{calculate_stride};
 use cairo::{ImageSurface, Format};
 
-use ::registry;
+use uuid::Uuid;
+use ::registry::{self};
 use ::render::{Color, Renderable};
 
 /// The borders of a container.
@@ -108,42 +109,55 @@ impl Renderable for Borders {
 
 impl Borders {
     pub fn thickness() -> u32 {
-        registry::get_data("border_size").and_then(|data| {
-            let data = data.as_f64().unwrap_or(0f64);
-            if data <= 0.0 {
-                Ok(0u32)
-            } else {
-                Ok(data as u32)
-            }
-        }).unwrap_or(0u32)
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        let border_size = handle.read("layout".into())
+            .expect("layout category didn't exist")
+            .get("borders".into())
+            .map(|borders| borders.as_object()
+                .and_then(|borders| borders.get("size"))
+                .and_then(|gaps| gaps.as_f64()));
+        match border_size {
+            Some(Some(size)) => size as u32,
+            _ => 0u32
+        }
     }
 
     /// Fetches the default color from the registry.
     ///
     /// If the value is unset, black borders are returned.
     pub fn default_color() -> Color {
-        let val = registry::get_data("border_color").and_then(|data| {
-            let data = data.as_f64().unwrap_or(0f64);
-            if data <= 0.0 {
-                Ok(0u32)
-            } else {
-                Ok(data as u32)
-            }
-        }).unwrap_or(0u32);
-        val.into()
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        let color = handle.read("layout".into())
+            .expect("layout category didn't exist")
+            .get("borders".into())
+            .map(|borders| borders.as_object()
+                 .and_then(|borders| borders.get("color"))
+                 .and_then(|gaps| gaps.as_f64()));
+        match color {
+            Some(Some(color)) => color as u32,
+            _ => 0u32
+        }.into()
     }
 
     /// Gets the active border color, if one is set.
     pub fn active_color() -> Option<Color> {
-        let val = registry::get_data("active_border_color").and_then(|data| {
-            let data = data.as_f64().unwrap_or(0f64);
-            if data <= 0.0 {
-                Ok(0u32)
-            } else {
-                Ok(data as u32)
-            }
-        }).ok();
-        val.map(|c| c.into())
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        let color = handle.read("layout".into())
+            .expect("layout category didn't exist")
+            .get("borders".into())
+            .map(|borders| borders.as_object()
+                 .and_then(|borders| borders.get("active_color"))
+                 .and_then(|gaps| gaps.as_f64()));
+        match color {
+            Some(Some(color)) => Some((color as u32).into()),
+            _ => None
+        }
     }
 
     /// Gets the color for these borders.

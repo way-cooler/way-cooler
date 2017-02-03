@@ -17,10 +17,10 @@
 
 use std::collections::hash_map::{Entry, HashMap};
 use std::sync::{RwLockReadGuard, RwLockWriteGuard, LockResult};
-
+use uuid::Uuid; 
 use super::category::Category;
 use super::client::{Client, ClientErr, ClientResult, Permissions};
-use super::REGISTRY2;
+use super::REGISTRY;
 
 /// The result of doing an operation on the registry.
 pub type RegistryResult<T> = Result<T, RegistryErr>;
@@ -89,15 +89,17 @@ impl<'lock> ReadHandle<'lock> {
     /// Makes a new handle to the registry with the given permissions.
     pub fn new(client: &'lock Client) -> Self {
         ReadHandle {
-            handle: REGISTRY2.read(),
+            handle: REGISTRY.read(),
             client: client
         }
     }
 
     /// Attempts to access the data behind the category.
-    pub fn read(&mut self, category: String) -> ClientResult<&Category> {
+    pub fn read(&self, category: String) -> ClientResult<&Category> {
         if !self.client.categories().any(|permission| *permission.0 == category) {
-            return Err(ClientErr::DoesNotExist(category))
+            if self.client.id() != Uuid::nil() {
+                return Err(ClientErr::DoesNotExist(category))
+            }
         }
         // if we have it in our permissions, we automatically can read it.
         let handle = self.handle.as_ref().expect("handle.was poisoned!");
@@ -118,7 +120,7 @@ impl<'lock> WriteHandle<'lock> {
     /// Makes a new handle to the registry with the given permissions.
     pub fn new(client: &'lock Client) -> Self {
         WriteHandle {
-            handle: REGISTRY2.write(),
+            handle: REGISTRY.write(),
             client: client
         }
     }
@@ -128,15 +130,17 @@ impl<'lock> WriteHandle<'lock> {
     /// If the category does not exist, it is automatically created.
     pub fn write(&mut self, category: String) -> ClientResult<&mut Category> {
         let mut categories = self.client.categories();
-        try!(categories.find(|cat| *cat.0 == category)
-            .ok_or_else(|| ClientErr::DoesNotExist(category.clone()))
-            .map(|category| {
-                if *category.1 != Permissions::Write {
-                    Err(ClientErr::InsufficientPermissions)
-                } else {
-                    Ok(())
-                }
-            }));
+        if self.client.id() != Uuid::nil() {
+            try!(categories.find(|cat| *cat.0 == category)
+                .ok_or_else(|| ClientErr::DoesNotExist(category.clone()))
+                .map(|category| {
+                    if *category.1 != Permissions::Write {
+                        Err(ClientErr::InsufficientPermissions)
+                    } else {
+                        Ok(())
+                    }
+                }));
+        }
         let handle = self.handle.as_mut().expect("handle.was poisoned!");
         if !self.client.categories().any(|permission| *permission.0 == category) {
             handle.add_category(category.clone());

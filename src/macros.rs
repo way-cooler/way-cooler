@@ -157,6 +157,18 @@ macro_rules! dbus_interface {
     };
 }
 
+macro_rules! map(
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = ::std::collections::HashMap::new();
+            $(
+                m.insert($key, $value);
+            )+
+                m
+        }
+    };
+);
+
 #[cfg(test)]
 mod tests {
     use super::super::convert::{ToTable, FromTable, LuaDecoder};

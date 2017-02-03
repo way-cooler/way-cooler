@@ -8,6 +8,7 @@ use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, Scro
                      VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
+use uuid::Uuid;
 
 use super::keys::{self, KeyPress, KeyEvent};
 use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, ContainerType,
@@ -67,12 +68,15 @@ pub extern fn output_resolution(output: WlcOutput,
 
 pub extern fn view_created(view: WlcView) -> bool {
     debug!("view_created: {:?}: \"{}\"", view, view.get_title());
-    let bar = registry::get_data("bar").and_then(|data| {
-            data.as_string().map(str::to_string)
-                .ok_or(RegistryError::KeyNotFound)
-        });
+    let lock = registry::clients_read();
+    let client = lock.client(Uuid::nil()).unwrap();
+    let handle = registry::ReadHandle::new(&client);
+    let bar = handle.read("layout".into())
+        .expect("layout category didn't exist")
+        .get("bar".into())
+        .map(|data| data.as_string().map(str::to_string));
     // TODO Move this hack, probably could live somewhere else
-    if let Ok(bar_name) = bar {
+    if let Some(Some(bar_name)) = bar {
         if view.get_title().as_str() == bar_name {
             view.set_mask(1);
             view.bring_to_front();

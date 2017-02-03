@@ -3,6 +3,8 @@
 
 use std::ops::Deref;
 
+use rustc_serialize::json::ToJson;
+use uuid::Uuid;
 use hlua::{self, Lua, LuaTable};
 use hlua::any::AnyLuaValue;
 
@@ -29,7 +31,7 @@ pub fn register_libraries(lua: &mut Lua) {
         rust_table.set("keypress_index", hlua::function1(keypress_index));
         rust_table.set("ipc_run", hlua::function1(ipc_run));
         rust_table.set("ipc_get", hlua::function1(ipc_get));
-        rust_table.set("ipc_set", hlua::function2(ipc_set));
+        rust_table.set("ipc_set", hlua::function3(ipc_set));
     }
     trace!("Executing Lua init...");
     let init_code = include_str!("../../lib/lua/lua_init.lua");
@@ -46,33 +48,27 @@ fn ipc_run(command: String) -> Result<(), &'static str> {
 
 /// IPC 'get' handler
 fn ipc_get(key: String) -> ValueResult {
-    match registry::get_data(&key) {
-        Ok(data) => {
-            Ok(json_to_lua(data.deref().clone()))
-        },
-        Err(err) => match err {
-            RegistryError::KeyNotFound =>
-                Err("Key not found")
-        }
-    }
+    let lock = registry::clients_read();
+    let client = lock.client(Uuid::nil()).unwrap();
+    let  handle = registry::ReadHandle::new(&client);
+    handle.read(key)
+        .map_err(|_| "Could not locate that category")
+        .map(|category| json_to_lua((*category.clone()).to_json()))
 }
 
 /// ipc 'set' handler
-fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
+fn ipc_set(category: String, key: String, value: AnyLuaValue) -> Result<(), &'static str> {
     let json = try!(lua_to_json(value)
                     .map_err(|_| "Unable to convert value to JSON!"));
-    match *RUNNING.read().expect(ERR_LOCK_RUNNING) {
-        true => {
-            registry::set_data(key.clone(), json.clone())
-        },
-        false => {
-            registry::set_data(key.clone(), json.clone())
-        }
-    }.map(|_| ()).map_err(|err| {
-        error!("Could not set {} to value {:#?}, because {:#?}",
-               key, json, err);
-        "Could not set registry value from Lua"
-    })
+    let lock = registry::clients_read();
+    let client = lock.client(Uuid::nil()).unwrap();
+    let mut handle = registry::WriteHandle::new(&client);
+    let category = handle.write(category)
+        .map_err(|_| {
+            "You do not have permission to modify that category"
+        })?;
+    category.insert(key, json);
+    Ok(())
 }
 
 fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {

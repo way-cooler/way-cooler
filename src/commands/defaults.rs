@@ -6,6 +6,7 @@ use std::thread;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
+use uuid::Uuid;
 use registry::{self, RegistryError};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
@@ -108,10 +109,17 @@ pub fn register_defaults() {
 #[deny(dead_code)]
 
 fn launch_terminal() {
-    let command = registry::get_data("terminal").and_then(|data| {
-        data.as_string().map(str::to_string)
-            .ok_or(RegistryError::KeyNotFound)
-    }).unwrap_or("weston-terminal".to_string());
+    let lock = registry::clients_read();
+    let client = lock.client(Uuid::nil()).unwrap();
+    let handle = registry::ReadHandle::new(&client);
+    let result = handle.read("programs".into())
+        .expect("programs category didn't exist")
+        .get("terminal".into())
+        .map(|data| data.as_string().map(str::to_string));
+    let command = match result {
+        Some(Some(cmd)) => cmd,
+        _ => "weston-terminal".into()
+    };
 
     Command::new("sh").arg("-c")
         .arg(command)

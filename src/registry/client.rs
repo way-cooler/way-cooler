@@ -13,11 +13,11 @@
 //! Using a client is the only way to access the registry,
 //! allowing the underlying registry implementation to be simple.
 
+use uuid::Uuid;
 use std::borrow::Cow;
 use std::collections::hash_map::{self, HashMap};
 use super::category::Category;
 use super::registry::{Registry, RegistryResult};
-use super::REGISTRY2;
 
 /// The mapping of category to the permissions the client has for that category.
 pub type AccessMapping = HashMap<String, Permissions>;
@@ -51,6 +51,7 @@ pub enum Permissions {
 /// Has a mapping of known `Category`s and its associated permissions.
 #[derive(Clone, Debug)]
 pub struct Client {
+    id: Uuid,
     access: AccessMapping
 }
 
@@ -58,12 +59,63 @@ impl Client {
     /// Makes a new client, with the given permissions.
     pub fn new(access: AccessMapping) -> Self {
         Client {
+            id: Uuid::new_v4(),
             access: access
+        }
+    }
+
+    /// Makes a special purpose "nil" client that can access anything.
+    pub fn new_nil() -> Self {
+        Client {
+            id: Uuid::nil(),
+            // Doesn't need any permissions, it's hard coded to access anything.
+            access: HashMap::new()
         }
     }
 
     /// Gets an iterator to the categories that the client can access
     pub fn categories<'a>(&'a self) -> hash_map::Iter<'a, String, Permissions> {
         self.access.iter()
+    }
+
+    /// Gets the ID for the client.
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+}
+
+/// The mapping of `UUID` to the respective client.
+///
+/// Each `UUID` is unique, and generated when you add the client.
+#[derive(Clone, Debug)]
+pub struct Clients {
+    clients: HashMap<Uuid, Client>
+}
+
+impl Clients {
+    /// Makes a new Client mapping.
+    /// Automatically adds the "nil" client, that can access anything.
+    pub fn new() -> Self {
+        Clients {
+            clients: map!{
+                // Nil client can access everything, doesn't need permissions.
+                Uuid::nil() => Client::new_nil()
+            }
+        }
+    }
+
+    pub fn client(&self, id: Uuid) -> Option<&Client> {
+        self.clients.get(&id)
+    }
+
+    /// adds a new client, generating a `Uuid`
+    pub fn add_client(&mut self, client: Client) -> Uuid {
+        let id = client.id();
+        self.clients.insert(id, client);
+        id
+    }
+
+    pub fn remove_client(&mut self, id: Uuid) -> Option<Client> {
+        self.clients.remove(&id)
     }
 }
