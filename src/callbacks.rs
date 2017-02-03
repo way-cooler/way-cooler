@@ -71,7 +71,7 @@ pub extern fn view_created(view: WlcView) -> bool {
     let lock = registry::clients_read();
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);
-    let bar = handle.read("layout".into())
+    let bar = handle.read("programs".into())
         .expect("layout category didn't exist")
         .get("bar".into())
         .map(|data| data.as_string().map(str::to_string));

@@ -34,15 +34,16 @@ mod = "Alt"
 -- Aliases to save on typing
 local key = config.key
 local windows = config.windows
+local programs = config.programs
 
-way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
-
--- Name of the window that will be the bar window.
--- This is a hack to get X11 bars and non-Way Cooler supported bars working.
---
--- Make sure you add the script to start your bar in the init function!
-way_cooler.bar = "lemonbar"
-
+programs = {
+  terminal = "weston-terminal" -- Use the terminal of your choice
+  -- Name of the window that will be the bar window.
+  -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
+  --
+  -- Make sure you add the script to start your bar in the init function!
+  x11_bar = "lemonbar"
+}
 
 -- These options are applied to all windows.
 windows.all = {
