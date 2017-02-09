@@ -133,7 +133,7 @@ impl<'lock> WriteHandle<'lock> {
         if self.client.id() != Uuid::nil() {
             try!(categories.find(|cat| *cat.0 == category)
                 .ok_or_else(|| ClientErr::DoesNotExist(category.clone()))
-                .map(|category| {
+                .and_then(|category| {
                     if *category.1 != Permissions::Write {
                         Err(ClientErr::InsufficientPermissions)
                     } else {
@@ -143,7 +143,8 @@ impl<'lock> WriteHandle<'lock> {
         }
         let handle = self.handle.as_mut().expect("handle.was poisoned!");
         if !self.client.categories().any(|permission| *permission.0 == category) {
-            handle.add_category(category.clone());
+            handle.add_category(category.clone())
+                .expect("Category already existed");
         }
         handle.category_mut(category.clone())
             .or(Err(ClientErr::DoesNotExist(category)))

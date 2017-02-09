@@ -14,10 +14,7 @@
 //! allowing the underlying registry implementation to be simple.
 
 use uuid::Uuid;
-use std::borrow::Cow;
 use std::collections::hash_map::{self, HashMap};
-use super::category::Category;
-use super::registry::{Registry, RegistryResult};
 
 /// The mapping of category to the permissions the client has for that category.
 pub type AccessMapping = HashMap<String, Permissions>;
@@ -39,6 +36,7 @@ pub enum ClientErr {
 /// If a permission for a particular `Category` is omitted, the client by
 /// definition cannot access the `Category` from its `Client`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[allow(dead_code)]
 pub enum Permissions {
     /// The client can read all data associated with a `Category`.
     Read,
@@ -57,6 +55,7 @@ pub struct Client {
 
 impl Client {
     /// Makes a new client, with the given permissions.
+    #[allow(dead_code)]
     pub fn new(access: AccessMapping) -> Self {
         Client {
             id: Uuid::new_v4(),
@@ -109,12 +108,14 @@ impl Clients {
     }
 
     /// adds a new client, generating a `Uuid`
+    #[allow(dead_code)]
     pub fn add_client(&mut self, client: Client) -> Uuid {
         let id = client.id();
         self.clients.insert(id, client);
         id
     }
 
+    #[allow(dead_code)]
     pub fn remove_client(&mut self, id: Uuid) -> Option<Client> {
         self.clients.remove(&id)
     }

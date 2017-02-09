@@ -1,9 +1,6 @@
 //! way-cooler registry.
 
-use std::collections::hash_map::{HashMap};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-use rustc_serialize::json::{Json};
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 mod registry;
 mod category;
@@ -14,7 +11,6 @@ pub use self::registry::{ReadHandle, WriteHandle};
 pub use self::category::Category;
 
 pub use self::client::{Client, Clients, Permissions};
-use uuid::Uuid;
 
 lazy_static! {
     /// Static HashMap for the registry
@@ -22,16 +18,7 @@ lazy_static! {
     static ref CLIENTS: RwLock<Clients> = RwLock::new(Clients::new());
 }
 
-/// Error types that can happen
-#[derive(Debug, PartialEq)]
-pub enum RegistryError {
-    /// The registry key was not found
-    KeyNotFound,
-}
-
-/// Result type of gets/sets to the registry
-pub type RegistryResult<T> = Result<T, RegistryError>;
-
+#[allow(dead_code)]
 pub fn clients_write<'a>() -> RwLockWriteGuard<'a, Clients> {
     CLIENTS.write().expect("Unable to write client mapping")
 }
@@ -45,7 +32,9 @@ pub fn init() {
     let mut registry = REGISTRY.write()
         .expect("Could not write to the registry");
     // Construct the layout category
-    registry.add_category("windows".into());
+    registry.add_category("windows".into())
+        .expect("Could not add windows category");
     // Construct the programs category
-    registry.add_category("programs".into());
+    registry.add_category("programs".into())
+        .expect("Could not add windows category");
 }

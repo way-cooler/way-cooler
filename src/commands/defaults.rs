@@ -7,7 +7,7 @@ use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
 use uuid::Uuid;
-use registry::{self, RegistryError};
+use registry::{self};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};

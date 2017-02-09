@@ -1,20 +1,18 @@
 //! Rust code which is called from lua in the init file
 #![deny(dead_code)]
 
-use std::ops::Deref;
-
 use rustc_serialize::json::ToJson;
 use uuid::Uuid;
 use super::{send, LuaQuery, running};
 use hlua::{self, Lua, LuaTable};
 use hlua::any::AnyLuaValue;
 
-use registry::{self, RegistryError};
+use registry::{self};
 use commands;
 use keys::{self, KeyPress, KeyEvent};
-use convert::json::{json_to_lua, lua_to_json};
+use convert::json::{json_to_lua};
 
-use super::thread::{update_registry_value, RUNNING, ERR_LOCK_RUNNING};
+use super::thread::{update_registry_value};
 
 type ValueResult = Result<AnyLuaValue, &'static str>;
 

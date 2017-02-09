@@ -16,7 +16,7 @@ use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, Container
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
-use registry::{self, RegistryError};
+use registry::{self};
 
 /// If the event is handled by way-cooler
 const EVENT_BLOCKED: bool = true;

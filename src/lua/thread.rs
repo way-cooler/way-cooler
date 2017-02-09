@@ -13,7 +13,7 @@ use convert::json::lua_to_json;
 
 use rustc_serialize::json::Json;
 use uuid::Uuid;
-use hlua::{self, Lua, LuaError, functions_read};
+use hlua::{self, Lua, LuaError};
 use hlua::any::AnyLuaValue;
 
 use super::types::*;
@@ -21,7 +21,7 @@ use super::rust_interop;
 use super::init_path;
 use super::super::keys;
 
-use registry::{self, RegistryError};
+use registry::{self};
 
 use ::layout::{lock_tree, ContainerType};
 
@@ -173,7 +173,8 @@ pub fn init() {
         .name("Lua thread".to_string())
         .spawn(move || { main_loop(receiver, &mut lua) });
     // Immediately update all the values that the init file set
-    send(LuaQuery::UpdateRegistryFromCache);
+    send(LuaQuery::UpdateRegistryFromCache)
+        .expect("Could not update registry from cache");
 }
 
 /// Main loop of the Lua thread:
@@ -309,9 +310,10 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
                 let mut registry_cache = lua.get::<hlua::LuaTable<_>, _>("__registry_cache")
                     .expect("__registry_cache wasn't defined");
                 if let Some(mut category_table) = registry_cache.get::<hlua::LuaTable<_>, _>(category.clone()) {
-                    let cat_table = match handle.write(category) {
+                    let cat_table = match handle.write(category.clone()) {
                         Ok(cat) => cat,
                         Err(err) => {
+                            warn!("Could not lock {}: {:?}", category, err);
                             break;
                         }
                     };
@@ -319,7 +321,8 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
                 }
                 drop(registry_cache)
             }
-            lua.execute::<()>("__registry_cache = {}}");
+            lua.execute::<()>("__registry_cache = {}")
+                .expect("Could not clear __registry_cache");
         },
     }
     return true
