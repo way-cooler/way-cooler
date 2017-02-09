@@ -659,9 +659,8 @@ impl LayoutTree {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
-        let gap = handle.read("windows".into())
-            .expect("layout category didn't exist")
-            .get("gaps".into())
+        let gap = handle.read("windows".into()).ok()
+            .and_then(|windows|windows.get("gaps".into()))
             .map(|gaps| gaps.as_object()
                  .and_then(|gaps| gaps.get("size"))
                  .and_then(|gaps| gaps.as_f64()));

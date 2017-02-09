@@ -112,9 +112,8 @@ impl Borders {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
-        let border_size = handle.read("windows".into())
-            .expect("layout category didn't exist")
-            .get("borders".into())
+        let border_size = handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
             .map(|borders| borders.as_object()
                 .and_then(|borders| borders.get("size"))
                 .and_then(|gaps| gaps.as_f64()));
@@ -131,9 +130,8 @@ impl Borders {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
-        let color = handle.read("windows".into())
-            .expect("layout category didn't exist")
-            .get("borders".into())
+        let color = handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
             .map(|borders| borders.as_object()
                  .and_then(|borders| borders.get("inactive_color"))
                  .and_then(|gaps| gaps.as_f64()));
@@ -148,9 +146,8 @@ impl Borders {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
-        let color = handle.read("windows".into())
-            .expect("layout category didn't exist")
-            .get("borders".into())
+        let color = handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
             .map(|borders| borders.as_object()
                  .and_then(|borders| borders.get("active_color"))
                  .and_then(|gaps| gaps.as_f64()));
