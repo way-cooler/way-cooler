@@ -52,6 +52,10 @@ commands.key = function(mods, key, action, loop)
     }
 end
 
+commands.init = function() end
+commands.restart = function() end
+commands.terminate = function() end
+
 local use_key = ", use the `key` or `config.key` method to create a keybinding"
 -- Converts a list of modifiers to a string
 local function keymods_to_string(mods, key)
@@ -94,33 +98,6 @@ commands.register_mouse_modifier = function(mod)
   rust.register_mouse_modifier(mod)
 end
 
--- Register callback to execute on restart
-way_cooler.on_restart = function(callback)
-    assert(callback, "missing callback")
-    assert(type(callback) == 'function', "callback: expected function")
-    rust.on_restart = callback
-end
-
--- Register a function to execute on terminate
-way_cooler.on_terminate = function(callback)
-    assert(callback, "missing callback")
-    assert(type(callback) == 'function', "callback: expected function")
-    rust.on_terminate = callback
-end
-
--- This could technically be called by clients if they want, it should be more hidden.
-way_cooler.handle_termination = function()
-    if rust.on_terminate ~= nil then
-        rust.on_terminate()
-    end
-end
-
-way_cooler.handle_restart = function()
-    if rust.on_restart ~= nil then
-        rust.on_restart()
-    end
-end
-
 way_cooler_mt.__index = function(_table, key)
     if commands[key] then
       return commands[key]
@@ -135,6 +112,10 @@ way_cooler_mt.__index = function(_table, key)
     end
 end
 way_cooler_mt.__newindex = function(_table, key, value)
+    if type(value) == "function" then
+      commands[key] = value
+      return
+    end
     if type(key) ~= 'string' then
         error("Invlaid key, string expected", 1)
     else

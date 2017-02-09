@@ -41,9 +41,9 @@ pub const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
 pub const ERR_LOCK_QUEUE: &'static str =
     "Lua thread: unable to lock REGISTRY_QUEUE";
 
-const INIT_LUA_FUNC: &'static str = "way_cooler_init";
-const LUA_TERMINATE_CODE: &'static str = "way_cooler.handle_termination()";
-const LUA_RESTART_CODE: &'static str = "way_cooler.handle_restart()";
+const INIT_LUA_FUNC: &'static str = "way_cooler.init()";
+const LUA_TERMINATE_CODE: &'static str = "way_cooler.terminate()";
+const LUA_RESTART_CODE: &'static str = "way_cooler.restart()";
 
 /// Struct sent to the Lua query
 struct LuaMessage {
@@ -150,11 +150,9 @@ pub fn init() {
     }
 
     // Call the special init hook function that we read from the init file
-    lua.get(INIT_LUA_FUNC)
-        .map(|mut f: functions_read::LuaFunction<_>|  f.call().unwrap_or_else(|err| {
-            error!("Lua function \"{}\" returned an error: {:?}", INIT_LUA_FUNC, err);
-        }));
-
+    if let Err(error) = lua.execute::<()>(INIT_LUA_FUNC) {
+        error!("Lua init callback returned an error: {:?}", error);
+    }
     // Re-tile the layout tree, to make any changes appear immediantly.
     if let Ok(mut tree) = lock_tree() {
         tree.layout_active_of(ContainerType::Root)

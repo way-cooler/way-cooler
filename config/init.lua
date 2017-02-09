@@ -116,7 +116,7 @@ end
 
 
 -- Execute some code after Way Cooler is finished initializing
-function way_cooler_init()
+way_cooler.init = function()
   local status = os.execute("which way-cooler-bg 2>/dev/null")
   if not status then
     print "Could not find way-cooler-bg! Please install it"
@@ -125,24 +125,12 @@ function way_cooler_init()
   end
 end
 
--- TODO can I just set these inline?
 --- Execute some code when Way Cooler restarts
-function way_cooler_restart()
+way_cooler.restart = function()
   cleanup_background()
 end
 
-function way_cooler_terminate()
+--- Execute some code when Way Cooler terminates
+way_cooler.terminate = function()
   cleanup_background()
 end
-
-
-way_cooler.on_restart(way_cooler_restart)
-way_cooler.on_terminate(way_cooler_terminate)
-
--- To use plugins such as bars, or to start other programs on startup,
--- call util.exec.spawn_once, which will not spawn copies after a way_cooler.reload.
-
--- util.exec.spawn_once("way-cooler-bar")
-
--- To add your own Lua files:
--- require("my-config.lua") -- Or use utils.hostname
