@@ -32,6 +32,9 @@ pub enum LuaQuery {
 
     /// Handle the key press for the given key.
     HandleKey(KeyPress),
+
+    /// Update the registry value from Lua's registry cache.
+    UpdateRegistryFromCache,
 }
 
 impl Debug for LuaQuery {
@@ -50,6 +53,8 @@ impl Debug for LuaQuery {
                 write!(f, "LuaQuery::ExecRust()"),
             LuaQuery::HandleKey(ref press) =>
                 write!(f, "LuaQuery::HandleKey({:?})", press),
+            LuaQuery::UpdateRegistryFromCache =>
+                write!(f, "LuaQuery::UpdateRegistryFromCache")
         }
     }
 }

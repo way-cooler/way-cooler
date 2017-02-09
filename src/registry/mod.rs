@@ -11,6 +11,7 @@ mod client;
 
 use self::registry::Registry;
 pub use self::registry::{ReadHandle, WriteHandle};
+pub use self::category::Category;
 
 #[cfg(test)]
 pub mod tests;

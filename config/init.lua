@@ -1,4 +1,4 @@
--- Lua configuration file for way-cooler. Ran at startup and when restarted.
+-- Lua way_cooler.ration file for way-cooler. Ran at startup and when restarted.
 
 -- TODO Move somewhere, or just remove
 --
@@ -11,7 +11,7 @@ local background = 0x5E4055
 --
 -- Keybindings
 --
--- Create an array of keybindings and call config.register_keys()
+-- Create an array of keybindings and call way_cooler.register_keys()
 -- to register them.
 -- Declaring a keybinding:
 -- key(<modifiers list>, <key>, <function or name>, [repeat])
@@ -32,12 +32,11 @@ local background = 0x5E4055
 mod = "Alt"
 
 -- Aliases to save on typing
-local key = config.key
-local windows = config.windows
-local programs = config.programs
+local key = way_cooler.key
 
-programs = {
-  terminal = "weston-terminal" -- Use the terminal of your choice
+-- Programs that Way Cooler can run
+way_cooler.programs = {
+  terminal = "xfce4-terminal", -- Use the terminal of your choice
   -- Name of the window that will be the bar window.
   -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
   --
@@ -46,7 +45,7 @@ programs = {
 }
 
 -- These options are applied to all windows.
-windows.all = {
+way_cooler.windows = {
   gaps = { -- Options for gaps
     size = 0, -- The width of gaps between windows in pixels
   },
@@ -106,11 +105,11 @@ end
 
 -- Register the keybindings.
 for _, key in pairs(keys) do
-    config.register_key(key)
+    way_cooler.register_key(key)
 end
 
 -- Register the mod key to also be the mod key for mouse commands
-config.register_mouse_modifier(mod)
+way_cooler.register_mouse_modifier(mod)
 
 function cleanup_background()
   os.execute("pkill way-cooler-bg")
@@ -142,7 +141,7 @@ way_cooler.on_restart(way_cooler_restart)
 way_cooler.on_terminate(way_cooler_terminate)
 
 -- To use plugins such as bars, or to start other programs on startup,
--- call util.exec.spawn_once, which will not spawn copies after a config reload.
+-- call util.exec.spawn_once, which will not spawn copies after a way_cooler.reload.
 
 -- util.exec.spawn_once("way-cooler-bar")
 

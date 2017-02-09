@@ -1,5 +1,6 @@
 //! Code for the internal Lua thread which handles all Lua requests.
 
+use std::collections::btree_map::BTreeMap;
 use std::thread;
 use std::fs::{File};
 use std::path::Path;
@@ -8,12 +9,19 @@ use std::fmt::Result as FmtResult;
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 
-use hlua::{Lua, LuaError, functions_read};
+use convert::json::lua_to_json;
+
+use rustc_serialize::json::Json;
+use uuid::Uuid;
+use hlua::{self, Lua, LuaError, functions_read};
+use hlua::any::AnyLuaValue;
 
 use super::types::*;
 use super::rust_interop;
 use super::init_path;
 use super::super::keys;
+
+use registry::{self, RegistryError};
 
 use ::layout::{lock_tree, ContainerType};
 
@@ -23,10 +31,15 @@ lazy_static! {
 
     /// Whether the Lua thread is currently running
     pub static ref RUNNING: RwLock<bool> = RwLock::new(false);
+
+    /// Requests to update the registry state from Lua
+    static ref REGISTRY_QUEUE: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
 
 pub const ERR_LOCK_RUNNING: &'static str = "Lua thread: unable to lock RUNNING";
 pub const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
+pub const ERR_LOCK_QUEUE: &'static str =
+    "Lua thread: unable to lock REGISTRY_QUEUE";
 
 const INIT_LUA_FUNC: &'static str = "way_cooler_init";
 const LUA_TERMINATE_CODE: &'static str = "way_cooler.handle_termination()";
@@ -66,6 +79,12 @@ pub enum LuaSendError {
     /// The sender had an issue, most likey because the thread panicked.
     /// Following the `Sender` API, the original value sent is returned.
     Sender(LuaQuery)
+}
+
+/// Appends this combination of category and key to the registry queue.
+pub fn update_registry_value(category: String) {
+    let mut queue = REGISTRY_QUEUE.write().expect(ERR_LOCK_QUEUE);
+    queue.push(category);
 }
 
 // Reexported in lua/mod.rs:11
@@ -112,6 +131,7 @@ pub fn init() {
     if use_config {
         match maybe_init_file {
             Ok(init_file) => {
+                // TODO fix error reporting not working
                 let _: () = lua.execute_from_reader(init_file)
                     .map(|r| { debug!("Read init.lua successfully"); r })
                     .or_else(|_| lua.execute(init_path::DEFAULT_CONFIG))
@@ -154,6 +174,8 @@ pub fn init() {
     let _lua_handle = thread::Builder::new()
         .name("Lua thread".to_string())
         .spawn(move || { main_loop(receiver, &mut lua) });
+    // Immediately update all the values that the init file set
+    send(LuaQuery::UpdateRegistryFromCache);
 }
 
 /// Main loop of the Lua thread:
@@ -278,8 +300,74 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
         LuaQuery::Ping => {
             thread_send(request.reply, LuaResponse::Pong);
         },
+        LuaQuery::UpdateRegistryFromCache => {
+            let lock = registry::clients_read();
+            // Lua has access to everything
+            let client = lock.client(Uuid::nil()).unwrap();
+            let mut handle = registry::WriteHandle::new(&client);
+
+            let mut queue = REGISTRY_QUEUE.write().expect(ERR_LOCK_QUEUE);
+            for category in queue.drain(0..) {
+                let mut registry_cache = lua.get::<hlua::LuaTable<_>, _>("__registry_cache")
+                    .expect("__registry_cache wasn't defined");
+                if let Some(mut category_table) = registry_cache.get::<hlua::LuaTable<_>, _>(category.clone()) {
+                    let cat_table = match handle.write(category) {
+                        Ok(cat) => cat,
+                        Err(err) => {
+                            break;
+                        }
+                    };
+                    update_values(&mut category_table, cat_table);
+                }
+                drop(registry_cache)
+            }
+            lua.execute::<()>("__registry_cache = {}}");
+        },
     }
     return true
+}
+
+fn update_values<L>(mut table: &mut hlua::LuaTable<L>,
+                    category: &mut registry::Category)
+    where L: hlua::AsMutLua {
+    let mut keys = Vec::new();
+    for entry in table.iter::<String, AnyLuaValue>() {
+        if let Some((key, value)) = entry {
+            match value {
+                AnyLuaValue::LuaOther => {
+                    keys.push(key.clone());
+                    category.insert(key, Json::Object(BTreeMap::new()));
+                },
+                value => {
+                    if let Ok(val) = lua_to_json(value) {
+                        category.insert(key, val);
+                    }
+                }
+            }
+        }
+    }
+    for key in keys {
+        let inner_mapping = category.get_mut(&key)
+            .expect("Could not get the value we just made")
+            .as_object_mut()
+            .expect("The inner value was not an object!");
+        if let Some(mut inner_table) = table.get::<hlua::LuaTable<_>, _>(key) {
+            for entry in inner_table.iter::<String, AnyLuaValue>() {
+                if let Some((key, value)) = entry {
+                    match value {
+                        AnyLuaValue::LuaOther => {
+                            warn!("Dropping inner table {:?}", key);
+                        },
+                        value => {
+                            if let Ok(val) = lua_to_json(value) {
+                                inner_mapping.insert(key, val);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {

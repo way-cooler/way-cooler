@@ -5,6 +5,7 @@ use std::ops::Deref;
 
 use rustc_serialize::json::ToJson;
 use uuid::Uuid;
+use super::{send, LuaQuery, running};
 use hlua::{self, Lua, LuaTable};
 use hlua::any::AnyLuaValue;
 
@@ -13,7 +14,7 @@ use commands;
 use keys::{self, KeyPress, KeyEvent};
 use convert::json::{json_to_lua, lua_to_json};
 
-use super::thread::{RUNNING, ERR_LOCK_RUNNING};
+use super::thread::{update_registry_value, RUNNING, ERR_LOCK_RUNNING};
 
 type ValueResult = Result<AnyLuaValue, &'static str>;
 
@@ -30,8 +31,8 @@ pub fn register_libraries(lua: &mut Lua) {
         rust_table.set("register_mouse_modifier", hlua::function1(register_mouse_modifier));
         rust_table.set("keypress_index", hlua::function1(keypress_index));
         rust_table.set("ipc_run", hlua::function1(ipc_run));
-        rust_table.set("ipc_get", hlua::function1(ipc_get));
-        rust_table.set("ipc_set", hlua::function3(ipc_set));
+        rust_table.set("ipc_get", hlua::function2(ipc_get));
+        rust_table.set("ipc_set", hlua::function1(ipc_set));
     }
     trace!("Executing Lua init...");
     let init_code = include_str!("../../lib/lua/lua_init.lua");
@@ -47,27 +48,25 @@ fn ipc_run(command: String) -> Result<(), &'static str> {
 }
 
 /// IPC 'get' handler
-fn ipc_get(key: String) -> ValueResult {
+fn ipc_get(category: String, key: String) -> ValueResult {
     let lock = registry::clients_read();
     let client = lock.client(Uuid::nil()).unwrap();
-    let  handle = registry::ReadHandle::new(&client);
-    handle.read(key)
+    let handle = registry::ReadHandle::new(&client);
+    handle.read(category)
         .map_err(|_| "Could not locate that category")
-        .map(|category| json_to_lua((*category.clone()).to_json()))
+        .and_then(|category| category.get(&key)
+                  .ok_or("Could not locate that key in the category")
+                  .and_then(|value| Ok(value.to_json()))
+                  .and_then(|value| Ok(json_to_lua(value))))
 }
 
 /// ipc 'set' handler
-fn ipc_set(category: String, key: String, value: AnyLuaValue) -> Result<(), &'static str> {
-    let json = try!(lua_to_json(value)
-                    .map_err(|_| "Unable to convert value to JSON!"));
-    let lock = registry::clients_read();
-    let client = lock.client(Uuid::nil()).unwrap();
-    let mut handle = registry::WriteHandle::new(&client);
-    let category = handle.write(category)
-        .map_err(|_| {
-            "You do not have permission to modify that category"
-        })?;
-    category.insert(key, json);
+fn ipc_set(category: String) -> Result<(), &'static str> {
+    update_registry_value(category);
+    if running() {
+        send(LuaQuery::UpdateRegistryFromCache)
+            .expect("Could not send message to Lua thread to update registry");
+    }
     Ok(())
 }
 

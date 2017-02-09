@@ -135,7 +135,7 @@ impl Borders {
             .expect("layout category didn't exist")
             .get("borders".into())
             .map(|borders| borders.as_object()
-                 .and_then(|borders| borders.get("color"))
+                 .and_then(|borders| borders.get("inactive_color"))
                  .and_then(|gaps| gaps.as_f64()));
         match color {
             Some(Some(color)) => color as u32,

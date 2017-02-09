@@ -17,7 +17,7 @@
 
 use std::collections::hash_map::{Entry, HashMap};
 use std::sync::{RwLockReadGuard, RwLockWriteGuard, LockResult};
-use uuid::Uuid; 
+use uuid::Uuid;
 use super::category::Category;
 use super::client::{Client, ClientErr, ClientResult, Permissions};
 use super::REGISTRY;
