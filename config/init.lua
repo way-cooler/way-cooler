@@ -1,6 +1,5 @@
 -- Lua way_cooler.ration file for way-cooler. Ran at startup and when restarted.
 
--- TODO Move somewhere, or just remove
 --
 -- Background
 --
@@ -92,7 +91,7 @@ local keys = {
   key({ mod, "Shift" }, "r", "way_cooler_restart")
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
-  -- If rebound, then clears the keybinding for Alt+Shift+Esc
+  -- If rebound, then this keybinding is cleared.
 }
 
 -- Add Mod + X bindings to switch to workspace X, Mod+Shift+X send active to X
