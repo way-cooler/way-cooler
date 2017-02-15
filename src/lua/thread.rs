@@ -131,15 +131,17 @@ pub fn init() {
     if use_config {
         match maybe_init_file {
             Ok(init_file) => {
-                // TODO fix error reporting not working
                 let _: () = lua.execute_from_reader(init_file)
                     .map(|r| { debug!("Read init.lua successfully"); r })
-                    .or_else(|_| lua.execute(init_path::DEFAULT_CONFIG))
+                    .or_else(|_| {
+                        warn!("Defaulting to pre-compiled init.lua")
+                        lua.execute(init_path::DEFAULT_CONFIG)
+                        })
                     .expect("Unable to load pre-compiled init file");
                 debug!("Read init.lua successfully");
             }
             Err(_) => {
-                debug!("Defaulting to pre-compiled init.lua");
+                warn!("Defaulting to pre-compiled init.lua");
                 let _: () = lua.execute(init_path::DEFAULT_CONFIG)
                     .expect("Unable to load pre-compiled init file");
             }
