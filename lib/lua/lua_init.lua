@@ -1,15 +1,5 @@
 -- Private table of Rust functions
 
--- TODO
--- remove "config", put everything into way_cooler table
--- it'll have windows, keys, etc. No way to just "set a value",
--- because the "registry" will actually have order to it now
--- You'll need to add it to some category, which we will allow to be done
--- e.g way_cooler.foo = { baz: 5}
--- this will make a new table for foo that has one entry baz set to 5
--- will need ugly check in get_index to make sure we know what we are accessing,
--- but hey whatever it'll look nice and let it be extended later easily
-
 -- Our connection to Rust functions exposed by Way Cooler
 local rust = __rust
 __rust = nil
