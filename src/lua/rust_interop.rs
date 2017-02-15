@@ -34,6 +34,9 @@ pub fn register_libraries(lua: &mut Lua) {
     }
     trace!("Executing Lua init...");
     let init_code = include_str!("../../lib/lua/lua_init.lua");
+    let util_code = include_str!("../../lib/lua/utils.lua");
+    let _: () = lua.execute::<_>(util_code)
+        .expect("Unable to execute Lua util code!");
     let _: () = lua.execute::<_>(init_code)
         .expect("Unable to execute Lua init code!");
     trace!("Lua register_libraries complete");

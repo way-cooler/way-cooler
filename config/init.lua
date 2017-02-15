@@ -1,4 +1,4 @@
--- Lua way_cooler.ration file for way-cooler. Ran at startup and when restarted.
+-- Lua configration file for way-cooler. Ran at startup and when restarted.
 
 --
 -- Background
@@ -6,6 +6,32 @@
 --
 -- A background can either be a 6 digit hex value or an image path
 local background = 0x5E4055
+
+-- Programs that Way Cooler can run
+way_cooler.programs = {
+  terminal = "xfce4-terminal", -- Use the terminal of your choice
+  -- Name of the window that will be the bar window.
+  -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
+  --
+  -- Make sure you add the script to start your bar in the init function!
+  x11_bar = "lemonbar"
+}
+
+-- Registering programs to run at startup
+-- These programs are only ran once util.program.spawn_programs is called.
+util.program.spawn_at_startup("way-cooler-bg", background)
+
+-- These options are applied to all windows.
+way_cooler.windows = {
+  gaps = { -- Options for gaps
+    size = 0, -- The width of gaps between windows in pixels
+  },
+  borders = { -- Options for borders
+    size = 20, -- The width of the borders between windows in pixels
+    inactive_color = 0x386890, -- Color of the borders for inactive containers
+    active_color = 0x57beb9 -- Color of active container borders
+  }
+}
 
 --
 -- Keybindings
@@ -32,28 +58,6 @@ mod = "Alt"
 
 -- Aliases to save on typing
 local key = way_cooler.key
-
--- Programs that Way Cooler can run
-way_cooler.programs = {
-  terminal = "xfce4-terminal", -- Use the terminal of your choice
-  -- Name of the window that will be the bar window.
-  -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
-  --
-  -- Make sure you add the script to start your bar in the init function!
-  x11_bar = "lemonbar"
-}
-
--- These options are applied to all windows.
-way_cooler.windows = {
-  gaps = { -- Options for gaps
-    size = 0, -- The width of gaps between windows in pixels
-  },
-  borders = { -- Options for borders
-    size = 20, -- The width of the borders between windows in pixels
-    inactive_color = 0x386890, -- Color of the borders for inactive containers
-    active_color = 0x57beb9 -- Color of active container borders
-  }
-}
 
 local keys = {
   -- Open dmenu
@@ -110,27 +114,17 @@ end
 -- Register the mod key to also be the mod key for mouse commands
 way_cooler.register_mouse_modifier(mod)
 
-function cleanup_background()
-  os.execute("pkill way-cooler-bg")
-end
-
-
 -- Execute some code after Way Cooler is finished initializing
 way_cooler.init = function()
-  local status = os.execute("which way-cooler-bg 2>/dev/null")
-  if not status then
-    print "Could not find way-cooler-bg! Please install it"
-  else
-    os.execute("way-cooler-bg " .. background .. " &")
-  end
+  util.program.spawn_startup_programs()
 end
 
 --- Execute some code when Way Cooler restarts
 way_cooler.restart = function()
-  cleanup_background()
+  util.program.restart_startup_programs()
 end
 
 --- Execute some code when Way Cooler terminates
 way_cooler.terminate = function()
-  cleanup_background()
+  util.program.terminate_startup_programs()
 end
