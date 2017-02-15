@@ -112,14 +112,11 @@ fn launch_terminal() {
     let lock = registry::clients_read();
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);
-    let result = handle.read("programs".into())
+    let command = handle.read("programs".into())
         .expect("programs category didn't exist")
         .get("terminal".into())
-        .map(|data| data.as_string().map(str::to_string));
-    let command = match result {
-        Some(Some(cmd)) => cmd,
-        _ => "weston-terminal".into()
-    };
+        .and_then(|data| data.as_string().map(str::to_string))
+        .unwrap_or("weston-terminal".into());
 
     Command::new("sh").arg("-c")
         .arg(command)

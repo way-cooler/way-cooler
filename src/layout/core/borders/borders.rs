@@ -112,15 +112,13 @@ impl Borders {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
-        let border_size = handle.read("windows".into()).ok()
+        handle.read("windows".into()).ok()
             .and_then(|windows| windows.get("borders".into()))
-            .map(|borders| borders.as_object()
+            .and_then(|borders| borders.as_object()
                 .and_then(|borders| borders.get("size"))
-                .and_then(|gaps| gaps.as_f64()));
-        match border_size {
-            Some(Some(size)) => size as u32,
-            _ => 0u32
-        }
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32)
     }
 
     /// Fetches the default color from the registry.
@@ -130,15 +128,13 @@ impl Borders {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
-        let color = handle.read("windows".into()).ok()
+        handle.read("windows".into()).ok()
             .and_then(|windows| windows.get("borders".into()))
-            .map(|borders| borders.as_object()
-                 .and_then(|borders| borders.get("inactive_color"))
-                 .and_then(|gaps| gaps.as_f64()));
-        match color {
-            Some(Some(color)) => color as u32,
-            _ => 0u32
-        }.into()
+            .and_then(|borders| borders.as_object()
+                      .and_then(|borders| borders.get("inactive_color"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32).into()
     }
 
     /// Gets the active border color, if one is set.
@@ -146,15 +142,12 @@ impl Borders {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
-        let color = handle.read("windows".into()).ok()
+        handle.read("windows".into()).ok()
             .and_then(|windows| windows.get("borders".into()))
-            .map(|borders| borders.as_object()
-                 .and_then(|borders| borders.get("active_color"))
-                 .and_then(|gaps| gaps.as_f64()));
-        match color {
-            Some(Some(color)) => Some((color as u32).into()),
-            _ => None
-        }
+            .and_then(|borders| borders.as_object()
+                      .and_then(|borders| borders.get("active_color"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| (num as u32).into())
     }
 
     /// Gets the color for these borders.

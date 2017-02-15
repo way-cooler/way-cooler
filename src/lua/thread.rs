@@ -134,7 +134,7 @@ pub fn init() {
                 let _: () = lua.execute_from_reader(init_file)
                     .map(|r| { debug!("Read init.lua successfully"); r })
                     .or_else(|_| {
-                        warn!("Defaulting to pre-compiled init.lua")
+                        warn!("Defaulting to pre-compiled init.lua");
                         lua.execute(init_path::DEFAULT_CONFIG)
                         })
                     .expect("Unable to load pre-compiled init file");

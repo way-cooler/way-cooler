@@ -661,13 +661,11 @@ impl LayoutTree {
         let handle = registry::ReadHandle::new(&client);
         let gap = handle.read("windows".into()).ok()
             .and_then(|windows|windows.get("gaps".into()))
-            .map(|gaps| gaps.as_object()
+            .and_then(|gaps| gaps.as_object()
                  .and_then(|gaps| gaps.get("size"))
-                 .and_then(|gaps| gaps.as_f64()));
-        let gap = match gap {
-            Some(Some(gap)) => gap as u32,
-            _ => 0u32
-        };
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32);
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
