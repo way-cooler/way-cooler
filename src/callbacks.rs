@@ -73,7 +73,7 @@ pub extern fn view_created(view: WlcView) -> bool {
     let handle = registry::ReadHandle::new(&client);
     let bar = handle.read("programs".into())
         .expect("layout category didn't exist")
-        .get("bar".into())
+        .get("x11_bar".into())
         .map(|data| data.as_string().map(str::to_string));
     // TODO Move this hack, probably could live somewhere else
     if let Some(Some(bar_name)) = bar {

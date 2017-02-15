@@ -143,8 +143,7 @@ impl<'lock> WriteHandle<'lock> {
         }
         let handle = self.handle.as_mut().expect("handle.was poisoned!");
         if !self.client.categories().any(|permission| *permission.0 == category) {
-            handle.add_category(category.clone())
-                .expect("Category already existed");
+            handle.add_category(category.clone()).ok();
         }
         handle.category_mut(category.clone())
             .or(Err(ClientErr::DoesNotExist(category)))
