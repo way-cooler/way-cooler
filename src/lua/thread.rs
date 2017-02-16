@@ -133,7 +133,8 @@ pub fn init() {
             Ok(init_file) => {
                 let _: () = lua.execute_from_reader(init_file)
                     .map(|r| { debug!("Read init.lua successfully"); r })
-                    .or_else(|_| {
+                    .or_else(|err| {
+                        error!("Lua error: {:?}", err);
                         warn!("Defaulting to pre-compiled init.lua");
                         lua.execute(init_path::DEFAULT_CONFIG)
                         })
@@ -342,8 +343,14 @@ fn update_values<L>(mut table: &mut hlua::LuaTable<L>,
                     category.insert(key, Json::Object(BTreeMap::new()));
                 },
                 value => {
-                    if let Ok(val) = lua_to_json(value) {
-                        category.insert(key, val);
+                    match lua_to_json(value) {
+                        Ok(val) => {
+                            trace!("Updating {}:{} = {:#?}", category.name(), key, &val);
+                            category.insert(key, val);
+                        },
+                        Err(value) => {
+                            warn!("Could not translate {:?} to JSON", value);
+                        }
                     }
                 }
             }
