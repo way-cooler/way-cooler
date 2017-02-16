@@ -47,7 +47,7 @@ pub enum Permissions {
 /// The way a client program accesses the categories in the registry.
 ///
 /// Has a mapping of known `Category`s and its associated permissions.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Client {
     id: Uuid,
     access: AccessMapping
@@ -118,5 +118,55 @@ impl Clients {
     #[allow(dead_code)]
     pub fn remove_client(&mut self, id: Uuid) -> Option<Client> {
         self.clients.remove(&id)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::hash_map::HashMap;
+    use uuid::Uuid;
+    use super::{Clients, Client};
+
+    #[test]
+    fn test_adding_and_removing_clients() {
+        let mut mapping = Clients::new();
+
+        // New client, no permissions
+        let new_client = Client::new(HashMap::new());
+        let new_id = mapping.add_client(new_client.clone());
+        assert_eq!(*mapping.client(new_id).unwrap(), new_client);
+        let old_client = mapping.remove_client(new_id);
+        assert_eq!(old_client, Some(new_client));
+
+        assert_eq!(mapping.client(new_id), None);
+        assert_eq!(mapping.remove_client(new_id), None);
+    }
+
+    #[test]
+    fn test_nil_client() {
+        let mut mapping = Clients::new();
+        // automatically has nil client
+        assert_eq!(mapping.client(Uuid::nil()).cloned(), Some(Client::new_nil()));
+        let old_nil;
+        let nil_id;
+        {
+            // accessing a client locks the mapping
+            let nil = mapping.client(Uuid::nil()).unwrap();
+
+            // should have no categories associated with it,
+            // though it has access to all categories for all time.
+            assert_eq!(nil.categories().next(), None);
+
+            nil_id = nil.id();
+            old_nil = nil.clone();
+        }
+
+        // can remove nil
+        let nil = mapping.remove_client(nil_id);
+        assert_eq!(nil, Some(old_nil));
+
+        // and can add it back again
+        let new_nil_id = mapping.add_client(Client::new_nil());
+        assert_eq!(mapping.client(new_nil_id).unwrap().categories().next(), None);
     }
 }
