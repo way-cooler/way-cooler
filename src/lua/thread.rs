@@ -41,9 +41,9 @@ pub const ERR_LOCK_SENDER: &'static str = "Lua thread: unable to lock SENDER";
 pub const ERR_LOCK_QUEUE: &'static str =
     "Lua thread: unable to lock REGISTRY_QUEUE";
 
-const INIT_LUA_FUNC: &'static str = "way_cooler.init()";
-const LUA_TERMINATE_CODE: &'static str = "way_cooler.terminate()";
-const LUA_RESTART_CODE: &'static str = "way_cooler.restart()";
+const INIT_LUA_FUNC: &'static str = "way_cooler.on_init()";
+const LUA_TERMINATE_CODE: &'static str = "way_cooler.on_terminate()";
+const LUA_RESTART_CODE: &'static str = "way_cooler.on_restart()";
 
 /// Struct sent to the Lua query
 struct LuaMessage {

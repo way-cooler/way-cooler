@@ -115,16 +115,16 @@ end
 way_cooler.register_mouse_modifier(mod)
 
 -- Execute some code after Way Cooler is finished initializing
-way_cooler.init = function()
+way_cooler.on_init = function()
   util.program.spawn_startup_programs()
 end
 
 --- Execute some code when Way Cooler restarts
-way_cooler.restart = function()
+way_cooler.on_restart = function()
   util.program.restart_startup_programs()
 end
 
 --- Execute some code when Way Cooler terminates
-way_cooler.terminate = function()
+way_cooler.on_terminate = function()
   util.program.terminate_startup_programs()
 end

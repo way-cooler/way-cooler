@@ -42,9 +42,9 @@ commands.key = function(mods, key, action, loop)
     }
 end
 
-commands.init = function() end
-commands.restart = function() end
-commands.terminate = function() end
+commands.on_init = function() end
+commands.on_restart = function() end
+commands.on_terminate = function() end
 
 local use_key = ", use the `key` or `config.key` method to create a keybinding"
 -- Converts a list of modifiers to a string
