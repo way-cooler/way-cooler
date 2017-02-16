@@ -115,7 +115,7 @@ impl Borders {
         handle.read("windows".into()).ok()
             .and_then(|windows| windows.get("borders".into()))
             .and_then(|borders| borders.as_object()
-                .and_then(|borders| borders.get("size"))
+                      .and_then(|borders| borders.get("size"))
                       .and_then(|gaps| gaps.as_f64()))
             .map(|num| num as u32)
             .unwrap_or(0u32)

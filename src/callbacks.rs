@@ -74,9 +74,9 @@ pub extern fn view_created(view: WlcView) -> bool {
     let bar = handle.read("programs".into())
         .expect("layout category didn't exist")
         .get("x11_bar".into())
-        .map(|data| data.as_string().map(str::to_string));
+        .and_then(|data| data.as_string().map(str::to_string));
     // TODO Move this hack, probably could live somewhere else
-    if let Some(Some(bar_name)) = bar {
+    if let Some(bar_name) = bar {
         if view.get_title().as_str() == bar_name {
             view.set_mask(1);
             view.bring_to_front();

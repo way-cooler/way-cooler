@@ -30,7 +30,6 @@ impl Category {
     }
 
     /// Gets the name of the Category.
-    #[allow(dead_code)]
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
