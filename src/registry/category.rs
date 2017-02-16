@@ -18,6 +18,14 @@ pub struct Category {
     data: HashMap<String, Json>
 }
 
+impl PartialEq for Category {
+    fn eq(&self, other: &Category) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for Category {}
+
 
 impl Category {
     /// Makes a new category that has some name.

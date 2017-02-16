@@ -26,7 +26,7 @@ use super::REGISTRY;
 pub type RegistryResult<T> = Result<T, RegistryErr>;
 
 /// Ways accessing of accessing the registry incorrectly
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RegistryErr {
     /// The category already exists, you cannot overwrite it.
     CategoryExists(String),
@@ -147,5 +147,27 @@ impl<'lock> WriteHandle<'lock> {
         }
         handle.category_mut(category.clone())
             .or(Err(ClientErr::DoesNotExist(category)))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_basic_category_manipulation() {
+        let mut reg = Registry::new();
+        reg.add_category("Test".into()).unwrap();
+        assert_eq!(reg.add_category("Test".into()), Err(RegistryErr::CategoryExists("Test".into())));
+        assert!(reg.category("Test".into()).is_ok());
+        assert!(reg.category_mut("Test".into()).is_ok());
+        assert_eq!(reg.category("test".into()),
+                   Err(RegistryErr::CategoryDoesNotExist("test".into())));
+        assert_eq!(reg.category_mut("test".into()),
+                   Err(RegistryErr::CategoryDoesNotExist("test".into())));
+        assert_eq!(reg.category("whatever".into()),
+                   Err(RegistryErr::CategoryDoesNotExist("whatever".into())));
+        assert_eq!(reg.category_mut("whatever".into()),
+                   Err(RegistryErr::CategoryDoesNotExist("whatever".into())));
     }
 }
