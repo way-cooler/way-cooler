@@ -9,7 +9,7 @@ local background = 0x5E4055
 
 -- Programs that Way Cooler can run
 way_cooler.programs = {
-  terminal = "xfce4-terminal", -- Use the terminal of your choice
+  terminal = "weston-terminal", -- Use the terminal of your choice
   -- Name of the window that will be the bar window.
   -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
   --
