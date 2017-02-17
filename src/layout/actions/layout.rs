@@ -634,6 +634,15 @@ impl LayoutTree {
                 Container::View { handle, .. } => {
                     handle.set_geometry(ResizeEdge::empty(), output_geometry);
                     handle.bring_to_front();
+                    let views = handle.get_output().get_views();
+                    // TODO It would be nice to not have to iterate vier
+                    // all the views just to do this.
+                    for view in views {
+                        // make sure children render above fullscreen parent
+                        if view.get_parent() == handle {
+                            view.bring_to_front();
+                        }
+                    }
                     None
                 },
                 Container::Container { ref mut geometry, .. } => {
