@@ -350,11 +350,29 @@ impl Container {
     /// If called on a non View/Container, then returns an Err with the wrong type.
     pub fn set_fullscreen(&mut self, val: bool) -> Result<(), ContainerType> {
         let c_type = self.get_type();
+        let floating = self.floating();
         match *self {
             Container::View { handle, effective_geometry, .. } => {
                 handle.set_state(VIEW_FULLSCREEN, val);
                 if !val {
-                    handle.set_geometry(ResizeEdge::empty(), effective_geometry)
+                    let new_geometry;
+                    if floating {
+                        let output_size = handle.get_output().get_resolution()
+                            .expect("output had no resolution");
+                        new_geometry = Geometry {
+                            size: Size {
+                                h: output_size.h / 2,
+                                w: output_size.w / 2
+                            },
+                            origin: Point {
+                                x: (output_size.w / 2 - output_size.w / 4) as i32 ,
+                                y: (output_size.h / 2 - output_size.h / 4) as i32
+                            }
+                        };
+                    } else {
+                        new_geometry = effective_geometry;
+                    }
+                    handle.set_geometry(ResizeEdge::empty(), new_geometry)
                 }
                 Ok(())
             },
