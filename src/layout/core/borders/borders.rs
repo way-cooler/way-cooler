@@ -13,6 +13,8 @@ use ::render::{Color, Renderable};
 /// This type just deals with rendering,
 #[derive(Clone)]
 pub struct Borders {
+    /// The title displayed in the title border.
+    pub title: String,
     /// The surface that contains the bytes we give to wlc to draw.
     surface: ImageSurface,
     /// The geometry where the buffer is written.
@@ -52,6 +54,7 @@ impl Renderable for Borders {
                                                     h as i32,
                                                     stride);
         Some(Borders {
+            title: "".into(),
             surface: surface,
             geometry: geometry,
             output: output,
@@ -177,6 +180,10 @@ impl Borders {
     pub fn default_title_size() -> u32 {
         // TODO look up in registry
         50
+    }
+
+    pub fn title(&self) -> &str {
+        self.title.as_str()
     }
 }
 

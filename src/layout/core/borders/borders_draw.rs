@@ -94,6 +94,7 @@ impl BordersDraw {
                       border_geometry: Geometry,
                       output_res: Size) -> Result<Self, DrawErr<Borders>> {
         let title_size = Borders::default_title_size() as f64;
+        let title: String = self.inner().title().into();
         if x < 0.0 {
             w += x;
         }
@@ -117,7 +118,8 @@ impl BordersDraw {
         self.base = try!(self.base.check_cairo());
         self.base.set_source_rgb(0.0, 0.0, 0.0);
         self.base = try!(self.base.check_cairo());
-        self.base.show_text("HELLO WORLD");
+        self.base.show_text(title.as_str());
+        self.base = try!(self.base.check_cairo());
         Ok(self)
     }
 

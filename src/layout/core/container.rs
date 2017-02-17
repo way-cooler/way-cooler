@@ -542,6 +542,21 @@ impl Container {
                                              "active_border_color")))
         }
     }
+
+    /// Gets the title for a wlc handle.
+    /// Tries to get the title, then defers to class if blank,
+    /// and finally to the app_id if that is blank as well.
+    pub fn get_title(view: WlcView) -> String {
+        let title = view.get_title();
+        let class = view.get_class();
+        if !title.is_empty() {
+            title
+        } else if !class.is_empty() {
+            class
+        } else {
+            view.get_app_id()
+        }
+    }
 }
 
 #[cfg(test)]

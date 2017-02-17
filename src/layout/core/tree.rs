@@ -318,7 +318,11 @@ impl LayoutTree {
             let geometry = view.get_geometry()
                 .expect("View had no geometry");
             let output = view.get_output();
-            let borders = Borders::new(geometry, output);
+            let borders = Borders::new(geometry, output)
+                .map(|mut b| {
+                    b.title = Container::get_title(view);
+                    b
+                });
             let view_ix = self.tree.add_child(active_ix,
                                               Container::new_view(view, borders),
                                               true);
