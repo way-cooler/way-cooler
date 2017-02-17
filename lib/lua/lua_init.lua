@@ -11,7 +11,7 @@ local way_cooler_mt = {}
 -- The commands that way_cooler can run, e.g way_cooler.key(...)
 local commands = {}
 -- The key mapping that is updated by way_cooler.key(...)
-local __key_map = {}
+__key_map = {}
 -- A cache of the registry, this is used to push values to Way Cooler.
 -- Values are pushed here, and then we inform Way Cooler to read them.
 __registry_cache = {}
