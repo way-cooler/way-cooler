@@ -179,7 +179,13 @@ impl Borders {
 
     pub fn default_title_size() -> u32 {
         // TODO look up in registry
-        50
+        20
+    }
+
+    pub fn title_background_color() -> Color {
+        // TODO look up in registry
+        // TODO Get from self.title_background_color, like in color
+        5750457u32.into()
     }
 
     pub fn title(&self) -> &str {

@@ -724,7 +724,7 @@ impl LayoutTree {
                     }
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
-                    geometry.origin.y += (title_size / 2) as i32;
+                    geometry.origin.y += title_size as i32;
                     geometry.size.w = geometry.size.w.saturating_sub(gap);
                     geometry.size.h = geometry.size.h.saturating_sub(gap);
                     // TODO This is only here to make this work

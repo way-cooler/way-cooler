@@ -94,6 +94,7 @@ impl BordersDraw {
                       border_geometry: Geometry,
                       output_res: Size) -> Result<Self, DrawErr<Borders>> {
         let title_size = Borders::default_title_size() as f64;
+        let title_color = Borders::title_background_color();
         let title: String = self.inner().title().into();
         if x < 0.0 {
             w += x;
@@ -101,9 +102,8 @@ impl BordersDraw {
         if y < 0.0 {
             h += y;
         }
-        // TODO Variable, or in constant?
-        x = 5.0;
-        y = title_size / 2.0;
+        x = Borders::thickness() as f64;
+        y = title_size / 1.5;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
             let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
                 - output_res.w as i32;
@@ -114,6 +114,15 @@ impl BordersDraw {
                 - output_res.h as i32;
             y += offset as f64;
         }
+        // Draw background of title bar
+        self.base.set_source_rgb(1.0, 0.0, 0.0);
+        self.base.set_color_source(title_color);
+        self.base.rectangle(0.0, 0.0, w, title_size);
+        self.base = try!(self.base.check_cairo());
+        self.base.fill();
+        self.base = try!(self.base.check_cairo());
+
+        // Draw title text
         self.base.move_to(x, y);
         self.base = try!(self.base.check_cairo());
         self.base.set_source_rgb(0.0, 0.0, 0.0);
@@ -206,7 +215,7 @@ impl Drawable<Borders> for BordersDraw {
         border_g.size.h += thickness;
         border_g.size.h += title_size;
 
-        self.base.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+        self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
         self.base.paint();
         let color = self.base.inner().color();
         self.base.set_color_source(color);
