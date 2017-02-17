@@ -24,6 +24,7 @@ impl BordersDraw {
                         border_geometry: Geometry,
                         output_res: Size)
                         -> Result<Self, DrawErr<Borders>> {
+        let title_size = Borders::default_title_size() as f64;
         // yay clamping
         if x < 0.0 {
             w += x;
@@ -32,7 +33,7 @@ impl BordersDraw {
             h += y;
         }
         x = 0.0;
-        y = 0.0;
+        y = title_size;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
             let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
                 - output_res.w as i32;
@@ -59,6 +60,7 @@ impl BordersDraw {
                          border_geometry: Geometry,
                          output_res: Size)
                          -> Result<Self, DrawErr<Borders>> {
+        let title_size = Borders::default_title_size() as f64;
         // yay clamping
         if border_geometry.origin.x < 0 {
             x += border_geometry.origin.x as f64;
@@ -66,7 +68,7 @@ impl BordersDraw {
         if y < 0.0 {
             h += y;
         }
-        y = 0.0;
+        y = title_size;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
             let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
                 - output_res.w as i32;
@@ -84,14 +86,49 @@ impl BordersDraw {
         Ok(self)
     }
 
+    fn draw_title_bar(mut self,
+                      mut x: f64,
+                      mut y: f64,
+                      mut w: f64,
+                      mut h: f64,
+                      border_geometry: Geometry,
+                      output_res: Size) -> Result<Self, DrawErr<Borders>> {
+        let title_size = Borders::default_title_size() as f64;
+        if x < 0.0 {
+            w += x;
+        }
+        if y < 0.0 {
+            h += y;
+        }
+        // TODO Variable, or in constant?
+        x = 5.0;
+        y = title_size / 2.0;
+        if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
+            let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
+                - output_res.w as i32;
+            x += offset as f64;
+        }
+        if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
+            let offset = (border_geometry.origin.y + border_geometry.size.h as i32)
+                - output_res.h as i32;
+            y += offset as f64;
+        }
+        self.base.move_to(x, y);
+        self.base = try!(self.base.check_cairo());
+        self.base.set_source_rgb(0.0, 0.0, 0.0);
+        self.base = try!(self.base.check_cairo());
+        self.base.show_text("HELLO WORLD");
+        Ok(self)
+    }
+
     fn draw_top_border(mut self,
                          mut x: f64,
                          mut y: f64,
                          mut w: f64,
                          mut h: f64,
                          border_geometry: Geometry,
-                         output_res: Size)
-                         -> Result<Self, DrawErr<Borders>> {
+                         output_res: Size) -> Result<Self, DrawErr<Borders>> {
+        let title_size = Borders::default_title_size() as f64;
         // yay clamping
         if x < 0.0 {
             w += x;
@@ -100,7 +137,7 @@ impl BordersDraw {
             h += y;
         }
         x = 0.0;
-        y = 0.0;
+        y = title_size;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
             let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
                 - output_res.w as i32;
@@ -159,12 +196,15 @@ impl Drawable<Borders> for BordersDraw {
         let edge_thickness = thickness / 2;
         let output_res = self.inner().get_output().get_resolution()
             .expect("Could not get focused output's resolution");
+        let title_size = Borders::default_title_size();
         border_g.origin.x -= edge_thickness as i32;
         border_g.origin.y -= edge_thickness as i32;
+        border_g.origin.y -= title_size as i32;
         border_g.size.w += thickness;
         border_g.size.h += thickness;
+        border_g.size.h += title_size;
 
-        self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+        self.base.set_source_rgba(1.0, 1.0, 1.0, 1.0);
         self.base.paint();
         let color = self.base.inner().color();
         self.base.set_color_source(color);
@@ -181,7 +221,8 @@ impl Drawable<Borders> for BordersDraw {
         self = self.draw_left_border(x, y, edge_thickness, h, border_g, output_res)?
         .draw_right_border(w - edge_thickness, y, edge_thickness, h, border_g, output_res)?
         .draw_top_border(x, y, w, edge_thickness, border_g, output_res)?
-        .draw_bottom_border(x, h, w, -edge_thickness, border_g, output_res)?;
+        .draw_bottom_border(x, h, w, -edge_thickness, border_g, output_res)?
+        .draw_title_bar(x, y, w, edge_thickness, border_g, output_res)?;
 
         Ok(self.base.finish(border_g))
     }

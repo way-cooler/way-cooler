@@ -30,14 +30,17 @@ pub struct Borders {
 impl Renderable for Borders {
     fn new(mut geometry: Geometry, output: WlcOutput) -> Option<Self> {
         let thickness = Borders::thickness();
+        let title_size = Borders::default_title_size();
         if thickness == 0 {
             return None
         }
         // Add the thickness to the geometry.
         geometry.origin.x -= thickness as i32;
         geometry.origin.y -= thickness as i32;
+        geometry.origin.y -= title_size as i32;
         geometry.size.w += thickness;
         geometry.size.h += thickness;
+        geometry.size.h += title_size;
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
         let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
@@ -80,13 +83,16 @@ impl Renderable for Borders {
     fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
         // Add the thickness to the geometry.
         let thickness = Borders::thickness();
+        let title_size = Borders::default_title_size();
         if thickness == 0 {
             return None;
         }
         geometry.origin.x -= thickness as i32;
         geometry.origin.y -= thickness as i32;
+        geometry.origin.y -= title_size as i32;
         geometry.size.w += thickness;
         geometry.size.h += thickness;
+        geometry.size.h += title_size;
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
             return Some(self);
@@ -166,6 +172,11 @@ impl Borders {
 
     pub fn get_output(&self) -> WlcOutput {
         self.output
+    }
+
+    pub fn default_title_size() -> u32 {
+        // TODO look up in registry
+        50
     }
 }
 
