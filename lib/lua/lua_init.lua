@@ -46,7 +46,7 @@ commands.on_init = function() end
 commands.on_restart = function() end
 commands.on_terminate = function() end
 
-local use_key = ", use the `key` or `config.key` method to create a keybinding"
+local use_key = ", use the `key` or `way_cooler.key` method to create a keybinding"
 -- Converts a list of modifiers to a string
 local function keymods_to_string(mods, key)
     table.insert(mods, key)

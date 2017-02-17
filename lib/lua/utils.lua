@@ -140,11 +140,26 @@ end
 util.program = {}
 util.program.programs = {}
 
+
+-- Spawns a program once. Does not update the global program spawn list.
+-- @param bin The program to run. Can be an absolute path or a command to run.
+-- @param args The arguments (as a string) to pass to the program.
+function util.program.spawn_once(bin, args)
+  assert(type(bin) == 'string', 'Non string given for program')
+  if type(args) ~= 'string' then
+    args = ""
+  end
+  os.execute(bin .. " " .. args .. " &")
+end
+
 -- Registers the program to spawn at startup and every time it restarts
 -- @param bin The program to run. Can be an absolute path or a command to run.
 -- @param args The arguments (as a string) to pass to the program.
 function util.program.spawn_at_startup(bin, args)
   assert(type(bin) == 'string', 'Non string given for program')
+  if type(args) ~= 'string' then
+    args = ""
+  end
   table.insert(util.program.programs, {
                  bin = bin,
                  args = args
