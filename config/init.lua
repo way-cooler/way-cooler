@@ -63,7 +63,9 @@ way_cooler.bar = "lemonbar"
 way_cooler.gap_size = 0 -- The width of gaps between windows in pixels
 way_cooler.border_size = 20 -- The width of the borders between windows
 way_cooler.border_color = 0x386890 -- The color of the borders
+way_cooler.title_background_color = 0x386890 -- Color of in-active title bar
 way_cooler.active_border_color = 0x57beb9 -- Color of active container borders
+way_cooler.active_title_background_color = 0x57beb9 -- Color of active title bar
 
 local keys = {
   -- Open dmenu

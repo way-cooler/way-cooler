@@ -94,7 +94,7 @@ impl BordersDraw {
                       border_geometry: Geometry,
                       output_res: Size) -> Result<Self, DrawErr<Borders>> {
         let title_size = Borders::title_size() as f64;
-        let title_color = Borders::title_background_color();
+        let title_color = self.base.inner().title_background_color();
         let title: String = self.inner().title().into();
         if x < 0.0 {
             w += x;

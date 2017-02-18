@@ -514,7 +514,9 @@ impl Container {
             Container::Container { ref mut borders, .. }=> {
                 if let Some(borders_) = borders.as_mut() {
                     let color = Borders::active_color();
+                    let title_color = Borders::active_title_color();
                     borders_.set_color(color);
+                    borders_.set_title_color(title_color);
                 }
                 Ok(())
             },
@@ -534,6 +536,7 @@ impl Container {
             Container::Container { ref mut borders, .. }=> {
                 if let Some(borders_) = borders.as_mut() {
                     borders_.set_color(None);
+                    borders_.set_title_color(None);
                 }
                 Ok(())
             },

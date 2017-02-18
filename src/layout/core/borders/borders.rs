@@ -25,8 +25,12 @@ pub struct Borders {
     output: WlcOutput,
     /// The specific color these borders should be colored.
     ///
-    /// If unspecified, the default is used
-    color: Option<Color>
+    /// If unspecified, the default is used.
+    color: Option<Color>,
+    /// The specific color the title bar should be colored.
+    ///
+    /// If unspecified, the default is used.
+    title_color: Option<Color>
 }
 
 impl Renderable for Borders {
@@ -58,7 +62,8 @@ impl Renderable for Borders {
             surface: surface,
             geometry: geometry,
             output: output,
-            color: None
+            color: None,
+            title_color: None
         })
     }
 
@@ -161,6 +166,38 @@ impl Borders {
         val.map(|c| c.into())
     }
 
+    /// Fetches the default title background color from the registry.
+    ///
+    /// If the value is unset, black borders are returned.
+    pub fn default_title_color() -> Color {
+        let val = registry::get_data("title_background_color")
+            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num <= 0.0 {
+                        0u32
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0u32))
+            }).unwrap_or(0u32);
+        val.into()
+    }
+
+    /// Gets the active border color, if one is set
+    pub fn active_title_color() -> Option<Color> {
+        let val = registry::get_data("active_title_background_color")
+            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num <= 0.0 {
+                        0u32
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0u32))
+            }).ok();
+        val.map(|c| c.into())
+    }
+
     /// Gets the color for these borders.
     ///
     /// If a specific one is unset, then the default color is returned.
@@ -168,9 +205,21 @@ impl Borders {
         self.color.unwrap_or_else(Borders::default_color)
     }
 
+    /// Gets the color for the title border of these borders.
+    ///
+    /// If a specific one is unset, then the default color is returned.
+    pub fn title_background_color(&self) -> Color {
+        self.title_color.unwrap_or_else(Borders::default_title_color)
+    }
+
     /// Sets or clears the specific color for these borders.
     pub fn set_color(&mut self, color: Option<Color>) {
         self.color = color
+    }
+
+    /// Sets or clears the specific color for these borders.
+    pub fn set_title_color(&mut self, color: Option<Color>) {
+        self.title_color = color
     }
 
     pub fn get_output(&self) -> WlcOutput {
@@ -180,12 +229,6 @@ impl Borders {
     pub fn title_size() -> u32 {
         // TODO look up in registry
         20
-    }
-
-    pub fn title_background_color() -> Color {
-        // TODO look up in registry
-        // TODO Get from self.title_background_color, like in color
-        5750457u32.into()
     }
 
     pub fn title(&self) -> &str {
