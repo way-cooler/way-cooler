@@ -24,7 +24,7 @@ impl BordersDraw {
                         border_geometry: Geometry,
                         output_res: Size)
                         -> Result<Self, DrawErr<Borders>> {
-        let title_size = Borders::title_size() as f64;
+        let title_size = Borders::title_bar_size() as f64;
         // yay clamping
         if x < 0.0 {
             w += x;
@@ -60,7 +60,7 @@ impl BordersDraw {
                          border_geometry: Geometry,
                          output_res: Size)
                          -> Result<Self, DrawErr<Borders>> {
-        let title_size = Borders::title_size() as f64;
+        let title_size = Borders::title_bar_size() as f64;
         // yay clamping
         if border_geometry.origin.x < 0 {
             x += border_geometry.origin.x as f64;
@@ -93,7 +93,7 @@ impl BordersDraw {
                       mut h: f64,
                       border_geometry: Geometry,
                       output_res: Size) -> Result<Self, DrawErr<Borders>> {
-        let title_size = Borders::title_size() as f64;
+        let title_size = Borders::title_bar_size() as f64;
         let title_color = self.base.inner().title_background_color();
         let title_font_color = self.base.inner().title_font_color();
         let title: String = self.inner().title().into();
@@ -104,7 +104,7 @@ impl BordersDraw {
             h += y;
         }
         let mut title_x = Borders::thickness() as f64;
-        let mut title_y = title_size / 1.5;
+        let mut title_y = title_size;
         x = 0.0;
         y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
@@ -144,7 +144,7 @@ impl BordersDraw {
                          mut h: f64,
                          border_geometry: Geometry,
                          output_res: Size) -> Result<Self, DrawErr<Borders>> {
-        let title_size = Borders::title_size() as f64;
+        let title_size = Borders::title_bar_size() as f64;
         // yay clamping
         if x < 0.0 {
             w += x;
@@ -212,7 +212,7 @@ impl Drawable<Borders> for BordersDraw {
         let edge_thickness = thickness / 2;
         let output_res = self.inner().get_output().get_resolution()
             .expect("Could not get focused output's resolution");
-        let title_size = Borders::title_size();
+        let title_size = Borders::title_bar_size();
         border_g.origin.x -= edge_thickness as i32;
         border_g.origin.y -= edge_thickness as i32;
         border_g.origin.y -= title_size as i32;

@@ -40,7 +40,7 @@ pub struct Borders {
 impl Renderable for Borders {
     fn new(mut geometry: Geometry, output: WlcOutput) -> Option<Self> {
         let thickness = Borders::thickness();
-        let title_size = Borders::title_size();
+        let title_size = Borders::title_bar_size();
         if thickness == 0 {
             return None
         }
@@ -96,7 +96,7 @@ impl Renderable for Borders {
     fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
         // Add the thickness to the geometry.
         let thickness = Borders::thickness();
-        let title_size = Borders::title_size();
+        let title_size = Borders::title_bar_size();
         if thickness == 0 {
             return None;
         }
@@ -126,8 +126,25 @@ impl Renderable for Borders {
 }
 
 impl Borders {
+    /// Gets the thickness of the borders (not including title bar).
+    ///
+    /// Defaults to 0 if not set.
     pub fn thickness() -> u32 {
         registry::get_data("border_size")
+            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num < 0.0 {
+                        0u32
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0u32))
+            }).unwrap_or(0u32)
+    }
+
+    /// Gets the title bar size. Defaults to 0 if not set.
+    pub fn title_bar_size() -> u32 {
+        registry::get_data("title_bar_size")
             .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
                 Ok(data.as_f64().map(|num| {
                     if num < 0.0 {
@@ -273,11 +290,6 @@ impl Borders {
 
     pub fn get_output(&self) -> WlcOutput {
         self.output
-    }
-
-    pub fn title_size() -> u32 {
-        // TODO look up in registry
-        20
     }
 
     pub fn title(&self) -> &str {

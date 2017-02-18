@@ -718,7 +718,7 @@ impl LayoutTree {
             match *container {
                 Container::View { handle, .. } => {
                     let gap = Borders::thickness();
-                    let title_size = Borders::title_size();
+                    let title_size = Borders::title_bar_size();
                     if gap == 0 {
                         return Ok(())
                     }

@@ -68,6 +68,7 @@ way_cooler.title_font_color = 0x111111 -- Color of in-active title bar font
 way_cooler.active_border_color = 0x57beb9 -- Color of active container borders
 way_cooler.active_title_background_color = 0x57beb9 -- Color of active title bar
 way_cooler.active_title_font_color = 0x000000 -- Color of active title bar font
+way_cooler.title_bar_size = 15; -- Size of the title bar, above the top border.
 
 local keys = {
   -- Open dmenu
