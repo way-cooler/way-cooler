@@ -1,15 +1,24 @@
 -- Private table of Rust functions
+
+-- Our connection to Rust functions exposed by Way Cooler
 local rust = __rust
 __rust = nil
 
-local way_cooler_table = {}
+-- The table that the user sees
+way_cooler = {}
+-- The meta table magic that way_cooler uses to talk to Way Cooler
 local way_cooler_mt = {}
-local config_table = {}
-local config_mt = {}
+-- The commands that way_cooler can run, e.g way_cooler.key(...)
+local commands = {}
+-- The key mapping that is updated by way_cooler.key(...)
 __key_map = {}
+-- A cache of the registry, this is used to push values to Way Cooler.
+-- Values are pushed here, and then we inform Way Cooler to read them.
+__registry_cache = {}
+local registry_cache_mt = {}
 
 -- Initialize the workspaces
-config_table.init_workspaces = function(settings)
+commands.init_workspaces = function(settings)
     assert(type(settings) == 'table', "settings: expected table")
     for ix, val in pairs(settings) do
         assert(type(ix) == 'number', "settings: expected number-indexed array")
@@ -19,8 +28,9 @@ config_table.init_workspaces = function(settings)
     end
     rust.init_workspaces(settings)
 end
+
 -- Create a new keybinding to register with Rust
-config_table.key = function(mods, key, action, loop)
+commands.key = function(mods, key, action, loop)
     assert(type(mods) == 'table', "modifiers: expected table")
     assert(type(key) == 'string', "key: expected string")
     if loop == nil then loop = true end
@@ -31,7 +41,12 @@ config_table.key = function(mods, key, action, loop)
         mods = mods, key = key, action = action, loop = loop
     }
 end
-local use_key = ", use the `key` or `config.key` method to create a keybinding"
+
+commands.on_init = function() end
+commands.on_restart = function() end
+commands.on_terminate = function() end
+
+local use_key = ", use the `key` or `way_cooler.key` method to create a keybinding"
 -- Converts a list of modifiers to a string
 local function keymods_to_string(mods, key)
     table.insert(mods, key)
@@ -42,8 +57,9 @@ local function register_lua_key(index, action, loop)
     local map_ix = rust.register_lua_key(index, loop)
     __key_map[map_ix] = action
 end
+
 -- Register a keybinding
-config_table.register_key = function(key)
+commands.register_key = function(key)
     assert(key.mods, "keybinding missing modifiers" .. use_key)
     assert(key.key, "keybinding missing modifiers" .. use_key)
     assert(key.action, "keybinding missing action" .. use_key)
@@ -65,60 +81,47 @@ config_table.register_key = function(key)
         error("keybinding action: expected string or a function"..use_key, 2)
     end
 end
+
 -- Bind a key to use in conjunction with the mouse for certain commands (resize, move floating)
-config_table.register_mouse_modifier = function(mod)
+commands.register_mouse_modifier = function(mod)
   assert(type(mod) == 'string', "mod: expected a string")
   rust.register_mouse_modifier(mod)
 end
--- Register callback to execute on restart
-way_cooler_table.on_restart = function(callback)
-    assert(callback, "missing callback")
-    assert(type(callback) == 'function', "callback: expected function")
-    rust.on_restart = callback
-end
--- Register a function to execute on terminate
-way_cooler_table.on_terminate = function(callback)
-    assert(callback, "missing callback")
-    assert(type(callback) == 'function', "callback: expected function")
-    rust.on_terminate = callback
-end
--- This could technically be called by clients if they want, it should be more hidden.
-way_cooler_table.handle_termination = function()
-    if rust.on_terminate ~= nil then
-        rust.on_terminate()
-    end
-end
-way_cooler_table.handle_restart = function()
-    if rust.on_restart ~= nil then
-        rust.on_restart()
-    end
-end
 
 way_cooler_mt.__index = function(_table, key)
+    if commands[key] then
+      return commands[key]
+    end
     if type(key) ~= 'string' then
         error("Invalid key, string expected", 1)
     else
+        if __registry_cache[key] then
+          return __registry_cache[key]
+        end
         return rust.ipc_get(key)
     end
 end
 way_cooler_mt.__newindex = function(_table, key, value)
+    if type(value) == "function" then
+      commands[key] = value
+      return
+    end
     if type(key) ~= 'string' then
         error("Invlaid key, string expected", 1)
     else
-        rust.ipc_set(key, value)
+        __registry_cache[key] = value
+        -- now read those values we just wrote to registry_cache.
+        rust.ipc_set(key)
     end
 end
+
+
 way_cooler_mt.__to_string = function(_table)
     return "Way Cooler IPC access"
 end
-config_mt.__to_string = function(_table)
-    return "Way Cooler config access"
-end
-way_cooler_mt.__metatable = "Cannot modify"
-config_mt.__metatable = "Cannot modify"
 
-config = config_table
-setmetatable(config, config_mt)
-way_cooler = way_cooler_table
+way_cooler_mt.__metatable = "Cannot modify"
+commands.__metatable = "Cannot modify"
+
 setmetatable(way_cooler, way_cooler_mt)
 setmetatable(__key_map, { __metatable = "cannot modify" })

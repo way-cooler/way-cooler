@@ -10,7 +10,7 @@ use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
 
-use registry::{self, RegistryGetData};
+use registry::{self};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
@@ -656,16 +656,16 @@ impl LayoutTree {
             _ => return Err(TreeError::UuidNotAssociatedWith(
                 ContainerType::Container))
         };
-        let gap = registry::get_data("gap_size")
-            .map(RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32);
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        let gap = handle.read("windows".into()).ok()
+            .and_then(|windows|windows.get("gaps".into()))
+            .and_then(|gaps| gaps.as_object()
+                 .and_then(|gaps| gaps.get("size"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32);
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
