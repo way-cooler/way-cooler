@@ -176,7 +176,8 @@ end
 -- Stops the startup programs. Does not remove them from the global list.
 function util.program.terminate_startup_programs()
   for index, program in ipairs(util.program.programs) do
-    -- TODO Store PIDs and kill those instead
+    -- TODO Kill in a more fine-grained matter...
+    -- parent joining on child process? PIDs won't work, they can be reclaimed.
     os.execute("pkill " .. program.bin)
   end
 end
