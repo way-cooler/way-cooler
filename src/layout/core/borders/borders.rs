@@ -30,7 +30,11 @@ pub struct Borders {
     /// The specific color the title bar should be colored.
     ///
     /// If unspecified, the default is used.
-    title_color: Option<Color>
+    title_color: Option<Color>,
+    /// The specific color the font for the title bar should be colored.
+    ///
+    /// If unspecified, the default is used.
+    title_font_color: Option<Color>
 }
 
 impl Renderable for Borders {
@@ -63,7 +67,8 @@ impl Renderable for Borders {
             geometry: geometry,
             output: output,
             color: None,
-            title_color: None
+            title_color: None,
+            title_font_color: None
         })
     }
 
@@ -125,7 +130,7 @@ impl Borders {
         registry::get_data("border_size")
             .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
                 Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
+                    if num < 0.0 {
                         0u32
                     } else {
                         num as u32
@@ -141,7 +146,7 @@ impl Borders {
         let val = registry::get_data("border_color")
             .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
                 Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
+                    if num < 0.0 {
                         0u32
                     } else {
                         num as u32
@@ -156,7 +161,7 @@ impl Borders {
         let val = registry::get_data("active_border_color")
             .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
                 Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
+                    if num < 0.0 {
                         0u32
                     } else {
                         num as u32
@@ -173,7 +178,7 @@ impl Borders {
         let val = registry::get_data("title_background_color")
             .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
                 Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
+                    if num < 0.0 {
                         0u32
                     } else {
                         num as u32
@@ -188,12 +193,44 @@ impl Borders {
         let val = registry::get_data("active_title_background_color")
             .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
                 Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
+                    if num < 0.0 {
                         0u32
                     } else {
                         num as u32
                     }
                 }).unwrap_or(0u32))
+            }).ok();
+        val.map(|c| c.into())
+    }
+
+    /// Fetches the default title font color from the registry.
+    ///
+    /// If the value is unset, white font are returned.
+    pub fn default_title_font_color() -> Color {
+        let val = registry::get_data("title_font_color")
+            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num < 0.0 {
+                        0xffffff
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0xffffff))
+            }).unwrap_or(0xffffff);
+        val.into()
+    }
+
+    /// Gets the active title border font, if one is set
+    pub fn active_title_font_color() -> Option<Color> {
+        let val = registry::get_data("active_title_font_color")
+            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
+                Ok(data.as_f64().map(|num| {
+                    if num < 0.0 {
+                        0xffffff
+                    } else {
+                        num as u32
+                    }
+                }).unwrap_or(0xffffff))
             }).ok();
         val.map(|c| c.into())
     }
@@ -212,6 +249,13 @@ impl Borders {
         self.title_color.unwrap_or_else(Borders::default_title_color)
     }
 
+    /// Gets the color for the title font of these borders.
+    ///
+    /// If a specific one is unset, then the default color is returned.
+    pub fn title_font_color(&self) -> Color {
+        self.title_font_color.unwrap_or_else(Borders::default_title_font_color)
+    }
+
     /// Sets or clears the specific color for these borders.
     pub fn set_color(&mut self, color: Option<Color>) {
         self.color = color
@@ -220,6 +264,11 @@ impl Borders {
     /// Sets or clears the specific color for these borders.
     pub fn set_title_color(&mut self, color: Option<Color>) {
         self.title_color = color
+    }
+
+    /// Sets or clears the specific color for these borders.
+    pub fn set_title_font_color(&mut self, color: Option<Color>) {
+        self.title_font_color = color
     }
 
     pub fn get_output(&self) -> WlcOutput {

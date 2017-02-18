@@ -515,8 +515,10 @@ impl Container {
                 if let Some(borders_) = borders.as_mut() {
                     let color = Borders::active_color();
                     let title_color = Borders::active_title_color();
+                    let title_font_color = Borders::active_title_font_color();
                     borders_.set_color(color);
                     borders_.set_title_color(title_color);
+                    borders_.set_title_font_color(title_font_color);
                 }
                 Ok(())
             },
@@ -537,6 +539,7 @@ impl Container {
                 if let Some(borders_) = borders.as_mut() {
                     borders_.set_color(None);
                     borders_.set_title_color(None);
+                    borders_.set_title_font_color(None);
                 }
                 Ok(())
             },

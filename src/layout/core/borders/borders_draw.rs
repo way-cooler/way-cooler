@@ -95,6 +95,7 @@ impl BordersDraw {
                       output_res: Size) -> Result<Self, DrawErr<Borders>> {
         let title_size = Borders::title_size() as f64;
         let title_color = self.base.inner().title_background_color();
+        let title_font_color = self.base.inner().title_font_color();
         let title: String = self.inner().title().into();
         if x < 0.0 {
             w += x;
@@ -129,7 +130,7 @@ impl BordersDraw {
         // Draw title text
         self.base.move_to(title_x, title_y);
         self.base = try!(self.base.check_cairo());
-        self.base.set_source_rgb(0.0, 0.0, 0.0);
+        self.base.set_color_source(title_font_color);
         self.base = try!(self.base.check_cairo());
         self.base.show_text(title.as_str());
         self.base = try!(self.base.check_cairo());
