@@ -157,9 +157,6 @@ end
 -- @param args The arguments (as a string) to pass to the program.
 function util.program.spawn_at_startup(bin, args)
   assert(type(bin) == 'string', 'Non string given for program')
-  if type(args) ~= 'string' then
-    args = ""
-  end
   table.insert(util.program.programs, {
                  bin = bin,
                  args = args
