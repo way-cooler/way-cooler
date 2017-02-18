@@ -88,9 +88,9 @@ impl BordersDraw {
 
     fn draw_title_bar(mut self,
                       mut x: f64,
-                      mut y: f64,
+                      _y: f64,
                       mut w: f64,
-                      mut h: f64,
+                      _h: f64,
                       border_geometry: Geometry,
                       output_res: Size) -> Result<Self, DrawErr<Borders>> {
         let title_size = Borders::title_bar_size() as f64;
@@ -100,13 +100,10 @@ impl BordersDraw {
         if x < 0.0 {
             w += x;
         }
-        if y < 0.0 {
-            h += y;
-        }
         let mut title_x = Borders::thickness() as f64;
         let mut title_y = title_size;
         x = 0.0;
-        y = 0.0;
+        let mut y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
             let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
                 - output_res.w as i32;
