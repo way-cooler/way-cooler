@@ -30,7 +30,7 @@ impl BordersDraw {
             w += x;
         }
         if y < 0.0 {
-            h += y;
+            h += y - title_size;
         }
         x = 0.0;
         y = title_size;
@@ -66,7 +66,7 @@ impl BordersDraw {
             x += border_geometry.origin.x as f64;
         }
         if y < 0.0 {
-            h += y;
+            h += y - title_size;
         }
         y = title_size;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
@@ -102,28 +102,32 @@ impl BordersDraw {
         if y < 0.0 {
             h += y;
         }
-        x = Borders::thickness() as f64;
-        y = title_size / 1.5;
+        let mut title_x = Borders::thickness() as f64;
+        let mut title_y = title_size / 1.5;
+        x = 0.0;
+        y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
             let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
                 - output_res.w as i32;
             x += offset as f64;
+            title_x += offset as f64;
         }
         if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
             let offset = (border_geometry.origin.y + border_geometry.size.h as i32)
                 - output_res.h as i32;
             y += offset as f64;
+            title_y += offset as f64;
         }
         // Draw background of title bar
         self.base.set_source_rgb(1.0, 0.0, 0.0);
         self.base.set_color_source(title_color);
-        self.base.rectangle(0.0, 0.0, w, title_size);
+        self.base.rectangle(x, y, w, title_size);
         self.base = try!(self.base.check_cairo());
         self.base.fill();
         self.base = try!(self.base.check_cairo());
 
         // Draw title text
-        self.base.move_to(x, y);
+        self.base.move_to(title_x, title_y);
         self.base = try!(self.base.check_cairo());
         self.base.set_source_rgb(0.0, 0.0, 0.0);
         self.base = try!(self.base.check_cairo());
