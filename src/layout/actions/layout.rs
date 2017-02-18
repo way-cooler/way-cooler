@@ -110,7 +110,7 @@ impl LayoutTree {
                 // place floating children above everything else
                 let root_ix = self.tree.children_of(node_ix)[0];
                 for child_ix in self.tree.floating_children(root_ix) {
-                    self.place_floating(child_ix);
+                    self.place_floating(child_ix, fullscreen_apps);
                 }
             },
             ContainerType::Container => {
@@ -343,7 +343,12 @@ impl LayoutTree {
 
     /// If the node is floating, places it at its reported position, above all
     /// other nodes.
-    fn place_floating(&mut self, node_ix: NodeIndex) {
+    fn place_floating(&mut self, node_ix: NodeIndex,
+                      fullscreen_apps: &mut Vec<NodeIndex>) {
+        if self.tree[node_ix].fullscreen() {
+            fullscreen_apps.push(node_ix);
+            return;
+        }
         if !self.tree[node_ix].floating() {
             // This could mess up the layout very badly, that's why it's an error
             error!("Tried to absolutely place a non-floating view!");
@@ -361,7 +366,7 @@ impl LayoutTree {
             container.draw_borders();
         }
         for child_ix in self.tree.floating_children(node_ix) {
-            self.place_floating(child_ix);
+            self.place_floating(child_ix, fullscreen_apps);
         }
     }
 
@@ -629,6 +634,15 @@ impl LayoutTree {
                 Container::View { handle, .. } => {
                     handle.set_geometry(ResizeEdge::empty(), output_geometry);
                     handle.bring_to_front();
+                    let views = handle.get_output().get_views();
+                    // TODO It would be nice to not have to iterate vier
+                    // all the views just to do this.
+                    for view in views {
+                        // make sure children render above fullscreen parent
+                        if view.get_parent() == handle {
+                            view.bring_to_front();
+                        }
+                    }
                     None
                 },
                 Container::Container { ref mut geometry, .. } => {
