@@ -10,7 +10,7 @@ use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
 
-use registry::{self, RegistryGetData};
+use registry::{self};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
@@ -110,7 +110,7 @@ impl LayoutTree {
                 // place floating children above everything else
                 let root_ix = self.tree.children_of(node_ix)[0];
                 for child_ix in self.tree.floating_children(root_ix) {
-                    self.place_floating(child_ix);
+                    self.place_floating(child_ix, fullscreen_apps);
                 }
             },
             ContainerType::Container => {
@@ -343,7 +343,12 @@ impl LayoutTree {
 
     /// If the node is floating, places it at its reported position, above all
     /// other nodes.
-    fn place_floating(&mut self, node_ix: NodeIndex) {
+    fn place_floating(&mut self, node_ix: NodeIndex,
+                      fullscreen_apps: &mut Vec<NodeIndex>) {
+        if self.tree[node_ix].fullscreen() {
+            fullscreen_apps.push(node_ix);
+            return;
+        }
         if !self.tree[node_ix].floating() {
             // This could mess up the layout very badly, that's why it's an error
             error!("Tried to absolutely place a non-floating view!");
@@ -361,7 +366,7 @@ impl LayoutTree {
             container.draw_borders();
         }
         for child_ix in self.tree.floating_children(node_ix) {
-            self.place_floating(child_ix);
+            self.place_floating(child_ix, fullscreen_apps);
         }
     }
 
@@ -629,6 +634,15 @@ impl LayoutTree {
                 Container::View { handle, .. } => {
                     handle.set_geometry(ResizeEdge::empty(), output_geometry);
                     handle.bring_to_front();
+                    let views = handle.get_output().get_views();
+                    // TODO It would be nice to not have to iterate vier
+                    // all the views just to do this.
+                    for view in views {
+                        // make sure children render above fullscreen parent
+                        if view.get_parent() == handle {
+                            view.bring_to_front();
+                        }
+                    }
                     None
                 },
                 Container::Container { ref mut geometry, .. } => {
@@ -656,16 +670,16 @@ impl LayoutTree {
             _ => return Err(TreeError::UuidNotAssociatedWith(
                 ContainerType::Container))
         };
-        let gap = registry::get_data("gap_size")
-            .map(RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32);
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        let gap = handle.read("windows".into()).ok()
+            .and_then(|windows|windows.get("gaps".into()))
+            .and_then(|gaps| gaps.as_object()
+                 .and_then(|gaps| gaps.get("size"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32);
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];

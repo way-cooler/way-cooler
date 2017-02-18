@@ -31,10 +31,10 @@ impl Color {
 }
 
 impl From<u32> for Color {
-    fn from(mut val: u32) -> Self {
-        // Ignore first two bits, we don't care about alpha
-        val <<= 2;
-        let values = unsafe { ::std::mem::transmute::<u32, [u8; 4]>(val) };
-        Color::solid_color(values[2], values[1], values[0])
+    fn from(val: u32) -> Self {
+        let blue = ((val & 0xff0000) >> 16) as u8;
+        let green = ((val & 0x00ff00) >> 8) as u8;
+        let red = (val & 0x0000ff) as u8;
+        Color::solid_color(red, green, blue)
     }
 }

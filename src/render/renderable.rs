@@ -3,7 +3,7 @@
 //! The buffer can only be modified by casting the type to a `Drawable`.
 
 use rustwlc::{Geometry, WlcOutput};
-use rustwlc::render::{write_pixels, wlc_pixel_format};
+use rustwlc::render::{write_pixels, wlc_pixel_format, calculate_stride};
 use cairo::{self, Context, ImageSurface, Operator};
 use super::draw::BaseDraw;
 
@@ -84,6 +84,11 @@ pub trait Renderable {
         }
         if geometry.origin.y < 0 {
             geometry.origin.y = 0;
+        }
+        let stride = calculate_stride(geometry.size.w);
+        if stride * geometry.size.h > buffer.len() as u32 {
+            warn!("Buffer to big to draw! Not drawing");
+            return
         }
         write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &buffer);
     }

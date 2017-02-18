@@ -5,6 +5,7 @@ use rustwlc::{Geometry, Size, WlcOutput};
 use rustwlc::render::{calculate_stride};
 use cairo::{ImageSurface, Format};
 
+use uuid::Uuid;
 use ::registry;
 use ::render::{Color, Renderable};
 
@@ -130,126 +131,119 @@ impl Borders {
     ///
     /// Defaults to 0 if not set.
     pub fn thickness() -> u32 {
-        registry::get_data("border_size")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32)
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
+            .and_then(|borders| borders.as_object()
+                      .and_then(|borders| borders.get("size"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32)
     }
 
-    /// Gets the title bar size. Defaults to 0 if not set.
+    /// Gets the size of the title bar.
+    ///
+    /// Defaults to 0 if not set.
     pub fn title_bar_size() -> u32 {
-        registry::get_data("title_bar_size")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32)
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar".into()))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("size"))
+                      .and_then(|size| size.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32).into()
     }
 
     /// Fetches the default color from the registry.
     ///
     /// If the value is unset, black borders are returned.
     pub fn default_color() -> Color {
-        let val = registry::get_data("border_color")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32);
-        val.into()
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
+            .and_then(|borders| borders.as_object()
+                      .and_then(|borders| borders.get("inactive_color"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32).into()
     }
 
     /// Gets the active border color, if one is set.
     pub fn active_color() -> Option<Color> {
-        let val = registry::get_data("active_border_color")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).ok();
-        val.map(|c| c.into())
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
+            .and_then(|borders| borders.as_object()
+                      .and_then(|borders| borders.get("active_color"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| (num as u32).into())
     }
 
     /// Fetches the default title background color from the registry.
     ///
     /// If the value is unset, black borders are returned.
     pub fn default_title_color() -> Color {
-        let val = registry::get_data("title_background_color")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32);
-        val.into()
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("background_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32).into()
     }
 
     /// Gets the active border color, if one is set
     pub fn active_title_color() -> Option<Color> {
-        let val = registry::get_data("active_title_background_color")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).ok();
-        val.map(|c| c.into())
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("active_background_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| (num as u32).into())
     }
 
     /// Fetches the default title font color from the registry.
     ///
     /// If the value is unset, white font are returned.
     pub fn default_title_font_color() -> Color {
-        let val = registry::get_data("title_font_color")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0xffffff
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0xffffff))
-            }).unwrap_or(0xffffff);
-        val.into()
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("font_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0xffffff).into()
     }
 
     /// Gets the active title border font, if one is set
     pub fn active_title_font_color() -> Option<Color> {
-        let val = registry::get_data("active_title_font_color")
-            .map(registry::RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num < 0.0 {
-                        0xffffff
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0xffffff))
-            }).ok();
-        val.map(|c| c.into())
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("active_font_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| (num as u32).into())
     }
 
     /// Gets the color for these borders.
