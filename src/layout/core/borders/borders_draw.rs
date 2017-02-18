@@ -101,7 +101,7 @@ impl BordersDraw {
             w += x;
         }
         let mut title_x = Borders::thickness() as f64;
-        let mut title_y = title_size;
+        let mut title_y = title_size - 5.0;
         x = 0.0;
         let mut y = 0.0;
         if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
