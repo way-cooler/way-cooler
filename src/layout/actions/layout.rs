@@ -718,7 +718,7 @@ impl LayoutTree {
             match *container {
                 Container::View { handle, .. } => {
                     let gap = Borders::thickness();
-                    let title_size = Borders::default_title_size();
+                    let title_size = Borders::title_size();
                     if gap == 0 {
                         return Ok(())
                     }
@@ -727,9 +727,6 @@ impl LayoutTree {
                     geometry.origin.y += title_size as i32;
                     geometry.size.w = geometry.size.w.saturating_sub(gap);
                     geometry.size.h = geometry.size.h.saturating_sub(gap);
-                    // TODO This is only here to make this work
-                    // the title resizing should be rethought, or be its own mtehod
-                    // OR better yet, abstract over this so that borders can dictate the new geo that the handle should set!
                     geometry.size.h = geometry.size.h.saturating_sub(title_size);
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 },

@@ -32,7 +32,7 @@ pub struct Borders {
 impl Renderable for Borders {
     fn new(mut geometry: Geometry, output: WlcOutput) -> Option<Self> {
         let thickness = Borders::thickness();
-        let title_size = Borders::default_title_size();
+        let title_size = Borders::title_size();
         if thickness == 0 {
             return None
         }
@@ -86,7 +86,7 @@ impl Renderable for Borders {
     fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
         // Add the thickness to the geometry.
         let thickness = Borders::thickness();
-        let title_size = Borders::default_title_size();
+        let title_size = Borders::title_size();
         if thickness == 0 {
             return None;
         }
@@ -177,7 +177,7 @@ impl Borders {
         self.output
     }
 
-    pub fn default_title_size() -> u32 {
+    pub fn title_size() -> u32 {
         // TODO look up in registry
         20
     }
