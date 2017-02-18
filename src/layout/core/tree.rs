@@ -183,7 +183,18 @@ impl LayoutTree {
                     .unwrap_or("not set".into()),
                   node_ix.index());
         }
-        let id = self.tree[node_ix].get_id();
+        let id;
+        let mut parent_node = None;
+        {
+            let container = &self.tree[node_ix];
+            id = container.get_id();
+            match *container {
+                Container::View { handle, .. } => {
+                    parent_node = self.tree.lookup_view(handle.get_parent());
+                },
+                _ => {}
+            };
+        }
         if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
             if fullscreen_id != id {
                 return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
@@ -194,9 +205,12 @@ impl LayoutTree {
                 .unwrap_or("not set".into()),
                 node_ix.index());
         if let Some(active_ix) = self.active_container {
-            self.tree[active_ix].clear_border_color()
-                .expect("Could not clear border color");
-            self.tree[active_ix].draw_borders();
+            let active_c = &mut self.tree[active_ix];
+            if parent_node != self.active_container {
+                active_c.clear_border_color()
+                    .expect("Could not clear border color");
+                active_c.draw_borders();
+            }
         }
         self.tree[node_ix].active_border_color()
             .expect("Could set active border color");
