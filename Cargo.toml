@@ -10,7 +10,7 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-rustwlc = "0.5.5"
+rustwlc = "0.5.6"
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
