@@ -6,7 +6,7 @@ use rustwlc::render::{calculate_stride};
 use cairo::{ImageSurface, Format};
 
 use uuid::Uuid;
-use ::registry::{self};
+use ::registry;
 use ::render::{Color, Renderable};
 
 /// The borders of a container.
@@ -14,6 +14,8 @@ use ::render::{Color, Renderable};
 /// This type just deals with rendering,
 #[derive(Clone)]
 pub struct Borders {
+    /// The title displayed in the title border.
+    pub title: String,
     /// The surface that contains the bytes we give to wlc to draw.
     surface: ImageSurface,
     /// The geometry where the buffer is written.
@@ -24,21 +26,32 @@ pub struct Borders {
     output: WlcOutput,
     /// The specific color these borders should be colored.
     ///
-    /// If unspecified, the default is used
-    color: Option<Color>
+    /// If unspecified, the default is used.
+    color: Option<Color>,
+    /// The specific color the title bar should be colored.
+    ///
+    /// If unspecified, the default is used.
+    title_color: Option<Color>,
+    /// The specific color the font for the title bar should be colored.
+    ///
+    /// If unspecified, the default is used.
+    title_font_color: Option<Color>
 }
 
 impl Renderable for Borders {
     fn new(mut geometry: Geometry, output: WlcOutput) -> Option<Self> {
         let thickness = Borders::thickness();
+        let title_size = Borders::title_bar_size();
         if thickness == 0 {
             return None
         }
         // Add the thickness to the geometry.
         geometry.origin.x -= thickness as i32;
         geometry.origin.y -= thickness as i32;
+        geometry.origin.y -= title_size as i32;
         geometry.size.w += thickness;
         geometry.size.h += thickness;
+        geometry.size.h += title_size;
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
         let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
@@ -50,10 +63,13 @@ impl Renderable for Borders {
                                                     h as i32,
                                                     stride);
         Some(Borders {
+            title: "".into(),
             surface: surface,
             geometry: geometry,
             output: output,
-            color: None
+            color: None,
+            title_color: None,
+            title_font_color: None
         })
     }
 
@@ -81,13 +97,16 @@ impl Renderable for Borders {
     fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
         // Add the thickness to the geometry.
         let thickness = Borders::thickness();
+        let title_size = Borders::title_bar_size();
         if thickness == 0 {
             return None;
         }
         geometry.origin.x -= thickness as i32;
         geometry.origin.y -= thickness as i32;
+        geometry.origin.y -= title_size as i32;
         geometry.size.w += thickness;
         geometry.size.h += thickness;
+        geometry.size.h += title_size;
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
             return Some(self);
@@ -108,6 +127,9 @@ impl Renderable for Borders {
 }
 
 impl Borders {
+    /// Gets the thickness of the borders (not including title bar).
+    ///
+    /// Defaults to 0 if not set.
     pub fn thickness() -> u32 {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
@@ -119,6 +141,22 @@ impl Borders {
                       .and_then(|gaps| gaps.as_f64()))
             .map(|num| num as u32)
             .unwrap_or(0u32)
+    }
+
+    /// Gets the size of the title bar.
+    ///
+    /// Defaults to 0 if not set.
+    pub fn title_bar_size() -> u32 {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar".into()))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("size"))
+                      .and_then(|size| size.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32).into()
     }
 
     /// Fetches the default color from the registry.
@@ -150,6 +188,64 @@ impl Borders {
             .map(|num| (num as u32).into())
     }
 
+    /// Fetches the default title background color from the registry.
+    ///
+    /// If the value is unset, black borders are returned.
+    pub fn default_title_color() -> Color {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("background_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32).into()
+    }
+
+    /// Gets the active border color, if one is set
+    pub fn active_title_color() -> Option<Color> {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("active_background_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| (num as u32).into())
+    }
+
+    /// Fetches the default title font color from the registry.
+    ///
+    /// If the value is unset, white font are returned.
+    pub fn default_title_font_color() -> Color {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("font_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0xffffff).into()
+    }
+
+    /// Gets the active title border font, if one is set
+    pub fn active_title_font_color() -> Option<Color> {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("title_bar"))
+            .and_then(|title_bar| title_bar.as_object()
+                      .and_then(|title_bar| title_bar.get("active_font_color"))
+                      .and_then(|color| color.as_f64()))
+            .map(|num| (num as u32).into())
+    }
+
     /// Gets the color for these borders.
     ///
     /// If a specific one is unset, then the default color is returned.
@@ -157,13 +253,41 @@ impl Borders {
         self.color.unwrap_or_else(Borders::default_color)
     }
 
+    /// Gets the color for the title border of these borders.
+    ///
+    /// If a specific one is unset, then the default color is returned.
+    pub fn title_background_color(&self) -> Color {
+        self.title_color.unwrap_or_else(Borders::default_title_color)
+    }
+
+    /// Gets the color for the title font of these borders.
+    ///
+    /// If a specific one is unset, then the default color is returned.
+    pub fn title_font_color(&self) -> Color {
+        self.title_font_color.unwrap_or_else(Borders::default_title_font_color)
+    }
+
     /// Sets or clears the specific color for these borders.
     pub fn set_color(&mut self, color: Option<Color>) {
         self.color = color
     }
 
+    /// Sets or clears the specific color for these borders.
+    pub fn set_title_color(&mut self, color: Option<Color>) {
+        self.title_color = color
+    }
+
+    /// Sets or clears the specific color for these borders.
+    pub fn set_title_font_color(&mut self, color: Option<Color>) {
+        self.title_font_color = color
+    }
+
     pub fn get_output(&self) -> WlcOutput {
         self.output
+    }
+
+    pub fn title(&self) -> &str {
+        self.title.as_str()
     }
 }
 

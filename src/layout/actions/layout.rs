@@ -732,13 +732,16 @@ impl LayoutTree {
             match *container {
                 Container::View { handle, .. } => {
                     let gap = Borders::thickness();
+                    let title_size = Borders::title_bar_size();
                     if gap == 0 {
                         return Ok(())
                     }
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
+                    geometry.origin.y += title_size as i32;
                     geometry.size.w = geometry.size.w.saturating_sub(gap);
                     geometry.size.h = geometry.size.h.saturating_sub(gap);
+                    geometry.size.h = geometry.size.h.saturating_sub(title_size);
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 },
                 Container::Container { .. } => {/*recurse*/},

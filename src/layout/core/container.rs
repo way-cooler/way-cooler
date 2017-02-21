@@ -532,7 +532,11 @@ impl Container {
             Container::Container { ref mut borders, .. }=> {
                 if let Some(borders_) = borders.as_mut() {
                     let color = Borders::active_color();
+                    let title_color = Borders::active_title_color();
+                    let title_font_color = Borders::active_title_font_color();
                     borders_.set_color(color);
+                    borders_.set_title_color(title_color);
+                    borders_.set_title_font_color(title_font_color);
                 }
                 Ok(())
             },
@@ -552,12 +556,29 @@ impl Container {
             Container::Container { ref mut borders, .. }=> {
                 if let Some(borders_) = borders.as_mut() {
                     borders_.set_color(None);
+                    borders_.set_title_color(None);
+                    borders_.set_title_font_color(None);
                 }
                 Ok(())
             },
             _ => Err(TreeError::Container(
                 ContainerErr::BadOperationOn(c_type,
                                              "active_border_color")))
+        }
+    }
+
+    /// Gets the title for a wlc handle.
+    /// Tries to get the title, then defers to class if blank,
+    /// and finally to the app_id if that is blank as well.
+    pub fn get_title(view: WlcView) -> String {
+        let title = view.get_title();
+        let class = view.get_class();
+        if !title.is_empty() {
+            title
+        } else if !class.is_empty() {
+            class
+        } else {
+            view.get_app_id()
         }
     }
 }
