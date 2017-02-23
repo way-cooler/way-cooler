@@ -140,18 +140,26 @@ end
 util.program = {}
 util.program.programs = {}
 
+--- Spawns a program @param bin with the provided @param args.
+--- Does not update the global program spawn list.
+--- @param bin The program to run. Can be an absolute path or a command to run.
+--- @param args The arguments (as a string) to pass to the program.
+function util.program.spawn(bin, args)
+  assert(type(bin) == 'string', 'Non string given for program')
+  if type(args) ~= 'string' then
+    args = ""
+  end
+  os.execute(bin .. " " .. args .. " &")
+end
 
 --- Returns a function that spawns a program once.
 --- Does not update the global program spawn list.
 --- Used primarily for key mapping.
 --- @param bin The program to run. Can be an absolute path or a command to run.
 --- @param args The arguments (as a string) to pass to the program.
+--- @return Function that calls @param bin with @param args.
 function util.program.spawn_once(bin, args)
-  assert(type(bin) == 'string', 'Non string given for program')
-  if type(args) ~= 'string' then
-    args = ""
-  end
-  os.execute(bin .. " " .. args .. " &")
+  return function() util.program.spawn(bin, args) end
 end
 
 --- Registers the program to spawn at startup and every time it restarts
