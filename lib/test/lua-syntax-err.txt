@@ -1,0 +1,5 @@
+-- This file contains invalid Lua syntax.
+-- Error should contain "')' expected near 'assert'"
+
+assert("I forgot a close paren"
+assert("This was unexpected)
