@@ -1,9 +1,9 @@
 # Way Cooler
 
-[![Gitter](https://badges.gitter.im/Immington-Industries/way-cooler.svg)](https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Gitter](https://badges.gitter.im/way-cooler/way-cooler.svg)](https://gitter.im/way-cooler/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Crates.io](https://img.shields.io/crates/v/way-cooler.svg)](https://crates.io/crates/way-cooler)
-[![Build Status](https://travis-ci.org/Immington-Industries/way-cooler.svg?branch=master)](https://travis-ci.org/Immington-Industries/way-cooler)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Immington-Industries/way-cooler/)
+[![Build Status](https://travis-ci.org/way-cooler/way-cooler.svg?branch=master)](https://travis-ci.org/way-cooler/way-cooler)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/way-cooler/)
 
 Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayland][wayland] and configurable using [Lua][].
 
@@ -36,7 +36,7 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
   * Nest containers with different layouts
   * Floating windows per workspace
 - Client application support via the D-Bus IPC
-  * See an example application [here](https://github.com/Immington-Industries/Way-Cooler-Example-Clients). It displays the tree in a somewhat organized format, and is actually really helpful for both debugging the tree and understanding how subcontainers work.
+  * See an example application [here](https://github.com/way-cooler/Way-Cooler-Example-Clients). It displays the tree in a somewhat organized format, and is actually really helpful for both debugging the tree and understanding how subcontainers work.
   * Enables dynamic configuration at runtime, without having to reload a configuration file
   * Allows extensions of the window manager to exist as separate programs talking over the IPC
 - A Lua environment designed to make extending Way Cooler simple and easy
