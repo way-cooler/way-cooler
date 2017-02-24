@@ -135,17 +135,17 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.remove_view(view).unwrap_or_else(|err| {
-            match err {
-                TreeError::ViewNotFound(_) => {},
-                _ => {
-                    error!("Error in view_destroyed: {:?}", err);
-                }
-            }
-        });
-    } else {
-        error!("Could not delete view {:?}", view);
+    match try_lock_tree() {
+        Ok(mut tree) => {
+            tree.remove_view(view).unwrap_or_else(|err| {
+                match err {
+                    TreeError::ViewNotFound(_) => {},
+                    _ => {
+                        error!("Error in view_destroyed: {:?}", err);
+                    }
+                }});
+        },
+        Err(err) => error!("Could not delete view {:?}, {:?}", view, err)
     }
 }
 

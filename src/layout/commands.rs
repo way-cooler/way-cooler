@@ -17,22 +17,29 @@ pub type CommandResult = Result<(), TreeError>;
  */
 
 pub fn remove_active() {
+    let mut handle_to_remove = None;
     if let Ok(mut tree) = try_lock_tree() {
         if let Some(container) = tree.0.get_active_container_mut() {
             match *container {
-                Container::View { ref handle, .. } => {
-                    handle.close();
-                    // Thanks borrowck
+                Container::View { handle, .. } => {
+                    handle_to_remove = Some(handle);
                     // Views shouldn't be removed from tree, that's handled by
                     // view_destroyed callback
-                    return
                 },
                 _ => {}
             }
         }
-        if let Err(err) = tree.0.remove_active() {
-            warn!("Could not remove the active container! {:#?}\n{:#?}\n{:#?}", tree.0.get_active_container(), err, *tree.0);
-        };
+        // views have it removed in view_destroyed callback
+        // container should be removed here though.
+        if handle_to_remove.is_none() {
+            if let Err(err) = tree.0.remove_active() {
+                warn!("Could not remove the active container! {:?}\n{:?}\n{:?}",
+                      tree.0.get_active_container(), err, *tree.0);
+            };
+        }
+    }
+    if let Some(handle) = handle_to_remove {
+        handle.close();
     }
 }
 
