@@ -20,6 +20,7 @@ make it user friendly. Here's an example of what Way Cooler looks like today:
 
 
 [![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
+[![](http://i.imgur.com/e89P4hw.png)](http://i.imgur.com/e89P4hw.png)
 
 ## Motivation
 
