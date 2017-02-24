@@ -9,7 +9,6 @@ local background = 0x5E4055
 
 -- Programs that Way Cooler can run
 way_cooler.programs = {
-  terminal = "weston-terminal", -- Use the terminal of your choice
   -- Name of the window that will be the bar window.
   -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
   --
@@ -68,9 +67,9 @@ local key = way_cooler.key
 
 local keys = {
   -- Open dmenu
-  key({ mod }, "d", "launch_dmenu"),
+  key({ mod }, "d", util.program.spawn_once("dmenu_run")),
   -- Open terminal
-  key({ mod }, "return", "launch_terminal"),
+  key({ mod }, "return", util.program.spawn_once("weston-terminal")),
 
   -- Lua methods can be bound as well
   key({ mod, "Shift" }, "h", function () print("Hello world!") end),
