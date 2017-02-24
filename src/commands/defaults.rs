@@ -6,8 +6,6 @@ use std::thread;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
-use uuid::Uuid;
-use registry::{self};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
@@ -25,8 +23,6 @@ pub fn register_defaults() {
     };
 
     register("way_cooler_quit", Arc::new(way_cooler_quit));
-    register("launch_terminal", Arc::new(launch_terminal));
-    register("launch_dmenu", Arc::new(launch_dmenu));
     register("print_pointer", Arc::new(print_pointer));
 
     register("dmenu_eval", Arc::new(dmenu_eval));
@@ -107,27 +103,6 @@ pub fn register_defaults() {
 
 // All of the methods defined should be registered.
 #[deny(dead_code)]
-
-fn launch_terminal() {
-    let lock = registry::clients_read();
-    let client = lock.client(Uuid::nil()).unwrap();
-    let handle = registry::ReadHandle::new(&client);
-    let command = handle.read("programs".into())
-        .expect("programs category didn't exist")
-        .get("terminal".into())
-        .and_then(|data| data.as_string().map(str::to_string))
-        .unwrap_or("weston-terminal".into());
-
-    Command::new("sh").arg("-c")
-        .arg(command)
-        .spawn().expect("Error launching terminal");
-}
-
-fn launch_dmenu() {
-    Command::new("sh").arg("-c")
-        .arg("dmenu_run")
-        .spawn().expect("Error launching terminal");
-}
 
 fn print_pointer() {
     use lua;
