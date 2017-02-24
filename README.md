@@ -5,8 +5,13 @@
 [![Build Status](https://travis-ci.org/Immington-Industries/way-cooler.svg?branch=master)](https://travis-ci.org/Immington-Industries/way-cooler)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Immington-Industries/way-cooler/)
 
-Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayland][wayland].
+Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayland][wayland] and configurable using [Lua][].
 
+It is heavily inspired by the tiling and extensibility of both [i3][] and [awesome][].
+
+While Lua is used for the configuration, like awesome, extensions for Way Cooler are implemented as totally separate client programs using [D-Bus][].
+
+This means that you can use virtually any language to extend the window manager, with much better guarantees about interoperability between extensions.
 
 # Development
 
@@ -23,8 +28,6 @@ We wanted to get experience with Rust and we found current X11 window managers t
 Currently there are very few fully-featured tiling window managers in the Wayland ecosystem, as most of the effort has been porting Gnome and KDE over. Although Wayland is still in early-stage development
 and is not backwards compatible with existing X11 tools, we wanted to put our stake in and provide for current tiling window manager users in the future.
 
-We take a lot of inspiration from current window managers (namely [i3][] and [awesome][]) but our goal is to exist as a unique alternative.
-
 
 ## Current Features
 - i3-style tiling
@@ -39,26 +42,22 @@ We take a lot of inspiration from current window managers (namely [i3][] and [aw
   * Lua is the configuration format, allowing the user to enhance their window manager in any way they want.
   * Utilities library included to aid communicating with Way Cooler
 - X programs supported through XWayland
+- Borders around windows
+- Gaps between windows
+- Basic X11 bar support (e.g [lemonbar][], [polybar][])
 
 ## Planned Features
 
 - i3 tabbed/stacked tiling
+- Screen grabber / screen shot taker
+- Notification support
+- Lock screen
 - Tiling window through configurable Lua scripts (awesome-style)
-- Server-side borders around window clients
 - Swappable status bars/docs/menus
-  * A status bar built with [Conrod](https://github.com/PistonDevelopers/conrod) and Lua
+  * A status bar built with [Conrod](https://github.com/PistonDevelopers/conrod) and [Lua][]
 - More customization settings
 
 Follow the development of these features in our [issues section] or checkout our [contribution guidelines](#Contributing) if you want to help out.
-
-# Trying out Way Cooler
-
-If you would like to try out Way Cooler before properly installing it, then you can use the following docker command:
-```bash
-docker run --net=host --env="DISPLAY" --volume="$HOME/.Xauthority:/root/.Xauthority:rw" timidger/way-cooler
-```
-
-This allows you try out the window manager without having to install anything except Docker.
 
 # Installation
 
@@ -81,6 +80,7 @@ You will need the following dependencies installed on your machine to install Wa
   * The init file defaults to using `weston-terminal` as the default terminal emulator
 - Cargo
   * The package manager / build system used by Rust
+- Cairo
 
 Finally, to install Way Cooler simply run the following cargo command:
 
@@ -92,20 +92,7 @@ You can try it out while running in an X environment, or switch to a TTY and run
 
 # Init File
 
-All keyboard shortcuts (except the command to exit Way Cooler) are configurable through the init file. The recommended strategy is to copy `config/init.lua` to `$HOME/.config/way-cooler/init.lua` and edit from there. The default keybindings are:
-
-- `Alt+Enter` Launches a terminal defined by the `way_cooler.terminal`
-- `Alt+d` Opens `dmenu` to launch a program
-- `Alt+p` Sends expressions to be executed directly by the Lua thread
-- `Alt+Shift+Esc` Closes Way Cooler
-- `Alt+v` Makes a new sub-container with a vertical layout
-- `Alt+h` Makes a new sub-container with a horizontal layout
-- `Alt+<arrow-key>` Switches focus to a window in that direction
-- `Alt+Shift+<arrow-key>` Moves active container in that direction
-- `Alt+<number-key>` Switches the current workspace
-- `Alt+shift+<number-key>` Moves the focused container to another workspace
-- `Alt+shift+space` Make a window floating
-- `Alt+space` Change focus between tiled and floating windows
+All keyboard shortcuts (except the command to exit Way Cooler) are configurable through the init file. The recommended strategy is to copy the [default configuration file](https://github.com/way-cooler/way-cooler/blob/master/config/init.lua) to `$XDG_CONFIG_HOME/way-cooler/init.lua` and edit from there.
 
 # Contributors
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
@@ -126,10 +113,14 @@ If you find bugs or have questions about the code, please [submit an issue] or [
 
 [Rust]: https://www.rust-lang.org
 [wayland]: https://wayland.freedesktop.org/
+[Lua]: https://lua.org/
 [wlc]: https://github.com/Cloudef/wlc
 [i3]: i3wm.org
+[D-Bus]: https://www.freedesktop.org/wiki/Software/dbus/
 [awesome]: https://awesomewm.org/
-[issues section]: https://github.com/Immington-Industries/way-cooler/labels/features
+[polybar]: https://github.com/jaagr/polybar
+[lemonbar]: https://github.com/LemonBoy/bar
+[issues section]: https://github.com/Immington-Industries/way-cooler/issues
 [submit an issue]: https://github.com/Immington-Industries/way-cooler/issues/new
 [gitter]: https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 [way-cooler-aur]: https://aur.archlinux.org/packages/way-cooler/
