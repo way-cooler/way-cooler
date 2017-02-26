@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use rustwlc::WlcView;
 
-use super::path::{Path, PathBuilder};
+use super::path::Path;
 use ::debug_enabled;
 
 use layout::{Container, ContainerType, Handle};
@@ -235,7 +235,7 @@ impl InnerTree {
             self.graph.update_edge(parent_ix, sibling_ix, edge_weight);
             counter += 1;
         }
-        let last_pos = PathBuilder::new(child_pos).active(true).build();
+        let last_pos = Path::new(child_pos, true);
         self.graph.update_edge(parent_ix, child_ix, last_pos);
         self.normalize_edge_weights(parent_ix);
     }
@@ -277,7 +277,7 @@ impl InnerTree {
         self.graph.remove_edge(source_parent_edge);
         let mut highest_weight = self.graph.edges(target)
             .map(|edge| *edge.weight()).max()
-            .unwrap_or(PathBuilder::new(0).build());
+            .unwrap_or(Path::new(0, false));
         highest_weight.weight = *highest_weight + 1;
         self.graph.update_edge(target, source, highest_weight);
         if !self[source].floating() {
@@ -354,7 +354,7 @@ impl InnerTree {
             ShiftDirection::Left => {
                 trace!("place_node edge case: placing in the last place of the sibling list");
                 self.graph.remove_edge(source_parent_edge);
-                let new_weight = PathBuilder::new(siblings.len() as u32 + 1).active(true).build();
+                let new_weight = Path::new(siblings.len() as u32 + 1, true);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
                 self.normalize_edge_weights(source_parent);
@@ -375,7 +375,7 @@ impl InnerTree {
                     trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
                 }
                 self.graph.remove_edge(source_parent_edge);
-                let new_weight = PathBuilder::new(1u32).active(true).build();
+                let new_weight = Path::new(1u32, true);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
                 self.normalize_edge_weights(source_parent);

@@ -12,32 +12,14 @@ pub struct Path {
     pub active: bool
 }
 
-/// Builder for `Path`, allows more fields to be added and maintain backwards
-/// compatibility for `Path` construction
-pub struct PathBuilder {
-    path: Path
-}
-
-impl PathBuilder {
-    /// Construct new builder, with the given weight.
-    ///
-    /// Active is set to false automatically
-    pub fn new(weight: u32) -> Self {
-        PathBuilder { path: Path { weight: weight, active: false } }
-    }
-
-    pub fn active(mut self, value: bool) -> Self {
-        self.path.active = value;
-        self
-    }
-
-    pub fn build(self) -> Path {
-        self.path
-    }
-}
-
 impl Path {
-    /// Returns an active path with a weight of zero
+    /// Constructs a new Path, with the given weight and active number.
+    pub fn new(weight: u32, active: bool) -> Self {
+        Path { weight: weight, active: active }
+    }
+
+    /// Returns an active path with a weight of zero and with the active
+    /// bit set to true.
     pub fn zero() -> Self {
         Path { weight: 0, active: true }
     }
