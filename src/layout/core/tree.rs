@@ -734,11 +734,12 @@ impl LayoutTree {
             for child_ix in self.tree.children_of(cur_ix) {
                 let weight = *self.tree.get_edge_weight_between(cur_ix, child_ix)
                     .expect("Could not get edge weights between child and parent");
-                if weight.active && flipped {
-                    error!("Divergent paths detected!");
-                    trace!("Tree: {:#?}", self);
-                    panic!("Divergent paths detected!");
-                }  else if weight.active {
+                if weight.is_active() {
+                    if flipped {
+                        error!("Divergent paths detected!");
+                        trace!("Tree: {:#?}", self);
+                        panic!("Divergent paths detected!");
+                    }
                     flipped = true;
                     next_ix = Some(child_ix);
                 }
