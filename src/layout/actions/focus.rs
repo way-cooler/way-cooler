@@ -1,7 +1,7 @@
 use super::super::commands::CommandResult;
 use super::super::{LayoutTree, TreeError};
 use super::super::core::Direction;
-use super::super::core::container::{Container, ContainerType, Handle, Layout};
+use super::super::core::container::{Container, ContainerType, Layout};
 
 use petgraph::graph::NodeIndex;
 use rustwlc::WlcView;
@@ -181,21 +181,19 @@ impl LayoutTree {
             },
             _ => {}
         }
-        // TODO Change this algorithm when we improve the pathing system
         while self.tree.node_type(parent_ix)
             .expect("Node not part of the tree") != ContainerType::Workspace {
-                if let Ok(view_ix) = self.tree.descendant_of_type(parent_ix,
-                                                                  ContainerType::View) {
-                    match self.tree[view_ix]
-                                        .get_handle().expect("view had no handle") {
-                        Handle::View(view) => view.focus(),
-                        _ => panic!("View had an output handle")
+                if let Some(node_ix) = self.tree.lowest_active_view(parent_ix) {
+                    match self.tree[node_ix] {
+                        Container::View { .. } => {
+                            trace!("Active container set to view at {:?}", node_ix);
+                            let id = self.tree[node_ix].get_id();
+                            self.set_active_container(id)
+                                .expect("Could not set active container");
+                            return;
+                        },
+                        _ => {}
                     }
-                    trace!("Active container set to view at {:?}", view_ix);
-                    let id = self.tree[view_ix].get_id();
-                    self.set_active_container(id)
-                        .expect("Could not set active container");
-                    return;
                 }
                 parent_ix = self.tree.ancestor_of_type(parent_ix,
                                                        ContainerType::Container)

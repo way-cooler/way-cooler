@@ -147,6 +147,23 @@ impl InnerTree {
         Err(node_ix)
     }
 
+    /// Gets the view following the lowest active path number in the tree.
+    /// Starts at the given `node_ix`.
+    ///
+    /// If there are no children (e.g empty container), then `None` is returned.
+    pub fn lowest_active_view(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+        let mut cur_ix = node_ix;
+        while self[cur_ix].get_type() != ContainerType::View {
+            let maybe_edge = self.graph.edges(cur_ix).min_by_key(|e| e.weight().active);
+            if let Some(edge) = maybe_edge {
+                cur_ix = edge.target();
+            } else {
+                return None
+            }
+        }
+        Some(cur_ix)
+    }
+
     /// Gets the weight of a possible edge between two notes
     pub fn get_edge_weight_between(&self, parent_ix: NodeIndex,
                                    child_ix: NodeIndex) -> Option<&Path> {
