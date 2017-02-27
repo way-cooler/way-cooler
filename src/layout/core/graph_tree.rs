@@ -240,7 +240,6 @@ impl InnerTree {
             self.graph.update_edge(parent_ix, sibling_ix, edge_weight);
             counter += 1;
         }
-        // TODO 0?
         let last_pos = Path::new(child_pos, 0);
         self.graph.update_edge(parent_ix, child_ix, last_pos);
         self.normalize_edge_weights(parent_ix);
@@ -315,7 +314,6 @@ impl InnerTree {
                 self.graph.edge_weight(target_parent_edge).map(|weight| {
                     let mut new_weight = *weight;
                     *new_weight = *new_weight + 1;
-                    // TODO 0?
                     new_weight.active = 0;
                     new_weight
                 })
@@ -364,7 +362,6 @@ impl InnerTree {
             ShiftDirection::Left => {
                 trace!("place_node edge case: placing in the last place of the sibling list");
                 self.graph.remove_edge(source_parent_edge);
-                // TODO 0?
                 let new_weight = Path::new(siblings.len() as u32 + 1, 0);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
@@ -709,7 +706,6 @@ impl InnerTree {
                 .expect("Could not get edge index between parent and child");
             let edge = self.graph.edge_weight_mut(edge_ix)
                 .expect("Could not associate edge index with an edge weight");
-            // TODO 0? Probably
             edge.active = 0;
             node_ix = parent_ix;
         }
