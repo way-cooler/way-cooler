@@ -186,7 +186,6 @@ impl InnerTree {
         } else {
             let mut weight = self.graph.edge_weight_mut(edge)
                 .expect("Could not get edge weight of parent/child");
-            // TODO 1?
             weight.active = 1;
         }
         self.id_map.insert(id, child_ix);
@@ -332,9 +331,8 @@ impl InnerTree {
                 .expect("Could not get the weight of the edge between target sibling and target parent");
             trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
             **weight = **weight + 1;
-            // TODO 1?
-            // no this should be the increment thing I think
-            weight.active = 1;
+            // TODO does this work?
+            weight.active += 1;
             trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
         }
         trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
@@ -379,14 +377,12 @@ impl InnerTree {
                     trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
                     **weight = **weight + 1;
                     trace!("Deactivating path {:?}", sibling_edge);
-                    // TODO 1?
-                    // Probably not, cause loop
-                    weight.active = 1;
+                    // TODO does this work?
+                    weight.active += 1;
                     trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
                 }
                 self.graph.remove_edge(source_parent_edge);
-                // TODO 1?
-                let new_weight = Path::new(1u32, 1);
+                let new_weight = Path::new(1u32, 0);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
                 self.normalize_edge_weights(source_parent);
@@ -690,8 +686,8 @@ impl InnerTree {
                 .expect("Could not get edge index between parent and child");
             let edge = self.graph.edge_weight_mut(edge_ix)
                 .expect("Could not associate edge index with an edge weight");
-            // TODO 1? Probably not cause loop
-            edge.active = 1;
+            // TODO does this work?
+            edge.active += 1;
         }
         while let Ok(parent_ix) = self.parent_of(node_ix) {
             for child_ix in self.children_of(parent_ix) {
@@ -699,8 +695,8 @@ impl InnerTree {
                     .expect("Could not get edge index between parent and child");
                 let edge = self.graph.edge_weight_mut(edge_ix)
                     .expect("Could not associate edge index with an edge weight");
-                // TODO 1? Probably not cause loop
-                edge.active = 1;
+                // TODO does this work?
+                edge.active += 1;
             }
             let edge_ix = self.graph.find_edge(parent_ix, node_ix)
                 .expect("Could not get edge index between parent and child");
