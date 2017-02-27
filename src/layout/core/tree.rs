@@ -731,6 +731,8 @@ impl LayoutTree {
         while let Some(cur_ix) = next_ix {
             next_ix = None;
             let mut flipped = false;
+            // Ensure that the numbers are unique and atomically increasing.
+            let mut seen = vec![];
             for child_ix in self.tree.children_of(cur_ix) {
                 let weight = *self.tree.get_edge_weight_between(cur_ix, child_ix)
                     .expect("Could not get edge weights between child and parent");
@@ -743,6 +745,13 @@ impl LayoutTree {
                     flipped = true;
                     next_ix = Some(child_ix);
                 }
+                if seen.contains(&weight.active) {
+                    error!("Active number already used!");
+                    error!("Found {:?} in {:?}", weight.active, seen);
+                    trace!("Tree: {:#?}", self);
+                    panic!("Duplicate active number found");
+                }
+                seen.push(weight.active);
             }
             if next_ix.is_none() {
                 match self.tree[cur_ix].get_type() {
