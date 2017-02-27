@@ -146,6 +146,9 @@ impl LayoutTree {
     /// tree until either a view is found or the workspace is (in which case
     /// it set the active container to the root container of the workspace)
     ///
+    /// If there are siblings, the chosen node is the one with the lowest
+    /// active count.
+    ///
     /// If there is a fullscreen container in this workspace, that is focused on next,
     /// with the active path updated accordingly.
     pub fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
@@ -167,7 +170,6 @@ impl LayoutTree {
             },
             _ => {}
         }
-        // TODO Change this algorithm when we improve the pathing system
         match self.tree[last_ix] {
             Container::View { handle, .. } => {
                 handle.focus();
@@ -179,27 +181,28 @@ impl LayoutTree {
             },
             _ => {}
         }
+        // TODO Change this algorithm when we improve the pathing system
         while self.tree.node_type(parent_ix)
             .expect("Node not part of the tree") != ContainerType::Workspace {
                 if let Ok(view_ix) = self.tree.descendant_of_type(parent_ix,
                                                                   ContainerType::View) {
-                match self.tree[view_ix]
-                                    .get_handle().expect("view had no handle") {
-                    Handle::View(view) => view.focus(),
-                    _ => panic!("View had an output handle")
+                    match self.tree[view_ix]
+                                        .get_handle().expect("view had no handle") {
+                        Handle::View(view) => view.focus(),
+                        _ => panic!("View had an output handle")
+                    }
+                    trace!("Active container set to view at {:?}", view_ix);
+                    let id = self.tree[view_ix].get_id();
+                    self.set_active_container(id)
+                        .expect("Could not set active container");
+                    return;
                 }
-                trace!("Active container set to view at {:?}", view_ix);
-                let id = self.tree[view_ix].get_id();
-                self.set_active_container(id)
-                    .expect("Could not set active container");
-                return;
-            }
-            parent_ix = self.tree.ancestor_of_type(parent_ix,
-                                                    ContainerType::Container)
-                .unwrap_or_else(|_| {
-                    self.tree.ancestor_of_type(parent_ix, ContainerType::Workspace)
-                        .expect("Container was not part of a workspace")
-                });
+                parent_ix = self.tree.ancestor_of_type(parent_ix,
+                                                       ContainerType::Container)
+                    .unwrap_or_else(|_| {
+                        self.tree.ancestor_of_type(parent_ix, ContainerType::Workspace)
+                            .expect("Container was not part of a workspace")
+                    });
         }
         // If this is reached, parent is workspace
         let container_ix = self.tree.children_of(parent_ix).get(0).cloned();
