@@ -309,3 +309,40 @@ impl LayoutTree {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::LayoutTree;
+    use super::super::super::core::tree::tests::basic_tree;
+    use super::super::super::core::container::*;
+    use super::super::super::core::InnerTree;
+    use super::*;
+    use rustwlc::*;
+    use uuid::Uuid;
+
+    /// Tests the new algorithm, the one that i3 uses, to determine which
+    /// sibling to focus on when the active one is closed.
+    #[test]
+    fn test_sibling_focus_algorithm() {
+        let mut tree = basic_tree();
+        let fake_view = WlcView::root();
+        tree.switch_to_workspace("some_unique_workspace");
+        let view_1 = tree.add_view(fake_view).unwrap().get_id();
+        let view_2 = tree.add_view(fake_view).unwrap().get_id();
+        let view_3 = tree.add_view(fake_view).unwrap().get_id();
+        let view_4 = tree.add_view(fake_view).unwrap().get_id();
+        let view_5 = tree.add_view(fake_view).unwrap().get_id();
+
+        tree.focus_on(view_3).unwrap();
+        tree.focus_on(view_1).unwrap();
+        // should focus 1 -> 3 -> 5 -> 4 -> 2
+        // because this the "stack" of viewing them.
+        // NOTE that adding a view implicitly focuses and adds it to the "stack"
+        let views = vec![view_1, view_3, view_5, view_4, view_2];
+        for view in views {
+            let active_ix = tree.tree.lookup_id(view);
+            assert_eq!(tree.active_container, active_ix);
+            tree.remove_active().unwrap();
+        }
+    }
+}
