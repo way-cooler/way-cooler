@@ -30,14 +30,19 @@ impl LayoutTree {
                 return Err(TreeError::Focus(FocusError::BlockedByFullscreen(uuid, fullscreen_id)))
             }
         }
-        let container = try!(self.lookup(uuid));
-        match *container {
+        let node_ix = self.tree.lookup_id(uuid)
+            .ok_or(TreeError::NodeNotFound(uuid))?;
+        match self.tree[node_ix] {
             Container::View { handle, .. } => {
                 handle.focus();
-                Ok(())
+                self.active_container = Some(node_ix);
             },
-            _ => Err(TreeError::Focus(FocusError::NotAView(uuid)))
+            _ => return Err(TreeError::Focus(FocusError::NotAView(uuid)))
         }
+        if !self.tree[node_ix].floating() {
+            self.tree.set_ancestor_paths_active(node_ix);
+        }
+        Ok(())
     }
     /// Focus on the container relative to the active container.
     ///
