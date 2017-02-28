@@ -348,7 +348,6 @@ impl InnerTree {
                 .expect("Could not get the weight of the edge between target sibling and target parent");
             trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
             **weight = **weight + 1;
-            // TODO does this work?
             weight.active += 1;
             trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
         }
@@ -394,7 +393,6 @@ impl InnerTree {
                     trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
                     **weight = **weight + 1;
                     trace!("Deactivating path {:?}", sibling_edge);
-                    // TODO does this work?
                     weight.active += 1;
                     trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
                 }
@@ -703,7 +701,6 @@ impl InnerTree {
                 .expect("Could not get edge index between parent and child");
             let edge = self.graph.edge_weight_mut(edge_ix)
                 .expect("Could not associate edge index with an edge weight");
-            // TODO does this work?
             edge.active += 1;
         }
         while let Ok(parent_ix) = self.parent_of(node_ix) {
@@ -712,7 +709,6 @@ impl InnerTree {
                     .expect("Could not get edge index between parent and child");
                 let edge = self.graph.edge_weight_mut(edge_ix)
                     .expect("Could not associate edge index with an edge weight");
-                // TODO does this work?
                 edge.active += 1;
             }
             let edge_ix = self.graph.find_edge(parent_ix, node_ix)
