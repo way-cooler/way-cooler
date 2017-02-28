@@ -312,13 +312,8 @@ impl LayoutTree {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::LayoutTree;
     use super::super::super::core::tree::tests::basic_tree;
-    use super::super::super::core::container::*;
-    use super::super::super::core::InnerTree;
-    use super::*;
     use rustwlc::*;
-    use uuid::Uuid;
 
     /// Tests the new algorithm, the one that i3 uses, to determine which
     /// sibling to focus on when the active one is closed.
