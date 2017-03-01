@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use rustwlc::WlcView;
 
-use super::path::{Path, PathBuilder};
+use super::path::Path;
 use ::debug_enabled;
 
 use layout::{Container, ContainerType, Handle};
@@ -95,7 +95,8 @@ impl InnerTree {
         let mut result = Vec::with_capacity(self.graph.edge_count());
         let mut next_ix = Some(self.root);
         while let Some(cur_ix) = next_ix {
-            let maybe_edge = self.graph.edges(cur_ix).find(|e| e.weight().active);
+            let maybe_edge = self.graph.edges(cur_ix)
+                .find(|e| e.weight().is_active());
             if let Some(edge) = maybe_edge {
                 result.push((edge.target(), edge.weight()));
                 next_ix = Some(edge.target());
@@ -111,7 +112,8 @@ impl InnerTree {
     pub fn follow_path(&self, node_ix: NodeIndex) -> NodeIndex {
         let mut next_ix = Some(node_ix);
         while let Some(cur_ix) = next_ix {
-            let maybe_edge = self.graph.edges(cur_ix).find(|e| e.weight().active);
+            let maybe_edge = self.graph.edges(cur_ix)
+                .find(|e| e.weight().is_active());
             if let Some(edge) = maybe_edge {
                 next_ix = Some(edge.target());
             } else {
@@ -127,13 +129,15 @@ impl InnerTree {
     ///
     /// Note that if there is no active path beneath the start node, that node
     /// is the node that is returned in the error.
-    pub fn follow_path_until(&self, node_ix: NodeIndex, c_type: ContainerType) -> Result<NodeIndex, NodeIndex> {
+    pub fn follow_path_until(&self, node_ix: NodeIndex, c_type: ContainerType)
+                             -> Result<NodeIndex, NodeIndex> {
         let mut next_ix = Some(node_ix);
         while let Some(cur_ix) = next_ix {
             if self[cur_ix].get_type() == c_type {
                 return Ok(cur_ix);
             }
-            let maybe_edge = self.graph.edges(cur_ix).find(|e| e.weight().active);
+            let maybe_edge = self.graph.edges(cur_ix)
+                .find(|e| e.weight().is_active());
             if let Some(edge) = maybe_edge {
                 next_ix = Some(edge.target());
             } else {
@@ -141,6 +145,23 @@ impl InnerTree {
             }
         }
         Err(node_ix)
+    }
+
+    /// Gets the view following the lowest active path number in the tree.
+    /// Starts at the given `node_ix`.
+    ///
+    /// If there are no children (e.g empty container), then `None` is returned.
+    pub fn lowest_active_view(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+        let mut cur_ix = node_ix;
+        while self[cur_ix].get_type() != ContainerType::View {
+            let maybe_edge = self.graph.edges(cur_ix).min_by_key(|e| e.weight().active);
+            if let Some(edge) = maybe_edge {
+                cur_ix = edge.target();
+            } else {
+                return None
+            }
+        }
+        Some(cur_ix)
     }
 
     /// Gets the weight of a possible edge between two notes
@@ -182,7 +203,7 @@ impl InnerTree {
         } else {
             let mut weight = self.graph.edge_weight_mut(edge)
                 .expect("Could not get edge weight of parent/child");
-            weight.active = false;
+            weight.active = 1;
         }
         self.id_map.insert(id, child_ix);
         if let Some(view) = maybe_view {
@@ -235,7 +256,7 @@ impl InnerTree {
             self.graph.update_edge(parent_ix, sibling_ix, edge_weight);
             counter += 1;
         }
-        let last_pos = PathBuilder::new(child_pos).active(true).build();
+        let last_pos = Path::new(child_pos, 0);
         self.graph.update_edge(parent_ix, child_ix, last_pos);
         self.normalize_edge_weights(parent_ix);
     }
@@ -277,7 +298,8 @@ impl InnerTree {
         self.graph.remove_edge(source_parent_edge);
         let mut highest_weight = self.graph.edges(target)
             .map(|edge| *edge.weight()).max()
-            .unwrap_or(PathBuilder::new(0).build());
+            // TODO zero is ok?
+            .unwrap_or(Path::zero());
         highest_weight.weight = *highest_weight + 1;
         self.graph.update_edge(target, source, highest_weight);
         if !self[source].floating() {
@@ -308,7 +330,7 @@ impl InnerTree {
                 self.graph.edge_weight(target_parent_edge).map(|weight| {
                     let mut new_weight = *weight;
                     *new_weight = *new_weight + 1;
-                    new_weight.active = true;
+                    new_weight.active = 0;
                     new_weight
                 })
             }
@@ -326,7 +348,7 @@ impl InnerTree {
                 .expect("Could not get the weight of the edge between target sibling and target parent");
             trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
             **weight = **weight + 1;
-            weight.active = false;
+            weight.active += 1;
             trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
         }
         trace!("Removing edge between child {:?} and parent {:?}", source, source_parent);
@@ -354,7 +376,7 @@ impl InnerTree {
             ShiftDirection::Left => {
                 trace!("place_node edge case: placing in the last place of the sibling list");
                 self.graph.remove_edge(source_parent_edge);
-                let new_weight = PathBuilder::new(siblings.len() as u32 + 1).active(true).build();
+                let new_weight = Path::new(siblings.len() as u32 + 1, 0);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
                 self.normalize_edge_weights(source_parent);
@@ -371,11 +393,11 @@ impl InnerTree {
                     trace!("Sibling {:?} previously had an edge weight of {:?} to {:?}", sibling_ix, weight, target_parent);
                     **weight = **weight + 1;
                     trace!("Deactivating path {:?}", sibling_edge);
-                    weight.active = false;
+                    weight.active += 1;
                     trace!("Sibling {:?}, edge weight to {:?} is now {:?}", sibling_ix, target_parent, weight);
                 }
                 self.graph.remove_edge(source_parent_edge);
-                let new_weight = PathBuilder::new(1u32).active(true).build();
+                let new_weight = Path::new(1u32, 0);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
                 self.normalize_edge_weights(source_parent);
@@ -679,7 +701,7 @@ impl InnerTree {
                 .expect("Could not get edge index between parent and child");
             let edge = self.graph.edge_weight_mut(edge_ix)
                 .expect("Could not associate edge index with an edge weight");
-            edge.active = false;
+            edge.active += 1;
         }
         while let Ok(parent_ix) = self.parent_of(node_ix) {
             for child_ix in self.children_of(parent_ix) {
@@ -687,13 +709,13 @@ impl InnerTree {
                     .expect("Could not get edge index between parent and child");
                 let edge = self.graph.edge_weight_mut(edge_ix)
                     .expect("Could not associate edge index with an edge weight");
-                edge.active = false;
+                edge.active += 1;
             }
             let edge_ix = self.graph.find_edge(parent_ix, node_ix)
                 .expect("Could not get edge index between parent and child");
             let edge = self.graph.edge_weight_mut(edge_ix)
                 .expect("Could not associate edge index with an edge weight");
-            edge.active = true;
+            edge.active = 0;
             node_ix = parent_ix;
         }
     }

@@ -1,7 +1,7 @@
 use super::super::commands::CommandResult;
 use super::super::{LayoutTree, TreeError};
 use super::super::core::Direction;
-use super::super::core::container::{Container, ContainerType, Handle, Layout};
+use super::super::core::container::{Container, ContainerType, Layout};
 
 use petgraph::graph::NodeIndex;
 use rustwlc::WlcView;
@@ -30,14 +30,19 @@ impl LayoutTree {
                 return Err(TreeError::Focus(FocusError::BlockedByFullscreen(uuid, fullscreen_id)))
             }
         }
-        let container = try!(self.lookup(uuid));
-        match *container {
+        let node_ix = self.tree.lookup_id(uuid)
+            .ok_or(TreeError::NodeNotFound(uuid))?;
+        match self.tree[node_ix] {
             Container::View { handle, .. } => {
                 handle.focus();
-                Ok(())
+                self.active_container = Some(node_ix);
             },
-            _ => Err(TreeError::Focus(FocusError::NotAView(uuid)))
+            _ => return Err(TreeError::Focus(FocusError::NotAView(uuid)))
         }
+        if !self.tree[node_ix].floating() {
+            self.tree.set_ancestor_paths_active(node_ix);
+        }
+        Ok(())
     }
     /// Focus on the container relative to the active container.
     ///
@@ -146,6 +151,9 @@ impl LayoutTree {
     /// tree until either a view is found or the workspace is (in which case
     /// it set the active container to the root container of the workspace)
     ///
+    /// If there are siblings, the chosen node is the one with the lowest
+    /// active count.
+    ///
     /// If there is a fullscreen container in this workspace, that is focused on next,
     /// with the active path updated accordingly.
     pub fn focus_on_next_container(&mut self, mut parent_ix: NodeIndex) {
@@ -167,7 +175,6 @@ impl LayoutTree {
             },
             _ => {}
         }
-        // TODO Change this algorithm when we improve the pathing system
         match self.tree[last_ix] {
             Container::View { handle, .. } => {
                 handle.focus();
@@ -181,25 +188,24 @@ impl LayoutTree {
         }
         while self.tree.node_type(parent_ix)
             .expect("Node not part of the tree") != ContainerType::Workspace {
-                if let Ok(view_ix) = self.tree.descendant_of_type(parent_ix,
-                                                                  ContainerType::View) {
-                match self.tree[view_ix]
-                                    .get_handle().expect("view had no handle") {
-                    Handle::View(view) => view.focus(),
-                    _ => panic!("View had an output handle")
+                if let Some(node_ix) = self.tree.lowest_active_view(parent_ix) {
+                    match self.tree[node_ix] {
+                        Container::View { .. } => {
+                            trace!("Active container set to view at {:?}", node_ix);
+                            let id = self.tree[node_ix].get_id();
+                            self.set_active_container(id)
+                                .expect("Could not set active container");
+                            return;
+                        },
+                        _ => {}
+                    }
                 }
-                trace!("Active container set to view at {:?}", view_ix);
-                let id = self.tree[view_ix].get_id();
-                self.set_active_container(id)
-                    .expect("Could not set active container");
-                return;
-            }
-            parent_ix = self.tree.ancestor_of_type(parent_ix,
-                                                    ContainerType::Container)
-                .unwrap_or_else(|_| {
-                    self.tree.ancestor_of_type(parent_ix, ContainerType::Workspace)
-                        .expect("Container was not part of a workspace")
-                });
+                parent_ix = self.tree.ancestor_of_type(parent_ix,
+                                                       ContainerType::Container)
+                    .unwrap_or_else(|_| {
+                        self.tree.ancestor_of_type(parent_ix, ContainerType::Workspace)
+                            .expect("Container was not part of a workspace")
+                    });
         }
         // If this is reached, parent is workspace
         let container_ix = self.tree.children_of(parent_ix).get(0).cloned();
@@ -300,6 +306,38 @@ impl LayoutTree {
                 try!(self.set_active_node(floating_children[0]));
             }
             Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::core::tree::tests::basic_tree;
+    use rustwlc::*;
+
+    /// Tests the new algorithm, the one that i3 uses, to determine which
+    /// sibling to focus on when the active one is closed.
+    #[test]
+    fn test_sibling_focus_algorithm() {
+        let mut tree = basic_tree();
+        let fake_view = WlcView::root();
+        tree.switch_to_workspace("some_unique_workspace");
+        let view_1 = tree.add_view(fake_view).unwrap().get_id();
+        let view_2 = tree.add_view(fake_view).unwrap().get_id();
+        let view_3 = tree.add_view(fake_view).unwrap().get_id();
+        let view_4 = tree.add_view(fake_view).unwrap().get_id();
+        let view_5 = tree.add_view(fake_view).unwrap().get_id();
+
+        tree.focus_on(view_3).unwrap();
+        tree.focus_on(view_1).unwrap();
+        // should focus 1 -> 3 -> 5 -> 4 -> 2
+        // because this the "stack" of viewing them.
+        // NOTE that adding a view implicitly focuses and adds it to the "stack"
+        let views = vec![view_1, view_3, view_5, view_4, view_2];
+        for view in views {
+            let active_ix = tree.tree.lookup_id(view);
+            assert_eq!(tree.active_container, active_ix);
+            tree.remove_active().unwrap();
         }
     }
 }
