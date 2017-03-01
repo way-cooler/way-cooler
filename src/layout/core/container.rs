@@ -334,7 +334,19 @@ impl Container {
     pub fn set_floating(&mut self, val: bool) -> Result<ContainerType, ContainerType> {
         let c_type = self.get_type();
         match *self {
-            Container::View { ref mut floating, .. } |
+            Container::View { handle, ref mut floating, .. } => {
+                *floating = val;
+                let mut v_g = handle.get_geometry() .expect("View had no geometry");
+                // Make it the min size
+                if v_g.size.w < MIN_SIZE.w {
+                    v_g.size.w = MIN_SIZE.w;
+                }
+                if v_g.size.h < MIN_SIZE.h {
+                    v_g.size.h = MIN_SIZE.h;
+                }
+                handle.set_geometry(ResizeEdge::empty(), v_g);
+                Ok(c_type)
+            },
             Container::Container { ref mut floating, .. } => {
                 *floating = val;
                 Ok(c_type)
