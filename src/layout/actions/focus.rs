@@ -345,8 +345,9 @@ mod tests {
     /// there are no duplicate active numbers (and we can focus on that
     /// workspace with no problem)
     ///
-    /// The expected behaviour is that we focus on tiled windows first,
-    /// and that anything we send over has a bumped up active count.
+    /// The expected behaviour is that we focus on the floating windows that
+    /// were sent over (e.g, the latest focused view from the user's perspective
+    /// is reflected even when sent to a different workspace).
     #[test]
     fn test_focus_on_floating_after_sending_to_workspace() {
         let mut tree = basic_tree();
@@ -354,10 +355,10 @@ mod tests {
         let target_workspace = "some_unique_workspace";
         let source_workspace = "a different workspace";
         tree.switch_to_workspace(target_workspace);
-        let tiled_view = tree.add_view(fake_view).unwrap().get_id();
+        let _unused_tiled_view = tree.add_view(fake_view).unwrap().get_id();
 
         tree.switch_to_workspace(source_workspace);
-        let _floating_view_1 = tree.add_floating_view(fake_view, None).unwrap().get_id();
+        let floating_view_1 = tree.add_floating_view(fake_view, None).unwrap().get_id();
         let floating_view_2 = tree.add_floating_view(fake_view, None).unwrap().get_id();
         tree.focus_on(floating_view_2).unwrap();
         assert_eq!(tree.tree.lookup_id(floating_view_2), tree.active_container);
@@ -365,13 +366,13 @@ mod tests {
         // now send the view to the workspace with the tiled window.
         tree.send_active_to_workspace(target_workspace);
         tree.switch_to_workspace(target_workspace);
-        assert_eq!(tree.tree.lookup_id(tiled_view), tree.active_container);
+        assert_eq!(tree.tree.lookup_id(floating_view_2), tree.active_container);
 
         // and again with the other one
         tree.switch_to_workspace(source_workspace);
         tree.send_active_to_workspace(target_workspace);
         tree.switch_to_workspace(target_workspace);
-        assert_eq!(tree.tree.lookup_id(tiled_view), tree.active_container);
+        assert_eq!(tree.tree.lookup_id(floating_view_1), tree.active_container);
 
     }
 }
