@@ -227,6 +227,7 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
         self.validate();
+        self.validate_path();
     }
 
     /// Transfers a fullscreen app from this workspace to another.
