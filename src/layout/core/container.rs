@@ -5,7 +5,8 @@ use uuid::Uuid;
 pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 
 use rustwlc::handle::{WlcView, WlcOutput};
-use rustwlc::{Geometry, ResizeEdge, Point, Size, VIEW_FULLSCREEN};
+use rustwlc::{Geometry, ResizeEdge, Point, Size,
+              VIEW_FULLSCREEN, VIEW_BIT_MODAL};
 
 use super::borders::{Borders, BordersDraw};
 use super::tree::TreeError;
@@ -333,16 +334,41 @@ impl Container {
     /// container type that this function was (incorrectly) called on.
     pub fn set_floating(&mut self, val: bool) -> Result<ContainerType, ContainerType> {
         let c_type = self.get_type();
+        let mut v_g;
         match *self {
-            Container::View { ref mut floating, .. } |
+            Container::View { handle, ref mut floating, .. } => {
+                *floating = val;
+                // And now we update the geometry, if necessary.
+                v_g = handle.get_geometry() .expect("View had no geometry");
+                // Make it the min size
+                if v_g.size.w < MIN_SIZE.w {
+                    v_g.size.w = MIN_SIZE.w;
+                }
+                if v_g.size.h < MIN_SIZE.h {
+                    v_g.size.h = MIN_SIZE.h;
+                }
+                // if modal, center it if in the top left.
+                if handle.get_type().contains(VIEW_BIT_MODAL) {
+                    if v_g.origin.x == 0 && v_g.origin.y == 0 {
+                        let output = handle.get_output();
+                        let res = output.get_resolution()
+                            .expect("Output had no resolution");
+                        v_g.origin.x = (res.w / 2 - v_g.size.w / 2) as i32;
+                        v_g.origin.y = (res.h / 2 - v_g.size.h / 2) as i32;
+                    }
+                }
+                // sorry, we would return here but borrow checker is fussy.
+            },
             Container::Container { ref mut floating, .. } => {
                 *floating = val;
-                Ok(c_type)
+                return Ok(c_type)
             },
             _ => {
-                Err(c_type)
+                return Err(c_type)
             }
         }
+        self.set_geometry(ResizeEdge::empty(), v_g);
+        Ok(c_type)
     }
 
     /// Sets the fullscreen flag on the container to the specified value.
