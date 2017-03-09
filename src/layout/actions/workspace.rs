@@ -106,26 +106,22 @@ impl LayoutTree {
             ContainerType::View  => {
                 match self.tree[active_ix] {
                     Container::View { id, ..} => {
-                        self.focus_on(id) .unwrap_or_else(|_| {
+                        self.focus_on(id).unwrap_or_else(|_| {
                             warn!("Could not focus on {:?}", id);
                         });
                     },
                     _ => unreachable!()
                 }
-                self.active_container = Some(active_ix);
-                if !self.tree[active_ix].floating() {
-                    self.tree.set_ancestor_paths_active(active_ix);
-                } else {
-                    let root_c_ix = *self.tree.children_of(workspace_ix).get(0)
-                        .expect("The workspace we are switching to had no root container");
-                    self.tree.set_ancestor_paths_active(root_c_ix);
-                }
+                self.set_active_node(active_ix)
+                    .expect("Could not set new active node");
+                self.tree.set_ancestor_paths_active(active_ix);
                 self.validate();
                 self.validate_path();
                 return;
             },
             _ => {
-                self.active_container = self.tree.descendant_of_type(active_ix, ContainerType::View)
+                self.active_container = self.tree
+                    .descendant_of_type(active_ix, ContainerType::View)
                     .or_else(|_| self.tree.descendant_of_type(active_ix,
                                                               ContainerType::Container)).ok();
                 match self.tree[self.active_container.expect("Workspace had NO children!")] {
@@ -227,6 +223,7 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
         self.validate();
+        self.validate_path();
     }
 
     /// Transfers a fullscreen app from this workspace to another.
