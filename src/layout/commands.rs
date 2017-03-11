@@ -7,6 +7,7 @@ use super::Tree;
 
 use uuid::Uuid;
 use rustwlc::{Point, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -475,14 +476,22 @@ impl Tree {
 
     /// Resizes the container, as if it was dragged at the edge to a certain point
     /// on the screen.
-    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point) -> CommandResult {
+    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point)
+                            -> CommandResult {
         match try_lock_action() {
             Ok(mut lock) => {
                 if let Some(ref mut action) = *lock {
                     if try!(self.0.lookup(id)).floating() {
                         self.0.resize_floating(id, edge, pointer, action)
                     } else {
-                        self.0.resize_tiled(id, edge, pointer, action)
+                        let new_point = self.0.resize_tiled(id, edge, pointer, action)?;
+                        // TODO look up the thingie
+                        if false {
+                            action.grab = new_point
+                        } else {
+                            pointer::set_position(pointer);
+                        }
+                        Ok(())
                     }
                 } else {
                     Err(TreeError::Action(ActionErr::ActionNotInProgress))

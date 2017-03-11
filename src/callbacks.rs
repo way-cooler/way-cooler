@@ -378,7 +378,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
                             Ok(_) => return EVENT_BLOCKED,
-                            Err(err) => error!("Error: {:#?}", err)
+                            Err(err) => warn!("Could not resize: {:#?}", err)
                         }
                     }
                 }
@@ -387,7 +387,8 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                     match tree.try_drag_active(*point) {
                         Ok(_) => result = EVENT_BLOCKED,
                         Err(TreeError::PerformingAction(_)) |
-                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = EVENT_PASS_THROUGH,
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) =>
+                            result = EVENT_PASS_THROUGH,
                         Err(err) => {
                             error!("Error: {:#?}", err);
                             result = EVENT_PASS_THROUGH
