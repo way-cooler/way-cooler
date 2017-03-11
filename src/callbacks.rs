@@ -72,7 +72,7 @@ pub extern fn view_created(view: WlcView) -> bool {
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);
     let bar = handle.read("programs".into())
-        .expect("layout category didn't exist")
+        .expect("programs category didn't exist")
         .get("x11_bar".into())
         .and_then(|data| data.as_string().map(str::to_string));
     // TODO Move this hack, probably could live somewhere else
