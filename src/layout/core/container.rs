@@ -506,7 +506,11 @@ impl Container {
                     let geometry = handle.get_geometry()
                         .expect("View had no geometry");
                     if borders_.geometry != geometry {
-                        borders_ = borders_.reallocate_buffer(geometry).unwrap();
+                        if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
+                            borders_ = new_borders;
+                        } else {
+                            return
+                        }
                     }
                     *borders = BordersDraw::new(borders_.enable_cairo().unwrap())
                         .draw(geometry).ok();
