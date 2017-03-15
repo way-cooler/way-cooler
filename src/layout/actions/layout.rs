@@ -171,7 +171,6 @@ impl LayoutTree {
                                 .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
-                            // TODO Move so this isn't so inefficient!
                             self.draw_borders_rec(children);
                         }
                     }
@@ -222,7 +221,6 @@ impl LayoutTree {
                                 .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
-                            // TODO Move so this isn't so inefficient!
                             self.draw_borders_rec(children);
                         }
                     }

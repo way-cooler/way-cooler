@@ -23,7 +23,7 @@ util.program.spawn_at_startup("way-cooler-bg", background)
 -- These options are applied to all windows.
 way_cooler.windows = {
   gaps = { -- Options for gaps
-    size = 0, -- The width of gaps between windows in pixels
+    size = 100, -- The width of gaps between windows in pixels
   },
   borders = { -- Options for borders
     size = 20, -- The width of the borders between windows in pixels
