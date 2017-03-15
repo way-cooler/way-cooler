@@ -168,7 +168,7 @@ pub extern fn view_props_changed(view: WlcView, prop: ViewPropertyType) {
             match tree.update_title(view) {
                 Ok(_) => {},
                 Err(err) => {
-                    error!("Could not draw border for view {:?} because {:#?}",
+                    error!("Could not update title for view {:?} because {:#?}",
                            view, err);
                 }
             }
