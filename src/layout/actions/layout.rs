@@ -10,8 +10,6 @@ use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
 
-use registry::{self};
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
     /// The node behind the UUID was asked to ground when it was already grounded.
@@ -169,10 +167,10 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            self.add_gaps(node_ix)
-                                .expect("Couldn't add gaps to horizontal container");
                             self.add_borders(node_ix)
                                 .expect("Couldn't add border gaps to horizontal container");
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to horizontal container");
                             self.tree[node_ix].draw_borders();
                         }
                     }
@@ -219,10 +217,10 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children,
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            self.add_gaps(node_ix)
-                                .expect("Couldn't add gaps to vertical container");
                             self.add_borders(node_ix)
                                 .expect("Couldn't add border gaps to horizontal container");
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to vertical container");
                             self.tree[node_ix].draw_borders();
                         }
                     }
@@ -666,16 +664,10 @@ impl LayoutTree {
             _ => return Err(TreeError::UuidNotAssociatedWith(
                 ContainerType::Container))
         };
-        let lock = registry::clients_read();
-        let client = lock.client(Uuid::nil()).unwrap();
-        let handle = registry::ReadHandle::new(&client);
-        let gap = handle.read("windows".into()).ok()
-            .and_then(|windows|windows.get("gaps".into()))
-            .and_then(|gaps| gaps.as_object()
-                 .and_then(|gaps| gaps.get("size"))
-                      .and_then(|gaps| gaps.as_f64()))
-            .map(|num| num as u32)
-            .unwrap_or(0u32);
+        let gap = Borders::gap_size();
+        if gap == 0 {
+            return Ok(())
+        }
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];

@@ -127,6 +127,21 @@ impl Renderable for Borders {
 }
 
 impl Borders {
+    /// Gets the gap size
+    pub fn gap_size() -> u32 {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        handle.read("windows".into()).ok()
+            .and_then(|windows|windows.get("gaps".into()))
+            .and_then(|gaps| gaps.as_object()
+                      .and_then(|gaps| gaps.get("size"))
+                      .and_then(|gaps| gaps.as_f64()))
+            .map(|num| num as u32)
+            .unwrap_or(0u32)
+    }
+
+
     /// Gets the thickness of the borders (not including title bar).
     ///
     /// Defaults to 0 if not set.
