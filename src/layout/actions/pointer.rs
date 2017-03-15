@@ -32,6 +32,6 @@ impl LayoutTree {
             origin.y += size.h as i32;
             input::pointer::set_position(origin);
         }
-        Ok((origin))
+        Ok(origin)
     }
 }
