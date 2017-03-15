@@ -389,6 +389,15 @@ impl Tree {
         }
     }
 
+    pub fn update_title(&mut self, view: WlcView) -> CommandResult {
+        let id = try!(self.lookup_view(view)
+                      .map_err(|_|TreeError::ViewNotFound(view)));
+        let container = try!(self.0.lookup_mut(id));
+        container.set_name(Container::get_title(view));
+        container.draw_borders();
+        Ok(())
+    }
+
     /// Sets the view to be the new active container.
     /// Will fail if the container is floating.
     pub fn set_active_view(&mut self, view: WlcView) -> CommandResult {
@@ -545,14 +554,6 @@ impl Tree {
                       .map_err(|_|TreeError::ViewNotFound(view)));
         let container = try!(self.0.lookup_mut(id));
         container.render_borders();
-        Ok(())
-    }
-
-    pub fn draw_borders(&mut self, view: WlcView) -> CommandResult {
-        let id = try!(self.lookup_view(view)
-                      .map_err(|_|TreeError::ViewNotFound(view)));
-        let container = try!(self.0.lookup_mut(id));
-        container.draw_borders();
         Ok(())
     }
 }

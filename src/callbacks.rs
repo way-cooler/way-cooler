@@ -165,7 +165,7 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
 pub extern fn view_props_changed(view: WlcView, prop: ViewPropertyType) {
     if prop.contains(PROPERTY_TITLE) {
         if let Ok(mut tree) = try_lock_tree() {
-            match tree.draw_borders(view) {
+            match tree.update_title(view) {
                 Ok(_) => {},
                 Err(err) => {
                     error!("Could not draw border for view {:?} because {:#?}",
