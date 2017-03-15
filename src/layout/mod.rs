@@ -22,8 +22,6 @@ pub struct Tree(TreeGuard);
 pub type TreeGuard = MutexGuard<'static, LayoutTree>;
 /// Error for trying to lock the tree
 pub type TreeErr = TryLockError<TreeGuard>;
-/// Result for locking the tree
-pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 
 
 #[derive(Debug)]
