@@ -547,4 +547,12 @@ impl Tree {
         container.render_borders();
         Ok(())
     }
+
+    pub fn draw_borders(&mut self, view: WlcView) -> CommandResult {
+        let id = try!(self.lookup_view(view)
+                      .map_err(|_|TreeError::ViewNotFound(view)));
+        let container = try!(self.0.lookup_mut(id));
+        container.draw_borders();
+        Ok(())
+    }
 }
