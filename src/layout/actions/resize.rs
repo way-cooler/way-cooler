@@ -42,7 +42,7 @@ impl LayoutTree {
     }
 
     pub fn resize_tiled(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point,
-                        action: &mut Action) -> CommandResult {
+                        action: &mut Action) -> Result<Point, TreeError> {
         // This is the vector of operations we will perform, we do all geometry sets atomically.
         let mut resizing_ops: Vec<(Uuid, (ResizeEdge, Geometry))> = Vec::with_capacity(4);
         let dirs_moving_in = Direction::from_edge(edge);
@@ -63,7 +63,7 @@ impl LayoutTree {
             let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
             if geometry_resize_too_small(geo, edge, pointer, action.grab) {
-                return Ok(())
+                return Ok(pointer)
             }
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
             resizing_ops.push((ancestor_id, (edge, new_geo)));
@@ -87,11 +87,11 @@ impl LayoutTree {
             let geo = container.get_geometry()
                 .expect("Could not get geometry of the container");
             if geometry_resize_too_small(geo, reversed_edge, pointer, action.grab) {
-                return Ok(())
+                return Ok(pointer)
             }
             let new_geo = calculate_resize(geo, reversed_edge, pointer, action.grab);
             if new_geo.size.w <= MIN_SIZE.w || new_geo.size.h <= MIN_SIZE.h {
-                return Ok(())
+                return Ok(pointer)
             }
             resizing_ops.push((sibling, (reversed_edge, new_geo)));
         }
@@ -104,9 +104,7 @@ impl LayoutTree {
         let node_ix = self.tree.lookup_id(id).unwrap();
         let workspace_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Workspace).unwrap();
         self.layout(workspace_ix);
-        action.grab = self.grab_at_corner(id, edge)
-            .expect("Could not update pointer position");
-        Ok(())
+        self.grab_at_corner(id, edge)
     }
 }
 

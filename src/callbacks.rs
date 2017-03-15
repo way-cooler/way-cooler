@@ -72,7 +72,7 @@ pub extern fn view_created(view: WlcView) -> bool {
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);
     let bar = handle.read("programs".into())
-        .expect("layout category didn't exist")
+        .expect("programs category didn't exist")
         .get("x11_bar".into())
         .and_then(|data| data.as_string().map(str::to_string));
     // TODO Move this hack, probably could live somewhere else
@@ -378,7 +378,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
                             Ok(_) => return EVENT_BLOCKED,
-                            Err(err) => error!("Error: {:#?}", err)
+                            Err(err) => warn!("Could not resize: {:#?}", err)
                         }
                     }
                 }
@@ -387,7 +387,8 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                     match tree.try_drag_active(*point) {
                         Ok(_) => result = EVENT_BLOCKED,
                         Err(TreeError::PerformingAction(_)) |
-                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = EVENT_PASS_THROUGH,
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) =>
+                            result = EVENT_PASS_THROUGH,
                         Err(err) => {
                             error!("Error: {:#?}", err);
                             result = EVENT_PASS_THROUGH
