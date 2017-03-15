@@ -752,7 +752,15 @@ impl LayoutTree {
         while children.len() > 0 {
             let child_ix = children.pop().unwrap();
             children.extend(self.tree.grounded_children(child_ix));
-            self.tree[child_ix].draw_borders();
+            let container = &mut self.tree[child_ix];
+            if Some(child_ix) != self.active_container {
+                container.clear_border_color()
+                    .expect("Could not clear border color");
+            } else {
+                container.active_border_color()
+                    .expect("Could not set border color to be active");
+            }
+            container.draw_borders();
         }
     }
 
