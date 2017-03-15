@@ -4,7 +4,7 @@
 
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
-                     Point, Geometry, ResizeEdge, ViewState,
+                     Point, Geometry, ResizeEdge, ViewState, ViewPropertyType, PROPERTY_TITLE,
                      VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
@@ -157,6 +157,20 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
             Ok(_) => {},
             Err(err) => {
                 error!("Could not set {:?} to be active view: {:?}", current, err);
+            }
+        }
+    }
+}
+
+pub extern fn view_props_changed(view: WlcView, prop: ViewPropertyType) {
+    if prop.contains(PROPERTY_TITLE) {
+        if let Ok(mut tree) = try_lock_tree() {
+            match tree.update_title(view) {
+                Ok(_) => {},
+                Err(err) => {
+                    error!("Could not update title for view {:?} because {:#?}",
+                           view, err);
+                }
             }
         }
     }
@@ -448,6 +462,7 @@ pub fn init() {
     callback::view_request_state(view_request_state);
     callback::view_request_move(view_request_move);
     callback::view_request_resize(view_request_resize);
+    callback::view_properties_changed(view_props_changed);
     callback::keyboard_key(keyboard_key);
     callback::pointer_button(pointer_button);
     callback::pointer_scroll(pointer_scroll);
