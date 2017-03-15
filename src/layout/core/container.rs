@@ -469,18 +469,34 @@ impl Container {
     /// Container::Container: Layout style (e.g horizontal)
     /// Container::View: The name taken from `WlcView`
     pub fn name(&self) -> String {
-        match  *self {
+        match *self {
             Container::Root(_)  => "Root Container".into(),
             Container::Output { handle, .. } => {
                 handle.get_name()
             },
             Container::Workspace { ref name, .. } => name.clone(),
-            Container::Container { layout, .. } => {
-                format!("{:?}", layout)
+            Container::Container { ref borders, layout, .. } => {
+                borders.as_ref().map(|b| b.title().into())
+                    .unwrap_or_else(|| format!("{:?}", layout))
             },
             Container::View { handle, ..} => {
-                handle.get_title()
+                Container::get_title(handle)
             }
+        }
+    }
+
+    pub fn set_name(&mut self, new_name: String) {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { ref mut borders, .. } |
+            Container::Container { ref mut borders, .. } => {
+                borders.as_mut().map(|b| b.title = new_name);
+            },
+            Container::Workspace { ref mut name, .. } => {
+                *name = new_name;
+            },
+            _ => warn!("Tried to set name of {:?} to {}",
+                       c_type, new_name)
         }
     }
 

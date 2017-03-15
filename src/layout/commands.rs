@@ -4,9 +4,11 @@ use super::{try_lock_tree, lock_tree, try_lock_action};
 use super::{Action, ActionErr, Bar, Container, ContainerType,
             Direction, Handle, Layout, TreeError};
 use super::Tree;
+use ::registry;
 
 use uuid::Uuid;
 use rustwlc::{Point, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -389,6 +391,15 @@ impl Tree {
         }
     }
 
+    pub fn update_title(&mut self, view: WlcView) -> CommandResult {
+        let id = try!(self.lookup_view(view)
+                      .map_err(|_|TreeError::ViewNotFound(view)));
+        let container = try!(self.0.lookup_mut(id));
+        container.set_name(Container::get_title(view));
+        container.draw_borders();
+        Ok(())
+    }
+
     /// Sets the view to be the new active container.
     /// Will fail if the container is floating.
     pub fn set_active_view(&mut self, view: WlcView) -> CommandResult {
@@ -475,14 +486,29 @@ impl Tree {
 
     /// Resizes the container, as if it was dragged at the edge to a certain point
     /// on the screen.
-    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point) -> CommandResult {
+    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point)
+                            -> CommandResult {
         match try_lock_action() {
             Ok(mut lock) => {
                 if let Some(ref mut action) = *lock {
                     if try!(self.0.lookup(id)).floating() {
                         self.0.resize_floating(id, edge, pointer, action)
                     } else {
-                        self.0.resize_tiled(id, edge, pointer, action)
+                        let new_point = self.0.resize_tiled(id, edge, pointer, action)?;
+                        // look up mouse lock option
+                        let lock = registry::clients_read();
+                        let client = lock.client(Uuid::nil()).unwrap();
+                        let handle = registry::ReadHandle::new(&client);
+                        let lock_mouse = handle.read("mouse".into())
+                            .expect("mouse category didn't exist")
+                            .get("lock_to_corner_on_resize".into())
+                            .and_then(|data| data.as_boolean()).unwrap_or(false);
+                        if lock_mouse {
+                            action.grab = new_point
+                        } else {
+                            pointer::set_position(pointer);
+                        }
+                        Ok(())
                     }
                 } else {
                     Err(TreeError::Action(ActionErr::ActionNotInProgress))
