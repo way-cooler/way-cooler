@@ -39,6 +39,12 @@ way_cooler.windows = {
   }
 }
 
+-- Options that change how the mouse behaves.
+way_cooler.mouse = {
+  -- Locks the mouse to the corner of the window the user is resizing.
+  lock_to_corner_on_resize = false
+}
+
 --
 -- Keybindings
 --

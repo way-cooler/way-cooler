@@ -4,7 +4,7 @@
 
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
-                     Point, Geometry, ResizeEdge, ViewState,
+                     Point, Geometry, ResizeEdge, ViewState, ViewPropertyType, PROPERTY_TITLE,
                      VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
@@ -72,7 +72,7 @@ pub extern fn view_created(view: WlcView) -> bool {
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);
     let bar = handle.read("programs".into())
-        .expect("layout category didn't exist")
+        .expect("programs category didn't exist")
         .get("x11_bar".into())
         .and_then(|data| data.as_string().map(str::to_string));
     // TODO Move this hack, probably could live somewhere else
@@ -157,6 +157,20 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
             Ok(_) => {},
             Err(err) => {
                 error!("Could not set {:?} to be active view: {:?}", current, err);
+            }
+        }
+    }
+}
+
+pub extern fn view_props_changed(view: WlcView, prop: ViewPropertyType) {
+    if prop.contains(PROPERTY_TITLE) {
+        if let Ok(mut tree) = try_lock_tree() {
+            match tree.update_title(view) {
+                Ok(_) => {},
+                Err(err) => {
+                    error!("Could not update title for view {:?} because {:#?}",
+                           view, err);
+                }
             }
         }
     }
@@ -378,7 +392,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
                             Ok(_) => return EVENT_BLOCKED,
-                            Err(err) => error!("Error: {:#?}", err)
+                            Err(err) => warn!("Could not resize: {:#?}", err)
                         }
                     }
                 }
@@ -387,7 +401,8 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                     match tree.try_drag_active(*point) {
                         Ok(_) => result = EVENT_BLOCKED,
                         Err(TreeError::PerformingAction(_)) |
-                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = EVENT_PASS_THROUGH,
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) =>
+                            result = EVENT_PASS_THROUGH,
                         Err(err) => {
                             error!("Error: {:#?}", err);
                             result = EVENT_PASS_THROUGH
@@ -447,6 +462,7 @@ pub fn init() {
     callback::view_request_state(view_request_state);
     callback::view_request_move(view_request_move);
     callback::view_request_resize(view_request_resize);
+    callback::view_properties_changed(view_props_changed);
     callback::keyboard_key(keyboard_key);
     callback::pointer_button(pointer_button);
     callback::pointer_scroll(pointer_scroll);

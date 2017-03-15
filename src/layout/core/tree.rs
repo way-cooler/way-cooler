@@ -4,6 +4,7 @@
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
+use rustwlc::callback::{positioner_get_anchor_rect, positioner_get_size,};
 use rustwlc::{ResizeEdge, WlcView, WlcOutput,
               RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use ::render::{Renderable};
@@ -364,9 +365,27 @@ impl LayoutTree {
             let view_ix = self.tree.add_child(root_ix,
                                              Container::new_view(view, borders),
                                              false);
-            self.tree[view_ix].set_floating(true)
+            let container = &mut self.tree[view_ix];
+            container.set_floating(true)
                 .expect("Could not float view we just made");
-            return Ok(&self.tree[view_ix])
+            if let Some(anchor) = positioner_get_anchor_rect(view) {
+                let mut geo = view.get_geometry().expect("View had no geometry");
+                let mut size = positioner_get_size(view).expect("View had no size");
+                if size.w <= 0 || size.h <= 0 {
+                    size = geo.size;
+                }
+                geo.origin = anchor.origin;
+                geo.size = size;
+                let parent = view.get_parent();
+                if !parent.is_root() {
+                    let parent_geo = parent.get_geometry()
+                        .expect("Parent view had no geometry");
+                    geo.origin.x += parent_geo.origin.x;
+                    geo.origin.y += parent_geo.origin.y;
+                }
+                container.set_geometry(ResizeEdge::empty(), geo);
+            }
+            return Ok(&*container)
         }
         self.validate();
         Err(TreeError::NoActiveContainer)

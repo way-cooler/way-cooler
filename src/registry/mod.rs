@@ -36,5 +36,8 @@ pub fn init() {
         .expect("Could not add windows category");
     // Construct the programs category
     registry.add_category("programs".into())
-        .expect("Could not add windows category");
+        .expect("Could not add programs category");
+    // Construct the mouse category
+    registry.add_category("mouse".into())
+        .expect("Could not add mouse category");
 }
