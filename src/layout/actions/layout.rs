@@ -164,14 +164,15 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, children,
+                            self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
                             self.add_borders(node_ix)
                                 .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
-                            self.tree[node_ix].draw_borders();
+                            // TODO Move so this isn't so inefficient!
+                            self.draw_borders_rec(children);
                         }
                     }
                     Layout::Vertical => {
@@ -214,14 +215,15 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y + new_size.h as i32
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, children,
+                            self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
                             self.add_borders(node_ix)
                                 .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
-                            self.tree[node_ix].draw_borders();
+                            // TODO Move so this isn't so inefficient!
+                            self.draw_borders_rec(children);
                         }
                     }
                 }
@@ -231,7 +233,6 @@ impl LayoutTree {
                 self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
                 self.add_borders(node_ix)
                     .expect("Couldn't add border gaps to horizontal container");
-                self.tree[node_ix].draw_borders();
             }
         }
         self.validate();
@@ -478,7 +479,7 @@ impl LayoutTree {
 
     fn generic_tile<SizeF, RemainF, PointF>
         (&mut self,
-         node_ix: NodeIndex, geometry: Geometry, children: Vec<NodeIndex>,
+         node_ix: NodeIndex, geometry: Geometry, children: &[NodeIndex],
          new_size_f: SizeF, remaining_size_f: RemainF, new_point_f: PointF,
          fullscreen_apps: &mut Vec<NodeIndex>)
         where SizeF:   Fn(Size, Geometry) -> Size,
@@ -750,6 +751,16 @@ impl LayoutTree {
         }
         Ok(())
     }
+
+    /// Draws the borders recursively, down from the top to the bottom.
+    fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>) {
+        while children.len() > 0 {
+            let child_ix = children.pop().unwrap();
+            children.extend(self.tree.grounded_children(child_ix));
+            self.tree[child_ix].draw_borders();
+        }
+    }
+
 }
 
 #[cfg(test)]
