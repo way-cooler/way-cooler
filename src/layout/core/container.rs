@@ -518,10 +518,16 @@ impl Container {
         // border, but for now this will do.
         match *self {
             Container::View { ref mut borders, handle, .. } => {
-                if let Some(borders_) = borders.take() {
+                if let Some(mut borders_) = borders.take() {
                     let geometry = handle.get_geometry()
                         .expect("View had no geometry");
-                    // TODO Don't hard code color
+                    if borders_.geometry != geometry {
+                        if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
+                            borders_ = new_borders;
+                        } else {
+                            return
+                        }
+                    }
                     *borders = BordersDraw::new(borders_.enable_cairo().unwrap())
                         .draw(geometry).ok();
                 }

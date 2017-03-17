@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::sync::mpsc::{self, Sender};
 use std::thread;
 
-use dbus::tree::{Factory, Interface, ObjectPath, Tree, MTFn, MethodErr};
+use dbus::tree::{Factory, ObjectPath, Tree, MTFn, MethodErr};
 
 mod utils;
 mod keybindings;
@@ -19,7 +19,6 @@ pub const VERSION: u32 = 1;
 
 type DBusResult<T> = Result<T, MethodErr>;
 type DBusObjPath = ObjectPath<MTFn<()>, ()>;
-type DBusInterface = Interface<MTFn<()>, ()>;
 type DBusFactory = Factory<MTFn<()>>;
 type DBusTree = Tree<MTFn<()>, ()>;
 

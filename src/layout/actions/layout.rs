@@ -10,8 +10,6 @@ use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
 
-use registry::{self};
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
     /// The node behind the UUID was asked to ground when it was already grounded.
@@ -166,14 +164,14 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, children,
+                            self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            self.add_gaps(node_ix)
-                                .expect("Couldn't add gaps to horizontal container");
                             self.add_borders(node_ix)
                                 .expect("Couldn't add border gaps to horizontal container");
-                            self.tree[node_ix].draw_borders();
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to horizontal container");
+                            self.draw_borders_rec(children);
                         }
                     }
                     Layout::Vertical => {
@@ -216,14 +214,14 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y + new_size.h as i32
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, children,
+                            self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            self.add_gaps(node_ix)
-                                .expect("Couldn't add gaps to vertical container");
                             self.add_borders(node_ix)
                                 .expect("Couldn't add border gaps to horizontal container");
-                            self.tree[node_ix].draw_borders();
+                            self.add_gaps(node_ix)
+                                .expect("Couldn't add gaps to vertical container");
+                            self.draw_borders_rec(children);
                         }
                     }
                 }
@@ -233,7 +231,6 @@ impl LayoutTree {
                 self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
                 self.add_borders(node_ix)
                     .expect("Couldn't add border gaps to horizontal container");
-                self.tree[node_ix].draw_borders();
             }
         }
         self.validate();
@@ -480,7 +477,7 @@ impl LayoutTree {
 
     fn generic_tile<SizeF, RemainF, PointF>
         (&mut self,
-         node_ix: NodeIndex, geometry: Geometry, children: Vec<NodeIndex>,
+         node_ix: NodeIndex, geometry: Geometry, children: &[NodeIndex],
          new_size_f: SizeF, remaining_size_f: RemainF, new_point_f: PointF,
          fullscreen_apps: &mut Vec<NodeIndex>)
         where SizeF:   Fn(Size, Geometry) -> Size,
@@ -666,16 +663,10 @@ impl LayoutTree {
             _ => return Err(TreeError::UuidNotAssociatedWith(
                 ContainerType::Container))
         };
-        let lock = registry::clients_read();
-        let client = lock.client(Uuid::nil()).unwrap();
-        let handle = registry::ReadHandle::new(&client);
-        let gap = handle.read("windows".into()).ok()
-            .and_then(|windows|windows.get("gaps".into()))
-            .and_then(|gaps| gaps.as_object()
-                 .and_then(|gaps| gaps.get("size"))
-                      .and_then(|gaps| gaps.as_f64()))
-            .map(|num| num as u32)
-            .unwrap_or(0u32);
+        let gap = Borders::gap_size();
+        if gap == 0 {
+            return Ok(())
+        }
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
@@ -753,11 +744,26 @@ impl LayoutTree {
                 container.resize_borders(geometry);
             }
         }
-        for child_ix in self.tree.grounded_children(node_ix) {
-            try!(self.add_borders(child_ix))
-        }
         Ok(())
     }
+
+    /// Draws the borders recursively, down from the top to the bottom.
+    fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>) {
+        while children.len() > 0 {
+            let child_ix = children.pop().unwrap();
+            children.extend(self.tree.grounded_children(child_ix));
+            let container = &mut self.tree[child_ix];
+            if Some(child_ix) != self.active_container {
+                container.clear_border_color()
+                    .expect("Could not clear border color");
+            } else {
+                container.active_border_color()
+                    .expect("Could not set border color to be active");
+            }
+            container.draw_borders();
+        }
+    }
+
 }
 
 #[cfg(test)]
