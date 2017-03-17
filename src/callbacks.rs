@@ -8,6 +8,7 @@ use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, Scro
                      VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
+use rustwlc::render::{read_pixels, wlc_pixel_format};
 use uuid::Uuid;
 
 use super::keys::{self, KeyPress, KeyEvent};
@@ -15,6 +16,9 @@ use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, Container
                     MovementError, TreeError, FocusError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
+
+use ::render::screen_scrape::{read_screen_scrape_lock, scraped_pixels_lock,
+                              sync_scrape};
 
 use registry::{self};
 
@@ -63,6 +67,22 @@ pub extern fn output_resolution(output: WlcOutput,
     if let Ok(mut tree) = try_lock_tree() {
         tree.layout_active_of(ContainerType::Output)
             .expect("Could not layout active output");
+    }
+}
+
+pub extern fn post_render(output: WlcOutput) {
+    let need_to_fetch = read_screen_scrape_lock();
+    if *need_to_fetch {
+        if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
+            // TODO Entire screen size from active output...
+            let geo = Geometry {
+                origin: Point { x: 0, y: 0 },
+                size: Size { w: 100, h: 100}
+            };
+            let result = read_pixels(wlc_pixel_format::WLC_RGBA8888, geo).1;
+            *scraped_pixels = result;
+            sync_scrape();
+        }
     }
 }
 
@@ -454,6 +474,7 @@ pub fn init() {
     callback::output_destroyed(output_destroyed);
     callback::output_focus(output_focus);
     callback::output_resolution(output_resolution);
+    callback::output_render_post(post_render);
     callback::view_created(view_created);
     callback::view_destroyed(view_destroyed);
     callback::view_focus(view_focus);
