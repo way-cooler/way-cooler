@@ -23,6 +23,7 @@ extern crate nix;
 extern crate petgraph;
 extern crate uuid;
 extern crate dbus;
+extern crate cairo;
 
 #[macro_use]
 mod macros;
@@ -38,6 +39,8 @@ mod ipc;
 
 mod layout;
 
+mod render;
+
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -50,6 +53,7 @@ use nix::sys::signal::{self, SigHandler, SigSet, SigAction, SaFlags};
 use rustwlc::types::LogType;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 const DRIVER_MOD_PATH: &'static str = "/proc/modules";
 
 /// Callback to route wlc logs into env_logger
@@ -117,6 +121,12 @@ fn detect_proprietary() {
     }
 }
 
+#[inline(always)]
+/// Determines if we should build with debug symbols.
+pub fn debug_enabled() -> bool {
+    cfg!(not(disable_debug))
+}
+
 /// Initializes the logging system.
 pub fn init_logs() {
     let mut builder = env_logger::LogBuilder::new();
@@ -128,6 +138,12 @@ pub fn init_logs() {
     }
     builder.init().expect("Unable to initialize logging!");
     info!("Logger initialized, setting wlc handlers.");
+}
+
+fn log_environment() {
+    for (key, value) in env::vars() {
+        debug!("{}: {}", key, value);
+    }
 }
 
 /// Handler for signals
@@ -148,7 +164,11 @@ fn main() {
         }
     };
     if matches.opt_present("version") {
-        println!("Way Cooler {}", VERSION);
+        if !GIT_VERSION.is_empty() {
+            println!("Way Cooler {} @ {}", VERSION, GIT_VERSION);
+        } else {
+            println!("Way Cooler {}", VERSION);
+        }
         println!("Way Cooler IPC version {}", ipc::VERSION);
         return
     }
@@ -159,9 +179,11 @@ fn main() {
     unsafe {signal::sigaction(signal::SIGINT, &sig_action).unwrap() };
 
     init_logs();
+    log_environment();
     detect_proprietary();
     // This prepares wlc, doesn't run main loop until run_wlc is called
-    let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
+    let run_wlc = rustwlc::init()
+        .expect("Unable to initialize wlc!");
     rustwlc::log_set_rust_handler(log_handler);
     callbacks::init();
     commands::init();

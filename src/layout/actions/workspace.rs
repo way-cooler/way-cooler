@@ -1,8 +1,8 @@
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use rustwlc::{Geometry, Point};
 use super::super::LayoutTree;
 use super::super::core::container::{Container, ContainerType};
+use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
 // Need to add some errors for this (such as when trying to move a non-container/view,
@@ -30,16 +30,13 @@ impl LayoutTree {
     /// Initializes a workspace and gets the index of the root container
     pub fn init_workspace(&mut self, name: String, output_ix: NodeIndex)
                       -> NodeIndex {
-        let size = self.tree.get(output_ix)
+        let geometry = self.tree.get(output_ix)
             .expect("init_workspace: invalid output").get_geometry()
-            .expect("init_workspace: no geometry for output").size;
-        let worksp = Container::new_workspace(name.to_string(), size.clone());
+            .expect("init_workspace: no geometry for output");
+        let worksp = Container::new_workspace(name.to_string(), geometry);
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let geometry = Geometry {
-            size: size, origin: Point { x: 0, y: 0 }
-        };
         let container_ix = self.tree.add_child(worksp_ix,
                                                Container::new_container(geometry), false);
         self.tree.set_ancestor_paths_active(container_ix);
@@ -97,7 +94,10 @@ impl LayoutTree {
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
             trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
                    .expect("Workspace had no name"));
-            self.remove_container(old_worksp_ix);
+            if let Err(err) = self.remove_container(old_worksp_ix) {
+                warn!("Tried to remove {:?}, got: {:#?}", old_worksp_ix, err);
+                panic!("Could not remove old workspace");
+            }
         }
         workspace_ix = self.tree.workspace_ix_by_name(name)
             .expect("Workspace we just made was deleted!");
@@ -105,26 +105,23 @@ impl LayoutTree {
         match self.tree[active_ix].get_type() {
             ContainerType::View  => {
                 match self.tree[active_ix] {
-                    Container::View { ref handle, ..} => {
-                        trace!("View found, focusing on {:?}", handle);
-                        handle.focus();
+                    Container::View { id, ..} => {
+                        self.focus_on(id).unwrap_or_else(|_| {
+                            warn!("Could not focus on {:?}", id);
+                        });
                     },
                     _ => unreachable!()
                 }
-                self.active_container = Some(active_ix);
-                if !self.tree[active_ix].floating() {
-                    self.tree.set_ancestor_paths_active(active_ix);
-                } else {
-                    let root_c_ix = *self.tree.children_of(workspace_ix).get(0)
-                        .expect("The workspace we are switching to had no root container");
-                    self.tree.set_ancestor_paths_active(root_c_ix);
-                }
+                self.set_active_node(active_ix)
+                    .expect("Could not set new active node");
+                self.tree.set_ancestor_paths_active(active_ix);
                 self.validate();
                 self.validate_path();
                 return;
             },
             _ => {
-                self.active_container = self.tree.descendant_of_type(active_ix, ContainerType::View)
+                self.active_container = self.tree
+                    .descendant_of_type(active_ix, ContainerType::View)
                     .or_else(|_| self.tree.descendant_of_type(active_ix,
                                                               ContainerType::Container)).ok();
                 match self.tree[self.active_container.expect("Workspace had NO children!")] {
@@ -182,16 +179,19 @@ impl LayoutTree {
 
             // Get the root container of the next workspace
             let next_work_children = self.tree.children_of(next_work_ix);
-            if cfg!(debug_assertions) {
+            if cfg!(debug_assertions) || !debug_enabled() {
                 assert!(next_work_children.len() == 1,
                         "Next workspace has multiple roots!");
             }
             let next_work_root_ix = next_work_children[0];
 
             // Move the container
-            info!("Moving container {:?} to workspace {}",
+            debug!("Moving container {:?} to workspace {}",
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
+
+            // If it's a fullscreen app, then update the fullscreen lists
+            self.transfer_fullscreen(curr_work_ix, next_work_ix, id);
 
             // Update the active container
             if let Ok(parent_ix) = maybe_active_parent {
@@ -204,7 +204,10 @@ impl LayoutTree {
                     parent_ix, ctype);
                 }
                 if self.tree.can_remove_empty_parent(parent_ix) {
-                    self.remove_view_or_container(parent_ix);
+                    if let Err(err) = self.remove_view_or_container(parent_ix) {
+                        error!("{:#?}\nCould not remove {:#?} from tree {:#?}", err, parent_ix, self);
+                        panic!("Could not remove empty parent!");
+                    }
                 }
             }
             else {
@@ -220,5 +223,37 @@ impl LayoutTree {
         let root_ix = self.tree.root_ix();
         self.layout(root_ix);
         self.validate();
+        self.validate_path();
+    }
+
+    /// Transfers a fullscreen app from this workspace to another.
+    fn transfer_fullscreen(&mut self, cur_work_ix: NodeIndex, next_work_ix: NodeIndex,
+                           fullscreen_id: Uuid) {
+        if let Some(fullscreen_ids) = self.tree[cur_work_ix].fullscreen_c() {
+            if !fullscreen_ids.iter().any(|id| *id == fullscreen_id) {
+                return;
+            }
+        } else {
+            return;
+        }
+        self.tree[cur_work_ix].update_fullscreen_c(fullscreen_id, false)
+            .expect("cur_work_ix was not a workspace");
+        self.tree[next_work_ix].update_fullscreen_c(fullscreen_id, true)
+            .expect("next_work_ix was not a workspace");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ::layout::core::tree::tests::basic_tree;
+
+    #[test]
+    pub fn switch_empty_workspaces() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("5");
+        tree.switch_to_workspace("4");
+        tree.switch_to_workspace("5");
+        tree.switch_to_workspace("4");
+        tree.switch_to_workspace("2");
     }
 }

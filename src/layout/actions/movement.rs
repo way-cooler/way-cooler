@@ -27,7 +27,7 @@ impl LayoutTree {
         let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraph(err)));
         try!(self.move_recurse(node_ix, None, direction));
         if self.tree.can_remove_empty_parent(old_parent_ix) {
-            self.remove_container(old_parent_ix);
+            try!(self.remove_container(old_parent_ix));
         }
         self.validate();
         Ok(())
@@ -35,7 +35,7 @@ impl LayoutTree {
 
     /// Returns the new parent of the active container if the move succeeds,
     /// Otherwise it signals what error occurred in the tree.
-    pub fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
+    fn move_recurse(&mut self, node_to_move: NodeIndex, move_ancestor: Option<NodeIndex>,
                            direction: Direction) -> Result<NodeIndex, TreeError> {
         match self.tree[node_to_move].get_type() {
             ContainerType::View | ContainerType::Container => { /* continue */ },
@@ -239,12 +239,12 @@ impl LayoutTree {
     /// point on the screen.
     pub fn drag_floating(&mut self, node_ix: NodeIndex, point: Point, old_point: Point)
                          -> CommandResult {
-        let container = &self.tree[node_ix];
+        let container = &mut self.tree[node_ix];
         if !container.floating() {
             return Err(TreeError::Movement(MovementError::NotFloating(node_ix)))
         }
         match *container {
-            Container::View { handle, .. } => {
+            Container::View { handle, ref mut effective_geometry, .. } => {
                 let dx = point.x - old_point.x;
                 let dy = point.y - old_point.y;
                 let mut geo = handle.get_geometry()
@@ -252,13 +252,15 @@ impl LayoutTree {
                 geo.origin.x += dx;
                 geo.origin.y += dy;
                 handle.set_geometry(ResizeEdge::empty(), geo);
-                Ok(())
+                effective_geometry.origin = geo.origin;
             },
             Container::Container { id, .. } | Container::Workspace { id, .. } |
             Container::Output { id, .. } | Container::Root(id) => {
-                Err(TreeError::UuidWrongType(id, vec!(ContainerType::View)))
+                return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View)))
             }
         }
+        container.draw_borders();
+        Ok(())
     }
 }
 

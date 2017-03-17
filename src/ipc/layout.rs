@@ -120,6 +120,25 @@ dbus_interface! {
         Ok(format!("{}", layout_cmd::tree_as_json()))
     }
 
+    fn ContainerInActiveWorkspace(container_id: String) -> success: DBusResult<bool> {
+        let tree = try!(lock_tree_dbus());
+        let uuid = try!(try!(parse_uuid("container_id", &container_id))
+                        .or_else(|| tree.active_id())
+                        .ok_or(MethodErr::failed(&"No active container")));
+        tree.container_in_active_workspace(uuid)
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
+    fn FullScreen(container_id: String, toggle: bool) -> success: DBusResult<bool> {
+        let mut tree = try!(lock_tree_dbus());
+        let uuid = try!(try!(parse_uuid("container_id", &container_id))
+                        .or_else(|| tree.active_id())
+                        .ok_or(MethodErr::failed(&"No active container")));
+        tree.set_fullscreen(uuid, toggle)
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
     fn SetPointerPos(x: i32, y: i32) -> success: DBusResult<bool> {
         let mut tree = try!(lock_tree_dbus());
         let point = Point { x: x, y: y};
@@ -139,6 +158,13 @@ dbus_interface! {
         }
         tree.grab_at_corner(uuid, edge)
             .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
+    fn ActiveWorkspace() -> name: DBusResult<String> {
+        let tree = try!(lock_tree_dbus());
+        tree.active_workspace()
+            .map(|container| container.name())
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 }

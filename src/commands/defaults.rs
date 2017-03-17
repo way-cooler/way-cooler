@@ -6,7 +6,6 @@ use std::thread;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 
-use registry::{self, RegistryError, RegistryGetData};
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
 use lua::{self, LuaQuery};
@@ -24,8 +23,6 @@ pub fn register_defaults() {
     };
 
     register("way_cooler_quit", Arc::new(way_cooler_quit));
-    register("launch_terminal", Arc::new(launch_terminal));
-    register("launch_dmenu", Arc::new(launch_dmenu));
     register("print_pointer", Arc::new(print_pointer));
 
     register("dmenu_eval", Arc::new(dmenu_eval));
@@ -90,6 +87,7 @@ pub fn register_defaults() {
     register("horizontal_vertical_switch", Arc::new(layout_cmds::tile_switch));
     register("split_vertical", Arc::new(layout_cmds::split_vertical));
     register("split_horizontal", Arc::new(layout_cmds::split_horizontal));
+    register("fullscreen_toggle", Arc::new(layout_cmds::fullscreen_toggle));
     register("focus_left", Arc::new(layout_cmds::focus_left));
     register("focus_right", Arc::new(layout_cmds::focus_right));
     register("focus_up", Arc::new(layout_cmds::focus_up));
@@ -105,24 +103,6 @@ pub fn register_defaults() {
 
 // All of the methods defined should be registered.
 #[deny(dead_code)]
-
-fn launch_terminal() {
-    let command = registry::get_data("terminal")
-        .map(RegistryGetData::resolve).and_then(|(_, data)| {
-        data.as_string().map(str::to_string)
-            .ok_or(RegistryError::KeyNotFound)
-    }).unwrap_or("weston-terminal".to_string());
-
-    Command::new("sh").arg("-c")
-        .arg(command)
-        .spawn().expect("Error launching terminal");
-}
-
-fn launch_dmenu() {
-    Command::new("sh").arg("-c")
-        .arg("dmenu_run")
-        .spawn().expect("Error launching terminal");
-}
 
 fn print_pointer() {
     use lua;

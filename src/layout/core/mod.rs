@@ -1,6 +1,8 @@
 pub mod tree;
 pub mod container;
 pub mod action;
+pub mod bar;
+pub mod borders;
 mod path;
 mod graph_tree;
 

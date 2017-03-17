@@ -4,14 +4,19 @@
 
 use rustwlc::handle::{WlcOutput, WlcView};
 use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
-                     Point, Geometry, ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_MAXIMIZED,
+                     Point, Geometry, ResizeEdge, ViewState, ViewPropertyType, PROPERTY_TITLE,
+                     VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
+use uuid::Uuid;
 
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType, MovementError, TreeError};
+use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, ContainerType,
+                    MovementError, TreeError, FocusError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
+
+use registry::{self};
 
 /// If the event is handled by way-cooler
 const EVENT_BLOCKED: bool = true;
@@ -25,9 +30,16 @@ const RIGHT_CLICK: u32 = 0x111;
 pub extern fn output_created(output: WlcOutput) -> bool {
     trace!("output_created: {:?}: {}", output, output.get_name());
     if let Ok(mut tree) = try_lock_tree() {
-        tree.add_output(output).and_then(|_|{
+        let result = tree.add_output(output).and_then(|_|{
             tree.switch_to_workspace(&"1")
-        }).is_ok()
+                .map(|_| tree.layout_active_of(ContainerType::Output))
+        });
+        match result {
+            // If the output exists, we just couldn't add it to the tree because
+            // it's already there. That's OK
+            Ok(_) | Err(TreeError::OutputExists(_)) => true,
+            _ => false
+        }
     } else {
         false
     }
@@ -55,9 +67,32 @@ pub extern fn output_resolution(output: WlcOutput,
 }
 
 pub extern fn view_created(view: WlcView) -> bool {
-    trace!("view_created: {:?}: \"{}\"", view, view.get_title());
+    debug!("view_created: {:?}: \"{}\"", view, view.get_title());
+    let lock = registry::clients_read();
+    let client = lock.client(Uuid::nil()).unwrap();
+    let handle = registry::ReadHandle::new(&client);
+    let bar = handle.read("programs".into())
+        .expect("programs category didn't exist")
+        .get("x11_bar".into())
+        .and_then(|data| data.as_string().map(str::to_string));
+    // TODO Move this hack, probably could live somewhere else
+    if let Some(bar_name) = bar {
+        if view.get_title().as_str() == bar_name {
+            view.set_mask(1);
+            view.bring_to_front();
+            if let Ok(mut tree) = try_lock_tree() {
+                for output in WlcOutput::list() {
+                    tree.add_bar(view, output).unwrap_or_else(|_| {
+                        warn!("Could not add bar {:#?} to output {:#?}", view, output);
+                    });
+                }
+                return true;
+            }
+        }
+    }
+    // TODO Remove this hack
     if view.get_class().as_str() == "Background" {
-        info!("Setting background: {}", view.get_title());
+        debug!("Setting background: {}", view.get_title());
         view.send_to_back();
         view.set_mask(1);
         let output = view.get_output();
@@ -68,22 +103,31 @@ pub extern fn view_created(view: WlcView) -> bool {
             size: resolution
         };
         view.set_geometry(ResizeEdge::empty(), fullscreen);
-        return true
+        if let Ok(mut tree) = lock_tree() {
+            let outputs = tree.outputs();
+            return tree.add_background(view, outputs.as_slice()).map(|_| true)
+                .unwrap_or_else(|err| {
+                    error!("Could not add background due to {:?}", err);
+                    true
+                })
+        } else {
+            error!("Could not lock tree");
+        }
+        return false
     }
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.add_view(view).and_then(|_| {
-            if view.get_class() == "Background" {
-                return Ok(())
-            }
+    if let Ok(mut tree) = lock_tree() {
+        let result = tree.add_view(view).and_then(|_| {
             view.set_state(VIEW_MAXIMIZED, true);
-            tree.set_active_view(view).or_else(|_| {
-                // We still want to focus on the window that appeared
-                // Might need to change later, in case this focus grabbing
-                // gets annoying / becomes a security issue.
-                view.focus();
-                Ok(())
-            })
-        }).is_ok()
+            match tree.set_active_view(view) {
+                // If blocked by fullscreen, we don't focus on purpose
+                Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => Ok(()),
+                result => result
+            }
+        });
+        if result.is_err() {
+            warn!("Could not add {:?}. Reason: {:?}", view, result);
+        }
+        result.is_ok()
     } else {
         false
     }
@@ -91,17 +135,17 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.remove_view(view).unwrap_or_else(|err| {
-            match err {
-                TreeError::ViewNotFound(_) => {},
-                _ => {
-                    error!("Error in view_destroyed: {:?}", err);
-                }
-            }
-        });
-    } else {
-        error!("Could not delete view {:?}", view);
+    match try_lock_tree() {
+        Ok(mut tree) => {
+            tree.remove_view(view).unwrap_or_else(|err| {
+                match err {
+                    TreeError::ViewNotFound(_) => {},
+                    _ => {
+                        error!("Error in view_destroyed: {:?}", err);
+                    }
+                }});
+        },
+        Err(err) => error!("Could not delete view {:?}, {:?}", view, err)
     }
 }
 
@@ -118,14 +162,48 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
     }
 }
 
+pub extern fn view_props_changed(view: WlcView, prop: ViewPropertyType) {
+    if prop.contains(PROPERTY_TITLE) {
+        if let Ok(mut tree) = try_lock_tree() {
+            match tree.update_title(view) {
+                Ok(_) => {},
+                Err(err) => {
+                    error!("Could not update title for view {:?} because {:#?}",
+                           view, err);
+                }
+            }
+        }
+    }
+}
+
 pub extern fn view_move_to_output(current: WlcView,
                                   o1: WlcOutput, o2: WlcOutput) {
     trace!("view_move_to_output: {:?}, {:?}, {:?}", current, o1, o2);
 }
 
-pub extern fn view_request_state(view: WlcView, state: ViewState, handled: bool) {
+pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) {
     trace!("Setting {:?} to state {:?}", view, state);
-    view.set_state(state, handled);
+    if state == VIEW_FULLSCREEN {
+        if let Ok(mut tree) = try_lock_tree() {
+            if let Ok(id) = tree.lookup_view(view) {
+                tree.set_fullscreen(id, toggle)
+                    .expect("The ID was related to a non-view, somehow!");
+                match tree.container_in_active_workspace(id) {
+                    Ok(true) => {
+                        tree.layout_active_of(ContainerType::Workspace)
+                            .unwrap_or_else(|err| {
+                                error!("Could not layout active workspace for view {:?}: {:?}",
+                                        view, err)
+                            });
+                    },
+                    Ok(false) => {},
+                    Err(err) => error!("Could not set {:?} fullscreen: {:?}", view, err)
+                }
+            } else {
+                warn!("Could not find view {:?} in tree", view);
+            }
+        }
+    }
 }
 
 pub extern fn view_request_move(view: WlcView, _dest: &Point) {
@@ -141,7 +219,7 @@ pub extern fn view_request_resize(view: WlcView, edge: ResizeEdge, point: &Point
         match try_lock_action() {
             Ok(guard) => {
                 if guard.is_some() {
-                    if let Some(id) = tree.lookup_view(view) {
+                    if let Ok(id) = tree.lookup_view(view) {
                         if let Err(err) = tree.resize_container(id, edge, *point) {
                             error!("Problem: Command returned error: {:#?}", err);
                         }
@@ -164,7 +242,7 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
 
     if state == KeyState::Pressed {
         if let Some(action) = keys::get(&press) {
-            debug!("[key] Found an action for {}", press);
+            info!("[key] Found an action for {}, blocking event", press);
             match action {
                 KeyEvent::Command(func) => {
                     func();
@@ -190,7 +268,14 @@ pub extern fn keyboard_key(_view: WlcView, _time: u32, mods: &KeyboardModifiers,
     return EVENT_PASS_THROUGH
 }
 
-pub extern fn view_request_geometry(_view: WlcView, _geometry: &Geometry) {
+pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.update_floating_geometry(view, *geometry).unwrap_or_else(|_| {
+            warn!("Could not find view {:#?} \
+                   in order to update geometry w/ {:#?}",
+                  view, *geometry);
+        });
+    }
 }
 
 pub extern fn pointer_button(view: WlcView, _time: u32,
@@ -214,10 +299,10 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
                 }
             }
         } else if button == RIGHT_CLICK && !view.is_root() {
+            info!("User right clicked w/ mods \"{:?}\" on {:?}", mods, view);
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).ok();
             }
-            // TODO Make this set in the config file and read here.
             if mods.mods.contains(mouse_mod) {
                 let action = Action {
                     view: view,
@@ -262,6 +347,13 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
         }
     } else {
         if let Ok(lock) = try_lock_action() {
+            let unknown = format!("unknown ({})", button);
+            info!("User released {:?} mouse button",
+                  match button {
+                      RIGHT_CLICK => "right",
+                      LEFT_CLICK => "left",
+                      _ => unknown.as_str()
+                  });
             match *lock {
                 Some(action) => {
                     let view = action.view;
@@ -296,13 +388,11 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
         Some(action) => {
             if action.edges.bits() != 0 {
                 if let Ok(mut tree) = try_lock_tree() {
-                    // TODO Change to id of _view
-                    // Need to implement a map of view to uuid first though...
-                    if let Some(active_id) = tree.lookup_view(view) {
+                    if let Ok(active_id) = tree.lookup_view(view) {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
                             Ok(_) => return EVENT_BLOCKED,
-                            Err(err) => error!("Error: {:#?}", err)
+                            Err(err) => warn!("Could not resize: {:#?}", err)
                         }
                     }
                 }
@@ -311,7 +401,8 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                     match tree.try_drag_active(*point) {
                         Ok(_) => result = EVENT_BLOCKED,
                         Err(TreeError::PerformingAction(_)) |
-                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = EVENT_PASS_THROUGH,
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) =>
+                            result = EVENT_PASS_THROUGH,
                         Err(err) => {
                             error!("Error: {:#?}", err);
                             result = EVENT_PASS_THROUGH
@@ -343,6 +434,18 @@ pub extern fn compositor_terminating() {
 
 }
 
+pub extern fn view_pre_render(view: WlcView) {
+    if let Ok(mut tree) = lock_tree() {
+        tree.render_borders(view).unwrap_or_else(|err| {
+            match err {
+                // TODO Only filter if background or bar
+                TreeError::ViewNotFound(_) => {},
+                err => warn!("Error while rendering borders: {:?}", err)
+            }
+        })
+    }
+}
+
 
 pub fn init() {
     use rustwlc::callback;
@@ -359,11 +462,13 @@ pub fn init() {
     callback::view_request_state(view_request_state);
     callback::view_request_move(view_request_move);
     callback::view_request_resize(view_request_resize);
+    callback::view_properties_changed(view_props_changed);
     callback::keyboard_key(keyboard_key);
     callback::pointer_button(pointer_button);
     callback::pointer_scroll(pointer_scroll);
     callback::pointer_motion(pointer_motion);
     callback::compositor_ready(compositor_ready);
     callback::compositor_terminate(compositor_terminating);
+    callback::view_render_pre(view_pre_render);
     trace!("Registered wlc callbacks");
 }
