@@ -40,13 +40,6 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath{
                     .map(|pixel| MessageItem::Byte(*pixel)).collect();
                 Ok(vec![m.msg.method_return()
                         .append((MessageItem::Array(result, "y".into())))])
-                /*let geo = Geometry {
-                    origin: Point { x: 0, y: 0 },
-                    size: Size { w: 100, h: 100}
-                };
-                let result = read_pixels(wlc_pixel_format::WLC_RGBA8888, geo).1.iter_mut()
-                    .map(|pixel| MessageItem::Byte(*pixel)).collect();
-                Ok(vec![m.msg.method_return().append((MessageItem::Array(result, "y".into())))])*/
             }).outarg::<Array<u8, Vec<u8>>, _>("success")
         )
     )
