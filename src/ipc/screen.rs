@@ -5,28 +5,10 @@ use super::{DBusFactory, DBusObjPath};
 use ::render::screen_scrape::{write_screen_scrape_lock, read_screen_scrape_lock,
                               scraped_pixels_lock, sync_scrape};
 
-pub fn setup(f: &mut DBusFactory) -> DBusObjPath{
-    //let f = Factory::new_fn::<()>();
-
-    // TODO
-    // Not working, choking on "1 lifetime parameter" expected for arg to outarg
-    // Expanded it myself, seems fine, will have to debug later. For now writing
-    // out the boiler plate is not that bad.
-    /*
-    dbus_interface! {
-        path: "/org/way_cooler/pixels";
-        name: "org.way_cooler.pixels";
-
-        fn Get() -> success: DBusResult<Array<u32, Vec<u32>>> {
-            let result: Vec<MessageItem> = vec![MessageItem::UInt32(5u32)];
-            Ok(MessageItem::Array(result, "(u)".into()))
-        }
-    }
-*/
-
-    f.object_path("/org/way_cooler/Pixels", ()).introspectable().add(
-        f.interface("org.way_cooler.Pixels", ()).add_m(
-            f.method("hello", (), |m| {
+pub fn setup(f: &mut DBusFactory) -> DBusObjPath {
+    f.object_path("/org/way_cooler/Screen", ()).introspectable().add(
+        f.interface("org.way_cooler.Screen", ()).add_m(
+            f.method("Scrape", (), |m| {
                 *write_screen_scrape_lock() = true;
                 // ensure that no other threads can try to grab the pixels.
                 let _lock = read_screen_scrape_lock();
