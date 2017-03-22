@@ -75,9 +75,11 @@ pub extern fn post_render(output: WlcOutput) {
     if *need_to_fetch {
         if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
             // TODO Entire screen size from active output...
+            let resolution = output.get_resolution()
+                .expect("Output had no resolution");
             let geo = Geometry {
                 origin: Point { x: 0, y: 0 },
-                size: Size { w: 100, h: 100}
+                size: resolution
             };
             let result = read_pixels(wlc_pixel_format::WLC_RGBA8888, geo).1;
             *scraped_pixels = result;

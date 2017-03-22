@@ -13,7 +13,6 @@ lazy_static! {
 }
 
 pub fn read_screen_scrape_lock<'a>() -> RwLockReadGuard<'a, bool> {
-    trace!("Reading screen scrape lock");
     SCREEN_SCRAPE.read().expect("Lock was poisoned!")
 }
 

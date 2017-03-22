@@ -31,7 +31,6 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath{
                 // ensure that no other threads can try to grab the pixels.
                 let _lock = read_screen_scrape_lock();
                 sync_scrape();
-                trace!("IPC: pixel lock synchronized");
                 drop(_lock);
                 *write_screen_scrape_lock() = false;
                 let scraped_pixels = scraped_pixels_lock()
