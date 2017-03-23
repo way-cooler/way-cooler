@@ -7,7 +7,7 @@ use super::Tree;
 use ::registry;
 
 use uuid::Uuid;
-use rustwlc::{Point, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
 use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
@@ -301,6 +301,14 @@ impl Tree {
         self.0.tree.children_of(root_ix).iter()
             .map(|output_ix| self.0.tree[*output_ix].get_id())
             .collect()
+    }
+
+    pub fn output_resolution(&self, id: Uuid) -> Result<Size, TreeError> {
+        let output = match try!(self.0.lookup(id)).get_handle() {
+            Some(Handle::Output(output)) => output,
+            _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::Output))
+        };
+        Ok(output.get_resolution().expect("Output had no resolution"))
     }
 
     /// Binds a view to be the background for the given outputs.
