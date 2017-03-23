@@ -23,6 +23,9 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath {
                 }).outarg::<Array<String, Vec<String>>, _>("success")
             )
             .add_m(
+                // TODO Make this take in a:
+                // * Output UUID
+                // * Size (u32, u32) to scrape. For invalid ones, we throw error
                 f.method("Scrape", (), |m| {
                     *write_screen_scrape_lock() = true;
                     // ensure that no other threads can try to grab the pixels.
