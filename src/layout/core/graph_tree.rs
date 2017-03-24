@@ -233,6 +233,7 @@ impl InnerTree {
         *biggest_child += 1;
         let result = self.graph.update_edge(parent_ix, child_ix, biggest_child);
         self.normalize_edge_weights(parent_ix);
+        self.normalize_edge_active(parent_ix);
         result
     }
 
@@ -259,6 +260,7 @@ impl InnerTree {
         let last_pos = Path::new(child_pos, 0);
         self.graph.update_edge(parent_ix, child_ix, last_pos);
         self.normalize_edge_weights(parent_ix);
+        self.normalize_edge_active(parent_ix);
     }
 
     /// Swaps the edge weight of the two child nodes. The nodes must
@@ -281,7 +283,8 @@ impl InnerTree {
         child1_weight.active = child1_weight.active ^ child2_weight.active;
         self.graph.update_edge(parent_ix, child1_ix, child2_weight);
         self.graph.update_edge(parent_ix, child2_ix, child1_weight);
-        self.normalize_edge_weights(parent1_ix);
+        self.normalize_edge_weights(parent_ix);
+        self.normalize_edge_active(parent_ix);
         Ok(())
     }
 
@@ -306,7 +309,9 @@ impl InnerTree {
             self.set_ancestor_paths_active(source);
         }
         self.normalize_edge_weights(source_parent);
+        self.normalize_edge_active(source_parent);
         self.normalize_edge_weights(target);
+        self.normalize_edge_active(target);
         Ok(target)
     }
 
@@ -356,7 +361,9 @@ impl InnerTree {
         trace!("Adding edge between child {:?} and parent {:?} w/ weight {:?}", source, target_parent, target_weight);
         self.graph.update_edge(target_parent, source, target_weight);
         self.normalize_edge_weights(target_parent);
+        self.normalize_edge_active(target_parent);
         self.normalize_edge_weights(source_parent);
+        self.normalize_edge_active(source_parent);
         Ok(target_parent)
     }
 
@@ -379,7 +386,9 @@ impl InnerTree {
                 let new_weight = Path::new(siblings.len() as u32 + 1, 0);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
+                self.normalize_edge_active(target_parent);
                 self.normalize_edge_weights(source_parent);
+                self.normalize_edge_active(source_parent);
                 Ok(target_parent)
             }
             ShiftDirection::Right => {
@@ -400,7 +409,9 @@ impl InnerTree {
                 let new_weight = Path::new(1u32, 0);
                 self.graph.update_edge(target_parent, source, new_weight);
                 self.normalize_edge_weights(target_parent);
+                self.normalize_edge_active(target_parent);
                 self.normalize_edge_weights(source_parent);
+                self.normalize_edge_active(source_parent);
                 Ok(target_parent)
             }
         }
@@ -415,6 +426,7 @@ impl InnerTree {
 
             self.graph.remove_edge(edge);
             self.normalize_edge_weights(parent_ix);
+            self.normalize_edge_active(parent_ix);
         }
         else {
             trace!("detach: Detached a floating node");
@@ -448,6 +460,7 @@ impl InnerTree {
             // Fix the edge weights of the siblings of this node,
             // so we don't leave a gap
             self.normalize_edge_weights(parent_ix);
+            self.normalize_edge_active(parent_ix);
             result
         } else {
             self.graph.remove_node(node_ix)
@@ -459,9 +472,9 @@ impl InnerTree {
         let mut weight = Path::zero();
         for child_ix in self.children_of(parent_ix) {
             let edge = self.graph.find_edge(parent_ix, child_ix)
-                .expect("Child was not linked to it's parent");
+                .expect("Child was not linked to its parent");
             let edge_weight = self.graph.edge_weight_mut(edge)
-                .expect("Could not get the weight of the edge between target sibling and target parent");
+                .expect("Could not get the weight of the child->parent edge");
             if **edge_weight != *weight + 1 {
                 trace!("Normalizing edge {:?} to {:?}", edge_weight, **edge_weight.deref() + 1);
                 *edge_weight.deref_mut() = *weight + 1;
@@ -469,6 +482,27 @@ impl InnerTree {
             weight = *edge_weight;
         }
         trace!("Normalized edge weights for: {:?}", parent_ix);
+    }
+
+    /// Normalizes the edge active numbers of the children of a node.
+    /// This ensures that:
+    /// * There are no gaps (though that's not strictly necessary)
+    /// * That there are duplicate numbers (which IS necessary)
+    fn normalize_edge_active(&mut self, parent_ix: NodeIndex) {
+        // Sort the children by their active number
+        // We have to do this silly thing, because edges returns EdgeReference
+        // which can't be modified for some reason.
+        let children = self.children_of_by_active(parent_ix);
+        let mut counter = 0;
+        // Normalize the edges
+        for child_ix in children {
+            let edge = self.graph.find_edge(parent_ix, child_ix)
+                .expect("Child was not linked to its parent");
+            let edge_weight = self.graph.edge_weight_mut(edge)
+                .expect("Could not get the weight of the child->parent edge");
+            edge_weight.active = counter;
+            counter += 1;
+        }
     }
 
     /// Determines if the container node can be removed because it is empty.
@@ -517,11 +551,16 @@ impl InnerTree {
     }
 
     /// Collects all children of a node, sorted by weight.
-    ///
-    /// Will return an empty iterator if the node has no children or
     pub fn children_of(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges(node_ix).collect::<Vec<_>>();
         edges.sort_by_key(|e| e.weight());
+        edges.into_iter().map(|e| e.target()).collect()
+    }
+
+    /// Collects all children of a node, sorted by active number.
+    fn children_of_by_active(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
+        let mut edges = self.graph.edges(node_ix).collect::<Vec<_>>();
+        edges.sort_by_key(|e| e.weight().active);
         edges.into_iter().map(|e| e.target()).collect()
     }
 
