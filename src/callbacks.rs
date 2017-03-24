@@ -74,7 +74,6 @@ pub extern fn post_render(output: WlcOutput) {
     let need_to_fetch = read_screen_scrape_lock();
     if *need_to_fetch {
         if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
-            // TODO Entire screen size from active output...
             let resolution = output.get_resolution()
                 .expect("Output had no resolution");
             let geo = Geometry {
