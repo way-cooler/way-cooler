@@ -1453,8 +1453,25 @@ pub mod tests {
     fn empty_workspace_float_test() {
         let mut tree = basic_tree();
         tree.switch_to_workspace("3");
-        assert_eq!(tree.get_active_container().unwrap().get_type(), ContainerType::Container);
+        assert_eq!(tree.get_active_container().unwrap().get_type(),
+                   ContainerType::Container);
         let uuid = tree.get_active_container().unwrap().get_id();
-        assert_eq!(tree.float_container(uuid), Err(TreeError::InvalidOperationOnRootContainer(uuid)));
+        assert_eq!(tree.float_container(uuid),
+                   Err(TreeError::InvalidOperationOnRootContainer(uuid)));
+    }
+
+    #[test]
+    fn cannot_remove_root_container() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("3");
+        assert!(tree.active_container.is_some());
+        tree.remove_active().unwrap();
+        assert!(tree.active_container.is_some());
+        let active_ix = tree.active_container.unwrap();
+        tree.remove_view_or_container(active_ix).unwrap();
+        assert!(tree.active_container.is_some());
+        let active_ix = tree.active_container.unwrap();
+        tree.remove_container(active_ix).unwrap();
+        assert!(tree.active_container.is_some());
     }
 }
