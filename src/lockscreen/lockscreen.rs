@@ -1,4 +1,5 @@
 use rustwlc::{ResizeEdge, WlcView, Geometry, Point};
+use rustwlc::types::VIEW_ACTIVATED;
 use nix::libc::pid_t;
 
 /// A lock screen program, that has been spawned by Way Cooler.
@@ -27,6 +28,10 @@ impl LockScreen {
         }
     }
 
+    pub fn view(&self) -> Option<WlcView> {
+        self.view
+    }
+
     /// Returns true the `view` is set, indicating we have found the `WlcView`
     /// associated with the PID.
     pub fn is_locked(&self) -> bool {
@@ -35,9 +40,14 @@ impl LockScreen {
 
     /// Adds the view to the `LockScreen` if it's PID matches the stored one.
     ///
+    /// If there is already here, false is always returned.
+    ///
     /// If the view's PID matches this PID, then it's automatically focused,
     /// and the geometry of it is set to the size of it's `WlcOutput`'s size.
     pub fn add_view_if_match(&mut self, view: WlcView) -> bool {
+        if self.view.is_some() {
+            return false
+        }
         if view.get_pid() == self.pid {
             let output = view.get_output();
             let resolution = output.get_resolution()
@@ -47,6 +57,7 @@ impl LockScreen {
                 size: resolution
             };
             view.set_geometry(ResizeEdge::empty(), geo);
+            view.set_state(VIEW_ACTIVATED, true);
             view.focus();
             view.set_mask(1);
             view.bring_to_front();
