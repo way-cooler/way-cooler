@@ -20,7 +20,7 @@ impl LockScreen {
     /// The view is set to `None`, because we haven't found it yet in the
     /// `view_created` callback. This should be updated once it is found,
     /// so that we can start locking the screen.
-    fn new(pid: pid_t) -> Self {
+    pub fn new(pid: pid_t) -> Self {
         LockScreen {
             pid: pid,
             view: None
