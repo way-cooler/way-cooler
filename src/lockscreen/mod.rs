@@ -12,7 +12,15 @@ use std::sync::{Mutex, MutexGuard, TryLockError, PoisonError};
 use ::registry;
 
 type LockScreenGuard = MutexGuard<'static, Option<LockScreen>>;
-type LockScreenErr = TryLockError<LockScreenGuard>;
+
+#[derive(Debug)]
+pub enum LockScreenErr {
+    /// IO error while trying to lock screen.
+    /// e.g: Couldn't open lock screen program.
+    IO(io::Error),
+    /// Lock screen was already locked.
+    AlreadyLocked
+}
 
 lazy_static! {
     static ref LOCK_SCREEN: Mutex<Option<LockScreen>> = {
@@ -51,16 +59,21 @@ pub fn spawn_lock_screen() {
 /// so that it can be used by wlc callbacks.
 ///
 /// If the program could not be spawned, an `Err` is returned.
-pub fn lock_screen_with_path(path: PathBuf) -> Result<(), io::Error> {
+pub fn lock_screen_with_path(path: PathBuf) -> Result<(), LockScreenErr> {
     let mut lock_screen = lock_lock_screen()
         .expect("LockScreen lock has been poisoned");
-    let child = Command::new(path).spawn()?;
+    if lock_screen.is_some() {
+        return Err(LockScreenErr::AlreadyLocked);
+    }
+    let child = Command::new(path).spawn()
+        .map_err(|io_er| LockScreenErr::IO(io_er))?;
     let id = child.id();
     *lock_screen = Some(LockScreen::new(id as pid_t));
     Ok(())
 }
 
-pub fn try_lock_lock_screen() -> Result<LockScreenGuard, LockScreenErr> {
+pub fn try_lock_lock_screen() -> Result<LockScreenGuard,
+                                        TryLockError<LockScreenGuard>> {
     LOCK_SCREEN.try_lock()
 }
 
