@@ -27,7 +27,7 @@ lazy_static! {
 ///
 /// If you want to handle the error yourself, please use
 /// `lock_screen_with_path`.
-pub fn lock_screen() {
+pub fn spawn_lock_screen() {
     let lock = registry::clients_read();
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);

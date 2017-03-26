@@ -1,4 +1,4 @@
-use rustwlc::WlcView;
+use rustwlc::{ResizeEdge, WlcView, Geometry, Point};
 use nix::libc::pid_t;
 
 /// A lock screen program, that has been spawned by Way Cooler.
@@ -9,9 +9,9 @@ use nix::libc::pid_t;
 /// `view_created` callback.
 pub struct LockScreen {
     /// Pid of the lock screen program.
-    pub pid: pid_t,
+    pid: pid_t,
     /// The view that is associated with the lock screen program, if it has been located.
-    pub view: Option<WlcView>
+    view: Option<WlcView>
 }
 
 impl LockScreen {
@@ -24,6 +24,54 @@ impl LockScreen {
         LockScreen {
             pid: pid,
             view: None
+        }
+    }
+
+    /// Returns true the `view` is set, indicating we have found the `WlcView`
+    /// associated with the PID.
+    pub fn is_locked(&self) -> bool {
+        self.view.is_some()
+    }
+
+    /// Adds the view to the `LockScreen` if it's PID matches the stored one.
+    ///
+    /// If the view's PID matches this PID, then it's automatically focused,
+    /// and the geometry of it is set to the size of it's `WlcOutput`'s size.
+    pub fn add_view_if_match(&mut self, view: WlcView) -> bool {
+        if view.get_pid() == self.pid {
+            let output = view.get_output();
+            let resolution = output.get_resolution()
+                .expect("Output was invalid: had no resolution");
+            let geo = Geometry {
+                origin: Point { x: 0, y: 0 },
+                size: resolution
+            };
+            view.set_geometry(ResizeEdge::empty(), geo);
+            view.focus();
+            view.set_mask(1);
+            view.bring_to_front();
+            self.view = Some(view);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Removes the lockscreen if provided view matches the stored view.
+    ///
+    /// Does not compare the PID, because the passed in `WlcView` should be
+    /// considered invalidated because this function is probably being called
+    /// from `view_destroyed`.
+    ///
+    /// To protect against failing programs, the child handler should be
+    /// checked to see if the program is still running.
+    /// HOWEVER, this is blocked because this is still a nightly feature.
+    /// See https://github.com/rust-lang/rust/issues/38903
+    pub fn remove_if_match(self, view: WlcView) -> Option<Self> {
+        if self.view == Some(view) {
+            None
+        } else {
+            Some(self)
         }
     }
 }

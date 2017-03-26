@@ -6,7 +6,7 @@ use std::thread;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
 use ::modes::commands as mode_cmds;
-use lockscreen::lock_screen;
+use lockscreen::spawn_lock_screen;
 
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
@@ -111,7 +111,7 @@ pub fn register_defaults() {
 
     // Command that spawns the lock screen.
     // Must have one specified in the registry first in order for it to work.
-    register("lock_screen", Arc::new(lock_screen));
+    register("lock_screen", Arc::new(spawn_lock_screen));
 }
 
 // All of the methods defined should be registered.
