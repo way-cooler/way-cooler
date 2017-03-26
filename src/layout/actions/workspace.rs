@@ -92,14 +92,14 @@ impl LayoutTree {
         // Delete the old workspace if it has no views on it
         self.active_container = None;
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
+            trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
+                   .expect("Workspace had no name"));
             if let Err(err) = self.remove_workspace(old_worksp_ix) {
                 warn!("Tried to remove empty workspace {:#?}, error: {:?}",
                       old_worksp_ix, err);
                 debug!("{:#?}", self);
                 panic!("Could not remove old workspace");
             }
-            trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
-                   .expect("Workspace had no name"));
         }
         workspace_ix = self.tree.workspace_ix_by_name(name)
             .expect("Workspace we just made was deleted!");
