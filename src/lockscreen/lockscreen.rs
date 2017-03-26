@@ -32,12 +32,6 @@ impl LockScreen {
         self.view
     }
 
-    /// Returns true the `view` is set, indicating we have found the `WlcView`
-    /// associated with the PID.
-    pub fn is_locked(&self) -> bool {
-        self.view.is_some()
-    }
-
     /// Adds the view to the `LockScreen` if it's PID matches the stored one.
     ///
     /// If there is already here, false is always returned.
