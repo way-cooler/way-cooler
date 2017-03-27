@@ -70,6 +70,18 @@ Follow the development of these features in our [issues section] or checkout our
 
 [way-cooler-git][way-cooler-git-aur]
 
+## NixOS
+
+@miltador was kind enough to provide a [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
+
+## Installation Script
+
+For users who are not on Arch or NixOS, we have provided a simple install script that you can run in the terminal in order to install Way Cooler.
+
+```
+curl https://way-cooler.github.io/way-cooler-release-i3-default.sh -sSf | sh
+```
+
 ## Build from source
 
 You will need the following dependencies installed on your machine to install Way Cooler:
@@ -99,11 +111,13 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
 
 - @vinipsmaker created (and maintains) AUR packages
+- @miltador created NixOS package
 - @starfys created way-cooler desktop file
 - @toogley fixed a link
 - @paulmenzel fixed a typo
 - @thefarwind made kill way-cooler command rebindable
 - @bluss for updating our use of `PetGraph` to use `StableGraph`
+- @Abdillah fixed background program to have solid colors be variable size at initilization.
 
 And of course, thanks to the Rust community and the developers of [wlc].
 
