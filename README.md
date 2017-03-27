@@ -70,6 +70,10 @@ Follow the development of these features in our [issues section] or checkout our
 
 [way-cooler-git][way-cooler-git-aur]
 
+## NixOS
+
+@miltador was kind enough to provide a [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
+
 ## Build from source
 
 You will need the following dependencies installed on your machine to install Way Cooler:
