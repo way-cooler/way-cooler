@@ -111,11 +111,13 @@ All keyboard shortcuts (except the command to exit Way Cooler) are configurable 
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
 
 - @vinipsmaker created (and maintains) AUR packages
+- @miltador created NixOS package
 - @starfys created way-cooler desktop file
 - @toogley fixed a link
 - @paulmenzel fixed a typo
 - @thefarwind made kill way-cooler command rebindable
 - @bluss for updating our use of `PetGraph` to use `StableGraph`
+- @Abdillah fixed background program to have solid colors be variable size at initilization.
 
 And of course, thanks to the Rust community and the developers of [wlc].
 
