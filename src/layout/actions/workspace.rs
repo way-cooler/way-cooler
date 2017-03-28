@@ -94,8 +94,10 @@ impl LayoutTree {
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
             trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
                    .expect("Workspace had no name"));
-            if let Err(err) = self.remove_container(old_worksp_ix) {
-                warn!("Tried to remove {:?}, got: {:#?}", old_worksp_ix, err);
+            if let Err(err) = self.remove_workspace(old_worksp_ix) {
+                warn!("Tried to remove empty workspace {:#?}, error: {:?}",
+                      old_worksp_ix, err);
+                debug!("{:#?}", self);
                 panic!("Could not remove old workspace");
             }
         }

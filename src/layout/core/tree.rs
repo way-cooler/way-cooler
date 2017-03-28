@@ -485,7 +485,7 @@ impl LayoutTree {
         for node_ix in children {
             trace!("Removing index {:?}: {:?}", node_ix, self.tree[node_ix]);
             match self.tree.get(node_ix) {
-                None => return Err(TreeError::NodeWasRemoved(container_ix)),
+                None => return Err(TreeError::NodeWasRemoved(node_ix)),
                 Some(&Container::View { .. }) | Some(&Container::Container { .. }) => {
                     try!(self.remove_view_or_container(node_ix));
                 },
@@ -504,6 +504,10 @@ impl LayoutTree {
     /// when we remove a view or container.
     pub fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Result<Container, TreeError> {
         // Only the root container has a non-container parent, and we can't remove that
+        if self.tree.is_root_container(node_ix) {
+            let id = self.tree[node_ix].get_id();
+            return Err(TreeError::InvalidOperationOnRootContainer(id))
+        }
         let c_type: ContainerType;
         let uuid: Uuid;
         {
@@ -560,6 +564,46 @@ impl LayoutTree {
         } else {
             Err(TreeError::NoActiveContainer)
         }
+    }
+
+    /// Removes the workspace, and all the views/containers in it.
+    ///
+    /// This also serves as the cleanup function for when workspaces are
+    /// empty (e.g check `workspace.rs` for more details)
+    pub fn remove_workspace(&mut self, node_ix: NodeIndex) -> CommandResult {
+        if self.tree[node_ix].get_type() != ContainerType::Workspace {
+            Err(TreeError::UuidNotAssociatedWith(ContainerType::Workspace))?
+        }
+        let mut children = self.tree.all_descendants_of(node_ix);
+        // add current container to the list as well
+        children.push(node_ix);
+        for child_ix in children {
+            trace!("Removing node {:?}", child_ix);
+            // Remove all instances of the node index
+            if Some(child_ix) == self.active_container {
+                self.active_container.take();
+            }
+            match self.tree.get(child_ix) {
+                None => return Err(TreeError::NodeWasRemoved(child_ix)),
+                Some(&Container::View { .. }) => {
+                    self.remove_view_or_container(child_ix)?;
+                }
+                Some(&Container::Container { .. }) => {
+                    if self.tree.is_root_container(child_ix) {
+                        // Manually remove the root container,
+                        // because there are checks against doing this in tree
+                        self.tree.remove(child_ix);
+                    } else {
+                        self.remove_view_or_container(child_ix)?;
+                    }
+                },
+                Some(_) => {
+                    self.tree.remove(child_ix)
+                    .ok_or(TreeError::NodeWasRemoved(node_ix))?;
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Gets the parent of the node.
@@ -1453,8 +1497,31 @@ pub mod tests {
     fn empty_workspace_float_test() {
         let mut tree = basic_tree();
         tree.switch_to_workspace("3");
-        assert_eq!(tree.get_active_container().unwrap().get_type(), ContainerType::Container);
+        assert_eq!(tree.get_active_container().unwrap().get_type(),
+                   ContainerType::Container);
         let uuid = tree.get_active_container().unwrap().get_id();
-        assert_eq!(tree.float_container(uuid), Err(TreeError::InvalidOperationOnRootContainer(uuid)));
+        assert_eq!(tree.float_container(uuid),
+                   Err(TreeError::InvalidOperationOnRootContainer(uuid)));
+    }
+
+    #[test]
+    fn cannot_remove_root_container() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("3");
+        assert!(tree.active_container.is_some());
+        let id = tree.tree[tree.active_container.unwrap()].get_id();
+        assert_eq!(tree.remove_active(),
+                   Err(TreeError::InvalidOperationOnRootContainer(id)));
+        assert!(tree.active_container.is_some());
+        let active_ix = tree.active_container.unwrap();
+        let id = tree.tree[active_ix].get_id();
+        assert_eq!(tree.remove_view_or_container(active_ix),
+                   Err(TreeError::InvalidOperationOnRootContainer(id)));
+        assert!(tree.active_container.is_some());
+        let active_ix = tree.active_container.unwrap();
+        let id = tree.tree[active_ix].get_id();
+        assert_eq!(tree.remove_container(active_ix),
+                   Err(TreeError::InvalidOperationOnRootContainer(id)));
+        assert!(tree.active_container.is_some());
     }
 }

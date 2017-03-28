@@ -634,7 +634,6 @@ impl Container {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustwlc::*;
 
     #[test]
     fn can_have_child() {
