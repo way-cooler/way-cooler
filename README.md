@@ -46,11 +46,11 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
 - Borders around windows
 - Gaps between windows
 - Basic X11 bar support (e.g [lemonbar][], [polybar][])
+- Screen grabber / screen shot taker
 
 ## Planned Features
 
 - i3 tabbed/stacked tiling
-- Screen grabber / screen shot taker
 - Notification support
 - Lock screen
 - Tiling window through configurable Lua scripts (awesome-style)
