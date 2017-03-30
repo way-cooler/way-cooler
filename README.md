@@ -105,7 +105,7 @@ You can try it out while running in an X environment, or switch to a TTY and run
 
 # Init File
 
-All keyboard shortcuts (except the command to exit Way Cooler) are configurable through the init file. The recommended strategy is to copy the [default configuration file](https://github.com/way-cooler/way-cooler/blob/master/config/init.lua) to `$XDG_CONFIG_HOME/way-cooler/init.lua` and edit from there.
+All keyboard shortcuts are configurable through the init file. The recommended strategy is to copy the [default configuration file](https://github.com/way-cooler/way-cooler/blob/master/config/init.lua) to `$XDG_CONFIG_HOME/way-cooler/init.lua` and edit from there.
 
 # Contributors
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
