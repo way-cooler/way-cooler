@@ -79,7 +79,7 @@ Follow the development of these features in our [issues section] or checkout our
 For users who are not on Arch or NixOS, we have provided a simple install script that you can run in the terminal in order to install Way Cooler.
 
 ```
-curl https://way-cooler.github.io/way-cooler-release-i3-default.sh -sSf | sh
+curl https://way-cooler.github.io/way-cooler-release-i3-default.sh -sSLf | sh
 ```
 
 ## Build from source
