@@ -151,10 +151,10 @@ impl LayoutTree {
                             let remaining_size_f = |sub_geometry: Geometry,
                                                     cur_geometry: Geometry| {
                                 let remaining_width =
-                                    cur_geometry.origin.x as u32 + cur_geometry.size.w -
-                                    sub_geometry.origin.x as u32;
+                                    cur_geometry.origin.x + cur_geometry.size.w as i32 -
+                                    sub_geometry.origin.x;
                                 Size {
-                                    w: remaining_width,
+                                    w: remaining_width as u32,
                                     h: sub_geometry.size.h
                                 }
                             };
@@ -201,11 +201,11 @@ impl LayoutTree {
                             let remaining_size_f = |sub_geometry: Geometry,
                                                     cur_geometry: Geometry| {
                                 let remaining_height =
-                                    cur_geometry.origin.y as u32 + cur_geometry.size.h -
-                                    sub_geometry.origin.y as u32;
+                                    cur_geometry.origin.y + cur_geometry.size.h as i32 -
+                                    sub_geometry.origin.y;
                                 Size {
                                     w: sub_geometry.size.w,
-                                    h: remaining_height
+                                    h: remaining_height as u32
                                 }
                             };
                             let new_point_f = |new_size: Size, sub_geometry: Geometry| {
