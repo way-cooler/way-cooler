@@ -48,7 +48,9 @@ impl ManagerHandler for GammaManagerHandler {
                          resource: &GammaControlManager,
                          id: super::gamma_control::GammaControl,
                          output: &wl_output::WlOutput) {
-        error!("Tried to get gamma control");
+        error!("Trying to get gamma control");
+        println!("Trying to get gamma control");
+        println!("HEEEREEE");
         //panic!()
     }
 
