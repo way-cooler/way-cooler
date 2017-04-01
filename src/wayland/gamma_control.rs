@@ -2,10 +2,11 @@
 //! See https://github.com/giucam/redshift/blob/master/src/gamma-control.xml
 //! and https://github.com/jonls/redshift/issues/55
 //! for more information about the spec and its status in regards to upstream.
-pub use wayland::gamma_control::generated
-    ::server::gamma_control::{GammaControl, Handler as GammaControlHandler};
-pub use wayland::gamma_control::generated
-    ::server::gamma_control_manager::{GammaControlManager, Handler as ManagerHandler};
+use wayland::gamma_control::generated
+    ::server::gamma_control::GammaControl;
+use wayland::gamma_control::generated
+    ::server::gamma_control_manager::GammaControlManager;
+use rustwlc::wayland;
 use rustwlc::handle::{wlc_handle_from_wl_output_resource, WlcOutput};
 use rustwlc::render::{wlc_output_set_gamma, wlc_output_get_gamma_size};
 use wayland_server::Resource;
@@ -61,7 +62,7 @@ mod generated {
 /// Controls access to the gamma control interface.
 /// Right now we let anyone through that wants to access it, but this
 /// will allow us to limit who access to it in the future.
-pub struct GammaControlManagerInterface {
+struct GammaControlManagerInterface {
     destroy: unsafe extern "C" fn (client: *mut wl_client,
                                    resource: *mut wl_resource),
     get_gamma_control: unsafe extern "C" fn (client: *mut wl_client,
@@ -72,7 +73,7 @@ pub struct GammaControlManagerInterface {
 
 #[repr(C)]
 /// The interface that allows a client to control the gamma ramps.
-pub struct GammaControlInterface {
+struct GammaControlInterface {
     destroy: unsafe extern "C" fn (client: *mut wl_client,
                                    resource: *mut wl_resource),
     set_gamma: unsafe extern "C" fn (client: *mut wl_client,
@@ -181,7 +182,7 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
 /// Binds the handler to a new Wayland resource, created by the client.
 /// See https://github.com/vberger/wayland-rs/blob/451ccab330b3d0ec18eaaf72ae17ac35cf432370/wayland-server/src/event_loop.rs#L617
 /// to see where I got this particular bit of magic from.
-pub unsafe extern "C" fn bind(client: *mut wl_client,
+unsafe extern "C" fn bind(client: *mut wl_client,
                               _data: *mut c_void,
                               version: u32,
                               id: u32) {
@@ -230,5 +231,21 @@ unsafe extern "C" fn gamma_control_send_gamma_size(resource: *mut wl_resource,
                   resource,
                   0,
                   size as c_uint);
+}
+
+/// Sets up Way Cooler to announce it uses the gamma control interface.
+pub fn init() {
+    let w_display = wayland::get_display();
+    unsafe {
+        debug!("Initializing gamma control manager");
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_global_create,
+                      w_display as *mut _,
+                      GammaControlManager::interface_ptr(),
+                      GammaControlManager::supported_version() as i32,
+                      ::std::ptr::null_mut(),
+                      bind
+        );
+    }
 }
 
