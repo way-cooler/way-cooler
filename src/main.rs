@@ -24,6 +24,10 @@ extern crate petgraph;
 extern crate uuid;
 extern crate dbus;
 extern crate cairo;
+#[macro_use]
+extern crate wayland_sys;
+#[macro_use]
+extern crate wayland_server;
 
 #[macro_use]
 mod macros;
@@ -40,6 +44,8 @@ mod ipc;
 mod layout;
 
 mod render;
+
+mod wayland;
 
 use std::env;
 use std::fs::File;
@@ -184,6 +190,7 @@ fn main() {
     // This prepares wlc, doesn't run main loop until run_wlc is called
     let run_wlc = rustwlc::init()
         .expect("Unable to initialize wlc!");
+    wayland::init_wayland_protocols();
     rustwlc::log_set_rust_handler(log_handler);
     callbacks::init();
     commands::init();

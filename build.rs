@@ -66,7 +66,10 @@ fn generate_wayland_protocols() {
     for protocol_path in protocols {
         let protocol_path: fs::DirEntry = protocol_path.unwrap();
         let path: PathBuf = protocol_path.path().into();
-        let file_name: String = protocol_path.file_name().into_string().unwrap();
+        let mut file_name: String = protocol_path.file_name().into_string().unwrap();
+        if let Some(extension) = file_name.find(".xml") {
+            file_name.truncate(extension);
+        }
         generate_code(
             path.clone(),
             out_dir.join(file_name.clone() + "_api.rs"),

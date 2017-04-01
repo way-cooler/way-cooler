@@ -10,7 +10,7 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-rustwlc = "0.6.1"
+rustwlc = { version = "0.6.1", features = ["wlc-wayland"] }
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
@@ -23,7 +23,8 @@ rustc-serialize = "0.3"
 json_macro = "0.1"
 nix = "0.6"
 uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
-wayland-sys = { version = "^0.6.0", features = ["client", "dlopen"] }
+wayland-sys = { version = "0.9.1", features = ["client", "dlopen"] }
+wayland-server = { version = "0.9.1" }
 getopts = "0.2"
 cairo-rs = "0.1.1"
 
@@ -31,7 +32,7 @@ cairo-rs = "0.1.1"
 dummy-rustwlc = "0.6.1"
 
 [build-dependencies]
-wayland-scanner = { version = "~0.9.1" }
+wayland-scanner = { version = "0.9.1" }
 
 
 [features]
