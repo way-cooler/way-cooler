@@ -86,6 +86,7 @@ use wayland_sys::server::*;
 use wayland_server::Resource;
 use std::os::raw::c_void;
 use super::{GAMMA_CONTROL, GAMMA_CONTROL_MANAGER};
+use nix::libc::c_int;
 
 /// Binds the handler to a new Wayland resource, created by the client.
 /// See https://github.com/vberger/wayland-rs/blob/451ccab330b3d0ec18eaaf72ae17ac35cf432370/wayland-server/src/event_loop.rs#L617
@@ -101,6 +102,7 @@ pub unsafe extern "C" fn bind(client: *mut wl_client,
     if version > cur_version {
         warn!("Unsupported gamma control protocol version {}!", version);
         warn!("We only support version {}", cur_version);
+        return
     }
     error!("Making resource");
     let resource = ffi_dispatch!(
@@ -108,9 +110,16 @@ pub unsafe extern "C" fn bind(client: *mut wl_client,
         wl_resource_create,
         client,
         GammaControlManager::interface_ptr(),
-        cur_version as i32,
+        version as c_int,
         id
     );
+    if resource.is_null() {
+        ffi_dispatch!(
+            WAYLAND_SERVER_HANDLE,
+            wl_client_post_no_memory,
+            client
+        );
+    }
     error!("Resource made");
     println!("Resource made");
     let mut manager = GAMMA_CONTROL_MANAGER.try_lock().unwrap();
@@ -120,7 +129,6 @@ pub unsafe extern "C" fn bind(client: *mut wl_client,
         WAYLAND_SERVER_HANDLE,
         wl_resource_set_implementation,
         resource,
-        // TODO IMPORTANT need to be a pointer to our lazy static
         // This is safe because our lazy static won't move anywhere
         global_manager_ptr,
         ::std::ptr::null_mut(),
@@ -128,7 +136,4 @@ pub unsafe extern "C" fn bind(client: *mut wl_client,
     );
     error!("Impl set");
     println!("Impl set");
-    // TODO move to init for manager
-    //let mut gamma = GAMMA_CONTROL.try_lock().unwrap();
-    //let global_gamma_ptr = &mut *gamma as *mut _ as *mut c_void;
 }

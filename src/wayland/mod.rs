@@ -7,22 +7,27 @@ use wayland_sys::server::*;
 use wayland_sys::common::*;
 use self::gamma_control::{GammaControl, GammaHandler, GammaManagerHandler};
 use rustwlc::handle::{wlc_handle_from_wl_output_resource, WlcOutput, WlcView};
+use rustwlc::render::{wlc_output_set_gamma, wlc_output_get_gamma_size};
 use rustwlc::wayland;
 
+
+use nix::libc::{uint32_t, uint16_t, c_uint};
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 
 use std::sync::{Mutex};
 
+static SET_GAMMA_ERROR: &'static str = "The gamma ramps don't have the same size!";
+
 // TODO Is this the best way really? Not use anything from the generated file?
 // TODO Move this to gamma_control.rs
 unsafe extern "C" fn gamma_control_send_gamma_size(resource: *mut wl_resource,
-                                                   size: u32) {
+                                                   size: uint16_t) {
     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                   wl_resource_post_event,
                   resource,
                   0,
-                  size);
+                  size as c_uint);
 }
 
 #[repr(C)]
@@ -53,8 +58,15 @@ unsafe extern "C" fn set_gamma(client: *mut wl_client,
                                red: *mut wl_array,
                                green: *mut wl_array,
                                blue: *mut wl_array) {
+    error!("SETTTTINGGG gamma");
     if (*red).size != (*green).size || (*red).size != (*blue).size {
-        // TODO wl_resource_post_error
+        ffi_dispatch!(
+            WAYLAND_SERVER_HANDLE,
+            wl_resource_post_error,
+            resource,
+            0, // Invalid gamma
+            SET_GAMMA_ERROR.as_bytes().as_ptr() as *const i8);
+        warn!("Color size error, can't continue");
         return
     }
     let r = (*red).data as *mut u16;
@@ -67,13 +79,13 @@ unsafe extern "C" fn set_gamma(client: *mut wl_client,
     let output = WlcOutput(wlc_handle_from_wl_output_resource(user_data));
     // TODO Make this less stupid to check if it's a null index
     if output.as_view().is_root() {
-        return;
+        warn!("Output thing was wrong");
+        //return;
     }
     debug!("Setting gamma for output {:?}", output);
     warn!("Setting gamma for output {:?}", output);
     error!("Setting gamma for output {:?}", output);
-    // TODO Uncomment when implemented in wlc
-    //wlc_output_set_gamma(output, (*red).size / 16, r, g b)
+    wlc_output_set_gamma(output.0, (*red).size as u16 / 16, r, g, b)
 
 }
 unsafe extern "C" fn reset_gamma(client: *mut wl_client,
@@ -89,7 +101,7 @@ unsafe extern "C" fn destroy(wl_client: *mut wl_client,
 
 unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
                                        resource: *mut wl_resource,
-                                       id: u32,
+                                       id: uint32_t,
                                        output: *mut wl_resource) {
     let manager_resource = ffi_dispatch!(
         WAYLAND_SERVER_HANDLE,
@@ -100,14 +112,11 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
         id);
     // check that the output is something we control from wlc
     warn!("In the setup or whatever");
-    {
-        let output = WlcOutput(wlc_handle_from_wl_output_resource(resource as *const _));
-        // TODO Make this less stupid to check if it's a null index
-        if output.as_view().is_root() {
-            warn!("This is triggering, dis bad?");
-            // TODO ORRRR maybe note whatever
-            //return;
-        }
+    let wlc_output = WlcOutput(wlc_handle_from_wl_output_resource(output as *const _));
+    // TODO Make this less stupid to check if it's a null index
+    if wlc_output.as_view().is_root() {
+        warn!("This is triggering, dis bad?");
+        return;
     }
     let mut gamma_control = GAMMA_CONTROL.try_lock().unwrap();
     let gamma_control_ptr = &mut *gamma_control as *mut _ as *mut c_void;
@@ -119,8 +128,9 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
         output as *mut c_void,
         None
     );
-    // TODO Uncomment when I add that function to wlc
-    //gamma_control_send_gamma_size(manager_resource, wlc_output_get_gamma_size(output))
+    warn!("Sending gamma size to thingie");
+    gamma_control_send_gamma_size(manager_resource,
+                                  wlc_output_get_gamma_size(wlc_output.0))
 }
 
 
