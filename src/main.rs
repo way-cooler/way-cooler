@@ -2,9 +2,7 @@
 
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
 extern crate bitflags;
-#[macro_use]
 extern crate dbus_macros;
 #[cfg(not(test))]
 extern crate rustwlc;
@@ -14,10 +12,8 @@ extern crate dummy_rustwlc as rustwlc;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-#[macro_use]
 extern crate hlua;
 extern crate rustc_serialize;
-#[macro_use]
 extern crate json_macro;
 extern crate nix;
 extern crate petgraph;
@@ -26,7 +22,6 @@ extern crate dbus;
 extern crate cairo;
 #[macro_use]
 extern crate wayland_sys;
-#[macro_use]
 extern crate wayland_server;
 
 #[macro_use]
