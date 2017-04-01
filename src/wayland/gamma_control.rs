@@ -14,24 +14,22 @@ use wayland_sys::common::{wl_array};
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_client, wl_resource};
 use std::os::raw::c_void;
 use nix::libc::{c_int, c_uint, uint32_t, uint16_t};
-use std::sync::{Mutex};
 
 static SET_GAMMA_ERROR: &'static str = "The gamma ramps don't have the same size!";
 static INVALID_GAMMA_CODE: u32 = 0;
 
-lazy_static!(
-    static ref GAMMA_CONTROL_MANAGER: Mutex<GammaControlManagerInterface> =
-        Mutex::new(GammaControlManagerInterface {
-            destroy: destroy,
-            get_gamma_control: get_gamma_control
-        });
-    static ref GAMMA_CONTROL: Mutex<GammaControlInterface> =
-        Mutex::new(GammaControlInterface {
-            destroy: destroy,
-            set_gamma: set_gamma,
-            reset_gamma: reset_gamma
-        });
-);
+static mut GAMMA_CONTROL_MANAGER: GammaControlManagerInterface =
+    GammaControlManagerInterface {
+        destroy: destroy,
+        get_gamma_control: get_gamma_control
+    };
+
+static mut GAMMA_CONTROL: GammaControlInterface =
+    GammaControlInterface {
+        destroy: destroy,
+        set_gamma: set_gamma,
+        reset_gamma: reset_gamma
+    };
 
 /// Generated modules from the XML protocol spec.
 mod generated {
@@ -164,8 +162,7 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
         return;
     }
     debug!("Client requested control of the gamma ramps for {:?}", wlc_output);
-    let mut gamma_control = GAMMA_CONTROL.try_lock().unwrap();
-    let gamma_control_ptr = &mut *gamma_control as *mut _ as *mut c_void;
+    let gamma_control_ptr = &mut GAMMA_CONTROL as *mut _ as *mut c_void;
     ffi_dispatch!(
         WAYLAND_SERVER_HANDLE,
         wl_resource_set_implementation,
@@ -210,8 +207,8 @@ unsafe extern "C" fn bind(client: *mut wl_client,
             client
         );
     }
-    let mut manager = GAMMA_CONTROL_MANAGER.try_lock().unwrap();
-    let global_manager_ptr = &mut *manager as *mut _ as *mut c_void;
+    let global_manager_ptr = &mut GAMMA_CONTROL_MANAGER as *mut _ as *mut c_void;
+    //let global_manager_ptr = &mut *manager as *mut _ as *mut c_void;
     ffi_dispatch!(
         WAYLAND_SERVER_HANDLE,
         wl_resource_set_implementation,
