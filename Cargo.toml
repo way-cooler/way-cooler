@@ -29,7 +29,7 @@ getopts = "0.2"
 cairo-rs = "0.1.1"
 
 [dev-dependencies]
-dummy-rustwlc = "0.6.1"
+dummy-rustwlc = "0.6.3"
 
 [build-dependencies]
 wayland-scanner = { version = "0.9.1" }
