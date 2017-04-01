@@ -111,8 +111,7 @@ unsafe extern "C" fn set_gamma(_client: *mut wl_client,
         wl_resource_get_user_data,
         resource) as *const _;
     let output = WlcOutput(wlc_handle_from_wl_output_resource(user_data));
-    // TODO Make this less stupid to check if it's a null index
-    if output.as_view().is_root() {
+    if output.is_null() {
         warn!("wl_resource didn't correspond to a wlc output");
         return;
     }
@@ -156,8 +155,7 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
         GammaControl::supported_version() as i32,
         id);
     let wlc_output = WlcOutput(wlc_handle_from_wl_output_resource(output as *const _));
-    // TODO Make this less stupid to check if it's a null index
-    if wlc_output.as_view().is_root() {
+    if wlc_output.is_null() {
         warn!("This is triggering, dis bad?");
         return;
     }
