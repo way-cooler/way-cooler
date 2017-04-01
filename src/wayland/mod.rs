@@ -80,12 +80,12 @@ unsafe extern "C" fn set_gamma(client: *mut wl_client,
     // TODO Make this less stupid to check if it's a null index
     if output.as_view().is_root() {
         warn!("Output thing was wrong");
-        //return;
+        return;
     }
     debug!("Setting gamma for output {:?}", output);
     warn!("Setting gamma for output {:?}", output);
     error!("Setting gamma for output {:?}", output);
-    wlc_output_set_gamma(output.0, (*red).size as u16 / 16, r, g, b)
+    wlc_output_set_gamma(output.0, ((*red).size / 2) as u16, r, g, b)
 
 }
 unsafe extern "C" fn reset_gamma(client: *mut wl_client,
@@ -95,8 +95,12 @@ unsafe extern "C" fn reset_gamma(client: *mut wl_client,
 
 unsafe extern "C" fn destroy(wl_client: *mut wl_client,
                 resource: *mut wl_resource) {
-    // TODO wl_destroy_resource
-    unimplemented!()
+    warn!("Destroying resource!");
+    ffi_dispatch!(
+        WAYLAND_SERVER_HANDLE,
+        wl_resource_destroy,
+        resource
+    );
 }
 
 unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
