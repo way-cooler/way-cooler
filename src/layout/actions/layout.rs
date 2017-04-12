@@ -673,8 +673,11 @@ impl LayoutTree {
             match *child {
                 Container::View { handle, effective_geometry, .. } => {
                     let mut geometry = effective_geometry;
+                    let title_size = Borders::title_bar_size();
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
+                    geometry.origin.y += title_size as i32;
+                    geometry.size.h = geometry.size.h.saturating_sub(title_size);
                     if index == children.len() - 1 {
                         match layout {
                             Layout::Horizontal => {
