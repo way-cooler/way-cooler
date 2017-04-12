@@ -1,15 +1,14 @@
 use std::cmp;
 
 use petgraph::graph::NodeIndex;
-use rustwlc::{Geometry, Point, Size, ResizeEdge};
+use rustwlc::{WlcView, Geometry, Point, Size, ResizeEdge};
 
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, Layout};
+use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
-
-use registry::{self, RegistryGetData};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutErr {
@@ -113,7 +112,7 @@ impl LayoutTree {
                 // place floating children above everything else
                 let root_ix = self.tree.children_of(node_ix)[0];
                 for child_ix in self.tree.floating_children(root_ix) {
-                    self.place_floating(child_ix);
+                    self.place_floating(child_ix, fullscreen_apps);
                 }
             },
             ContainerType::Container => {
@@ -158,10 +157,10 @@ impl LayoutTree {
                             let remaining_size_f = |sub_geometry: Geometry,
                                                     cur_geometry: Geometry| {
                                 let remaining_width =
-                                    cur_geometry.origin.x as u32 + cur_geometry.size.w -
-                                    sub_geometry.origin.x as u32;
+                                    cur_geometry.origin.x + cur_geometry.size.w as i32 -
+                                    sub_geometry.origin.x;
                                 Size {
-                                    w: remaining_width,
+                                    w: remaining_width as u32,
                                     h: sub_geometry.size.h
                                 }
                             };
@@ -171,11 +170,14 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, children,
+                            self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
+                            self.add_borders(node_ix)
+                                .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
+                            self.draw_borders_rec(children);
                         }
                     }
                     Layout::Vertical => {
@@ -205,11 +207,11 @@ impl LayoutTree {
                             let remaining_size_f = |sub_geometry: Geometry,
                                                     cur_geometry: Geometry| {
                                 let remaining_height =
-                                    cur_geometry.origin.y as u32 + cur_geometry.size.h -
-                                    sub_geometry.origin.y as u32;
+                                    cur_geometry.origin.y + cur_geometry.size.h as i32 -
+                                    sub_geometry.origin.y;
                                 Size {
                                     w: sub_geometry.size.w,
-                                    h: remaining_height
+                                    h: remaining_height as u32
                                 }
                             };
                             let new_point_f = |new_size: Size, sub_geometry: Geometry| {
@@ -218,11 +220,14 @@ impl LayoutTree {
                                     y: sub_geometry.origin.y + new_size.h as i32
                                 }
                             };
-                            self.generic_tile(node_ix, geometry, children,
+                            self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
+                            self.add_borders(node_ix)
+                                .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
+                            self.draw_borders_rec(children);
                         }
                     }
                 }
@@ -230,6 +235,8 @@ impl LayoutTree {
 
             ContainerType::View => {
                 self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
+                self.add_borders(node_ix)
+                    .expect("Couldn't add border gaps to horizontal container");
             }
         }
         self.validate();
@@ -284,6 +291,8 @@ impl LayoutTree {
                 _ => return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View,
                                                                 ContainerType::Container)))
             }
+            container.resize_borders(new_geometry);
+            container.draw_borders();
         }
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
@@ -333,21 +342,30 @@ impl LayoutTree {
 
     /// If the node is floating, places it at its reported position, above all
     /// other nodes.
-    fn place_floating(&mut self, node_ix: NodeIndex) {
+    fn place_floating(&mut self, node_ix: NodeIndex,
+                      fullscreen_apps: &mut Vec<NodeIndex>) {
+        if self.tree[node_ix].fullscreen() {
+            fullscreen_apps.push(node_ix);
+            return;
+        }
         if !self.tree[node_ix].floating() {
             // This could mess up the layout very badly, that's why it's an error
             error!("Tried to absolutely place a non-floating view!");
             return
         }
-        match self.tree[node_ix] {
-            Container::Container { .. } => { unimplemented!() },
-            Container::View { ref handle, .. } => {
-                handle.bring_to_front();
-            },
-            _ => unreachable!()
+        {
+            let container = &mut self.tree[node_ix];
+            match *container {
+                Container::Container { .. } => { unimplemented!() },
+                Container::View { ref handle, .. } => {
+                    handle.bring_to_front();
+                },
+                _ => unreachable!()
+            }
+            container.draw_borders();
         }
         for child_ix in self.tree.floating_children(node_ix) {
-            self.place_floating(child_ix);
+            self.place_floating(child_ix, fullscreen_apps);
         }
     }
 
@@ -465,7 +483,7 @@ impl LayoutTree {
 
     fn generic_tile<SizeF, RemainF, PointF>
         (&mut self,
-         node_ix: NodeIndex, geometry: Geometry, children: Vec<NodeIndex>,
+         node_ix: NodeIndex, geometry: Geometry, children: &[NodeIndex],
          new_size_f: SizeF, remaining_size_f: RemainF, new_point_f: PointF,
          fullscreen_apps: &mut Vec<NodeIndex>)
         where SizeF:   Fn(Size, Geometry) -> Size,
@@ -521,10 +539,20 @@ impl LayoutTree {
         }
     }
 
+    /// Normalizes the geometry of a view to be the same size as it's siblings,
+    /// based on the parent container's layout, at the 0 point of the parent container.
+    /// Note this does not auto-tile, only modifies this one view.
+    ///
+    /// Useful if a container's children want to be evenly distributed, or a new view
+    /// is being added.
+    pub fn normalize_view(&mut self, view: WlcView) {
+        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
+            self.normalize_container(view_ix);
+        }
+    }
+
     /// Normalizes the geometry of a view or a container of views so that
     /// the view is the same size as its siblings.
-    ///
-    /// See `normalize_view` for more information
     pub fn normalize_container(&mut self, node_ix: NodeIndex) {
         // if floating, do not normalize
         if self.tree[node_ix].floating() {
@@ -605,6 +633,15 @@ impl LayoutTree {
                 Container::View { handle, .. } => {
                     handle.set_geometry(ResizeEdge::empty(), output_geometry);
                     handle.bring_to_front();
+                    let views = handle.get_output().get_views();
+                    // TODO It would be nice to not have to iterate vier
+                    // all the views just to do this.
+                    for view in views {
+                        // make sure children render above fullscreen parent
+                        if view.get_parent() == handle {
+                            view.bring_to_front();
+                        }
+                    }
                     None
                 },
                 Container::Container { ref mut geometry, .. } => {
@@ -622,25 +659,20 @@ impl LayoutTree {
         }
     }
 
-    /// Adds gaps to all the views of the container at the `NodeIndex`
+    /// Adds gaps between all the views of the container at the `NodeIndex`
+    /// This does not recurse if a container is found.
     ///
-    /// If the `NodeIndex` doesn't point to a container, an error is returned.
+    /// If the `NodeIndex` doesn't point to a `Container`, an error is returned.
     fn add_gaps(&mut self, node_ix: NodeIndex) -> CommandResult {
         let layout = match self.tree[node_ix] {
             Container::Container { layout, .. } => layout,
             _ => return Err(TreeError::UuidNotAssociatedWith(
                 ContainerType::Container))
         };
-        let gap = registry::get_data("gap_size")
-            .map(RegistryGetData::resolve).and_then(|(_, data)| {
-                Ok(data.as_f64().map(|num| {
-                    if num <= 0.0 {
-                        0u32
-                    } else {
-                        num as u32
-                    }
-                }).unwrap_or(0u32))
-            }).unwrap_or(0u32);
+        let gap = Borders::gap_size();
+        if gap == 0 {
+            return Ok(())
+        }
         let children = self.tree.children_of(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
@@ -683,6 +715,61 @@ impl LayoutTree {
         }
         Ok(())
     }
+
+    /// Adds spacing for borders between the windows.
+    fn add_borders(&mut self, node_ix: NodeIndex) -> CommandResult {
+        {
+            let container = &mut self.tree[node_ix];
+            let mut geometry = container.get_geometry()
+                .expect("Container had no geometry");
+            match *container {
+                Container::View { handle, .. } => {
+                    let gap = Borders::thickness();
+                    let title_size = Borders::title_bar_size();
+                    if gap == 0 {
+                        return Ok(())
+                    }
+                    geometry.origin.x += (gap / 2) as i32;
+                    geometry.origin.y += (gap / 2) as i32;
+                    geometry.origin.y += title_size as i32;
+                    geometry.size.w = geometry.size.w.saturating_sub(gap);
+                    geometry.size.h = geometry.size.h.saturating_sub(gap);
+                    geometry.size.h = geometry.size.h.saturating_sub(title_size);
+                    handle.set_geometry(ResizeEdge::empty(), geometry);
+                },
+                Container::Container { .. } => {/*recurse*/},
+                ref container => {
+                    error!("Attempted to add borders to non-view/container");
+                    error!("Found {:#?}", container);
+                    panic!("Applying gaps for borders, found non-view/container")
+                }
+            }
+            // TODO Hack to make the resizing on tiled works
+            // Should restructure code so I don't need to do this check
+            if container.get_type() == ContainerType::View {
+                container.resize_borders(geometry);
+            }
+        }
+        Ok(())
+    }
+
+    /// Draws the borders recursively, down from the top to the bottom.
+    fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>) {
+        while children.len() > 0 {
+            let child_ix = children.pop().unwrap();
+            children.extend(self.tree.grounded_children(child_ix));
+            let container = &mut self.tree[child_ix];
+            if Some(child_ix) != self.active_container {
+                container.clear_border_color()
+                    .expect("Could not clear border color");
+            } else {
+                container.active_border_color()
+                    .expect("Could not set border color to be active");
+            }
+            container.draw_borders();
+        }
+    }
+
 }
 
 #[cfg(test)]

@@ -1,12 +1,14 @@
 //! Commands from the user to manipulate the tree
 
-use super::{try_lock_tree, try_lock_action};
+use super::{try_lock_tree, lock_tree, try_lock_action};
 use super::{Action, ActionErr, Bar, Container, ContainerType,
             Direction, Handle, Layout, TreeError};
 use super::Tree;
+use ::registry;
 
 use uuid::Uuid;
-use rustwlc::{Point, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
@@ -17,22 +19,29 @@ pub type CommandResult = Result<(), TreeError>;
  */
 
 pub fn remove_active() {
+    let mut handle_to_remove = None;
     if let Ok(mut tree) = try_lock_tree() {
         if let Some(container) = tree.0.get_active_container_mut() {
             match *container {
-                Container::View { ref handle, .. } => {
-                    handle.close();
-                    // Thanks borrowck
+                Container::View { handle, .. } => {
+                    handle_to_remove = Some(handle);
                     // Views shouldn't be removed from tree, that's handled by
                     // view_destroyed callback
-                    return
                 },
                 _ => {}
             }
         }
-        if let Err(err) = tree.0.remove_active() {
-            warn!("Could not remove the active container! {:#?}\n{:#?}\n{:#?}", tree.0.get_active_container(), err, *tree.0);
-        };
+        // views have it removed in view_destroyed callback
+        // container should be removed here though.
+        if handle_to_remove.is_none() {
+            if let Err(err) = tree.0.remove_active() {
+                warn!("Could not remove the active container! {:?}\n{:?}\n{:?}",
+                      tree.0.get_active_container(), err, *tree.0);
+            };
+        }
+    }
+    if let Some(handle) = handle_to_remove {
+        handle.close();
     }
 }
 
@@ -159,7 +168,7 @@ pub fn move_active_down() {
 }
 
 pub fn tree_as_json() -> Json {
-    if let Ok(tree) = try_lock_tree() {
+    if let Ok(tree) = lock_tree() {
         tree.0.to_json()
     } else {
         Json::Null
@@ -191,6 +200,11 @@ pub fn set_performing_action(val: Option<Action>) {
 }
 
 // TODO Remove all instances of self.0.tree, that should be abstracted in LayoutTree.
+
+/* These commands are the interface that the rest of Way Cooler has to the
+ * tree. Any action done, whether through a callback, or from the IPC/Lua thread
+ * it will have to go through one of these methods.
+ */
 
 /// These commands are the interface that the rest of Way Cooler has to the
 /// tree. Any action done, whether through a callback, or from the IPC/Lua thread
@@ -289,6 +303,14 @@ impl Tree {
             .collect()
     }
 
+    pub fn output_resolution(&self, id: Uuid) -> Result<Size, TreeError> {
+        let output = match try!(self.0.lookup(id)).get_handle() {
+            Some(Handle::Output(output)) => output,
+            _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::Output))
+        };
+        Ok(output.get_resolution().expect("Output had no resolution"))
+    }
+
     /// Binds a view to be the background for the given outputs.
     ///
     /// If there was a previous background, it is removed and deallocated.
@@ -328,7 +350,7 @@ impl Tree {
         view.set_mask(output.get_mask());
         let has_parent = view.get_parent() != WlcView::root();
         if view.get_type() != ViewType::empty() || has_parent {
-            try!(tree.add_floating_view(view));
+            try!(tree.add_floating_view(view, None));
         } else {
             try!(tree.add_view(view));
             tree.normalize_view(view);
@@ -375,6 +397,15 @@ impl Tree {
                 Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
             }
         }
+    }
+
+    pub fn update_title(&mut self, view: WlcView) -> CommandResult {
+        let id = try!(self.lookup_view(view)
+                      .map_err(|_|TreeError::ViewNotFound(view)));
+        let container = try!(self.0.lookup_mut(id));
+        container.set_name(Container::get_title(view));
+        container.draw_borders();
+        Ok(())
     }
 
     /// Sets the view to be the new active container.
@@ -463,14 +494,29 @@ impl Tree {
 
     /// Resizes the container, as if it was dragged at the edge to a certain point
     /// on the screen.
-    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point) -> CommandResult {
+    pub fn resize_container(&mut self, id: Uuid, edge: ResizeEdge, pointer: Point)
+                            -> CommandResult {
         match try_lock_action() {
             Ok(mut lock) => {
                 if let Some(ref mut action) = *lock {
                     if try!(self.0.lookup(id)).floating() {
                         self.0.resize_floating(id, edge, pointer, action)
                     } else {
-                        self.0.resize_tiled(id, edge, pointer, action)
+                        let new_point = self.0.resize_tiled(id, edge, pointer, action)?;
+                        // look up mouse lock option
+                        let lock = registry::clients_read();
+                        let client = lock.client(Uuid::nil()).unwrap();
+                        let handle = registry::ReadHandle::new(&client);
+                        let lock_mouse = handle.read("mouse".into())
+                            .expect("mouse category didn't exist")
+                            .get("lock_to_corner_on_resize".into())
+                            .and_then(|data| data.as_boolean()).unwrap_or(false);
+                        if lock_mouse {
+                            action.grab = new_point
+                        } else {
+                            pointer::set_position(pointer);
+                        }
+                        Ok(())
                     }
                 } else {
                     Err(TreeError::Action(ActionErr::ActionNotInProgress))
@@ -524,6 +570,15 @@ impl Tree {
         if container.floating() {
             container.set_geometry(ResizeEdge::empty(), geometry)
         }
+        Ok(())
+    }
+
+    /// Renders the borders for the view.
+    pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
+        let id = try!(self.lookup_view(view)
+                      .map_err(|_|TreeError::ViewNotFound(view)));
+        let container = try!(self.0.lookup_mut(id));
+        container.render_borders();
         Ok(())
     }
 }

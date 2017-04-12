@@ -40,14 +40,14 @@ pub fn json_to_lua(json: Json) -> AnyLuaValue {
 ///
 /// For a `LuaArray` that should be mapped to a `JsonObject`,
 /// use `lua_object_to_json`.
-pub fn lua_to_json(lua: AnyLuaValue) -> Result<Json, ()> {
+pub fn lua_to_json(lua: AnyLuaValue) -> Result<Json, AnyLuaValue> {
     match lua {
         LuaNil => Ok(Json::Null),
         LuaString(val) => Ok(Json::String(val)),
         LuaNumber(val) => Ok(Json::F64(val)),
         LuaBoolean(val) => Ok(Json::Boolean(val)),
         LuaArray(arr) => lua_array_to_json(arr),
-        LuaOther => Err(())
+        LuaOther => Err(lua)
     }
 }
 
@@ -56,10 +56,11 @@ pub fn lua_to_json(lua: AnyLuaValue) -> Result<Json, ()> {
 /// # Result
 /// This function returns an Err if the Lua object has a non-String key.
 pub fn lua_array_to_json(arr: Vec<(AnyLuaValue, AnyLuaValue)>)
-                         -> Result<Json, ()> {
+                         -> Result<Json, AnyLuaValue> {
     // Check if every key is a number
     let mut counter = 0.0; // Account for first index?
 
+    let mut return_early = false;
     for &(ref key, ref _val) in &arr {
         match *key {
             LuaNumber(num) => {
@@ -70,15 +71,19 @@ pub fn lua_array_to_json(arr: Vec<(AnyLuaValue, AnyLuaValue)>)
             }
             // Non-string keys are not allowed
             _ => {
-                return Err(());
+                return_early = true;
+                break;
             }
         }
+    }
+    if return_early {
+        return Err(AnyLuaValue::LuaArray(arr));
     }
 
     // Gauss' trick
     let desired_sum = ((arr.len()) * (arr.len() + 1)) / 2;
     if counter != desired_sum as f64 {
-        return lua_object_to_json(arr);
+        return lua_object_to_json(arr)
     }
 
     let mut json_arr: Vec<Json> = Vec::with_capacity(arr.len());
@@ -94,19 +99,26 @@ pub fn lua_array_to_json(arr: Vec<(AnyLuaValue, AnyLuaValue)>)
 ///
 /// Will return an Err if the Lua object uses non-String keys.
 pub fn lua_object_to_json(obj: Vec<(AnyLuaValue, AnyLuaValue)>)
-                          -> Result<Json, ()> {
+                          -> Result<Json, AnyLuaValue> {
     let mut json_obj: BTreeMap<String, Json> = BTreeMap::new();
 
-    for (key, val) in obj.into_iter() {
-        match key {
-            LuaString(text) => {
-                json_obj.insert(text, try!(lua_to_json(val)));
+    let mut error = false;
+    for &(ref key, ref val) in obj.iter() {
+        match *key {
+            LuaString(ref text) => {
+                json_obj.insert(text.clone(), try!(lua_to_json(val.clone())));
             },
-            LuaNumber(ix) => {
-                json_obj.insert(ix.to_string(), try!(lua_to_json(val)));
+            LuaNumber(ref ix) => {
+                json_obj.insert(ix.to_string(), try!(lua_to_json(val.clone())));
             }
-            _ => { return Err(()); }
+            _ => {
+                error = true;
+                break
+            }
         }
+    }
+    if error {
+        return Err(AnyLuaValue::LuaArray(obj))
     }
     Ok(Json::Object(json_obj))
 }

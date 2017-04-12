@@ -3,18 +3,24 @@
 #![allow(deprecated)] // keysyms
 
 use rustwlc::handle::{WlcOutput, WlcView};
-use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size, Point, Geometry,
-                     ResizeEdge, ViewState, VIEW_ACTIVATED, VIEW_FULLSCREEN, VIEW_RESIZING, VIEW_MAXIMIZED,
+use rustwlc::types::{ButtonState, KeyboardModifiers, KeyState, KeyboardLed, ScrollAxis, Size,
+                     Point, Geometry, ResizeEdge, ViewState, ViewPropertyType, PROPERTY_TITLE,
+                     VIEW_MAXIMIZED, VIEW_ACTIVATED, VIEW_RESIZING, VIEW_FULLSCREEN,
                      MOD_NONE, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
 use rustwlc::input::{pointer, keyboard};
+use rustwlc::render::{read_pixels, wlc_pixel_format};
+use uuid::Uuid;
 
 use super::keys::{self, KeyPress, KeyEvent};
-use super::layout::{try_lock_tree, try_lock_action, Action, ContainerType,
+use super::layout::{lock_tree, try_lock_tree, try_lock_action, Action, ContainerType,
                     MovementError, TreeError, FocusError};
 use super::layout::commands::set_performing_action;
 use super::lua::{self, LuaQuery};
 
-use registry::{self, RegistryError, RegistryGetData};
+use ::render::screen_scrape::{read_screen_scrape_lock, scraped_pixels_lock,
+                              sync_scrape};
+
+use registry::{self};
 
 /// If the event is handled by way-cooler
 const EVENT_BLOCKED: bool = true;
@@ -64,15 +70,34 @@ pub extern fn output_resolution(output: WlcOutput,
     }
 }
 
+pub extern fn post_render(output: WlcOutput) {
+    let need_to_fetch = read_screen_scrape_lock();
+    if *need_to_fetch {
+        if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
+            let resolution = output.get_resolution()
+                .expect("Output had no resolution");
+            let geo = Geometry {
+                origin: Point { x: 0, y: 0 },
+                size: resolution
+            };
+            let result = read_pixels(wlc_pixel_format::WLC_RGBA8888, geo).1;
+            *scraped_pixels = result;
+            sync_scrape();
+        }
+    }
+}
+
 pub extern fn view_created(view: WlcView) -> bool {
     debug!("view_created: {:?}: \"{}\"", view, view.get_title());
-    let bar = registry::get_data("bar")
-        .map(RegistryGetData::resolve).and_then(|(_, data)| {
-            data.as_string().map(str::to_string)
-                .ok_or(RegistryError::KeyNotFound)
-        });
+    let lock = registry::clients_read();
+    let client = lock.client(Uuid::nil()).unwrap();
+    let handle = registry::ReadHandle::new(&client);
+    let bar = handle.read("programs".into())
+        .expect("programs category didn't exist")
+        .get("x11_bar".into())
+        .and_then(|data| data.as_string().map(str::to_string));
     // TODO Move this hack, probably could live somewhere else
-    if let Ok(bar_name) = bar {
+    if let Some(bar_name) = bar {
         if view.get_title().as_str() == bar_name {
             view.set_mask(1);
             view.bring_to_front();
@@ -99,13 +124,19 @@ pub extern fn view_created(view: WlcView) -> bool {
             size: resolution
         };
         view.set_geometry(ResizeEdge::empty(), fullscreen);
-        if let Ok(mut tree) = try_lock_tree() {
+        if let Ok(mut tree) = lock_tree() {
             let outputs = tree.outputs();
-            return tree.add_background(view, outputs.as_slice()).is_ok();
+            return tree.add_background(view, outputs.as_slice()).map(|_| true)
+                .unwrap_or_else(|err| {
+                    error!("Could not add background due to {:?}", err);
+                    true
+                })
+        } else {
+            error!("Could not lock tree");
         }
         return false
     }
-    if let Ok(mut tree) = try_lock_tree() {
+    if let Ok(mut tree) = lock_tree() {
         let result = tree.add_view(view).and_then(|_| {
             view.set_state(VIEW_MAXIMIZED, true);
             match tree.set_active_view(view) {
@@ -125,17 +156,17 @@ pub extern fn view_created(view: WlcView) -> bool {
 
 pub extern fn view_destroyed(view: WlcView) {
     trace!("view_destroyed: {:?}", view);
-    if let Ok(mut tree) = try_lock_tree() {
-        tree.remove_view(view).unwrap_or_else(|err| {
-            match err {
-                TreeError::ViewNotFound(_) => {},
-                _ => {
-                    error!("Error in view_destroyed: {:?}", err);
-                }
-            }
-        });
-    } else {
-        error!("Could not delete view {:?}", view);
+    match try_lock_tree() {
+        Ok(mut tree) => {
+            tree.remove_view(view).unwrap_or_else(|err| {
+                match err {
+                    TreeError::ViewNotFound(_) => {},
+                    _ => {
+                        error!("Error in view_destroyed: {:?}", err);
+                    }
+                }});
+        },
+        Err(err) => error!("Could not delete view {:?}, {:?}", view, err)
     }
 }
 
@@ -147,6 +178,20 @@ pub extern fn view_focus(current: WlcView, focused: bool) {
             Ok(_) => {},
             Err(err) => {
                 error!("Could not set {:?} to be active view: {:?}", current, err);
+            }
+        }
+    }
+}
+
+pub extern fn view_props_changed(view: WlcView, prop: ViewPropertyType) {
+    if prop.contains(PROPERTY_TITLE) {
+        if let Ok(mut tree) = try_lock_tree() {
+            match tree.update_title(view) {
+                Ok(_) => {},
+                Err(err) => {
+                    error!("Could not update title for view {:?} because {:#?}",
+                           view, err);
+                }
             }
         }
     }
@@ -260,7 +305,6 @@ pub extern fn pointer_button(view: WlcView, _time: u32,
     if state == ButtonState::Pressed {
         let mouse_mod = keys::mouse_modifier();
         if button == LEFT_CLICK && !view.is_root() {
-            info!("User left clicked w/ mods \"{:?}\" on {:?}", mods, view);
             if let Ok(mut tree) = try_lock_tree() {
                 tree.set_active_view(view).unwrap_or_else(|_| {
                     // still focus on view, even if not in tree.
@@ -369,7 +413,7 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                         match tree.resize_container(active_id, action.edges, *point) {
                             // Return early here to not set the pointer
                             Ok(_) => return EVENT_BLOCKED,
-                            Err(err) => error!("Error: {:#?}", err)
+                            Err(err) => warn!("Could not resize: {:#?}", err)
                         }
                     }
                 }
@@ -378,7 +422,8 @@ pub extern fn pointer_motion(view: WlcView, _time: u32, point: &Point) -> bool {
                     match tree.try_drag_active(*point) {
                         Ok(_) => result = EVENT_BLOCKED,
                         Err(TreeError::PerformingAction(_)) |
-                        Err(TreeError::Movement(MovementError::NotFloating(_))) => result = EVENT_PASS_THROUGH,
+                        Err(TreeError::Movement(MovementError::NotFloating(_))) =>
+                            result = EVENT_PASS_THROUGH,
                         Err(err) => {
                             error!("Error: {:#?}", err);
                             result = EVENT_PASS_THROUGH
@@ -410,6 +455,18 @@ pub extern fn compositor_terminating() {
 
 }
 
+pub extern fn view_pre_render(view: WlcView) {
+    if let Ok(mut tree) = lock_tree() {
+        tree.render_borders(view).unwrap_or_else(|err| {
+            match err {
+                // TODO Only filter if background or bar
+                TreeError::ViewNotFound(_) => {},
+                err => warn!("Error while rendering borders: {:?}", err)
+            }
+        })
+    }
+}
+
 
 pub fn init() {
     use rustwlc::callback;
@@ -418,6 +475,7 @@ pub fn init() {
     callback::output_destroyed(output_destroyed);
     callback::output_focus(output_focus);
     callback::output_resolution(output_resolution);
+    callback::output_render_post(post_render);
     callback::view_created(view_created);
     callback::view_destroyed(view_destroyed);
     callback::view_focus(view_focus);
@@ -426,11 +484,13 @@ pub fn init() {
     callback::view_request_state(view_request_state);
     callback::view_request_move(view_request_move);
     callback::view_request_resize(view_request_resize);
+    callback::view_properties_changed(view_props_changed);
     callback::keyboard_key(keyboard_key);
     callback::pointer_button(pointer_button);
     callback::pointer_scroll(pointer_scroll);
     callback::pointer_motion(pointer_motion);
     callback::compositor_ready(compositor_ready);
     callback::compositor_terminate(compositor_terminating);
+    callback::view_render_pre(view_pre_render);
     trace!("Registered wlc callbacks");
 }

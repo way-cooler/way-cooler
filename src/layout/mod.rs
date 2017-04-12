@@ -14,7 +14,7 @@ use self::core::InnerTree;
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};
 
-use std::sync::{Mutex, MutexGuard, TryLockError};
+use std::sync::{Mutex, MutexGuard, TryLockError, PoisonError};
 
 /// A wrapper around tree, to hide its methods
 pub struct Tree(TreeGuard);
@@ -22,8 +22,6 @@ pub struct Tree(TreeGuard);
 pub type TreeGuard = MutexGuard<'static, LayoutTree>;
 /// Error for trying to lock the tree
 pub type TreeErr = TryLockError<TreeGuard>;
-/// Result for locking the tree
-pub type TreeResult = Result<MutexGuard<'static, LayoutTree>, TreeErr>;
 
 
 #[derive(Debug)]
@@ -84,6 +82,11 @@ impl ToJson for LayoutTree {
 /// not be returned at this time, already locked.
 pub fn try_lock_tree() -> Result<Tree, TreeErr> {
     let tree = try!(TREE.try_lock());
+    Ok(Tree(tree))
+}
+
+pub fn lock_tree() -> Result<Tree, PoisonError<TreeGuard>> {
+    let tree = try!(TREE.lock());
     Ok(Tree(tree))
 }
 

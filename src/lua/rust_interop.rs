@@ -1,17 +1,18 @@
 //! Rust code which is called from lua in the init file
 #![deny(dead_code)]
 
-use std::ops::Deref;
-
+use rustc_serialize::json::ToJson;
+use uuid::Uuid;
+use super::{send, LuaQuery, running};
 use hlua::{self, Lua, LuaTable};
 use hlua::any::AnyLuaValue;
 
-use registry::{self, RegistryError, AccessFlags};
+use registry::{self};
 use commands;
 use keys::{self, KeyPress, KeyEvent};
-use convert::json::{json_to_lua, lua_to_json};
+use convert::json::{json_to_lua};
 
-use super::thread::{RUNNING, ERR_LOCK_RUNNING};
+use super::thread::{update_registry_value};
 
 type ValueResult = Result<AnyLuaValue, &'static str>;
 
@@ -28,11 +29,14 @@ pub fn register_libraries(lua: &mut Lua) {
         rust_table.set("register_mouse_modifier", hlua::function1(register_mouse_modifier));
         rust_table.set("keypress_index", hlua::function1(keypress_index));
         rust_table.set("ipc_run", hlua::function1(ipc_run));
-        rust_table.set("ipc_get", hlua::function1(ipc_get));
-        rust_table.set("ipc_set", hlua::function2(ipc_set));
+        rust_table.set("ipc_get", hlua::function2(ipc_get));
+        rust_table.set("ipc_set", hlua::function1(ipc_set));
     }
     trace!("Executing Lua init...");
     let init_code = include_str!("../../lib/lua/lua_init.lua");
+    let util_code = include_str!("../../lib/lua/utils.lua");
+    let _: () = lua.execute::<_>(util_code)
+        .expect("Unable to execute Lua util code!");
     let _: () = lua.execute::<_>(init_code)
         .expect("Unable to execute Lua init code!");
     trace!("Lua register_libraries complete");
@@ -45,48 +49,26 @@ fn ipc_run(command: String) -> Result<(), &'static str> {
 }
 
 /// IPC 'get' handler
-fn ipc_get(key: String) -> ValueResult {
-    match registry::get_data(&key) {
-        Ok(regdata) => {
-            let (flags, arc_data) = regdata.resolve();
-            if flags.contains(AccessFlags::READ()) {
-                Ok(json_to_lua(arc_data.deref().clone()))
-            } else {
-                Err("Cannot read that key")
-            }
-        },
-        Err(err) => match err {
-            RegistryError::InvalidOperation =>
-                Err("Cannot get that key, use set or assign"),
-            RegistryError::KeyNotFound =>
-                Err("Key not found")
-        }
-    }
+fn ipc_get(category: String, key: String) -> ValueResult {
+    let lock = registry::clients_read();
+    let client = lock.client(Uuid::nil()).unwrap();
+    let handle = registry::ReadHandle::new(&client);
+    handle.read(category)
+        .map_err(|_| "Could not locate that category")
+        .and_then(|category| category.get(&key)
+                  .ok_or("Could not locate that key in the category")
+                  .and_then(|value| Ok(value.to_json()))
+                  .and_then(|value| Ok(json_to_lua(value))))
 }
 
 /// ipc 'set' handler
-fn ipc_set(key: String, value: AnyLuaValue) -> Result<(), &'static str> {
-    let json = try!(lua_to_json(value)
-                    .map_err(|_| "Unable to convert value to JSON!"));
-    match *RUNNING.read().expect(ERR_LOCK_RUNNING) {
-        true => {
-            registry::set_json(key.clone(), json.clone())
-        },
-        false => {
-            registry::set_json_ignore_flags(key.clone(), json.clone())
-        }
-    }.map(|data| data.call(json.clone()))
-        .or_else(|err| {
-            match err {
-                RegistryError::InvalidOperation => {
-                    Err("That value can not be set!")
-                },
-                RegistryError::KeyNotFound => {
-                    registry::insert_json(key, AccessFlags::READ(), json.clone());
-                    Ok(())
-                }
-            }
-        })
+fn ipc_set(category: String) -> Result<(), &'static str> {
+    update_registry_value(category);
+    if running() {
+        send(LuaQuery::UpdateRegistryFromCache)
+            .expect("Could not send message to Lua thread to update registry");
+    }
+    Ok(())
 }
 
 fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {

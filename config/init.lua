@@ -1,37 +1,54 @@
--- Lua configuration file for way-cooler.
-
---
--- Layouts
---
-
---[[ Layout code is not implemented at this time, sorry.
-
--- The default layout options are no names, mode = "default" (use keybindings).
--- For a list of tiling options, see way-cooler docs or `man way-cooler-tiling`.
--- Workspaces, like arrays in Lua, start with 1.
-local workspace_settings = {
-  -- The first workspace is named web
-  [1] = { name = "web" },
-  -- The 9th workspace is named "free", and all windows sent there float.
-  [9] = { name = "free", mode = "float" },
-}
-
--- Create 9 workspaces with the given settings.
-config.init_workspaces(workspace_settings) -- Not implemented yet
-
-]]
+-- Lua configration file for way-cooler. Ran at startup and when restarted.
 
 --
 -- Background
 --
 --
 -- A background can either be a 6 digit hex value or an image path
-way_cooler.background = 0x5E4055
+local background = 0x5E4055
+
+-- Programs that Way Cooler can run
+way_cooler.programs = {
+  -- Name of the window that will be the bar window.
+  -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
+  --
+  -- Make sure you add the script to start your bar in the init function!
+  x11_bar = "lemonbar"
+}
+
+-- Registering programs to run at startup
+-- These programs are only ran once util.program.spawn_programs is called.
+util.program.spawn_at_startup("way-cooler-bg", background)
+
+-- These options are applied to all windows.
+way_cooler.windows = {
+  gaps = { -- Options for gaps
+    size = 0, -- The width of gaps between windows in pixels
+  },
+  borders = { -- Options for borders
+    size = 20, -- The width of the borders between windows in pixels
+    inactive_color = 0x386890, -- Color of the borders for inactive containers
+    active_color = 0x57beb9 -- Color of active container borders
+  },
+  title_bar = { -- Options for title bar above windows
+    size = 20, -- Size of the title bar
+    background_color = 0x386690, -- Color of inactive title bar
+    active_background_color = 0x57beb9, -- Color of active title bar
+    font_color = 0x0, -- Color of the font for an inactive title bar
+    active_font_color = 0xffffff -- Color of font for active title bar
+  }
+}
+
+-- Options that change how the mouse behaves.
+way_cooler.mouse = {
+  -- Locks the mouse to the corner of the window the user is resizing.
+  lock_to_corner_on_resize = false
+}
 
 --
 -- Keybindings
 --
--- Create an array of keybindings and call config.register_keys()
+-- Create an array of keybindings and call way_cooler.register_keys()
 -- to register them.
 -- Declaring a keybinding:
 -- key(<modifiers list>, <key>, <function or name>, [repeat])
@@ -50,23 +67,15 @@ way_cooler.background = 0x5E4055
 
 -- Modifier key used in keybindings. Mod3 = Alt, Mod4 = Super/Logo key
 mod = "Alt"
-local key = config.key -- Alias key so it's faster to type
 
-way_cooler.terminal = "weston-terminal" -- Use the terminal of your choice
-
--- Name of the window that will be the bar window.
--- This is a hack to get X11 bars and non-Way Cooler supported bars working.
---
--- Make sure you add the script to start your bar in the init function!
-way_cooler.bar = "lemonbar"
-
-way_cooler.gap_size = 0 -- The width of gaps between windows in pixels
+-- Aliases to save on typing
+local key = way_cooler.key
 
 local keys = {
   -- Open dmenu
-  key({ mod }, "d", "launch_dmenu"),
+  key({ mod }, "d", util.program.spawn_once("dmenu_run")),
   -- Open terminal
-  key({ mod }, "return", "launch_terminal"),
+  key({ mod }, "return", util.program.spawn_once("weston-terminal")),
 
   -- Lua methods can be bound as well
   key({ mod, "Shift" }, "h", function () print("Hello world!") end),
@@ -95,10 +104,11 @@ local keys = {
   key({ mod, "Shift" }, "q", "close_window"),
   key({ mod, "Shift" }, "space", "toggle_float_active"),
   key({ mod }, "space", "toggle_float_focus"),
-  key({ mod, "Shift" }, "r", "way_cooler_restart")
+  key({ mod, "Shift" }, "r", "way_cooler_restart"),
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
-  -- This my be modifiable in the future
+  -- If rebound, then this keybinding is cleared.
+  --key({ mod, "Shift" }, "escape", "way_cooler_quit"),
 }
 
 -- Add Mod + X bindings to switch to workspace X, Mod+Shift+X send active to X
@@ -111,47 +121,23 @@ end
 
 -- Register the keybindings.
 for _, key in pairs(keys) do
-    config.register_key(key)
+    way_cooler.register_key(key)
 end
 
 -- Register the mod key to also be the mod key for mouse commands
-config.register_mouse_modifier(mod)
-
-function cleanup_background()
-  os.execute("pkill way-cooler-bg")
-end
-
+way_cooler.register_mouse_modifier(mod)
 
 -- Execute some code after Way Cooler is finished initializing
-function way_cooler_init()
-  local status = os.execute("which way-cooler-bg 2>/dev/null")
-  if not status then
-    print "Could not find way-cooler-bg! Please install it"
-  else
-    os.execute("way-cooler-bg " ..  way_cooler.background .. " &")
-  end
+way_cooler.on_init = function()
+  util.program.spawn_startup_programs()
 end
 
 --- Execute some code when Way Cooler restarts
-function way_cooler_restart()
-  cleanup_background()
+way_cooler.on_restart = function()
+  util.program.restart_startup_programs()
 end
 
-function way_cooler_terminate()
-  cleanup_background()
+--- Execute some code when Way Cooler terminates
+way_cooler.on_terminate = function()
+  util.program.terminate_startup_programs()
 end
-
-
-way_cooler.on_restart(way_cooler_restart)
-way_cooler.on_terminate(way_cooler_terminate)
-
--- To use plugins such as bars, or to start other programs on startup,
--- call util.exec.spawn_once, which will not spawn copies after a config reload.
-
--- util.exec.spawn_once("way-cooler-bar")
-
--- To add your own Lua files:
--- require("my-config.lua") -- Or use utils.hostname
-
--- !! Do not place any code after this comment.
--- !! way-cooler and plugins may insert auto-generated code.

@@ -4,15 +4,18 @@
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use rustwlc::{ResizeEdge, WlcView, WlcOutput, RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+use rustwlc::callback::{positioner_get_anchor_rect, positioner_get_size,};
+use rustwlc::{ResizeEdge, WlcView, WlcOutput,
+              RESIZE_LEFT, RESIZE_RIGHT, RESIZE_TOP, RESIZE_BOTTOM};
+use ::render::{Renderable};
 use super::super::LayoutTree;
 use super::super::ActionErr;
-use super::container::{Container, ContainerType, Layout, Handle};
-use super::super::actions::focus::FocusError;
-use super::super::actions::movement::MovementError;
-use super::super::actions::layout::LayoutErr;
-use super::super::actions::resize::ResizeErr;
-use super::super::actions::background::BackgroundErr;
+use super::container::{Container, ContainerType, ContainerErr, Layout, Handle};
+use super::borders::{Borders};
+use ::layout::actions::focus::FocusError;
+use ::layout::actions::movement::MovementError;
+use ::layout::actions::layout::LayoutErr;
+use ::layout::actions::resize::ResizeErr;
 
 
 use super::super::core::graph_tree::GraphError;
@@ -103,11 +106,10 @@ pub enum TreeError {
     Layout(LayoutErr),
     /// An error occurred while trying to resize the layout
     Resize(ResizeErr),
-    /// An error occurred while trying to do something with the background
-    /// of an output
-    Background(BackgroundErr),
     /// An error occurred while attempting to modify or use the main action
     Action(ActionErr),
+    /// An error occurred while trying to do something with a container
+    Container(ContainerErr),
     /// The tree was (true) or was not (false) performing an action,
     /// but the opposite value was expected.
     PerformingAction(bool),
@@ -182,7 +184,18 @@ impl LayoutTree {
                     .unwrap_or("not set".into()),
                   node_ix.index());
         }
-        let id = self.tree[node_ix].get_id();
+        let id;
+        let mut parent_node = None;
+        {
+            let container = &self.tree[node_ix];
+            id = container.get_id();
+            match *container {
+                Container::View { handle, .. } => {
+                    parent_node = self.tree.lookup_view(handle.get_parent());
+                },
+                _ => {}
+            };
+        }
         if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
             if fullscreen_id != id {
                 return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
@@ -192,6 +205,16 @@ impl LayoutTree {
                 self.active_container.map(|node| node.index().to_string())
                 .unwrap_or("not set".into()),
                 node_ix.index());
+        if let Some(active_ix) = self.active_container {
+            let active_c = &mut self.tree[active_ix];
+            if parent_node != self.active_container {
+                active_c.clear_border_color()
+                    .expect("Could not clear border color");
+                active_c.draw_borders();
+            }
+        }
+        self.tree[node_ix].active_border_color()
+            .expect("Could set active border color");
         self.active_container = Some(node_ix);
         let c_type; let id;
         {
@@ -208,6 +231,7 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
+        self.tree[node_ix].draw_borders();
         Ok(())
     }
 
@@ -306,8 +330,16 @@ impl LayoutTree {
                 active_ix = try!(self.tree.parent_of(active_ix)
                                  .map_err(|err| TreeError::PetGraph(err)));
             }
+            let geometry = view.get_geometry()
+                .expect("View had no geometry");
+            let output = view.get_output();
+            let borders = Borders::new(geometry, output)
+                .map(|mut b| {
+                    b.title = Container::get_title(view);
+                    b
+                });
             let view_ix = self.tree.add_child(active_ix,
-                                              Container::new_view(view),
+                                              Container::new_view(view, borders),
                                               true);
             self.tree.set_child_pos(view_ix, prev_pos);
             self.validate();
@@ -327,14 +359,33 @@ impl LayoutTree {
     /// Adds a new view container with the given WlcView to the workspace of the active container.
     ///
     /// The view is automatically made floating, with no modifications to its geometry.
-    pub fn add_floating_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
+    pub fn add_floating_view(&mut self, view: WlcView, borders: Option<Borders>)
+                             -> Result<&Container, TreeError> {
         if let Some(root_ix) = self.root_container_ix() {
             let view_ix = self.tree.add_child(root_ix,
-                                             Container::new_view(view),
+                                             Container::new_view(view, borders),
                                              false);
-            self.tree[view_ix].set_floating(true)
+            let container = &mut self.tree[view_ix];
+            container.set_floating(true)
                 .expect("Could not float view we just made");
-            return Ok(&self.tree[view_ix])
+            if let Some(anchor) = positioner_get_anchor_rect(view) {
+                let mut geo = view.get_geometry().expect("View had no geometry");
+                let mut size = positioner_get_size(view).expect("View had no size");
+                if size.w <= 0 || size.h <= 0 {
+                    size = geo.size;
+                }
+                geo.origin = anchor.origin;
+                geo.size = size;
+                let parent = view.get_parent();
+                if !parent.is_root() {
+                    let parent_geo = parent.get_geometry()
+                        .expect("Parent view had no geometry");
+                    geo.origin.x += parent_geo.origin.x;
+                    geo.origin.y += parent_geo.origin.y;
+                }
+                container.set_geometry(ResizeEdge::empty(), geo);
+            }
+            return Ok(&*container)
         }
         self.validate();
         Err(TreeError::NoActiveContainer)
@@ -434,7 +485,7 @@ impl LayoutTree {
         for node_ix in children {
             trace!("Removing index {:?}: {:?}", node_ix, self.tree[node_ix]);
             match self.tree.get(node_ix) {
-                None => return Err(TreeError::NodeWasRemoved(container_ix)),
+                None => return Err(TreeError::NodeWasRemoved(node_ix)),
                 Some(&Container::View { .. }) | Some(&Container::Container { .. }) => {
                     try!(self.remove_view_or_container(node_ix));
                 },
@@ -453,6 +504,10 @@ impl LayoutTree {
     /// when we remove a view or container.
     pub fn remove_view_or_container(&mut self, node_ix: NodeIndex) -> Result<Container, TreeError> {
         // Only the root container has a non-container parent, and we can't remove that
+        if self.tree.is_root_container(node_ix) {
+            let id = self.tree[node_ix].get_id();
+            return Err(TreeError::InvalidOperationOnRootContainer(id))
+        }
         let c_type: ContainerType;
         let uuid: Uuid;
         {
@@ -486,7 +541,6 @@ impl LayoutTree {
             _ => unreachable!()
         };
         let result = Ok(container);
-        self.focus_on_next_container(parent_ix);
         // Remove parent container if it is a non-root container and has no other children
         let parent_type = self.tree[parent_ix].get_type();
         match parent_type {
@@ -498,6 +552,7 @@ impl LayoutTree {
             }
             _ => {},
         }
+        self.focus_on_next_container(parent_ix);
         trace!("Removed container {:?}, index {:?}", result, node_ix);
         result
     }
@@ -509,6 +564,46 @@ impl LayoutTree {
         } else {
             Err(TreeError::NoActiveContainer)
         }
+    }
+
+    /// Removes the workspace, and all the views/containers in it.
+    ///
+    /// This also serves as the cleanup function for when workspaces are
+    /// empty (e.g check `workspace.rs` for more details)
+    pub fn remove_workspace(&mut self, node_ix: NodeIndex) -> CommandResult {
+        if self.tree[node_ix].get_type() != ContainerType::Workspace {
+            Err(TreeError::UuidNotAssociatedWith(ContainerType::Workspace))?
+        }
+        let mut children = self.tree.all_descendants_of(node_ix);
+        // add current container to the list as well
+        children.push(node_ix);
+        for child_ix in children {
+            trace!("Removing node {:?}", child_ix);
+            // Remove all instances of the node index
+            if Some(child_ix) == self.active_container {
+                self.active_container.take();
+            }
+            match self.tree.get(child_ix) {
+                None => return Err(TreeError::NodeWasRemoved(child_ix)),
+                Some(&Container::View { .. }) => {
+                    self.remove_view_or_container(child_ix)?;
+                }
+                Some(&Container::Container { .. }) => {
+                    if self.tree.is_root_container(child_ix) {
+                        // Manually remove the root container,
+                        // because there are checks against doing this in tree
+                        self.tree.remove(child_ix);
+                    } else {
+                        self.remove_view_or_container(child_ix)?;
+                    }
+                },
+                Some(_) => {
+                    self.tree.remove(child_ix)
+                    .ok_or(TreeError::NodeWasRemoved(node_ix))?;
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Gets the parent of the node.
@@ -699,17 +794,27 @@ impl LayoutTree {
         while let Some(cur_ix) = next_ix {
             next_ix = None;
             let mut flipped = false;
+            // Ensure that the numbers are unique and atomically increasing.
+            let mut seen = vec![];
             for child_ix in self.tree.children_of(cur_ix) {
                 let weight = *self.tree.get_edge_weight_between(cur_ix, child_ix)
                     .expect("Could not get edge weights between child and parent");
-                if weight.active && flipped {
-                    error!("Divergent paths detected!");
-                    trace!("Tree: {:#?}", self);
-                    panic!("Divergent paths detected!");
-                }  else if weight.active {
+                if weight.is_active() {
+                    if flipped {
+                        error!("Divergent paths detected!");
+                        trace!("Tree: {:#?}", self);
+                        panic!("Divergent paths detected!");
+                    }
                     flipped = true;
                     next_ix = Some(child_ix);
                 }
+                if seen.contains(&weight.active) {
+                    error!("Active number already used!");
+                    error!("Found {:?} in {:?}", weight.active, seen);
+                    trace!("Tree: {:#?}", self);
+                    panic!("Duplicate active number found");
+                }
+                seen.push(weight.active);
             }
             if next_ix.is_none() {
                 match self.tree[cur_ix].get_type() {
@@ -786,14 +891,14 @@ pub mod tests {
                                                 Container::new_container(fake_geometry.clone()), false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
                                                 Container::new_container(fake_geometry.clone()), false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), true);
+                                                Container::new_view(fake_view_1.clone(), None), true);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone()), false);
+                                                Container::new_view(fake_view_1.clone(), None), false);
         let mut layout_tree = LayoutTree {
             tree: tree,
             active_container: None
@@ -1373,7 +1478,6 @@ pub mod tests {
         tree.validate_path();
         tree.switch_to_workspace("3");
         tree.validate_path();
-        println!("{:#?}", tree);
         tree.switch_to_workspace("1");
 
         // Try sending things to other workspaces
@@ -1393,8 +1497,31 @@ pub mod tests {
     fn empty_workspace_float_test() {
         let mut tree = basic_tree();
         tree.switch_to_workspace("3");
-        assert_eq!(tree.get_active_container().unwrap().get_type(), ContainerType::Container);
+        assert_eq!(tree.get_active_container().unwrap().get_type(),
+                   ContainerType::Container);
         let uuid = tree.get_active_container().unwrap().get_id();
-        assert_eq!(tree.float_container(uuid), Err(TreeError::InvalidOperationOnRootContainer(uuid)));
+        assert_eq!(tree.float_container(uuid),
+                   Err(TreeError::InvalidOperationOnRootContainer(uuid)));
+    }
+
+    #[test]
+    fn cannot_remove_root_container() {
+        let mut tree = basic_tree();
+        tree.switch_to_workspace("3");
+        assert!(tree.active_container.is_some());
+        let id = tree.tree[tree.active_container.unwrap()].get_id();
+        assert_eq!(tree.remove_active(),
+                   Err(TreeError::InvalidOperationOnRootContainer(id)));
+        assert!(tree.active_container.is_some());
+        let active_ix = tree.active_container.unwrap();
+        let id = tree.tree[active_ix].get_id();
+        assert_eq!(tree.remove_view_or_container(active_ix),
+                   Err(TreeError::InvalidOperationOnRootContainer(id)));
+        assert!(tree.active_container.is_some());
+        let active_ix = tree.active_container.unwrap();
+        let id = tree.tree[active_ix].get_id();
+        assert_eq!(tree.remove_container(active_ix),
+                   Err(TreeError::InvalidOperationOnRootContainer(id)));
+        assert!(tree.active_container.is_some());
     }
 }
