@@ -667,7 +667,7 @@ impl LayoutTree {
         if gap == 0 {
             return Ok(())
         }
-        let children = self.tree.children_of(node_ix);
+        let children = self.tree.grounded_children(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
             match *child {
