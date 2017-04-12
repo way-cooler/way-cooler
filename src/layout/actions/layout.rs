@@ -671,13 +671,10 @@ impl LayoutTree {
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
             match *child {
-                Container::View { handle, effective_geometry, .. } => {
-                    let mut geometry = effective_geometry;
-                    let title_size = Borders::title_bar_size();
+                Container::View { handle, .. } => {
+                    let mut geometry = handle.get_geometry().unwrap();
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
-                    geometry.origin.y += title_size as i32;
-                    geometry.size.h = geometry.size.h.saturating_sub(title_size);
                     if index == children.len() - 1 {
                         match layout {
                             Layout::Horizontal => {
