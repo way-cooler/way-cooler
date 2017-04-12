@@ -2,9 +2,7 @@
 
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
 extern crate bitflags;
-#[macro_use]
 extern crate dbus_macros;
 #[cfg(not(test))]
 extern crate rustwlc;
@@ -14,15 +12,17 @@ extern crate dummy_rustwlc as rustwlc;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-#[macro_use]
 extern crate hlua;
 extern crate rustc_serialize;
-#[macro_use]
 extern crate json_macro;
 extern crate nix;
 extern crate petgraph;
 extern crate uuid;
 extern crate dbus;
+extern crate cairo;
+#[macro_use]
+extern crate wayland_sys;
+extern crate wayland_server;
 
 #[macro_use]
 mod macros;
@@ -37,6 +37,10 @@ mod commands;
 mod ipc;
 
 mod layout;
+
+mod render;
+
+mod wayland;
 
 use std::env;
 use std::fs::File;
@@ -179,7 +183,9 @@ fn main() {
     log_environment();
     detect_proprietary();
     // This prepares wlc, doesn't run main loop until run_wlc is called
-    let run_wlc = rustwlc::init2().expect("Unable to initialize wlc!");
+    let run_wlc = rustwlc::init()
+        .expect("Unable to initialize wlc!");
+    wayland::init_wayland_protocols();
     rustwlc::log_set_rust_handler(log_handler);
     callbacks::init();
     commands::init();
