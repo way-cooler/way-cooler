@@ -673,12 +673,12 @@ impl LayoutTree {
         if gap == 0 {
             return Ok(())
         }
-        let children = self.tree.children_of(node_ix);
+        let children = self.tree.grounded_children(node_ix);
         for (index, child_ix) in children.iter().enumerate() {
             let child = &mut self.tree[*child_ix];
             match *child {
-                Container::View { handle, effective_geometry, .. } => {
-                    let mut geometry = effective_geometry;
+                Container::View { handle, .. } => {
+                    let mut geometry = handle.get_geometry().unwrap();
                     geometry.origin.x += (gap / 2) as i32;
                     geometry.origin.y += (gap / 2) as i32;
                     if index == children.len() - 1 {
@@ -724,16 +724,16 @@ impl LayoutTree {
                 .expect("Container had no geometry");
             match *container {
                 Container::View { handle, .. } => {
-                    let gap = Borders::thickness();
-                    let title_size = Borders::title_bar_size();
-                    if gap == 0 {
+                    let borders = Borders::thickness();
+                    if borders == 0 {
                         return Ok(())
                     }
-                    geometry.origin.x += (gap / 2) as i32;
-                    geometry.origin.y += (gap / 2) as i32;
+                    let title_size = Borders::title_bar_size();
+                    geometry.origin.x += (borders / 2) as i32;
+                    geometry.origin.y += (borders / 2) as i32;
                     geometry.origin.y += title_size as i32;
-                    geometry.size.w = geometry.size.w.saturating_sub(gap);
-                    geometry.size.h = geometry.size.h.saturating_sub(gap);
+                    geometry.size.w = geometry.size.w.saturating_sub(borders);
+                    geometry.size.h = geometry.size.h.saturating_sub(borders);
                     geometry.size.h = geometry.size.h.saturating_sub(title_size);
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 },
