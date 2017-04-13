@@ -280,7 +280,6 @@ impl Tree {
                                  .and_then(|container| Some(container.get_id())))
                         .ok_or(TreeError::NoActiveContainer));
         try!(self.0.move_container(uuid, direction));
-        // NOTE Make this not layout the active, but actually the node index's workspace.
         try!(self.layout_active_of(ContainerType::Output));
         Ok(())
     }

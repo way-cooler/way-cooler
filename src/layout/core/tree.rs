@@ -1,6 +1,7 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
+use std::collections::HashSet;
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
@@ -753,6 +754,20 @@ impl LayoutTree {
                     error!("Active container is {:?}", active);
                     trace!("The tree: {:#?}", self);
                     panic!()
+                }
+            }
+        }
+
+        // Ensure that workspace names are unique across outputs
+        // NOTE Remove/Disable this check if this feature changes
+        let mut names = HashSet::new();
+        for output_ix in self.tree.children_of(self.tree.root_ix()) {
+            for workspace_ix in self.tree.children_of(output_ix) {
+                if !names.insert(self.tree[workspace_ix].name()) {
+                    error!("Duplicate workspace name found: {:?}",
+                           self.tree[workspace_ix].name());
+                    error!("Tree: {:#?}", self);
+                    panic!("Duplicate workspace found across outputs!");
                 }
             }
         }
