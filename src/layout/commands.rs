@@ -18,6 +18,16 @@ pub type CommandResult = Result<(), TreeError>;
  * the IPC/Lua thread.
  */
 
+pub fn toggle_active_output() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.toggle_active_output().unwrap_or_else(|err| {
+            warn!("Could not toggle active output!");
+            warn!("Error: {:#?}", err);
+            warn!("Tree: {:#?}", tree.0);
+        })
+    }
+}
+
 pub fn remove_active() {
     let mut handle_to_remove = None;
     if let Ok(mut tree) = try_lock_tree() {
@@ -227,7 +237,7 @@ impl Tree {
             _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
         };
         if let Some(active_workspace) = self.0.active_ix_of(ContainerType::Workspace) {
-            Ok(self.0.tree.descendant_with_handle(active_workspace, &view).is_some())
+            Ok(self.0.tree.descendant_with_handle(active_workspace, view.into()).is_some())
         } else {
             Ok(false)
         }
@@ -311,6 +321,27 @@ impl Tree {
         Ok(output.get_resolution().expect("Output had no resolution"))
     }
 
+    /// Switches to the specified numbered output. If the output doesn't exist,
+    /// then an appropriate error is returned.
+    pub fn switch_to_output(&mut self, output: usize) -> CommandResult {
+        self.0.switch_to_output(output)
+    }
+
+    /// Toggles the active output to the next output, cycling when it reaches
+    /// the end of the list.
+    pub fn toggle_active_output(&mut self) -> CommandResult {
+        let focused = WlcOutput::focused();
+        let root_ix = self.0.tree.root_ix();
+        let root_children = self.0.tree.children_of(root_ix);
+        error!("Root children: {:?}", root_children);
+        let output_c = self.0.tree.descendant_with_handle(root_ix, focused.into())
+            .expect("Output not found in tree!");
+        let mut index = root_children.iter().position(|child| *child == output_c)
+            .expect("Tree in invalid state: Output not a child of root node!");
+        index = (index + 1) % root_children.len();
+        self.switch_to_output(index)
+    }
+
     /// Binds a view to be the background for the given outputs.
     ///
     /// If there was a previous background, it is removed and deallocated.
@@ -369,7 +400,7 @@ impl Tree {
     /// in the callback.
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         let result;
-        match self.0.remove_view(&view) {
+        match self.0.remove_view(view) {
             Err(err)  => {
                 result = Err(err)
             },

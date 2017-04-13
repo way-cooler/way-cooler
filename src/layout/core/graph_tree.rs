@@ -679,27 +679,51 @@ impl InnerTree {
     }
 
     /// Finds a node by the view handle.
-    pub fn descendant_with_handle(&self, node_ix: NodeIndex, search_handle: &WlcView)
+    pub fn descendant_with_handle(&self, node_ix: NodeIndex, search_handle: Handle)
                                -> Option<NodeIndex> {
-        self.get(node_ix).and_then(|node| match node {
-            &Container::View { ref handle, .. } => {
-                if handle == search_handle {
-                    return Some(node_ix)
-                }
-                else {
-                    return None
-                }
-            },
-            _ => {
-                for child in self.children_of(node_ix) {
-                    if let Some(found) = self.descendant_with_handle(child,
-                                                              search_handle) {
-                        return Some(found)
+        match search_handle {
+            Handle::View(search_handle) => {
+                self.get(node_ix).and_then(|node| match node {
+                    &Container::View { handle, .. } => {
+                        if handle == search_handle {
+                            return Some(node_ix)
+                        }
+                        else {
+                            return None
+                        }
+                    },
+                    _ => {
+                        for child in self.children_of(node_ix) {
+                            if let Some(found) = self.descendant_with_handle(child,
+                                                                             search_handle.into()) {
+                                return Some(found)
+                            }
+                        }
+                        return None
                     }
-                }
-                return None
+                })
+            },
+            Handle::Output(search_handle) => {
+                self.get(node_ix).and_then(|node| match node {
+                    &Container::Output { handle, .. } => {
+                        if handle == search_handle {
+                            Some(node_ix)
+                        } else {
+                            None
+                        }
+                    },
+                    _ => {
+                        for child in self.children_of(node_ix) {
+                            if let Some(found) = self.descendant_with_handle(child,
+                                                                             search_handle.into()) {
+                                return Some(found)
+                            }
+                        }
+                        return None
+                    }
+                })
             }
-        })
+        }
     }
 
     /// Returns the node indices of any node that is a descendant of a node

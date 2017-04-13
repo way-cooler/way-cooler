@@ -105,6 +105,7 @@ local keys = {
   key({ mod, "Shift" }, "space", "toggle_float_active"),
   key({ mod }, "space", "toggle_float_focus"),
   key({ mod, "Shift" }, "r", "way_cooler_restart"),
+  key({ mod, "Shift" }, "s", "toggle_active_output"),
 
   -- Quitting way-cooler is hardcoded to Alt+Shift+Esc.
   -- If rebound, then this keybinding is cleared.

@@ -114,7 +114,9 @@ pub enum TreeError {
     /// but the opposite value was expected.
     PerformingAction(bool),
     /// Attempted to add an output to the tree, but it already exists.
-    OutputExists(WlcOutput)
+    OutputExists(WlcOutput),
+    /// Attempted to do something with an output that doesn't exist.
+    OutputDoesNotExist
 }
 
 impl LayoutTree {
@@ -131,7 +133,8 @@ impl LayoutTree {
 
     /// Sets the active container by finding the node with the WlcView
     pub fn set_active_view(&mut self, handle: WlcView) -> CommandResult {
-        if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &handle) {
+        if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(),
+                                                                handle.into()) {
             self.set_active_node(node_ix)
         } else {
             Err(TreeError::ViewNotFound(handle))
@@ -443,9 +446,31 @@ impl LayoutTree {
         Ok(())
     }
 
+    /// Switches to the specified numbered output.
+    /// Note that the index does **NOT** need to correspond with the `uintptr_t`
+    /// stored by the `WlcOutput`, ONLY by the order in which it has been added
+    /// to the tree.
+    pub fn switch_to_output(&mut self, output_index: usize) -> CommandResult {
+        let root_ix = self.tree.root_ix();
+        let outputs = self.tree.children_of(root_ix);
+        if let Some(output_ix) = outputs.get(output_index).cloned() {
+            trace!("Switching to output {:?}", output_ix);
+            match self.tree[output_ix].get_handle().expect("Output had no handle!") {
+                Handle::Output(handle) => {
+                    WlcOutput::focus(Some(handle));
+                },
+                _ => unreachable!()
+            }
+            Ok(())
+        } else {
+            Err(TreeError::OutputDoesNotExist)
+        }
+    }
+
     //// Remove a view container from the tree
-    pub fn remove_view(&mut self, view: &WlcView) -> Result<Container, TreeError> {
-        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), view) {
+    pub fn remove_view(&mut self, view: WlcView) -> Result<Container, TreeError> {
+        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(),
+                                                                view.into()) {
             let container = self.remove_view_or_container(view_ix)
                 .expect("Could not remove node we just verified exists!");
             self.validate();
@@ -455,11 +480,11 @@ impl LayoutTree {
             for output_ix in self.tree.children_of(self.tree.root_ix()) {
                 match self.tree[output_ix] {
                     Container::Output { ref mut background, ref mut bar, .. } => {
-                        if Some(*view) == *background {
+                        if Some(view) == *background {
                             background.take();
                         }
                         let bar_view = bar.as_ref().map(|bar| bar.view());
-                        if Some(*view) == bar_view {
+                        if Some(view) == bar_view {
                             bar.take();
                         }
                     },
@@ -467,7 +492,7 @@ impl LayoutTree {
                 }
             }
             self.validate();
-            Err(TreeError::ViewNotFound(view.clone()))
+            Err(TreeError::ViewNotFound(view))
         }
     }
 

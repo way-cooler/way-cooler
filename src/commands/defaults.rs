@@ -99,6 +99,7 @@ pub fn register_defaults() {
     register("close_window", Arc::new(layout_cmds::remove_active));
     register("toggle_float_active", Arc::new(layout_cmds::toggle_float));
     register("toggle_float_focus", Arc::new(layout_cmds::toggle_float_focus));
+    register("toggle_active_output", Arc::new(layout_cmds::toggle_active_output));
 }
 
 // All of the methods defined should be registered.
