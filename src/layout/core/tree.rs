@@ -441,7 +441,10 @@ impl LayoutTree {
         let output_ix = self.tree.add_child(root_ix,
                                             Container::new_output(output),
                                             true);
-        self.active_container = Some(self.init_workspace("1".to_string(), output_ix));
+        // TODO Should handle the default output number better than
+        // "whatever the WlcOutput uintptr_t is"
+        self.active_container = Some(self.init_workspace(output.0.to_string(),
+                                                         output_ix));
         self.validate();
         Ok(())
     }

@@ -13,10 +13,8 @@ use ::debug_enabled;
 impl LayoutTree {
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
-        let active_index = self.active_ix_of(ContainerType::Output)
-            .or_else(|| {
-                self.tree.follow_path_until(self.tree.root_ix(), ContainerType::Output).ok()
-            })
+        let active_index = self.tree.follow_path_until(self.tree.root_ix(),
+                                                      ContainerType::Output)
             .expect("get_or_make_wksp: Couldn't get output");
         let workspace_ix = self.tree.workspace_ix_by_name(name).unwrap_or_else(|| {
             let root_ix = self.init_workspace(name.to_string(), active_index);
@@ -92,13 +90,19 @@ impl LayoutTree {
         // Delete the old workspace if it has no views on it
         self.active_container = None;
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
-            trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
-                   .expect("Workspace had no name"));
-            if let Err(err) = self.remove_workspace(old_worksp_ix) {
-                warn!("Tried to remove empty workspace {:#?}, error: {:?}",
-                      old_worksp_ix, err);
-                debug!("{:#?}", self);
-                panic!("Could not remove old workspace");
+            let parent_ix = self.tree.parent_of(old_worksp_ix)
+                .expect("Workspace had no parent");
+            let siblings = self.tree.children_of(parent_ix);
+            // Only remove if it's **NOT** the only workspace on the output.
+            if siblings.len() > 1 {
+                trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
+                    .expect("Workspace had no name"));
+                if let Err(err) = self.remove_workspace(old_worksp_ix) {
+                    warn!("Tried to remove empty workspace {:#?}, error: {:?}",
+                        old_worksp_ix, err);
+                    debug!("{:#?}", self);
+                    panic!("Could not remove old workspace");
+                }
             }
         }
         workspace_ix = self.tree.workspace_ix_by_name(name)
