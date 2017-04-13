@@ -759,7 +759,9 @@ impl LayoutTree {
 
         // Ensure workspace have at least one child
         for output_ix in self.tree.children_of(self.tree.root_ix()) {
-            for workspace_ix in self.tree.children_of(output_ix) {
+            let children = self.tree.children_of(output_ix);
+            assert!(children.len() > 0);
+            for workspace_ix in children {
                 if self.tree.children_of(workspace_ix).len() == 0 {
                     error!("Workspace {:#?} has no children",
                            self.tree[workspace_ix]);
