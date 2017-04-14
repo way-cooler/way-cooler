@@ -117,7 +117,9 @@ Way Cooler was started by @Timidger and @SnirkImmington, but these fine people h
 - @paulmenzel fixed a typo
 - @thefarwind made kill way-cooler command rebindable
 - @bluss for updating our use of `PetGraph` to use `StableGraph`
-- @Abdillah fixed background program to have solid colors be variable size at initilization.
+- @Abdillah
+  + fixed background program to have solid colors be variable size at initilization
+  + [added modes to the background program (fill, fit, stretch, title)](https://github.com/way-cooler/way-cooler-bg/pull/6#pullrequestreview-32859779)
 - @hedning fixed an unsigned underflow in the tiling code
 
 And of course, thanks to the Rust community and the developers of [wlc].
