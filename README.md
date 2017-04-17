@@ -133,7 +133,7 @@ If you find bugs or have questions about the code, please [submit an issue] or [
 [wayland]: https://wayland.freedesktop.org/
 [Lua]: https://lua.org/
 [wlc]: https://github.com/Cloudef/wlc
-[i3]: i3wm.org
+[i3]: https://i3wm.org
 [D-Bus]: https://www.freedesktop.org/wiki/Software/dbus/
 [awesome]: https://awesomewm.org/
 [polybar]: https://github.com/jaagr/polybar
