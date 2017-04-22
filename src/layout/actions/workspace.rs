@@ -92,6 +92,10 @@ impl LayoutTree {
         if new_worksp_parent_ix == old_worksp_parent_ix {
             // Set the old one to invisible
             self.tree.set_family_visible(old_worksp_ix, false);
+        } else {
+            // Set all views on the target output to be invisible,
+            // to clear the old workspace visibilty out.
+            self.tree.set_family_visible(new_worksp_parent_ix, false);
         }
         // Set the new one to visible
         self.tree.set_family_visible(workspace_ix, true);
