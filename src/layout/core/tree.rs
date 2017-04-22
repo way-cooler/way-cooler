@@ -442,6 +442,8 @@ impl LayoutTree {
                                             true);
         // TODO Should handle the default output number better than
         // "whatever the WlcOutput uintptr_t is"
+        // FIXME This will mean that hotplugging an output that attempts
+        // to make a workspace that already exists will result in a crash!
         self.active_container = Some(self.init_workspace(output.0.to_string(),
                                                          output_ix));
         self.validate();
@@ -1089,10 +1091,14 @@ pub mod tests {
         assert_eq!(tree.tree[tree.active_container.unwrap()], root_container);
     }
 
+    // TODO Add another output test, that ensure you can hotplug
+    // with other workspace used, or even with all workspaces used
+    // by the existing outputs.
+    // Will require defining what to do in that case.
     #[test]
     fn add_output_test() {
         let mut tree = basic_tree();
-        let new_output = WlcView::dummy(2).as_output();
+        let new_output = WlcView::dummy(5).as_output();
         tree.add_output(new_output).expect("Couldn't add output");
         let output_ix = tree.active_ix_of(ContainerType::Output).unwrap();
         let handle = match tree.tree[output_ix].get_handle().unwrap() {
@@ -1101,7 +1107,7 @@ pub mod tests {
         };
         assert_eq!(handle, new_output);
         let workspace_ix = tree.tree.descendant_of_type(output_ix, ContainerType::Workspace).unwrap();
-        assert_eq!(tree.tree[workspace_ix].get_name().unwrap(), "1");
+        assert_eq!(tree.tree[workspace_ix].get_name().unwrap(), "5");
         let active_ix = tree.active_container.unwrap();
         assert_eq!(tree.tree.parent_of(active_ix).unwrap(), workspace_ix);
         assert_eq!(tree.tree.children_of(active_ix).len(), 0);
