@@ -1019,7 +1019,8 @@ pub mod tests {
         assert!(tree.active_ix_of(ContainerType::Output).is_none());
         assert!(tree.active_ix_of(ContainerType::Root).is_none());
         tree.set_active_view(WlcView::root()).unwrap();
-        let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(), &WlcView::root()).unwrap();
+        let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(),
+                                                       WlcView::root().into()).unwrap();
         assert_eq!(tree.active_container, Some(view_ix));
         tree.unset_active_container();
         assert_eq!(tree.get_active_container(), None);
@@ -1076,7 +1077,7 @@ pub mod tests {
         assert_eq!(tree.active_ix_of(ContainerType::View).unwrap(), old_active_view);
         assert_eq!(tree.tree.children_of(parent_container).len(), 1);
         for _ in 1..2 {
-            tree.remove_view(&WlcView::root()).expect("Could not remove view");
+            tree.remove_view(WlcView::root()).expect("Could not remove view");
         }
     }
 
