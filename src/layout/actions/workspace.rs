@@ -1,3 +1,4 @@
+use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use super::super::LayoutTree;
@@ -83,16 +84,28 @@ impl LayoutTree {
         if old_worksp_ix == workspace_ix {
             return;
         }
-        // Set the old one to invisible
-        self.tree.set_family_visible(old_worksp_ix, false);
+        let old_worksp_parent_ix = self.tree.parent_of(old_worksp_ix)
+            .expect("Old workspace had no parent");
+        let new_worksp_parent_ix = self.tree.parent_of(workspace_ix)
+            .expect("New workspace had no parent");
+        // Only set the old one to be invisible if new and old share output.
+        if new_worksp_parent_ix == old_worksp_parent_ix {
+            // Set the old one to invisible
+            self.tree.set_family_visible(old_worksp_ix, false);
+        }
         // Set the new one to visible
         self.tree.set_family_visible(workspace_ix, true);
+        // Focus on the new output
+        match self.tree[new_worksp_parent_ix] {
+            Container::Output { handle, .. } => {
+                WlcOutput::focus(Some(handle))
+            },
+            _ => unreachable!()
+        }
         // Delete the old workspace if it has no views on it
         self.active_container = None;
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
-            let parent_ix = self.tree.parent_of(old_worksp_ix)
-                .expect("Workspace had no parent");
-            let siblings = self.tree.children_of(parent_ix);
+            let siblings = self.tree.children_of(old_worksp_parent_ix);
             // Only remove if it's **NOT** the only workspace on the output.
             if siblings.len() > 1 {
                 trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
