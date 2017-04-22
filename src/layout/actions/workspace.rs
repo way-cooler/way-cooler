@@ -107,7 +107,8 @@ impl LayoutTree {
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
             let siblings = self.tree.children_of(old_worksp_parent_ix);
             // Only remove if it's **NOT** the only workspace on the output.
-            if siblings.len() > 1 {
+            // AND if the new workspace is on the same output.
+            if siblings.len() > 1 && old_worksp_parent_ix == new_worksp_parent_ix {
                 trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
                     .expect("Workspace had no name"));
                 if let Err(err) = self.remove_workspace(old_worksp_ix) {
