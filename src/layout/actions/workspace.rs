@@ -193,6 +193,30 @@ impl LayoutTree {
                 return;
             }
             self.tree.set_family_visible(curr_work_ix, false);
+            let new_output_ix = self.tree.parent_of(next_work_ix)
+                .expect("Target workspace had no parent");
+            match self.tree[new_output_ix] {
+                Container::Output { handle: output_handle, .. } => {
+                    fn set_output_recurse(this: &mut LayoutTree,
+                                          node_ix: NodeIndex,
+                                          output_handle: WlcOutput) {
+                        match this.tree[node_ix] {
+                            Container::View { handle, .. } => {
+                                handle.set_output(output_handle);
+                                handle.set_mask(1);
+                            },
+                            Container::Container { .. } => {
+                                for child_ix in this.tree.children_of(node_ix) {
+                                    set_output_recurse(this, child_ix, output_handle)
+                                }
+                            },
+                            _ => unreachable!()
+                        }
+                    }
+                    set_output_recurse(self, active_ix, output_handle);
+                },
+                _ => unreachable!()
+            }
 
             // Save the parent of this view for focusing
             let maybe_active_parent = self.tree.parent_of(active_ix);
