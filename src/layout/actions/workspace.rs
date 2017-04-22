@@ -214,7 +214,6 @@ impl LayoutTree {
                         match this.tree[node_ix] {
                             Container::View { handle, .. } => {
                                 handle.set_output(output_handle);
-                                handle.set_mask(1);
                             },
                             Container::Container { .. } => {
                                 for child_ix in this.tree.children_of(node_ix) {
