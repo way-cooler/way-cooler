@@ -116,8 +116,6 @@ pub enum TreeError {
     PerformingAction(bool),
     /// Attempted to add an output to the tree, but it already exists.
     OutputExists(WlcOutput),
-    /// Attempted to do something with an output that doesn't exist.
-    OutputDoesNotExist
 }
 
 impl LayoutTree {
@@ -448,27 +446,6 @@ impl LayoutTree {
                                                          output_ix));
         self.validate();
         Ok(())
-    }
-
-    /// Switches to the specified numbered output.
-    /// Note that the index does **NOT** need to correspond with the `uintptr_t`
-    /// stored by the `WlcOutput`, ONLY by the order in which it has been added
-    /// to the tree.
-    pub fn switch_to_output(&mut self, output_index: usize) -> CommandResult {
-        let root_ix = self.tree.root_ix();
-        let outputs = self.tree.children_of(root_ix);
-        if let Some(output_ix) = outputs.get(output_index).cloned() {
-            trace!("Switching to output {:?}", output_ix);
-            match self.tree[output_ix].get_handle().expect("Output had no handle!") {
-                Handle::Output(handle) => {
-                    WlcOutput::focus(Some(handle));
-                },
-                _ => unreachable!()
-            }
-            Ok(())
-        } else {
-            Err(TreeError::OutputDoesNotExist)
-        }
     }
 
     //// Remove a view container from the tree
