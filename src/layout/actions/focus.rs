@@ -87,8 +87,12 @@ impl LayoutTree {
                 match (layout, direction) {
                     (Layout::Horizontal, Direction::Left) |
                     (Layout::Horizontal, Direction::Right) |
+                    (Layout::Tabbed, Direction::Left) |
+                    (Layout::Tabbed, Direction::Right) |
                     (Layout::Vertical, Direction::Up) |
-                    (Layout::Vertical, Direction::Down) => {
+                    (Layout::Vertical, Direction::Down) |
+                    (Layout::Stacked,  Direction::Up) |
+                    (Layout::Stacked,  Direction::Down) => {
                         let siblings = self.tree.children_of(parent_ix);
                         let cur_index = siblings.iter().position(|node| {
                             *node == node_ix

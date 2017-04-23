@@ -107,6 +107,14 @@ impl InnerTree {
         result
     }
 
+    /// Gets the immediant child of the node that is active.
+    /// If there is no active child (e.g, there are no childern),
+    /// then `None` is returned.
+    pub fn next_active_node(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+        self.graph.edges(node_ix).find(|e| e.weight().is_active())
+            .map(|edge| edge.target())
+    }
+
     /// Follows the active path beneath the node until it ends.
     /// Returns the last node in the chain.
     pub fn follow_path(&self, node_ix: NodeIndex) -> NodeIndex {

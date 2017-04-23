@@ -82,6 +82,22 @@ pub fn split_horizontal() {
     }
 }
 
+pub fn tile_tabbed() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.0.set_active_layout(Layout::Tabbed).unwrap_or_else(|err| {
+            warn!("Could not tile as tabbed: {:?}", err);
+        })
+    }
+}
+
+pub fn tile_stacked() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.0.set_active_layout(Layout::Stacked).unwrap_or_else(|err| {
+            warn!("Could not tile as stacked: {:?}", err);
+        })
+    }
+}
+
 pub fn fullscreen_toggle() {
     if let Ok(mut tree) = try_lock_tree() {
         if let Some(id) = tree.active_id() {
@@ -494,6 +510,7 @@ impl Tree {
 
     pub fn move_focus(&mut self, dir: Direction) -> CommandResult {
         try!(self.0.move_focus(dir));
+        self.0.layout_active_of(ContainerType::Workspace);
         Ok(())
     }
 

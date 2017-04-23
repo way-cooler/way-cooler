@@ -89,6 +89,8 @@ pub fn register_defaults() {
     register("horizontal_vertical_switch", Arc::new(layout_cmds::tile_switch));
     register("split_vertical", Arc::new(layout_cmds::split_vertical));
     register("split_horizontal", Arc::new(layout_cmds::split_horizontal));
+    register("tile_tabbed", Arc::new(layout_cmds::tile_tabbed));
+    register("tile_stacked", Arc::new(layout_cmds::tile_stacked));
     register("fullscreen_toggle", Arc::new(layout_cmds::fullscreen_toggle));
     register("focus_left", Arc::new(layout_cmds::focus_left));
     register("focus_right", Arc::new(layout_cmds::focus_right));

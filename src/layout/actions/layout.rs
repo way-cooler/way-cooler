@@ -229,7 +229,27 @@ impl LayoutTree {
                                 .expect("Couldn't add gaps to vertical container");
                             self.draw_borders_rec(children);
                         }
-                    }
+                    },
+                    Layout::Tabbed | Layout::Stacked => {
+                        let children = self.tree.grounded_children(node_ix);
+                        if children.len() == 0 {
+                            return;
+                        }
+                        let c_geometry = self.tree[node_ix].get_geometry()
+                            .expect("Container had no geometry");
+                        if let Some(visible_child) = self.tree.next_active_node(node_ix) {
+                            self.layout_helper(visible_child,
+                                            c_geometry,
+                                            fullscreen_apps);
+                            let mut iter = children.iter();
+                            iter.next();
+                            for child_ix in iter {
+                                self.tree[*child_ix].set_visibility(false);
+                            }
+                            self.tree[visible_child].set_visibility(true);
+                        }
+                        self.draw_borders_rec(children);
+                    },
                 }
             }
 
@@ -428,6 +448,29 @@ impl LayoutTree {
         self.validate();
     }
 
+    /// Sets the container behind the ID (or the container the View behind the
+    /// ID resides in) to the given layout.
+    pub fn set_active_layout(&mut self, new_layout: Layout) -> CommandResult {
+        let mut node_ix = self.active_container
+            .ok_or(TreeError::NoActiveContainer)?;
+        if self.tree[node_ix].get_type() == ContainerType::View {
+            node_ix = self.tree.parent_of(node_ix)
+                .expect("View had no parent");
+        }
+        match self.tree[node_ix] {
+            Container::Container {ref mut layout, .. } => {
+                *layout = new_layout;
+            },
+            _ => unreachable!()
+        }
+        self.validate();
+        let workspace_ix = self.tree.ancestor_of_type(node_ix,
+                                                      ContainerType::Workspace)
+            .expect("Could not find workspace index");
+        self.layout(workspace_ix);
+        Ok(())
+    }
+
     /// Gets the active container and toggles it based on the following rules:
     /// * If horizontal, make it vertical
     /// * else, make it horizontal
@@ -494,7 +537,8 @@ impl LayoutTree {
         for (index, child_ix) in children.iter().enumerate() {
             let child_size: Size;
             {
-                let child = &self.tree[*child_ix];
+                let child = &mut self.tree[*child_ix];
+                child.set_visibility(true);
                 child_size = child.get_geometry()
                     .expect("Child had no geometry").size;
             }
@@ -600,7 +644,8 @@ impl LayoutTree {
                                         h: parent_geometry.size.h / num_siblings
                                     }
                                 };
-                            }
+                            },
+                            _ => new_geometry = parent_geometry
                         }
                     },
                     _ => unreachable!()
@@ -689,7 +734,9 @@ impl LayoutTree {
                             },
                             Layout::Vertical => {
                                 geometry.size.h = geometry.size.h.saturating_sub(gap / 2)
-                            }
+                            },
+                            // TODO Gaps for tabbed/stacked
+                            _ => {}
                         }
                     }
                     match layout {
@@ -700,7 +747,9 @@ impl LayoutTree {
                         Layout::Vertical => {
                             geometry.size.w = geometry.size.w.saturating_sub(gap);
                             geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
-                        }
+                        },
+                        // TODO Gaps for tabbed/stacked
+                        _ => {}
                     }
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 },

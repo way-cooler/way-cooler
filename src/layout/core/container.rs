@@ -73,7 +73,9 @@ impl ContainerType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
     Horizontal,
-    Vertical
+    Vertical,
+    Tabbed,
+    Stacked
 }
 
 /// Represents an item in the container tree.
