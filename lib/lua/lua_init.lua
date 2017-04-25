@@ -125,3 +125,24 @@ commands.__metatable = "Cannot modify"
 
 setmetatable(way_cooler, way_cooler_mt)
 setmetatable(__key_map, { __metatable = "cannot modify" })
+
+
+-- Sets the callbacks to be empty, to suppress warnings
+way_cooler.on_output_created = function(id) end
+way_cooler.on_output_destroyed = function(id) end
+way_cooler.on_output_focused = function(id) end
+way_cooler.on_output_resolution_changed = function(id, old_size, new_size) end
+way_cooler.on_output_render_post = function(id) end
+way_cooler.on_view_moved_to_output = function(id, old_id, new_id) end
+way_cooler.on_view_created = function(id) end
+way_cooler.on_view_focused = function(id) end
+way_cooler.on_view_props_changed = function(id, props) end
+way_cooler.on_view_request_state = function(id, state, toggle) end
+way_cooler.on_view_request_geometry = function(id, geo) end
+way_cooler.on_view_request_move = function(id, point) end
+way_cooler.on_view_request_resize = function(id, edge, point) end
+way_cooler.on_view_pre_render = function(id) end
+way_cooler.on_keyboard_key = function(id, key, mods, state) end
+way_cooler.on_pointer_button = function(id, mods, pos, button) end
+way_cooler.on_pointer_scroll = function(id, mods, axis, height0, height1) end
+way_cooler.on_pointer_motion = function(id, point) end
