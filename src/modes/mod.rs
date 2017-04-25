@@ -43,7 +43,7 @@ pub enum Modes {
 
 lazy_static! {
     static ref CURRENT_MODE: RwLock<Modes> =
-        RwLock::new(Modes::Default(Default));
+        RwLock::new(Modes::CustomLua(CustomLua));
 }
 
 pub fn write_current_mode<'a>() -> TryLockResult<RwLockWriteGuard<'a, Modes>> {

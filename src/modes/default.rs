@@ -351,13 +351,6 @@ impl Mode for Default {
             }
         } else {
             if let Ok(lock) = try_lock_action() {
-                let unknown = format!("unknown ({})", button);
-                info!("User released {:?} mouse button",
-                    match button {
-                        RIGHT_CLICK => "right",
-                        LEFT_CLICK => "left",
-                        _ => unknown.as_str()
-                    });
                 match *lock {
                     Some(action) => {
                         let view = action.view;

@@ -141,3 +141,11 @@ end
 way_cooler.on_terminate = function()
   util.program.terminate_startup_programs()
 end
+
+
+way_cooler.on_pointer_button = function(id, mods, pos, button)
+  print("Hello world")
+  print("id: " .. id)
+  print("x:" .. pos.x .. " y:" .. pos.y)
+  print("button" .. button)
+end
