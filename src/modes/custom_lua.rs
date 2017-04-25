@@ -9,7 +9,15 @@ use ::convert::json::{size_to_json, point_to_json, geometry_to_json};
 use super::default::Default;
 use super::Mode;
 
-pub struct CustomLua;
+pub struct CustomLua {
+    name: String
+}
+
+impl CustomLua {
+    fn new(name: String) -> Self {
+        CustomLua { name: name }
+    }
+}
 
 impl Mode for CustomLua {
     /// Triggered when an output is connected.
