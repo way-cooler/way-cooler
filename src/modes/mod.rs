@@ -18,6 +18,7 @@ use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockResult};
 mod mode;
 mod default;
 mod custom_lua;
+pub mod commands;
 pub use self::mode::Mode;
 pub use self::default::Default;
 pub use self::custom_lua::CustomLua;
@@ -36,6 +37,7 @@ pub const RIGHT_CLICK: u32 = 0x111;
 /// that it starts out in
 /// * `CustomLua`: Same as `Default`, except it calls any custom defined
 /// callbacks in the Lua configuration file at the end of the call back.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Modes {
     Default(Default),
     CustomLua(CustomLua)

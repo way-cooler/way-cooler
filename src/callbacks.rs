@@ -117,11 +117,14 @@ pub extern fn view_request_geometry(view: WlcView, geometry: &Geometry) {
 
 pub extern fn keyboard_key(view: WlcView, time: u32, mods: &KeyboardModifiers,
                            key: u32, state: KeyState) -> bool {
-    if let Ok(mode) = read_current_mode() {
-        mode.on_keyboard_key(view, time, *mods, key, state)
+    // NOTE We read the mode out here, so that if there is a keybinding
+    // that changes the mode we can do that without being blocked!
+    let mode = if let Ok(mode) = read_current_mode() {
+        *mode
     } else {
         return EVENT_PASS_THROUGH
-    }
+    };
+    mode.on_keyboard_key(view, time, *mods, key, state)
 }
 
 pub extern fn pointer_button(view: WlcView, time: u32,

@@ -9,6 +9,7 @@ use ::convert::json::{size_to_json, point_to_json, geometry_to_json};
 use super::default::Default;
 use super::Mode;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CustomLua;
 
 impl Mode for CustomLua {
@@ -283,7 +284,7 @@ fn lookup_handle(handle: Handle) -> Option<String> {
 fn send_to_lua<Q: Into<String>>(msg: Q) {
     let msg = msg.into();
     match lua::send(LuaQuery::Execute(msg.clone())) {
-        Ok(result) => {},
+        Ok(_) => {},
         Err(LuaSendError::Sender(err)) =>
             error!("Error while executing {:?}: {:?}", msg, err),
         Err(LuaSendError::ThreadUninitialized) =>

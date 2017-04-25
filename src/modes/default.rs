@@ -18,6 +18,8 @@ use ::render::screen_scrape::{read_screen_scrape_lock, scraped_pixels_lock,
 
 use registry::{self};
 use super::Mode;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Default;
 
 #[allow(unused)]
