@@ -1,10 +1,11 @@
 //! Conversion methods for JSON values.
 
+use rustwlc::{Geometry, Point, Size};
 use std::collections::BTreeMap;
 
 use hlua::any::AnyLuaValue;
 use hlua::any::AnyLuaValue::*;
-use rustc_serialize::json::Json;
+use rustc_serialize::json::{Json, ToJson};
 
 /// Converts a Json map into an AnyLuaValue
 pub fn json_to_lua(json: Json) -> AnyLuaValue {
@@ -121,4 +122,28 @@ pub fn lua_object_to_json(obj: Vec<(AnyLuaValue, AnyLuaValue)>)
         return Err(AnyLuaValue::LuaArray(obj))
     }
     Ok(Json::Object(json_obj))
+}
+
+
+pub fn size_to_json(size: Size) -> Json {
+    let mut map = BTreeMap::new();
+    map.insert("w".into(), size.w.to_json());
+    map.insert("h".into(), size.h.to_json());
+    map.to_json()
+}
+
+pub fn point_to_json(point: Point) -> Json {
+    let mut map = BTreeMap::new();
+    map.insert("x".into(), point.x.to_json());
+    map.insert("y".into(), point.y.to_json());
+    map.to_json()
+}
+
+pub fn geometry_to_json(geometry: Geometry) -> Json {
+    let mut map = BTreeMap::new();
+    let origin = point_to_json(geometry.origin);
+    let size = size_to_json(geometry.size);
+    map.insert("origin".into(), origin);
+    map.insert("size".into(), size);
+    map.to_json()
 }
