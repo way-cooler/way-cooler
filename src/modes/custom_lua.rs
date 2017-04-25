@@ -124,7 +124,7 @@ impl Mode for CustomLua {
     fn view_props_changed(&self, view: WlcView, prop: ViewPropertyType) {
         Default.view_props_changed(view, prop);
         if let Some(id) = lookup_handle(view.into()) {
-            send_to_lua(format!("way_coooler.on_view_props_changed(\"{}\", {})",
+            send_to_lua(format!("way_cooler.on_view_props_changed(\"{}\", {})",
                                 id, prop.bits()))
         }
     }
@@ -283,9 +283,7 @@ fn lookup_handle(handle: Handle) -> Option<String> {
 fn send_to_lua<Q: Into<String>>(msg: Q) {
     let msg = msg.into();
     match lua::send(LuaQuery::Execute(msg.clone())) {
-        Ok(result) => {
-            error!("Got back {:?}", result.recv())
-        },
+        Ok(result) => {},
         Err(LuaSendError::Sender(err)) =>
             error!("Error while executing {:?}: {:?}", msg, err),
         Err(LuaSendError::ThreadUninitialized) =>
