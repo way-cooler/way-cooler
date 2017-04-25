@@ -546,7 +546,8 @@ impl LayoutTree {
     /// Useful if a container's children want to be evenly distributed, or a new view
     /// is being added.
     pub fn normalize_view(&mut self, view: WlcView) {
-        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &view) {
+        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(),
+                                                                view.into()) {
             self.normalize_container(view_ix);
         }
     }

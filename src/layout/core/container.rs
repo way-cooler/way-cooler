@@ -21,6 +21,18 @@ pub enum Handle {
     Output(WlcOutput)
 }
 
+impl From<WlcView> for Handle {
+    fn from(view: WlcView) -> Handle {
+        Handle::View(view)
+    }
+}
+
+impl From<WlcOutput> for Handle {
+    fn from(output: WlcOutput) -> Handle {
+        Handle::Output(output)
+    }
+}
+
 /// Types of containers
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContainerType {

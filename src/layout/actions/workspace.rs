@@ -1,3 +1,4 @@
+use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use super::super::LayoutTree;
@@ -13,10 +14,8 @@ use ::debug_enabled;
 impl LayoutTree {
     /// Gets a workspace by name or creates it
     fn get_or_make_workspace(&mut self, name: &str) -> NodeIndex {
-        let active_index = self.active_ix_of(ContainerType::Output)
-            .or_else(|| {
-                self.tree.follow_path_until(self.tree.root_ix(), ContainerType::Output).ok()
-            })
+        let active_index = self.tree.follow_path_until(self.tree.root_ix(),
+                                                      ContainerType::Output)
             .expect("get_or_make_wksp: Couldn't get output");
         let workspace_ix = self.tree.workspace_ix_by_name(name).unwrap_or_else(|| {
             let root_ix = self.init_workspace(name.to_string(), active_index);
@@ -85,20 +84,50 @@ impl LayoutTree {
         if old_worksp_ix == workspace_ix {
             return;
         }
-        // Set the old one to invisible
-        self.tree.set_family_visible(old_worksp_ix, false);
+        {
+            // Update the border colors
+            let container = &mut self.tree[active_ix];
+            container.clear_border_color()
+                .expect("Could not clear old active border color");
+            container.draw_borders();
+        }
+        let old_worksp_parent_ix = self.tree.parent_of(old_worksp_ix)
+            .expect("Old workspace had no parent");
+        let new_worksp_parent_ix = self.tree.parent_of(workspace_ix)
+            .expect("New workspace had no parent");
+        // Only set the old one to be invisible if new and old share output.
+        if new_worksp_parent_ix == old_worksp_parent_ix {
+            // Set the old one to invisible
+            self.tree.set_family_visible(old_worksp_ix, false);
+        } else {
+            // Set all views on the target output to be invisible,
+            // to clear the old workspace visibilty out.
+            self.tree.set_family_visible(new_worksp_parent_ix, false);
+        }
         // Set the new one to visible
         self.tree.set_family_visible(workspace_ix, true);
+        // Focus on the new output
+        match self.tree[new_worksp_parent_ix] {
+            Container::Output { handle, .. } => {
+                WlcOutput::focus(Some(handle))
+            },
+            _ => unreachable!()
+        }
         // Delete the old workspace if it has no views on it
         self.active_container = None;
         if self.tree.descendant_of_type(old_worksp_ix, ContainerType::View).is_err() {
-            trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
-                   .expect("Workspace had no name"));
-            if let Err(err) = self.remove_workspace(old_worksp_ix) {
-                warn!("Tried to remove empty workspace {:#?}, error: {:?}",
-                      old_worksp_ix, err);
-                debug!("{:#?}", self);
-                panic!("Could not remove old workspace");
+            let siblings = self.tree.children_of(old_worksp_parent_ix);
+            // Only remove if it's **NOT** the only workspace on the output.
+            // AND if the new workspace is on the same output.
+            if siblings.len() > 1 && old_worksp_parent_ix == new_worksp_parent_ix {
+                trace!("Removing workspace: {:?}", self.tree[old_worksp_ix].get_name()
+                    .expect("Workspace had no name"));
+                if let Err(err) = self.remove_workspace(old_worksp_ix) {
+                    warn!("Tried to remove empty workspace {:#?}, error: {:?}",
+                        old_worksp_ix, err);
+                    debug!("{:#?}", self);
+                    panic!("Could not remove old workspace");
+                }
             }
         }
         workspace_ix = self.tree.workspace_ix_by_name(name)
@@ -175,6 +204,29 @@ impl LayoutTree {
                 return;
             }
             self.tree.set_family_visible(curr_work_ix, false);
+            let new_output_ix = self.tree.parent_of(next_work_ix)
+                .expect("Target workspace had no parent");
+            match self.tree[new_output_ix] {
+                Container::Output { handle: output_handle, .. } => {
+                    fn set_output_recurse(this: &mut LayoutTree,
+                                          node_ix: NodeIndex,
+                                          output_handle: WlcOutput) {
+                        match this.tree[node_ix] {
+                            Container::View { handle, .. } => {
+                                handle.set_output(output_handle);
+                            },
+                            Container::Container { .. } => {
+                                for child_ix in this.tree.children_of(node_ix) {
+                                    set_output_recurse(this, child_ix, output_handle)
+                                }
+                            },
+                            _ => unreachable!()
+                        }
+                    }
+                    set_output_recurse(self, active_ix, output_handle);
+                },
+                _ => unreachable!()
+            }
 
             // Save the parent of this view for focusing
             let maybe_active_parent = self.tree.parent_of(active_ix);

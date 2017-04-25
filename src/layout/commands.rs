@@ -227,7 +227,7 @@ impl Tree {
             _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
         };
         if let Some(active_workspace) = self.0.active_ix_of(ContainerType::Workspace) {
-            Ok(self.0.tree.descendant_with_handle(active_workspace, &view).is_some())
+            Ok(self.0.tree.descendant_with_handle(active_workspace, view.into()).is_some())
         } else {
             Ok(false)
         }
@@ -270,7 +270,6 @@ impl Tree {
                                  .and_then(|container| Some(container.get_id())))
                         .ok_or(TreeError::NoActiveContainer));
         try!(self.0.move_container(uuid, direction));
-        // NOTE Make this not layout the active, but actually the node index's workspace.
         try!(self.layout_active_of(ContainerType::Output));
         Ok(())
     }
@@ -369,7 +368,7 @@ impl Tree {
     /// in the callback.
     pub fn remove_view(&mut self, view: WlcView) -> CommandResult {
         let result;
-        match self.0.remove_view(&view) {
+        match self.0.remove_view(view) {
             Err(err)  => {
                 result = Err(err)
             },

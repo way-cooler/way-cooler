@@ -1,6 +1,7 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
+use std::collections::HashSet;
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
@@ -114,7 +115,7 @@ pub enum TreeError {
     /// but the opposite value was expected.
     PerformingAction(bool),
     /// Attempted to add an output to the tree, but it already exists.
-    OutputExists(WlcOutput)
+    OutputExists(WlcOutput),
 }
 
 impl LayoutTree {
@@ -131,7 +132,8 @@ impl LayoutTree {
 
     /// Sets the active container by finding the node with the WlcView
     pub fn set_active_view(&mut self, handle: WlcView) -> CommandResult {
-        if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), &handle) {
+        if let Some(node_ix) = self.tree.descendant_with_handle(self.tree.root_ix(),
+                                                                handle.into()) {
             self.set_active_node(node_ix)
         } else {
             Err(TreeError::ViewNotFound(handle))
@@ -438,14 +440,20 @@ impl LayoutTree {
         let output_ix = self.tree.add_child(root_ix,
                                             Container::new_output(output),
                                             true);
-        self.active_container = Some(self.init_workspace("1".to_string(), output_ix));
+        // TODO Should handle the default output number better than
+        // "whatever the WlcOutput uintptr_t is"
+        // FIXME This will mean that hotplugging an output that attempts
+        // to make a workspace that already exists will result in a crash!
+        self.active_container = Some(self.init_workspace(output.0.to_string(),
+                                                         output_ix));
         self.validate();
         Ok(())
     }
 
     //// Remove a view container from the tree
-    pub fn remove_view(&mut self, view: &WlcView) -> Result<Container, TreeError> {
-        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(), view) {
+    pub fn remove_view(&mut self, view: WlcView) -> Result<Container, TreeError> {
+        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(),
+                                                                view.into()) {
             let container = self.remove_view_or_container(view_ix)
                 .expect("Could not remove node we just verified exists!");
             self.validate();
@@ -455,11 +463,11 @@ impl LayoutTree {
             for output_ix in self.tree.children_of(self.tree.root_ix()) {
                 match self.tree[output_ix] {
                     Container::Output { ref mut background, ref mut bar, .. } => {
-                        if Some(*view) == *background {
+                        if Some(view) == *background {
                             background.take();
                         }
                         let bar_view = bar.as_ref().map(|bar| bar.view());
-                        if Some(*view) == bar_view {
+                        if Some(view) == bar_view {
                             bar.take();
                         }
                     },
@@ -467,7 +475,7 @@ impl LayoutTree {
                 }
             }
             self.validate();
-            Err(TreeError::ViewNotFound(view.clone()))
+            Err(TreeError::ViewNotFound(view))
         }
     }
 
@@ -729,9 +737,25 @@ impl LayoutTree {
             }
         }
 
-        // Ensure workspace have at least one child
+        // Ensure that workspace names are unique across outputs
+        // NOTE Remove/Disable this check if this feature changes
+        let mut names = HashSet::new();
         for output_ix in self.tree.children_of(self.tree.root_ix()) {
             for workspace_ix in self.tree.children_of(output_ix) {
+                if !names.insert(self.tree[workspace_ix].name()) {
+                    error!("Duplicate workspace name found: {:?}",
+                           self.tree[workspace_ix].name());
+                    error!("Tree: {:#?}", self);
+                    panic!("Duplicate workspace found across outputs!");
+                }
+            }
+        }
+
+        // Ensure workspace have at least one child
+        for output_ix in self.tree.children_of(self.tree.root_ix()) {
+            let children = self.tree.children_of(output_ix);
+            assert!(children.len() > 0);
+            for workspace_ix in children {
                 if self.tree.children_of(workspace_ix).len() == 0 {
                     error!("Workspace {:#?} has no children",
                            self.tree[workspace_ix]);
@@ -997,7 +1021,8 @@ pub mod tests {
         assert!(tree.active_ix_of(ContainerType::Output).is_none());
         assert!(tree.active_ix_of(ContainerType::Root).is_none());
         tree.set_active_view(WlcView::root()).unwrap();
-        let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(), &WlcView::root()).unwrap();
+        let view_ix = tree.tree.descendant_with_handle(tree.tree.root_ix(),
+                                                       WlcView::root().into()).unwrap();
         assert_eq!(tree.active_container, Some(view_ix));
         tree.unset_active_container();
         assert_eq!(tree.get_active_container(), None);
@@ -1054,7 +1079,7 @@ pub mod tests {
         assert_eq!(tree.active_ix_of(ContainerType::View).unwrap(), old_active_view);
         assert_eq!(tree.tree.children_of(parent_container).len(), 1);
         for _ in 1..2 {
-            tree.remove_view(&WlcView::root()).expect("Could not remove view");
+            tree.remove_view(WlcView::root()).expect("Could not remove view");
         }
     }
 
@@ -1066,10 +1091,14 @@ pub mod tests {
         assert_eq!(tree.tree[tree.active_container.unwrap()], root_container);
     }
 
+    // TODO Add another output test, that ensure you can hotplug
+    // with other workspace used, or even with all workspaces used
+    // by the existing outputs.
+    // Will require defining what to do in that case.
     #[test]
     fn add_output_test() {
         let mut tree = basic_tree();
-        let new_output = WlcView::dummy(2).as_output();
+        let new_output = WlcView::dummy(5).as_output();
         tree.add_output(new_output).expect("Couldn't add output");
         let output_ix = tree.active_ix_of(ContainerType::Output).unwrap();
         let handle = match tree.tree[output_ix].get_handle().unwrap() {
@@ -1078,7 +1107,7 @@ pub mod tests {
         };
         assert_eq!(handle, new_output);
         let workspace_ix = tree.tree.descendant_of_type(output_ix, ContainerType::Workspace).unwrap();
-        assert_eq!(tree.tree[workspace_ix].get_name().unwrap(), "1");
+        assert_eq!(tree.tree[workspace_ix].get_name().unwrap(), "5");
         let active_ix = tree.active_container.unwrap();
         assert_eq!(tree.tree.parent_of(active_ix).unwrap(), workspace_ix);
         assert_eq!(tree.tree.children_of(active_ix).len(), 0);
