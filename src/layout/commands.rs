@@ -216,8 +216,17 @@ impl Tree {
             .map(|active_ix| self.0.tree[active_ix].get_id())
     }
 
-    pub fn lookup_view(&self, view: WlcView) -> Result<Uuid, TreeError> {
-        self.0.lookup_view(view).map(|c| c.get_id())
+    pub fn lookup_handle(&self, handle: Handle) -> Result<Uuid, TreeError> {
+        match handle {
+            Handle::View(view) =>
+                self.0.lookup_view(view).map(|c| c.get_id()),
+            Handle::Output(_) => {
+                let root_ix = self.0.tree.root_ix();
+                let node_ix = self.0.tree.descendant_with_handle(root_ix, handle)
+                    .ok_or(TreeError::HandleNotFound(handle))?;
+                Ok(self.0.tree[node_ix].get_id())
+            }
+        }
     }
 
     /// Determines if the container is in the currently active workspace.
@@ -399,7 +408,7 @@ impl Tree {
     }
 
     pub fn update_title(&mut self, view: WlcView) -> CommandResult {
-        let id = try!(self.lookup_view(view)
+        let id = try!(self.lookup_handle(view.into())
                       .map_err(|_|TreeError::ViewNotFound(view)));
         let container = try!(self.0.lookup_mut(id));
         container.set_name(Container::get_title(view));
@@ -574,7 +583,7 @@ impl Tree {
 
     /// Renders the borders for the view.
     pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
-        let id = try!(self.lookup_view(view)
+        let id = try!(self.lookup_handle(view.into())
                       .map_err(|_|TreeError::ViewNotFound(view)));
         let container = try!(self.0.lookup_mut(id));
         container.render_borders();

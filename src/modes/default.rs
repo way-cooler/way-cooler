@@ -189,7 +189,7 @@ impl Mode for Default {
     fn view_request_state(&self, view: WlcView, state: ViewState, toggle: bool) {
         if state == VIEW_FULLSCREEN {
             if let Ok(mut tree) = try_lock_tree() {
-                if let Ok(id) = tree.lookup_view(view) {
+                if let Ok(id) = tree.lookup_handle(view.into()) {
                     tree.set_fullscreen(id, toggle)
                         .expect("The ID was related to a non-view, somehow!");
                     match tree.container_in_active_workspace(id) {
@@ -223,7 +223,7 @@ impl Mode for Default {
             match try_lock_action() {
                 Ok(guard) => {
                     if guard.is_some() {
-                        if let Ok(id) = tree.lookup_view(view) {
+                        if let Ok(id) = tree.lookup_handle(view.into()) {
                             if let Err(err) = tree.resize_container(id, edge, point) {
                                 error!("Problem: Command returned error: {:#?}", err);
                             }
@@ -392,7 +392,7 @@ impl Mode for Default {
             Some(action) => {
                 if action.edges.bits() != 0 {
                     if let Ok(mut tree) = try_lock_tree() {
-                        if let Ok(active_id) = tree.lookup_view(view) {
+                        if let Ok(active_id) = tree.lookup_handle(view.into()) {
                             match tree.resize_container(active_id, action.edges, point) {
                                 // Return early here to not set the pointer
                                 Ok(_) => return EVENT_BLOCKED,

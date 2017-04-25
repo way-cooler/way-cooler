@@ -15,7 +15,7 @@ use ::layout::commands::CommandResult;
 use super::bar::Bar;
 
 /// A handle to either a view or output
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Handle {
     View(WlcView),
     Output(WlcOutput)
