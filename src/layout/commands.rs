@@ -603,10 +603,13 @@ impl Tree {
 
     /// Renders the borders for the view.
     pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
-        let id = try!(self.lookup_handle(view.into())
-                      .map_err(|_|TreeError::ViewNotFound(view)));
-        let container = try!(self.0.lookup_mut(id));
-        container.render_borders();
+        let node_ix = try!(self.lookup_view(view).ok()
+                      .and_then(|id| self.0.tree.lookup_id(id))
+                      .ok_or_else(||TreeError::ViewNotFound(view)));
+        self.0.tree[node_ix].render_borders();
+        let parent_ix = self.0.tree.parent_of(node_ix)
+            .expect("Node had no parent");
+        self.0.tree[parent_ix].render_borders();
         Ok(())
     }
 }
