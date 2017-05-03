@@ -5,6 +5,7 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::io::prelude::*;
 use layout::commands as layout_cmds;
+use ::modes::commands as mode_cmds;
 
 use commands::{self, CommandFn};
 use layout::try_lock_tree;
@@ -84,6 +85,7 @@ pub fn register_defaults() {
                            move_to_workspace_9, "9";
                            move_to_workspace_0, "0");
 
+    // Tiling and window controls
     register("horizontal_vertical_switch", Arc::new(layout_cmds::tile_switch));
     register("split_vertical", Arc::new(layout_cmds::split_vertical));
     register("split_horizontal", Arc::new(layout_cmds::split_horizontal));
@@ -99,6 +101,10 @@ pub fn register_defaults() {
     register("close_window", Arc::new(layout_cmds::remove_active));
     register("toggle_float_active", Arc::new(layout_cmds::toggle_float));
     register("toggle_float_focus", Arc::new(layout_cmds::toggle_float_focus));
+
+    // Modes
+    register("default_mode", Arc::new(mode_cmds::set_default_mode));
+    register("custom_mode", Arc::new(mode_cmds::set_custom_mode));
 }
 
 // All of the methods defined should be registered.

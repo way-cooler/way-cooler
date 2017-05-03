@@ -116,6 +116,8 @@ pub enum TreeError {
     PerformingAction(bool),
     /// Attempted to add an output to the tree, but it already exists.
     OutputExists(WlcOutput),
+    /// Handle was not found
+    HandleNotFound(Handle),
 }
 
 impl LayoutTree {

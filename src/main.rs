@@ -41,6 +41,7 @@ mod layout;
 mod render;
 
 mod wayland;
+mod modes;
 
 use std::env;
 use std::fs::File;
