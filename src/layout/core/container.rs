@@ -175,7 +175,16 @@ impl Container {
             fullscreen: false,
             geometry: geometry,
             id: Uuid::new_v4(),
-            borders: None
+            // TODO FIXME
+            // Pass this in, don't create it here
+            borders: unsafe {
+                Borders::new(geometry,
+                                  WlcView::dummy(1).as_output())
+                    .map(|mut b| {
+                        b.title = "Hello world!".into();
+                        b
+                    })
+            }
         }
     }
 

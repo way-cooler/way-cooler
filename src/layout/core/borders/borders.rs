@@ -1,5 +1,4 @@
 use std::iter;
-use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
 use rustwlc::{Geometry, Size, WlcOutput};
 use rustwlc::render::{calculate_stride};
@@ -12,7 +11,7 @@ use ::render::{Color, Renderable};
 /// The borders of a container.
 ///
 /// This type just deals with rendering,
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Borders {
     /// The title displayed in the title border.
     pub title: String,
@@ -303,14 +302,6 @@ impl Borders {
 
     pub fn title(&self) -> &str {
         self.title.as_str()
-    }
-}
-
-impl Debug for Borders {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Borders")
-            .field("geometry", &self.geometry as &Debug)
-            .finish()
     }
 }
 

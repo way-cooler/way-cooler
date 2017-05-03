@@ -181,6 +181,7 @@ impl LayoutTree {
                         }
                     }
                     Layout::Vertical => {
+                        self.tree[node_ix].draw_borders();
                         let children = self.tree.grounded_children(node_ix);
                         let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
@@ -235,8 +236,13 @@ impl LayoutTree {
                         if children.len() == 0 {
                             return;
                         }
-                        let c_geometry = self.tree[node_ix].get_geometry()
-                            .expect("Container had no geometry");
+                        let c_geometry;
+                        {
+                            let container = &mut self.tree[node_ix];
+                            container.draw_borders();
+                            c_geometry = container.get_geometry()
+                                .expect("Container had no geometry");
+                        }
                         if let Some(visible_child) = self.tree.next_active_node(node_ix) {
                             self.layout_helper(visible_child,
                                             c_geometry,
@@ -680,7 +686,7 @@ impl LayoutTree {
                     handle.set_geometry(ResizeEdge::empty(), output_geometry);
                     handle.bring_to_front();
                     let views = handle.get_output().get_views();
-                    // TODO It would be nice to not have to iterate vier
+                    // TODO It would be nice to not have to iterate over
                     // all the views just to do this.
                     for view in views {
                         // make sure children render above fullscreen parent
