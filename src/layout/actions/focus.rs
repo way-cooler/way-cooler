@@ -312,6 +312,25 @@ impl LayoutTree {
             Ok(())
         }
     }
+
+    /// Sets all the nodes under and at the node index to the given
+    /// visibilty setting
+    pub fn set_container_visibility(&mut self, node_ix: NodeIndex, val: bool) {
+        let container_c;
+        {
+            let container = &mut self.tree[node_ix];
+            container_c = container.get_type();
+            container.set_visibility(val);
+        }
+        match container_c {
+            ContainerType::View => {},
+            _ => {
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.set_container_visibility(child_ix, val);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -245,14 +245,12 @@ impl LayoutTree {
                         }
                         if let Some(visible_child) = self.tree.next_active_node(node_ix) {
                             self.layout_helper(visible_child,
-                                            c_geometry,
-                                            fullscreen_apps);
-                            let mut iter = children.iter();
-                            iter.next();
-                            for child_ix in iter {
-                                self.tree[*child_ix].set_visibility(false);
-                            }
-                            self.tree[visible_child].set_visibility(true);
+                                               c_geometry,
+                                               fullscreen_apps);
+                            // set all the children invisible
+                            self.set_container_visibility(node_ix, false);
+                            // set the focused child to be visible
+                            self.set_container_visibility(visible_child, true);
                         }
                         self.draw_borders_rec(children);
                     },
