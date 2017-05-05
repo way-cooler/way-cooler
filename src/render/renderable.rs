@@ -60,7 +60,7 @@ pub trait Renderable {
     /// Renders the data buffer at the internal geometry.
     ///
     /// Automatically ensures that the buffer does not clip the sides
-    fn render(&mut self) {
+    fn render(&mut self) where Self: ::std::fmt::Debug {
         let output_res = self.get_output().get_resolution()
             .expect("Output had no resolution");
         let mut geometry = self.get_geometry();
@@ -71,6 +71,7 @@ pub trait Renderable {
         // If the buffer would clip the side, keep it within the bounds
         // This is done because wlc wraps if it goes beyond, which we don't
         // want for the borders.
+        debug!("Rendering at {:#?}", geometry);
         if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
             let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
             geometry.origin.x -= offset as i32;
@@ -90,6 +91,7 @@ pub trait Renderable {
             warn!("Buffer to big to draw! Not drawing");
             return
         }
+        warn!("FINAL rendering at {:#?}", geometry);
         write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &buffer);
     }
 }

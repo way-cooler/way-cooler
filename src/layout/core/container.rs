@@ -8,7 +8,7 @@ use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size,
               VIEW_FULLSCREEN, VIEW_BIT_MODAL};
 
-use super::borders::{Borders, BordersDraw};
+use super::borders::{Borders, BordersDraw, ContainerDraw};
 use super::tree::TreeError;
 use ::render::{Renderable, Drawable};
 use ::layout::commands::CommandResult;
@@ -178,8 +178,7 @@ impl Container {
             // TODO FIXME
             // Pass this in, don't create it here
             borders: unsafe {
-                Borders::new(geometry,
-                                  WlcView::dummy(1).as_output())
+                Borders::new(geometry, WlcView::dummy(1).as_output())
                     .map(|mut b| {
                         b.title = "Hello world!".into();
                         b
@@ -541,6 +540,8 @@ impl Container {
         // border, but for now this will do.
         match *self {
             Container::View { ref mut borders, handle, .. } => {
+                // TODO remove
+                return;
                 if let Some(mut borders_) = borders.take() {
                     let geometry = handle.get_geometry()
                         .expect("View had no geometry");
@@ -555,8 +556,18 @@ impl Container {
                         .draw(geometry).ok();
                 }
             },
-            Container::Container { ref mut borders, .. } => {
-                borders.take();
+            Container::Container { ref mut borders, geometry, .. } => {
+                if let Some(mut borders_) = borders.take() {
+                    if borders_.geometry != geometry {
+                        if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
+                            borders_ = new_borders;
+                        } else {
+                            return
+                        }
+                    }
+                    *borders = ContainerDraw::new(borders_.enable_cairo().unwrap())
+                        .draw(geometry).ok();
+                }
             },
             _ => panic!("Tried to render a non-view / non-container")
         }
