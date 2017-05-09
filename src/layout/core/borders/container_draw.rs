@@ -48,11 +48,8 @@ impl ContainerDraw {
             title_y += offset as f64;
         }
         // Draw background of title bar
+        self.base.set_source_rgb(1.0, 0.0, 0.0);
         self.base.set_color_source(title_color);
-        warn!("Drawing rect;\nx: {}, y: {}, w: {}, h: {}",
-              x, y, w, title_size);
-        error!("Drawing at geo: {:#?}", border_geometry);
-        error!("MAX: {:#?}", output_res);
         self.base.rectangle(x, y, w, title_size);
         self.base = try!(self.base.check_cairo());
         self.base.fill();
@@ -82,19 +79,13 @@ impl Drawable<Borders> for ContainerDraw {
         let title_font_color = self.base.inner().title_font_color();
         let title: String = self.inner().title().into();
         let output_res = self.inner().get_output().get_resolution()
-            .expect("Could not gett focused output's resolution");
+            .expect("Could not get focused output's resolution");
 
         border_g.origin.x -= edge_thickness as i32;
         border_g.origin.y -= edge_thickness as i32;
         border_g.origin.y -= title_size as i32;
         border_g.size.w += thickness;
         border_g.size.h = thickness;
-        if border_g.origin.x < 0 {
-            border_g.origin.x = 0;
-        }
-        if border_g.size.w > output_res.w {
-            border_g.size.w = output_res.w;
-        }
 
         self.base.set_source_rgba(0.0, 0.0, 0.0, 0.0);
         self.base.paint();
@@ -108,7 +99,8 @@ impl Drawable<Borders> for ContainerDraw {
                                             w as f64,
                                             h as f64);
         let edge_thickness = edge_thickness as f64;
-        self = self.draw_title_bar(x, y, w, edge_thickness, border_g, output_res)?;
+        self = self.draw_title_bar(x, y, w, edge_thickness, border_g, output_res)?
+        ;
         error!("Returning GEO: {:#?}", border_g);
         Ok(self.base.finish(border_g))
     }

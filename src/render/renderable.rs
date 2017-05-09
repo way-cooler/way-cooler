@@ -60,7 +60,7 @@ pub trait Renderable {
     /// Renders the data buffer at the internal geometry.
     ///
     /// Automatically ensures that the buffer does not clip the sides
-    fn render(&mut self) where Self: ::std::fmt::Debug {
+    fn render(&mut self) {
         let output_res = self.get_output().get_resolution()
             .expect("Output had no resolution");
         let mut geometry = self.get_geometry();
@@ -92,6 +92,7 @@ pub trait Renderable {
             return
         }
         warn!("FINAL rendering at {:#?}", geometry);
+        error!("output_res: {:#?}", output_res);
         write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &buffer);
     }
 }

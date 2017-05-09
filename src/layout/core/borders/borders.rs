@@ -106,6 +106,31 @@ impl Renderable for Borders {
         geometry.size.w += thickness;
         geometry.size.h += thickness;
         geometry.size.h += title_size;
+        let output_res = self.output.get_resolution().unwrap();
+
+        // TODO Do I need this check?
+        if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
+            let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
+            geometry.origin.x -= offset as i32;
+        }
+        if geometry.origin.y + geometry.size.h as i32 > output_res.h as i32 {
+            let offset = (geometry.origin.y + geometry.size.h as i32) - output_res.h as i32;
+            geometry.origin.y -= offset as i32;
+        }
+        if geometry.origin.x < 0 {
+            geometry.origin.x = 0;
+        }
+        if geometry.origin.y < 0 {
+            geometry.origin.y = 0;
+        }
+        if geometry.size.w > output_res.w {
+            geometry.size.w = output_res.w;
+        }
+        if geometry.size.h > output_res.h {
+            geometry.size.h = output_res.h;
+        }
+        // END TODO
+
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
             return Some(self);

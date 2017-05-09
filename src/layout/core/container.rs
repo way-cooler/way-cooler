@@ -196,7 +196,7 @@ impl Container {
             floating: false,
             effective_geometry: geometry,
             id: Uuid::new_v4(),
-            borders: borders
+            borders: None//borders
         }
     }
 
@@ -540,8 +540,6 @@ impl Container {
         // border, but for now this will do.
         match *self {
             Container::View { ref mut borders, handle, .. } => {
-                // TODO remove
-                return;
                 if let Some(mut borders_) = borders.take() {
                     let geometry = handle.get_geometry()
                         .expect("View had no geometry");
@@ -556,8 +554,10 @@ impl Container {
                         .draw(geometry).ok();
                 }
             },
-            Container::Container { ref mut borders, geometry, .. } => {
+            Container::Container { ref mut borders, mut geometry, .. } => {
                 if let Some(mut borders_) = borders.take() {
+                    // TODO Remove?
+                    geometry.size.w -= 2;
                     if borders_.geometry != geometry {
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
                             borders_ = new_borders;
@@ -581,6 +581,7 @@ impl Container {
     pub fn resize_borders(&mut self, geo: Geometry) {
         match *self {
             Container::View { handle, ref mut borders, ..}  => {
+                return;
                 if let Some(borders_) = borders.take() {
                     *borders = borders_.reallocate_buffer(geo)
                 } else {
