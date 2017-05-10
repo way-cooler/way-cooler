@@ -603,7 +603,7 @@ impl Tree {
 
     /// Renders the borders for the view.
     pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
-        let node_ix = try!(self.lookup_view(view).ok()
+        let node_ix = try!(self.lookup_handle(view.into()).ok()
                       .and_then(|id| self.0.tree.lookup_id(id))
                       .ok_or_else(||TreeError::ViewNotFound(view)));
         self.0.tree[node_ix].render_borders();
