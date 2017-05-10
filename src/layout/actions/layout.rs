@@ -792,7 +792,21 @@ impl LayoutTree {
                     geometry.size.h = geometry.size.h.saturating_sub(title_size);
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 },
-                Container::Container { .. } => {/*recurse*/},
+                Container::Container { ref mut geometry, ref borders, .. } => {
+                    if borders.is_some() {
+                        let thickness = Borders::thickness();
+                        if thickness == 0 {
+                            return Ok(())
+                        }
+                        let edge_thickness = (thickness / 2) as i32;
+                        let title_size = Borders::title_bar_size();
+                        geometry.origin.x += edge_thickness;
+                        geometry.origin.y += edge_thickness;
+                        geometry.origin.y += (title_size / 2) as i32;
+                        geometry.size.h = geometry.size.h
+                            .saturating_sub(thickness);
+                    }
+                },
                 ref container => {
                     error!("Attempted to add borders to non-view/container");
                     error!("Found {:#?}", container);
