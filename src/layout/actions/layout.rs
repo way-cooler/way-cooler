@@ -538,7 +538,8 @@ impl LayoutTree {
         for (index, child_ix) in children.iter().enumerate() {
             let child_size: Size;
             {
-                let child = &self.tree[*child_ix];
+                let child = &mut self.tree[*child_ix];
+                child.set_visibility(true);
                 child_size = child.get_geometry()
                     .expect("Child had no geometry").size;
             }
