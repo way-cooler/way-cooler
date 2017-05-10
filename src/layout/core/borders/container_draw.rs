@@ -1,5 +1,5 @@
 use std::ops::{Deref, DerefMut};
-use rustwlc::{Geometry, Size, Point};
+use rustwlc::Geometry;
 use super::super::borders::Borders;
 use ::render::{BaseDraw, Drawable, DrawErr};
 
@@ -19,11 +19,7 @@ impl ContainerDraw {
 
     fn draw_title_bar(mut self,
                       mut x: f64,
-                      _y: f64,
-                      mut w: f64,
-                      _h: f64,
-                      border_geometry: Geometry,
-                      output_res: Size) -> Result<Self, DrawErr<Borders>> {
+                      mut w: f64,) -> Result<Self, DrawErr<Borders>> {
         let title_size = Borders::title_bar_size() as f64;
         let title_color = self.base.inner().title_background_color();
         let title_font_color = self.base.inner().title_font_color();
@@ -31,15 +27,14 @@ impl ContainerDraw {
         if x < 0.0 {
             w += x;
         }
-        let mut title_x = Borders::thickness() as f64;
-        let mut title_y = title_size - 5.0;
+        let title_x = Borders::thickness() as f64;
+        let title_y = title_size - 5.0;
         x = 0.0;
-        let mut y = 0.0;
 
         // Draw background of title bar
         self.base.set_source_rgb(1.0, 0.0, 0.0);
         self.base.set_color_source(title_color);
-        self.base.rectangle(x, y, w, title_size);
+        self.base.rectangle(x, 0.0, w, title_size);
         self.base = try!(self.base.check_cairo());
         self.base.fill();
         self.base = try!(self.base.check_cairo());
@@ -62,11 +57,6 @@ impl Drawable<Borders> for ContainerDraw {
         let thickness = Borders::thickness();
         let title_size = Borders::title_bar_size();
         let edge_thickness = thickness / 2;
-        let title_color = self.base.inner().title_background_color();
-        let title_font_color = self.base.inner().title_font_color();
-        let title: String = self.inner().title().into();
-        let output_res = self.inner().get_output().get_resolution()
-            .expect("Could not get focused output's resolution");
 
         border_g.origin.x -= edge_thickness as i32;
         border_g.origin.y -= edge_thickness as i32;
@@ -79,15 +69,9 @@ impl Drawable<Borders> for ContainerDraw {
         let color = self.base.inner().color();
         self.base.set_color_source(color);
 
-        let Size { w, h } = border_g.size;
-        let Point { x, y } = border_g.origin;
-        let (mut x, mut y, mut w, mut h) = (x as f64,
-                                            y as f64,
-                                            w as f64,
-                                            h as f64);
-        let edge_thickness = edge_thickness as f64;
-        warn!("output: {:#?}", output_res);
-        self = self.draw_title_bar(x, y, w, edge_thickness, border_g, output_res)?;
+        let (x, w) = (border_g.origin.x as f64,
+                      border_g.size.w as f64);
+        self = self.draw_title_bar(x, w)?;
         Ok(self.base.finish(border_g))
     }
 }

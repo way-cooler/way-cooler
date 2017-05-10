@@ -181,7 +181,6 @@ impl LayoutTree {
                         }
                     }
                     Layout::Vertical => {
-                        self.tree[node_ix].draw_borders();
                         let children = self.tree.grounded_children(node_ix);
                         let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
@@ -232,17 +231,13 @@ impl LayoutTree {
                         }
                     },
                     Layout::Tabbed | Layout::Stacked => {
-                        let children = self.tree.grounded_children(node_ix);
+                        let mut children = self.tree.grounded_children(node_ix);
                         if children.len() == 0 {
                             return;
                         }
-                        let c_geometry;
-                        {
-                            let container = &mut self.tree[node_ix];
-                            container.draw_borders();
-                            c_geometry = container.get_geometry()
-                                .expect("Container had no geometry");
-                        }
+                        children.push(node_ix);
+                        let c_geometry = self.tree[node_ix].get_geometry()
+                            .expect("Container had no geometry");
                         if let Some(visible_child) = self.tree.next_active_node(node_ix) {
                             self.layout_helper(visible_child,
                                                c_geometry,
@@ -538,8 +533,7 @@ impl LayoutTree {
         for (index, child_ix) in children.iter().enumerate() {
             let child_size: Size;
             {
-                let child = &mut self.tree[*child_ix];
-                child.set_visibility(true);
+                let child = &self.tree[*child_ix];
                 child_size = child.get_geometry()
                     .expect("Child had no geometry").size;
             }
@@ -646,7 +640,8 @@ impl LayoutTree {
                                     }
                                 };
                             },
-                            _ => new_geometry = parent_geometry
+                            Layout::Tabbed | Layout::Stacked =>
+                                new_geometry = parent_geometry
                         }
                     },
                     _ => unreachable!()
@@ -749,8 +744,11 @@ impl LayoutTree {
                             geometry.size.w = geometry.size.w.saturating_sub(gap);
                             geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
                         },
-                        // TODO Gaps for tabbed/stacked
-                        _ => {}
+                        Layout::Tabbed | Layout::Stacked => {
+                            /* Should not be gaps within a stacked / tabbed,
+                             * because only one view is visible at a time.
+                             */
+                        }
                     }
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 },

@@ -335,6 +335,16 @@ impl Container {
         }
     }
 
+    pub fn get_layout(&self) -> Result<Layout, ContainerErr> {
+        match *self {
+            Container::Container { layout, .. } => Ok(layout),
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(),
+                "Only containers have a layout!".into()
+            ))
+        }
+    }
+
     pub fn get_id(&self) -> Uuid {
         match *self {
             Container::Root(id) | Container::Output { id, .. } |
@@ -557,7 +567,7 @@ impl Container {
                         .draw(geometry).ok();
                 }
             },
-            Container::Container { ref mut borders, mut geometry, .. } => {
+            Container::Container { ref mut borders, geometry, .. } => {
                 if let Some(mut borders_) = borders.take() {
                     if borders_.geometry != geometry {
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
@@ -582,7 +592,6 @@ impl Container {
     pub fn resize_borders(&mut self, geo: Geometry) {
         match *self {
             Container::View { handle, ref mut borders, ..}  => {
-                return;
                 if let Some(borders_) = borders.take() {
                     *borders = borders_.reallocate_buffer(geo)
                 } else {

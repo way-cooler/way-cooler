@@ -321,6 +321,16 @@ impl LayoutTree {
         }
     }
 
+    pub fn active_layout(&self) -> Result<Layout, TreeError> {
+        let mut node_ix = self.active_container
+            .ok_or(TreeError::NoActiveContainer)?;
+        if self.tree[node_ix].get_type() == ContainerType::View {
+            node_ix = self.tree.parent_of(node_ix)
+                .expect("Node had no parent");
+        }
+        self.tree[node_ix].get_layout().map_err(TreeError::Container)
+    }
+
     /// Add a new view container with the given WlcView to the active container
     pub fn add_view(&mut self, view: WlcView) -> Result<&Container, TreeError> {
         if let Some(mut active_ix) = self.active_container {

@@ -471,12 +471,14 @@ impl Tree {
             Correct way is to have active_ix_of to return a proper `Result<NodeIndex, TreeError>`
             however that would break too much code and needs a branch to itself.
 
-            For now, in order to have the IPC not break Way Cooler, this will return an incorrect error.
+            For now, in order to have the IPC not break Way Cooler,
+            this will return an incorrect error.
             */
             if let Some(workspace_ix) = self.0.active_ix_of(ContainerType::Workspace) {
                 let workspace = &mut self.0.tree[workspace_ix];
-                try!(workspace.update_fullscreen_c(id, toggle)
-                     .map_err(|_| TreeError::UuidWrongType(workspace.get_id(), vec![ContainerType::Workspace])));
+                workspace.update_fullscreen_c(id, toggle).map_err(
+                    |_| TreeError::UuidWrongType(workspace.get_id(),
+                                                 vec![ContainerType::Workspace]))?;
             } else {
                 // WRONG ID! See TODO above
                 return Err(TreeError::UuidWrongType(id, vec![ContainerType::Workspace]))
@@ -509,8 +511,13 @@ impl Tree {
     }
 
     pub fn move_focus(&mut self, dir: Direction) -> CommandResult {
-        try!(self.0.move_focus(dir));
-        self.0.layout_active_of(ContainerType::Workspace);
+        self.0.move_focus(dir)?;
+        let layout = self.0.active_layout()?;
+        // NOTE Since tiling is somewhat expensive,
+        // this can be a bottleneck that can be possibly optimized.
+        if layout == Layout::Tabbed || layout == Layout::Stacked {
+            self.0.layout_active_of(ContainerType::Workspace);
+        }
         Ok(())
     }
 
@@ -607,6 +614,7 @@ impl Tree {
                       .and_then(|id| self.0.tree.lookup_id(id))
                       .ok_or_else(||TreeError::ViewNotFound(view)));
         self.0.tree[node_ix].render_borders();
+        // Render parent container too, if applicable.
         let parent_ix = self.0.tree.parent_of(node_ix)
             .expect("Node had no parent");
         self.0.tree[parent_ix].render_borders();

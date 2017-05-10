@@ -106,7 +106,8 @@ impl Renderable for Borders {
         geometry.size.w += thickness;
         geometry.size.h += thickness;
         geometry.size.h += title_size;
-        let output_res = self.output.get_resolution().unwrap();
+        let output_res = self.output.get_resolution()
+            .expect("Could not get output's resolution");
 
         // Need to do geometry check here, because it's possible we'll allocate
         // a buffer that is the right size to hold the data, but ultimately
