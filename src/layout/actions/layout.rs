@@ -452,8 +452,12 @@ impl LayoutTree {
         self.validate();
     }
 
-    /// Sets the container behind the ID (or the container the View behind the
-    /// ID resides in) to the given layout.
+    /// Sets the active container to the given layout.
+    ///
+    /// If the container is a view, it sets the layout of its parent to the
+    /// given layout.
+    ///
+    /// Automatically retiles the container whose layout was changed.
     pub fn set_active_layout(&mut self, new_layout: Layout) -> CommandResult {
         let mut node_ix = self.active_container
             .ok_or(TreeError::NoActiveContainer)?;
@@ -461,17 +465,10 @@ impl LayoutTree {
             node_ix = self.tree.parent_of(node_ix)
                 .expect("View had no parent");
         }
-        match self.tree[node_ix] {
-            Container::Container {ref mut layout, .. } => {
-                *layout = new_layout;
-            },
-            _ => unreachable!()
-        }
+        self.tree[node_ix].set_layout(new_layout)
+            .map_err(TreeError::Container)?;
         self.validate();
-        let workspace_ix = self.tree.ancestor_of_type(node_ix,
-                                                      ContainerType::Workspace)
-            .expect("Could not find workspace index");
-        self.layout(workspace_ix);
+        self.layout(node_ix);
         Ok(())
     }
 

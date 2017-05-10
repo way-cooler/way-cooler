@@ -48,11 +48,11 @@ pub enum ContainerType {
     View
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContainerErr {
     /// A bad operation on the container type.
     /// The human readable string provides more context.
-    BadOperationOn(ContainerType, &'static str)
+    BadOperationOn(ContainerType, String)
 }
 
 impl ContainerType {
@@ -322,14 +322,17 @@ impl Container {
         }
     }
 
-    pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), String>{
+    pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), ContainerErr>{
         match *self {
-            Container::Container { ref mut layout, .. } => *layout = new_layout,
-            ref other => return Err(
+            Container::Container { ref mut layout, .. } => {
+                *layout = new_layout;
+                Ok(())
+            },
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(),
                 format!("Can only set the layout of a container, not {:?}",
-                        other))
+                        other)))
         }
-        Ok(())
     }
 
     pub fn get_id(&self) -> Uuid {
@@ -623,7 +626,7 @@ impl Container {
             },
             _ => Err(TreeError::Container(
                 ContainerErr::BadOperationOn(c_type,
-                                               "active_border_color")))
+                                               "active_border_color".into())))
         }
     }
 
@@ -644,7 +647,7 @@ impl Container {
             },
             _ => Err(TreeError::Container(
                 ContainerErr::BadOperationOn(c_type,
-                                             "active_border_color")))
+                                             "active_border_color".into())))
         }
     }
 
