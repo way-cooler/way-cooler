@@ -222,15 +222,25 @@ impl LayoutTree {
                 .unwrap_or("not set".into()),
                 node_ix.index());
         if let Some(active_ix) = self.active_container {
-            let active_c = &mut self.tree[active_ix];
             if parent_node != self.active_container {
-                active_c.clear_border_color()
-                    .expect("Could not clear border color");
-                active_c.draw_borders()?;
+                {
+                    let active_c = &mut self.tree[active_ix];
+                    active_c.clear_border_color()?;
+                    active_c.draw_borders()?;
+                }
+                let parent_ix = self.tree.parent_of(active_ix)?;
+                let parent_c = &mut self.tree[parent_ix];
+                parent_c.clear_border_color()
+                    .map(|_| parent_c.draw_borders()).ok();
             }
         }
-        self.tree[node_ix].active_border_color()
-            .expect("Could set active border color");
+        self.tree[node_ix].active_border_color()?;
+        {
+            let parent_ix = self.tree.parent_of(node_ix)?;
+            let parent_c = &mut self.tree[parent_ix];
+            parent_c.active_border_color()
+                .map(|_| parent_c.draw_borders()).ok();
+        }
         self.active_container = Some(node_ix);
         let c_type; let id;
         {

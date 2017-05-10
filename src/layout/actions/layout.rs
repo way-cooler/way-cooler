@@ -425,9 +425,11 @@ impl LayoutTree {
             let mut new_container = Container::new_container(active_geometry,
                                                              borders);
             new_container.set_layout(new_layout).ok();
-            try!(self.add_container(new_container, active_ix));
+            self.add_container(new_container, active_ix)?;
             // add_container sets the active container to be the new container
-            try!(self.set_active_node(active_ix));
+            self.set_active_node(active_ix)?;
+            let parent_ix = self.tree.parent_of(active_ix)?;
+            self.layout(parent_ix);
         }
         self.validate();
         Ok(())
@@ -478,7 +480,8 @@ impl LayoutTree {
         self.tree[node_ix].set_layout(new_layout)
             .map_err(TreeError::Container)?;
         self.validate();
-        self.layout(node_ix);
+        let parent_ix = self.tree.parent_of(node_ix)?;
+        self.layout(parent_ix);
         Ok(())
     }
 
@@ -828,10 +831,24 @@ impl LayoutTree {
         while children.len() > 0 {
             let child_ix = children.pop().unwrap();
             children.extend(self.tree.grounded_children(child_ix));
-            let container = &mut self.tree[child_ix];
+            let parent_ix = self.tree.parent_of(child_ix)
+                .expect("Node had no parent");
+            let container;
             if Some(child_ix) != self.active_container {
+                {
+                    let parent_container = &mut self.tree[parent_ix];
+                    parent_container.clear_border_color()?;
+                    parent_container.draw_borders()?;
+                }
+                container = &mut self.tree[child_ix];
                 container.clear_border_color()?;
             } else {
+                {
+                    let parent_container = &mut self.tree[parent_ix];
+                    parent_container.active_border_color()?;
+                    parent_container.draw_borders()?;
+                }
+                container = &mut self.tree[child_ix];
                 container.active_border_color()?;
             }
             container.draw_borders()?;
