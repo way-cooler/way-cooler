@@ -431,7 +431,7 @@ impl Tree {
                       .map_err(|_|TreeError::ViewNotFound(view)));
         let container = try!(self.0.lookup_mut(id));
         container.set_name(Container::get_title(view));
-        container.draw_borders();
+        container.draw_borders()?;
         Ok(())
     }
 

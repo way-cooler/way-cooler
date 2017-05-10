@@ -548,7 +548,14 @@ impl Container {
         }
     }
 
-    pub fn draw_borders(&mut self) {
+    /// Draws the borders around the container.
+    ///
+    /// If the type of the container is not `Container` or `View`, then an
+    /// error is returned.
+    ///
+    /// If there are no borders associated with the `Container`/`View`,
+    /// then argument returns `Ok` but nothing is done.
+    pub fn draw_borders(&mut self) -> Result<(), ContainerErr> {
         // TODO Eventually, we should use an enum to choose which way to draw the
         // border, but for now this will do.
         match *self {
@@ -560,12 +567,13 @@ impl Container {
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
                             borders_ = new_borders;
                         } else {
-                            return
+                            return Ok(())
                         }
                     }
                     *borders = BordersDraw::new(borders_.enable_cairo().unwrap())
                         .draw(geometry).ok();
                 }
+                Ok(())
             },
             Container::Container { ref mut borders, geometry, .. } => {
                 if let Some(mut borders_) = borders.take() {
@@ -573,14 +581,16 @@ impl Container {
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
                             borders_ = new_borders;
                         } else {
-                            return
+                            return Ok(())
                         }
                     }
                     *borders = ContainerDraw::new(borders_.enable_cairo().unwrap())
                         .draw(geometry).ok();
                 }
+                Ok(())
             },
-            _ => panic!("Tried to render a non-view / non-container")
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(), "Tried to render a non-view/container".into()))
         }
     }
 

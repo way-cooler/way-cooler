@@ -34,7 +34,7 @@ impl LayoutTree {
             let new_geo = calculate_resize(geo, edge, pointer, action.grab);
             container.set_geometry(edge, new_geo);
             container.resize_borders(new_geo);
-            container.draw_borders();
+            container.draw_borders()?;
         }
         action.grab = self.grab_at_corner(id, edge)
             .expect("Could not update pointer position");

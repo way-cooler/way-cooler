@@ -89,7 +89,7 @@ impl LayoutTree {
             let container = &mut self.tree[active_ix];
             container.clear_border_color()
                 .expect("Could not clear old active border color");
-            container.draw_borders();
+            container.draw_borders().expect("Could not draw borders");
         }
         let old_worksp_parent_ix = self.tree.parent_of(old_worksp_ix)
             .expect("Old workspace had no parent");

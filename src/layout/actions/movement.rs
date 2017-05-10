@@ -259,7 +259,7 @@ impl LayoutTree {
                 return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View)))
             }
         }
-        container.draw_borders();
+        container.draw_borders()?;
         Ok(())
     }
 }

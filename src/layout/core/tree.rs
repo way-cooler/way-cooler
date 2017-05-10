@@ -120,6 +120,18 @@ pub enum TreeError {
     HandleNotFound(Handle),
 }
 
+impl From<ContainerErr> for TreeError {
+    fn from(err: ContainerErr) -> TreeError {
+        TreeError::Container(err)
+    }
+}
+
+impl From<GraphError> for TreeError {
+    fn from(err: GraphError) -> TreeError {
+        TreeError::PetGraph(err)
+    }
+}
+
 impl LayoutTree {
     /// Drops every node in the tree, essentially invalidating it
     pub fn destroy_tree(&mut self) {
@@ -214,7 +226,7 @@ impl LayoutTree {
             if parent_node != self.active_container {
                 active_c.clear_border_color()
                     .expect("Could not clear border color");
-                active_c.draw_borders();
+                active_c.draw_borders()?;
             }
         }
         self.tree[node_ix].active_border_color()
@@ -235,7 +247,7 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
-        self.tree[node_ix].draw_borders();
+        self.tree[node_ix].draw_borders()?;
         Ok(())
     }
 

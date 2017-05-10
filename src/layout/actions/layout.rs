@@ -5,7 +5,7 @@ use rustwlc::{WlcView, Geometry, Point, Size, ResizeEdge};
 
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
-use super::super::core::container::{Container, ContainerType, Layout};
+use super::super::core::container::{Container, ContainerType, ContainerErr, Layout};
 use ::layout::core::borders::Borders;
 use ::debug_enabled;
 use uuid::Uuid;
@@ -311,7 +311,7 @@ impl LayoutTree {
                                                                 ContainerType::Container)))
             }
             container.resize_borders(new_geometry);
-            container.draw_borders();
+            container.draw_borders()?;
         }
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
@@ -362,15 +362,15 @@ impl LayoutTree {
     /// If the node is floating, places it at its reported position, above all
     /// other nodes.
     fn place_floating(&mut self, node_ix: NodeIndex,
-                      fullscreen_apps: &mut Vec<NodeIndex>) {
+                      fullscreen_apps: &mut Vec<NodeIndex>) -> CommandResult {
         if self.tree[node_ix].fullscreen() {
             fullscreen_apps.push(node_ix);
-            return;
+            return Ok(())
         }
         if !self.tree[node_ix].floating() {
-            // This could mess up the layout very badly, that's why it's an error
-            error!("Tried to absolutely place a non-floating view!");
-            return
+            Err(ContainerErr::BadOperationOn(
+                self.tree[node_ix].get_type(),
+                "Tried to absolutely place a non-floating view!".into()))?
         }
         {
             let container = &mut self.tree[node_ix];
@@ -381,11 +381,12 @@ impl LayoutTree {
                 },
                 _ => unreachable!()
             }
-            container.draw_borders();
+            container.draw_borders()?;
         }
         for child_ix in self.tree.floating_children(node_ix) {
-            self.place_floating(child_ix, fullscreen_apps);
+            self.place_floating(child_ix, fullscreen_apps)?;
         }
+        Ok(())
     }
 
     /// Changes the layout of the active container to the given layout.
@@ -803,20 +804,20 @@ impl LayoutTree {
     }
 
     /// Draws the borders recursively, down from the top to the bottom.
-    fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>) {
+    fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>)
+                        -> CommandResult {
         while children.len() > 0 {
             let child_ix = children.pop().unwrap();
             children.extend(self.tree.grounded_children(child_ix));
             let container = &mut self.tree[child_ix];
             if Some(child_ix) != self.active_container {
-                container.clear_border_color()
-                    .expect("Could not clear border color");
+                container.clear_border_color()?;
             } else {
-                container.active_border_color()
-                    .expect("Could not set border color to be active");
+                container.active_border_color()?;
             }
-            container.draw_borders();
+            container.draw_borders()?;
         }
+        Ok(())
     }
 
 }
