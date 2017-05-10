@@ -5,8 +5,10 @@ use rustwlc::{WlcView, Geometry, Point, Size, ResizeEdge};
 
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
-use super::super::core::container::{Container, ContainerType, ContainerErr, Layout};
+use super::super::core::container::{Container, ContainerType, ContainerErr,
+                                    Layout, Handle};
 use ::layout::core::borders::Borders;
+use ::render::Renderable;
 use ::debug_enabled;
 use uuid::Uuid;
 
@@ -408,8 +410,20 @@ impl LayoutTree {
             let active_geometry = self.get_active_container()
                 .expect("Could not get the active container")
                 .get_geometry().expect("Active container had no geometry");
-
-            let mut new_container = Container::new_container(active_geometry);
+            let output_ix = self.tree.ancestor_of_type(active_ix,
+                                                    ContainerType::Output)?;
+            let output = match self.tree[output_ix].get_handle()? {
+                Handle::Output(handle) => handle,
+                _ => unreachable!()
+            };
+            let borders = Borders::new(active_geometry, output)
+                // TODO This will change when we get proper tabbed/stacked borders
+                .map(|mut b| {
+                    b.title = format!("{:?} container", new_layout);
+                    b
+                });
+            let mut new_container = Container::new_container(active_geometry,
+                                                             borders);
             new_container.set_layout(new_layout).ok();
             try!(self.add_container(new_container, active_ix));
             // add_container sets the active container to be the new container
@@ -485,21 +499,11 @@ impl LayoutTree {
                 return self.toggle_cardinal_tiling(parent_id)
             }
             let container = &mut self.tree[node_ix];
-            match *container {
-                Container::Container { ref mut layout, .. } => {
-                    match *layout {
-                        Layout::Horizontal => {
-                            trace!("Toggling {:?} to be vertical", id);
-                            *layout = Layout::Vertical
-                        }
-                        _ => {
-                            trace!("Toggling {:?} to be horizontal", id);
-                            *layout = Layout::Horizontal
-                        }
-                    }
-                },
-                _ => unreachable!()
-            }
+            let new_layout = match container.get_layout()? {
+                Layout::Horizontal => Layout::Vertical,
+                _ => Layout::Horizontal
+            };
+            container.set_layout(new_layout)?;
         }
         self.validate();
         Ok(())

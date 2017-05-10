@@ -201,7 +201,7 @@ impl InnerTree {
     pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container, active: bool) -> NodeIndex {
         let id = val.get_id();
         let maybe_view = match val.get_handle() {
-            Some(Handle::View(view)) => Some(view),
+            Ok(Handle::View(view)) => Some(view),
             _ => None
         };
         let child_ix = self.graph.add_node(val);
@@ -839,18 +839,23 @@ mod tests {
                                                 Container::new_workspace("1".to_string(),
                                                                    fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(), None),
+                                                 false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
                                                                      fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          None),
+                                                 false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
                                                 Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                               Container::new_container(fake_geometry.clone(),
+                                                                        None),
+                                               false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone(), None), false);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,

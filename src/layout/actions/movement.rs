@@ -5,7 +5,8 @@ use petgraph::graph::NodeIndex;
 use super::super::LayoutTree;
 use super::super::commands::CommandResult;
 use super::super::core::{Direction, ShiftDirection, TreeError};
-use super::super::core::container::{Container, ContainerType, Handle, Layout};
+use super::super::core::container::{Container, ContainerType, ContainerErr,
+                                    Handle, Layout};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MovementError {
@@ -17,6 +18,12 @@ pub enum MovementError {
     Tree(Box<TreeError>),
     /// Expected the view to be floating, but it was not
     NotFloating(NodeIndex)
+}
+
+impl From<ContainerErr> for MovementError {
+    fn from(err: ContainerErr) -> MovementError {
+        MovementError::Tree(Box::new(err.into()))
+    }
 }
 
 
@@ -139,11 +146,9 @@ impl LayoutTree {
                     try!(self.tree.move_into(node_ix, swap_ix)
                          .map_err(|err| MovementError::Tree(
                              Box::new(TreeError::PetGraph(err)))));
-                    if let Some(handle) = self.tree[node_ix].get_handle() {
-                        match handle {
-                            Handle::View(view) => self.normalize_view(view),
-                            _ => unreachable!()
-                        }
+                    match self.tree[node_ix].get_handle()? {
+                        Handle::View(view) => self.normalize_view(view),
+                        _ => unreachable!()
                     }
                 },
                 _ => return Err(MovementError::Tree(

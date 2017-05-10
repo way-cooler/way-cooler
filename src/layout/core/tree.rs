@@ -931,18 +931,24 @@ pub mod tests {
                                                 Container::new_workspace("1".to_string(),
                                                                    fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          None),
+                                                 false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
                                                                      fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          None),
+                                                 false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
                                                 Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                               Container::new_container(fake_geometry.clone(),
+                                                                        None),
+                                               false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone(), None), true);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
@@ -1228,7 +1234,7 @@ pub mod tests {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h: 0}
         };
-        let new_container = Container::new_container(geometry);
+        let new_container = Container::new_container(geometry, None);
         tree.add_container(new_container, active_ix).unwrap();
         let new_active_ix = tree.active_container.unwrap();
         // The view moved, since it was placed in the new container

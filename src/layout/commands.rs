@@ -248,8 +248,8 @@ impl Tree {
 
     /// Determines if the container is in the currently active workspace.
     pub fn container_in_active_workspace(&self, id: Uuid) -> Result<bool, TreeError> {
-        let view = match try!(self.0.lookup(id)).get_handle() {
-            Some(Handle::View(view)) => view,
+        let view = match try!(self.0.lookup(id)).get_handle()? {
+            Handle::View(view) => view,
             _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
         };
         if let Some(active_workspace) = self.0.active_ix_of(ContainerType::Workspace) {
@@ -329,9 +329,10 @@ impl Tree {
     }
 
     pub fn output_resolution(&self, id: Uuid) -> Result<Size, TreeError> {
-        let output = match try!(self.0.lookup(id)).get_handle() {
-            Some(Handle::Output(output)) => output,
-            _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::Output))
+        let output = match try!(self.0.lookup(id)).get_handle()? {
+            Handle::Output(output) => output,
+            _ => return Err(TreeError::UuidNotAssociatedWith(
+                ContainerType::Output))
         };
         Ok(output.get_resolution().expect("Output had no resolution"))
     }
@@ -418,11 +419,10 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
-        match try!(self.0.lookup(id)).get_handle() {
-            Some(Handle::View(view)) => return self.remove_view(view),
-            Some(Handle::Output(_)) | None => {
+        match try!(self.0.lookup(id)).get_handle()? {
+            Handle::View(view) => self.remove_view(view),
+            Handle::Output(_) =>
                 Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
-            }
         }
     }
 

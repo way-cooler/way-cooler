@@ -55,6 +55,7 @@ pub enum ContainerErr {
     BadOperationOn(ContainerType, String)
 }
 
+
 impl ContainerType {
     /// Whether this container can be used as the parent of another
     pub fn can_have_child(self, other: ContainerType) -> bool {
@@ -168,22 +169,15 @@ impl Container {
     }
 
     /// Creates a new container
-    pub fn new_container(geometry: Geometry) -> Container {
+    pub fn new_container(geometry: Geometry,
+                         borders: Option<Borders>) -> Container {
         Container::Container {
             layout: Layout::Horizontal,
             floating: false,
             fullscreen: false,
             geometry: geometry,
             id: Uuid::new_v4(),
-            // TODO FIXME
-            // Pass this in, don't create it here
-            borders: unsafe {
-                Borders::new(geometry, WlcView::dummy(1).as_output())
-                    .map(|mut b| {
-                        b.title = "Hello world!".into();
-                        b
-                    })
-            }
+            borders
         }
     }
 
@@ -203,7 +197,7 @@ impl Container {
     /// Sets the visibility of this container
     pub fn set_visibility(&mut self, visibility: bool) {
         let mask = if visibility { 1 } else { 0 };
-        if let Some(handle) = self.get_handle() {
+        if let Ok(handle) = self.get_handle() {
             match handle {
                 Handle::View(view) => {
                     view.set_mask(mask)
@@ -225,11 +219,13 @@ impl Container {
     }
 
     /// Gets the view handle of the view container, if this is a view container
-    pub fn get_handle(&self) -> Option<Handle> {
+    pub fn get_handle(&self) -> Result<Handle, ContainerErr> {
         match *self {
-            Container::View { ref handle, ..} => Some(Handle::View(handle.clone())),
-            Container::Output { ref handle, .. } => Some(Handle::Output(handle.clone())),
-            _ => None
+            Container::View { ref handle, ..} => Ok(Handle::View(handle.clone())),
+            Container::Output { ref handle, .. } => Ok(Handle::Output(handle.clone())),
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(),
+                "Only views and outputs have handles".into()))
         }
     }
 
@@ -324,8 +320,11 @@ impl Container {
 
     pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), ContainerErr>{
         match *self {
-            Container::Container { ref mut layout, .. } => {
+            Container::Container { ref mut layout, ref mut borders, .. } => {
                 *layout = new_layout;
+                if let Some(ref mut borders) = borders.as_mut() {
+                    borders.title = format!("{:?} container", new_layout);
+                }
                 Ok(())
             },
             ref other => Err(ContainerErr::BadOperationOn(
@@ -771,7 +770,7 @@ mod tests {
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
-        });
+        }, None);
         let view = Container::new_view(WlcView::root(), None);
 
         /* Container first, the only thing we can set the layout on */
@@ -811,7 +810,7 @@ mod tests {
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
-        });
+        }, None);
         let mut view = Container::new_view(WlcView::root(), None);
         // by default, none are floating.
         assert!(!root.floating());

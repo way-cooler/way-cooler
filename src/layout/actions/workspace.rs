@@ -36,8 +36,8 @@ impl LayoutTree {
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let container_ix = self.tree.add_child(worksp_ix,
-                                               Container::new_container(geometry), false);
+        let container = Container::new_container(geometry, None);
+        let container_ix = self.tree.add_child(worksp_ix, container, false);
         self.tree.set_ancestor_paths_active(container_ix);
         self.validate();
         container_ix
