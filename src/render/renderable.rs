@@ -71,7 +71,6 @@ pub trait Renderable {
         // If the buffer would clip the side, keep it within the bounds
         // This is done because wlc wraps if it goes beyond, which we don't
         // want for the borders.
-        debug!("Rendering at {:#?}", geometry);
         if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
             let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
             geometry.origin.x -= offset as i32;
@@ -91,8 +90,6 @@ pub trait Renderable {
             warn!("Buffer to big to draw! Not drawing");
             return
         }
-        warn!("FINAL rendering at {:#?}", geometry);
-        error!("output_res: {:#?}", output_res);
         write_pixels(wlc_pixel_format::WLC_RGBA8888, geometry, &buffer);
     }
 }

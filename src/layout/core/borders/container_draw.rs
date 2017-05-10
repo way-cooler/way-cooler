@@ -35,18 +35,7 @@ impl ContainerDraw {
         let mut title_y = title_size - 5.0;
         x = 0.0;
         let mut y = 0.0;
-        if border_geometry.origin.x + border_geometry.size.w as i32 > output_res.w as i32 {
-            let offset = (border_geometry.origin.x + border_geometry.size.w as i32)
-                - output_res.w as i32;
-            x += offset as f64;
-            title_x += offset as f64;
-        }
-        if border_geometry.origin.y + border_geometry.size.h as i32 > output_res.h as i32 {
-            let offset = (border_geometry.origin.y + border_geometry.size.h as i32)
-                - output_res.h as i32;
-            y += offset as f64;
-            title_y += offset as f64;
-        }
+
         // Draw background of title bar
         self.base.set_source_rgb(1.0, 0.0, 0.0);
         self.base.set_color_source(title_color);
@@ -67,8 +56,6 @@ impl ContainerDraw {
 }
 
 impl Drawable<Borders> for ContainerDraw {
-
-
     // Draw the title bar around the container
     fn draw(mut self, container_g: Geometry) -> Result<Borders, DrawErr<Borders>> {
         let mut border_g = container_g;
@@ -99,9 +86,8 @@ impl Drawable<Borders> for ContainerDraw {
                                             w as f64,
                                             h as f64);
         let edge_thickness = edge_thickness as f64;
-        self = self.draw_title_bar(x, y, w, edge_thickness, border_g, output_res)?
-        ;
-        error!("Returning GEO: {:#?}", border_g);
+        warn!("output: {:#?}", output_res);
+        self = self.draw_title_bar(x, y, w, edge_thickness, border_g, output_res)?;
         Ok(self.base.finish(border_g))
     }
 }

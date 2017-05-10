@@ -108,7 +108,9 @@ impl Renderable for Borders {
         geometry.size.h += title_size;
         let output_res = self.output.get_resolution().unwrap();
 
-        // TODO Do I need this check?
+        // Need to do geometry check here, because it's possible we'll allocate
+        // a buffer that is the right size to hold the data, but ultimately
+        // will be too big to be rendered, which will cause an ugly wrap-around
         if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
             let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
             geometry.origin.x -= offset as i32;
@@ -129,7 +131,6 @@ impl Renderable for Borders {
         if geometry.size.h > output_res.h {
             geometry.size.h = output_res.h;
         }
-        // END TODO
 
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {

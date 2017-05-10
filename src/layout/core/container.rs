@@ -196,7 +196,7 @@ impl Container {
             floating: false,
             effective_geometry: geometry,
             id: Uuid::new_v4(),
-            borders: None//borders
+            borders: borders
         }
     }
 
@@ -556,8 +556,6 @@ impl Container {
             },
             Container::Container { ref mut borders, mut geometry, .. } => {
                 if let Some(mut borders_) = borders.take() {
-                    // TODO Remove?
-                    geometry.size.w -= 2;
                     if borders_.geometry != geometry {
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
                             borders_ = new_borders;
