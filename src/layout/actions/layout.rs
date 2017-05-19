@@ -175,8 +175,6 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            self.add_borders(node_ix)
-                                .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
                             self.draw_borders_rec(children);
@@ -225,8 +223,6 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            self.add_borders(node_ix)
-                                .expect("Couldn't add border gaps to horizontal container");
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
                             self.draw_borders_rec(children);
@@ -256,7 +252,7 @@ impl LayoutTree {
 
             ContainerType::View => {
                 self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
-                self.add_borders(node_ix)
+                self.add_view_borders(node_ix)
                     .expect("Couldn't add border gaps to horizontal container");
             }
         }
@@ -775,53 +771,34 @@ impl LayoutTree {
     }
 
     /// Adds spacing for borders between the windows.
-    fn add_borders(&mut self, node_ix: NodeIndex) -> CommandResult {
-        {
-            let container = &mut self.tree[node_ix];
-            let mut geometry = container.get_geometry()
-                .expect("Container had no geometry");
-            match *container {
-                Container::View { handle, .. } => {
-                    let borders = Borders::thickness();
-                    if borders == 0 {
-                        return Ok(())
-                    }
-                    let title_size = Borders::title_bar_size();
-                    geometry.origin.x += (borders / 2) as i32;
-                    geometry.origin.y += (borders / 2) as i32;
-                    geometry.origin.y += title_size as i32;
-                    geometry.size.w = geometry.size.w.saturating_sub(borders);
-                    geometry.size.h = geometry.size.h.saturating_sub(borders);
-                    geometry.size.h = geometry.size.h.saturating_sub(title_size);
-                    handle.set_geometry(ResizeEdge::empty(), geometry);
-                },
-                Container::Container { ref mut geometry, ref borders, .. } => {
-                    if borders.is_some() {
-                        let thickness = Borders::thickness();
-                        if thickness == 0 {
-                            return Ok(())
-                        }
-                        let edge_thickness = (thickness / 2) as i32;
-                        let title_size = Borders::title_bar_size();
-                        geometry.origin.x += edge_thickness;
-                        geometry.origin.y += edge_thickness;
-                        geometry.origin.y += (title_size / 2) as i32;
-                        geometry.size.h = geometry.size.h
-                            .saturating_sub(thickness);
-                    }
-                },
-                ref container => {
-                    error!("Attempted to add borders to non-view/container");
-                    error!("Found {:#?}", container);
-                    panic!("Applying gaps for borders, found non-view/container")
+    fn add_view_borders(&mut self, node_ix: NodeIndex) -> CommandResult {
+        let container = &mut self.tree[node_ix];
+        let mut geometry = container.get_geometry()
+            .expect("Container had no geometry");
+        match *container {
+            Container::View { handle, .. } => {
+                let borders = Borders::thickness();
+                if borders == 0 {
+                    return Ok(())
                 }
-            }
-            // TODO Hack to make the resizing on tiled works
-            // Should restructure code so I don't need to do this check
-            if container.get_type() == ContainerType::View {
-                container.resize_borders(geometry);
+                let edge_thickness = (borders / 2) as i32;
+                let title_size = Borders::title_bar_size();
+                geometry.origin.x += edge_thickness;
+                geometry.origin.y += edge_thickness;
+                geometry.origin.y += title_size as i32;
+                geometry.size.w = geometry.size.w.saturating_sub(borders);
+                geometry.size.h = geometry.size.h.saturating_sub(borders);
+                geometry.size.h = geometry.size.h.saturating_sub(title_size);
+                handle.set_geometry(ResizeEdge::empty(), geometry);
+            },
+            ref container => {
+                error!("Attempted to add borders to non-view");
+                error!("Found {:#?}", container);
+                panic!("Applying gaps for borders, found non-view/container")
             }
         }
+        // Done to make the resizing on tiled works
+        container.resize_borders(geometry);
         Ok(())
     }
 
