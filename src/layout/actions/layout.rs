@@ -86,7 +86,7 @@ impl LayoutTree {
     /// Helper function to layout a container. The geometry is the constraint geometry,
     /// the container tries to lay itself out within the confines defined by the constraint.
     /// Generally, this should not be used directly and layout should be used.
-    fn layout_helper(&mut self, node_ix: NodeIndex, geometry: Geometry,
+    fn layout_helper(&mut self, node_ix: NodeIndex, mut geometry: Geometry,
                      fullscreen_apps: &mut Vec<NodeIndex>) {
         if self.tree[node_ix].fullscreen() {
             fullscreen_apps.push(node_ix);
@@ -119,15 +119,10 @@ impl LayoutTree {
                 }
             },
             ContainerType::Container => {
-                {
-                    let container_mut = self.tree.get_mut(node_ix).unwrap();
-                    match *container_mut {
-                        Container::Container { geometry: ref mut c_geometry, .. } => {
-                            *c_geometry = geometry;
-                        },
-                        _ => unreachable!()
-                    };
-                }
+                // Update the geometry so that borders are included when tiling.
+                geometry = self.update_container_geo_for_borders(node_ix, geometry)
+                    .expect("Could not update container geo for tiling");
+
                 let layout = match self.tree[node_ix] {
                     Container::Container { layout, .. } => layout,
                     _ => unreachable!()
@@ -256,7 +251,7 @@ impl LayoutTree {
 
             ContainerType::View => {
                 self.tree[node_ix].set_geometry(ResizeEdge::empty(), geometry);
-                self.add_view_borders(node_ix)
+                self.update_view_geo_for_borders(node_ix)
                     .expect("Couldn't add border gaps to horizontal container");
             }
         }
@@ -774,8 +769,46 @@ impl LayoutTree {
         Ok(())
     }
 
-    /// Adds spacing for borders between the windows.
-    fn add_view_borders(&mut self, node_ix: NodeIndex) -> CommandResult {
+    /// Updates the geometry of the container, so that the borders are not
+    /// hidden by the container. E.g this ensures that the borders are treated
+    /// as part of the container for tiling/rendering purposes
+    ///
+    /// Returns the updated geometry for the container on success.
+    /// That geometry should be used as the new constraint geometry for the
+    /// children containers.
+    fn update_container_geo_for_borders(&mut self, node_ix: NodeIndex,
+                                        mut geometry: Geometry)
+                                        -> Result<Geometry, TreeError> {
+        let container = &mut self.tree[node_ix];
+
+        match *container {
+            Container::Container { geometry: ref mut c_geometry,
+                                   ref borders, .. } => {
+                if borders.is_some() {
+                    let thickness = Borders::thickness();
+                    let edge_thickness = thickness / 2;
+                    let title_size = Borders::title_bar_size();
+
+                    geometry.origin.y += edge_thickness as i32;
+                    geometry.origin.y += (title_size / 2) as i32;
+                    geometry.size.h = geometry.size.h.saturating_sub(edge_thickness);
+                    geometry.size.h = geometry.size.h.saturating_sub(title_size / 2);
+                }
+                *c_geometry = geometry;
+            },
+            ref container => {
+                error!("Attempted to add borders to non-view");
+                error!("Found {:#?}", container);
+                panic!("Applying gaps for borders, found non-view/container")
+            }
+        }
+        Ok(geometry)
+    }
+
+    /// Updates the geometry of the view, so that the borders are not
+    /// hidden by other views. E.g this ensures that the borders are treated
+    /// as part of the container for tiling/rendering purposes
+    fn update_view_geo_for_borders(&mut self, node_ix: NodeIndex) -> CommandResult {
         let container = &mut self.tree[node_ix];
         let mut geometry = container.get_geometry()
             .expect("Container had no geometry");
