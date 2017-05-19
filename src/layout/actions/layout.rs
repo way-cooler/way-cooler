@@ -114,7 +114,8 @@ impl LayoutTree {
                 // place floating children above everything else
                 let root_ix = self.tree.children_of(node_ix)[0];
                 for child_ix in self.tree.floating_children(root_ix) {
-                    self.place_floating(child_ix, fullscreen_apps);
+                    // TODO Propogate error
+                    self.place_floating(child_ix, fullscreen_apps).ok();
                 }
             },
             ContainerType::Container => {
@@ -177,7 +178,8 @@ impl LayoutTree {
                                               fullscreen_apps);
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
-                            self.draw_borders_rec(children);
+                            // TODO Propogate error
+                            self.draw_borders_rec(children).ok();
                         }
                     }
                     Layout::Vertical => {
@@ -225,7 +227,8 @@ impl LayoutTree {
                                               fullscreen_apps);
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
-                            self.draw_borders_rec(children);
+                            // TODO Propogate error
+                            self.draw_borders_rec(children).ok();
                         }
                     },
                     Layout::Tabbed | Layout::Stacked => {
@@ -245,7 +248,8 @@ impl LayoutTree {
                             // set the focused child to be visible
                             self.set_container_visibility(visible_child, true);
                         }
-                        self.draw_borders_rec(children);
+                        // TODO Propogate error
+                        self.draw_borders_rec(children).ok();
                     },
                 }
             }
