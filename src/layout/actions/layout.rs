@@ -835,7 +835,7 @@ impl LayoutTree {
                 .expect("Node had no parent");
             let container;
             if Some(child_ix) != self.active_container {
-                {
+                if !self.tree.on_path(parent_ix) {
                     let parent_container = &mut self.tree[parent_ix];
                     parent_container.clear_border_color()?;
                     parent_container.draw_borders()?;

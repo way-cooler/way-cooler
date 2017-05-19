@@ -107,6 +107,24 @@ impl InnerTree {
         result
     }
 
+    /// Determines if the node is on the active path.
+    pub fn on_path(&self, node_ix: NodeIndex) -> bool {
+        let mut next_ix = Some(self.root);
+        while let Some(cur_ix) = next_ix {
+            let maybe_edge = self.graph.edges(cur_ix)
+                .find(|e| e.weight().is_active());
+            if let Some(edge) = maybe_edge {
+                if edge.target() == node_ix {
+                    return true
+                }
+                next_ix = Some(edge.target());
+            } else {
+                next_ix = None;
+            }
+        }
+        return false
+    }
+
     /// Gets the immediant child of the node that is active.
     /// If there is no active child (e.g, there are no childern),
     /// then `None` is returned.
