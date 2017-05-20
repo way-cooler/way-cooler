@@ -475,8 +475,9 @@ impl LayoutTree {
         self.tree[node_ix].set_layout(new_layout)
             .map_err(TreeError::Container)?;
         self.validate();
-        let parent_ix = self.tree.parent_of(node_ix)?;
-        self.layout(parent_ix);
+        let workspace_ix = self.tree.ancestor_of_type(node_ix,
+                                                      ContainerType::Workspace)?;
+        self.layout(workspace_ix);
         Ok(())
     }
 
