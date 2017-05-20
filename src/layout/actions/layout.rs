@@ -847,8 +847,14 @@ impl LayoutTree {
             children.extend(self.tree.grounded_children(child_ix));
             let parent_ix = self.tree.parent_of(child_ix)
                 .expect("Node had no parent");
+            let children = self.tree.children_of(parent_ix);
+            let index = children.iter().position(|&node_ix| node_ix == child_ix)
+                .map(|num| (num + 1).to_string());
             let container;
             if Some(child_ix) != self.active_container {
+                // TODO Just unpaint conditonally all up the tree
+                // This should be the same for the parent drawing below
+                // in the else case
                 if !self.tree.on_path(parent_ix) {
                     let parent_container = &mut self.tree[parent_ix];
                     parent_container.clear_border_color()?;
@@ -857,6 +863,20 @@ impl LayoutTree {
                 container = &mut self.tree[child_ix];
                 container.clear_border_color()?;
             } else {
+                match self.tree[parent_ix] {
+                    Container::Container { layout, ref mut borders, .. } => {
+                        if layout == Layout::Tabbed || layout == Layout::Stacked {
+                            borders.as_mut().map(|b| {
+                                b.set_title(format!("{:?} ({}/{})",
+                                                    layout,
+                                                    index.unwrap_or("?".into()),
+                                                    children.len()
+                                ));
+                            });
+                        }
+                    },
+                    _ => {}
+                }
                 {
                     let parent_container = &mut self.tree[parent_ix];
                     parent_container.active_border_color()?;

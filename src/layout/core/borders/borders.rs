@@ -330,6 +330,10 @@ impl Borders {
     pub fn title(&self) -> &str {
         self.title.as_str()
     }
+
+    pub fn set_title(&mut self, title: String) {
+        self.title = title;
+    }
 }
 
 impl PartialEq for Borders {
