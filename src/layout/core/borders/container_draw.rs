@@ -61,8 +61,6 @@ impl Drawable<Borders> for ContainerDraw {
         border_g.origin.x -= edge_thickness as i32;
         border_g.origin.y -= edge_thickness as i32;
         border_g.origin.y -= (title_size / 2) as i32;
-        // TODO Remove this line
-        // HOWEVER, it bugs out in simple tests, fix that!
         border_g.size.w += thickness;
         border_g.size.h = thickness;
 

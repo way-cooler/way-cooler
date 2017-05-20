@@ -574,9 +574,17 @@ impl Container {
                 }
                 Ok(())
             },
-            Container::Container { ref mut borders, geometry, .. } => {
+            Container::Container { ref mut borders, mut geometry, .. } => {
                 if let Some(mut borders_) = borders.take() {
                     if borders_.geometry != geometry {
+                        // NOTE This is a hack to work around how borders work...
+                        // This fixes a bug where the title border extends too
+                        // far to the left, because it allocates space for a
+                        // side border that is never drawn. And thus it
+                        // over-draws.
+                        let thickness = Borders::thickness() as i32;
+                        geometry.origin.x += thickness;
+                        geometry.size.w = geometry.size.w.saturating_sub(thickness as u32);
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
                             borders_ = new_borders;
                         } else {
