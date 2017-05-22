@@ -66,10 +66,8 @@ impl LayoutTree {
                 self.layout_fullscreen_apps(fullscreen_apps)
             }
             ContainerType::Container => {
-                let geometry = match self.tree[node_ix] {
-                    Container::Container { geometry, .. } => geometry,
-                    _ => unreachable!()
-                };
+                let geometry = self.tree[node_ix].get_actual_geometry()
+                    .expect("Could not get actual container geometry");
                 // TODO Fake vector that doesn't allocate for this case?
                 let mut fullscreen_apps = Vec::new();
                 self.layout_helper(node_ix, geometry, &mut fullscreen_apps);
@@ -132,7 +130,7 @@ impl LayoutTree {
                         let children = self.tree.grounded_children(node_ix);
                         let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
-                            let c_geometry = self.tree[*child_ix].get_geometry()
+                            let c_geometry = self.tree[*child_ix].get_actual_geometry()
                                 .expect("Child had no geometry");
                             c_geometry.size.w as f32
                         }).collect(), geometry.size.w as f32);
@@ -184,7 +182,7 @@ impl LayoutTree {
                         let children = self.tree.grounded_children(node_ix);
                         let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
-                            let c_geometry = self.tree[*child_ix].get_geometry()
+                            let c_geometry = self.tree[*child_ix].get_actual_geometry()
                                 .expect("Child had no geometry");
                             c_geometry.size.h as f32
                         }).collect(), geometry.size.h as f32);
@@ -623,7 +621,7 @@ impl LayoutTree {
                 let new_geometry: Geometry;
                 let num_siblings = cmp::max(1, self.tree.grounded_children(parent_ix).len()
                                             .checked_sub(1).unwrap_or(0)) as u32;
-                let parent_geometry = self.tree[parent_ix].get_geometry()
+                let parent_geometry = self.tree[parent_ix].get_actual_geometry()
                     .expect("Parent container had no geometry");
                 match self.tree[parent_ix] {
                     Container::Container { ref layout, .. } => {
@@ -784,7 +782,7 @@ impl LayoutTree {
         let container = &mut self.tree[node_ix];
 
         match *container {
-            Container::Container { geometry: ref mut c_geometry,
+            Container::Container { ref mut apparent_geometry,
                                    ref borders, .. } => {
                 if borders.is_some() {
                     let thickness = Borders::thickness();
@@ -796,7 +794,7 @@ impl LayoutTree {
                     geometry.size.h = geometry.size.h.saturating_sub(edge_thickness);
                     geometry.size.h = geometry.size.h.saturating_sub(title_size / 2);
                 }
-                *c_geometry = geometry;
+                *apparent_geometry = geometry;
             },
             ref container => {
                 error!("Attempted to add borders to non-view");

@@ -117,7 +117,14 @@ pub enum Container {
         floating: bool,
         /// If the container is fullscreen
         fullscreen: bool,
+        /// The apparent geometry, as seen by the user.
+        /// This is the size of the container including borders.
+        /// Used in `update_container_geo_for_borders` and in border drawing
+        /// for containers.
+        apparent_geometry: Geometry,
         /// The geometry of the container, relative to the parent container
+        /// This is used for tiling children containers and is the "real"
+        /// geometry for the container.
         geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
@@ -175,7 +182,8 @@ impl Container {
             layout: Layout::Horizontal,
             floating: false,
             fullscreen: false,
-            geometry: geometry,
+            apparent_geometry: geometry,
+            geometry,
             id: Uuid::new_v4(),
             borders
         }
@@ -264,27 +272,29 @@ impl Container {
                     size: resolution
                 })
             },
-            Container::Workspace { geometry, .. } |
-            Container::Container { geometry, .. } => Some(geometry),
+            Container::Workspace { geometry, .. } => Some(geometry),
+            Container::Container { apparent_geometry, .. } =>
+                Some(apparent_geometry),
             Container::View { effective_geometry, .. } => {
                 Some(effective_geometry)
             },
         }
     }
 
-    /// Gets the actual geometry for a `WlcView` or `WlcOutput`
+    /// Gets the actual geometry for a `WlcView`, `Container`, or `WlcOutput`.
     ///
     /// Unlike `get_geometry`, this does not account for borders/gaps,
     /// and instead is just a thin wrapper around
-    /// `handle.get_geometry`/`handle.get_resolution`.
+    /// `handle.get_geometry`/`container.geometry`/`handle.get_resolution`.
     ///
     /// Most of the time you want `get_geometry`, as you should account for the
     /// borders, gaps, and top bar.
     ///
-    /// For non-`View`/`Output` containers, this always returns `None`
+    /// For non-`View`/`Container`/`Output` containers, this always returns `None`
     pub fn get_actual_geometry(&self) -> Option<Geometry> {
         match *self {
             Container::View { handle, .. } => handle.get_geometry(),
+            Container::Container { geometry, .. } => Some(geometry),
             Container::Output { handle, .. } => {
                 handle.get_resolution()
                     .map(|size|
@@ -574,7 +584,8 @@ impl Container {
                 }
                 Ok(())
             },
-            Container::Container { ref mut borders, mut geometry, .. } => {
+            Container::Container { ref mut borders,
+                                   apparent_geometry: mut geometry, .. } => {
                 if let Some(mut borders_) = borders.take() {
                     if borders_.geometry != geometry {
                         // NOTE This is a hack to work around how borders work...
