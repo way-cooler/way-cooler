@@ -535,13 +535,8 @@ impl LayoutTree {
     {
         let mut sub_geometry = geometry.clone();
         for (index, child_ix) in children.iter().enumerate() {
-            let child_size: Size;
-            {
-                let child = &mut self.tree[*child_ix];
-                child.set_visibility(true);
-                child_size = child.get_geometry()
-                    .expect("Child had no geometry").size;
-            }
+            let child_size = self.tree[*child_ix].get_geometry()
+                .expect("Child had no geometry").size;
             let new_size = new_size_f(child_size, sub_geometry.clone());
             sub_geometry = Geometry {
                 origin: sub_geometry.origin.clone(),
