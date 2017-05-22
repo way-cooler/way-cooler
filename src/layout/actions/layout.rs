@@ -171,6 +171,9 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
+                            for child_ix in &children {
+                                self.tree[*child_ix].set_visibility(true);
+                            }
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
                             // TODO Propogate error
@@ -220,6 +223,9 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
+                            for child_ix in &children {
+                                self.tree[*child_ix].set_visibility(true);
+                            }
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
                             // TODO Propogate error
