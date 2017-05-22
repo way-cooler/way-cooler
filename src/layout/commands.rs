@@ -615,9 +615,11 @@ impl Tree {
                       .ok_or_else(||TreeError::ViewNotFound(view)));
         self.0.tree[node_ix].render_borders();
         // Render parent container too, if applicable.
-        let parent_ix = self.0.tree.parent_of(node_ix)
-            .expect("Node had no parent");
-        self.0.tree[parent_ix].render_borders();
+        let mut parent_ix = self.0.tree.parent_of(node_ix)?;
+        while self.0.tree[parent_ix].get_type() != ContainerType::Workspace {
+            self.0.tree[parent_ix].render_borders();
+            parent_ix = self.0.tree.parent_of(parent_ix)?
+        }
         Ok(())
     }
 }
