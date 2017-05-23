@@ -24,7 +24,7 @@ pub struct Default;
 
 #[allow(unused)]
 impl Mode for Default {
-    fn output_created(&self, output: WlcOutput) -> bool {
+    fn output_created(&mut self, output: WlcOutput) -> bool {
         if let Ok(mut tree) = try_lock_tree() {
             let result = tree.add_output(output).and_then(|_|{
                 tree.switch_to_workspace(&"1")
@@ -41,15 +41,15 @@ impl Mode for Default {
         }
     }
 
-    fn output_destroyed(&self, output: WlcOutput) {
+    fn output_destroyed(&mut self, output: WlcOutput) {
          // TODO Redistribute workspaces of that output.
     }
 
-    fn output_focused(&self, output: WlcOutput, focused: bool) {
+    fn output_focused(&mut self, output: WlcOutput, focused: bool) {
          // TODO Ensure focused on right workspace
     }
 
-    fn output_resolution(&self, output: WlcOutput,
+    fn output_resolution(&mut self, output: WlcOutput,
                                     old_size_ptr: Size, new_size_ptr: Size) {
         // Update the resolution of the output and its children
         let scale = 1;
@@ -60,7 +60,7 @@ impl Mode for Default {
         }
     }
 
-    fn output_render_post(&self, output: WlcOutput) {
+    fn output_render_post(&mut self, output: WlcOutput) {
         let need_to_fetch = read_screen_scrape_lock();
         if *need_to_fetch {
             if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
@@ -77,7 +77,7 @@ impl Mode for Default {
         }
     }
 
-    fn view_created(&self, view: WlcView) -> bool {
+    fn view_created(&mut self, view: WlcView) -> bool {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
@@ -143,7 +143,7 @@ impl Mode for Default {
         }
     }
 
-    fn view_destroyed(&self, view: WlcView) {
+    fn view_destroyed(&mut self, view: WlcView) {
         match try_lock_tree() {
             Ok(mut tree) => {
                 tree.remove_view(view).unwrap_or_else(|err| {
@@ -158,7 +158,7 @@ impl Mode for Default {
         }
     }
 
-    fn view_focused(&self, current: WlcView, focused: bool) {
+    fn view_focused(&mut self, current: WlcView, focused: bool) {
         current.set_state(VIEW_ACTIVATED, focused);
         if let Ok(mut tree) = try_lock_tree() {
             match tree.set_active_view(current) {
@@ -170,7 +170,7 @@ impl Mode for Default {
         }
     }
 
-    fn view_props_changed(&self, view: WlcView, prop: ViewPropertyType) {
+    fn view_props_changed(&mut self, view: WlcView, prop: ViewPropertyType) {
         if prop.contains(PROPERTY_TITLE) {
             if let Ok(mut tree) = try_lock_tree() {
                 match tree.update_title(view) {
@@ -184,11 +184,11 @@ impl Mode for Default {
         }
     }
 
-    fn view_moved_to_output(&self, view: WlcView, o1: WlcOutput, o2: WlcOutput) {
+    fn view_moved_to_output(&mut self, view: WlcView, o1: WlcOutput, o2: WlcOutput) {
         // TODO Ensure in correct workspace
     }
 
-    fn view_request_state(&self, view: WlcView, state: ViewState, toggle: bool) {
+    fn view_request_state(&mut self, view: WlcView, state: ViewState, toggle: bool) {
         if state == VIEW_FULLSCREEN {
             if let Ok(mut tree) = try_lock_tree() {
                 if let Ok(id) = tree.lookup_handle(view.into()) {
@@ -212,7 +212,7 @@ impl Mode for Default {
         }
     }
 
-    fn view_request_move(&self, view: WlcView, _dest: Point) {
+    fn view_request_move(&mut self, view: WlcView, _dest: Point) {
         if let Ok(mut tree) = try_lock_tree() {
             if let Err(err) = tree.set_active_view(view) {
                 error!("view_request_move error: {:?}", err);
@@ -220,7 +220,7 @@ impl Mode for Default {
         }
     }
 
-    fn view_request_resize(&self, view: WlcView, edge: ResizeEdge, point: Point) {
+    fn view_request_resize(&mut self, view: WlcView, edge: ResizeEdge, point: Point) {
         if let Ok(mut tree) = try_lock_tree() {
             match try_lock_action() {
                 Ok(guard) => {
@@ -237,7 +237,7 @@ impl Mode for Default {
         }
     }
 
-    fn on_keyboard_key(&self, _view: WlcView, _time: u32, mods: KeyboardModifiers,
+    fn on_keyboard_key(&mut self, _view: WlcView, _time: u32, mods: KeyboardModifiers,
                             key: u32, state: KeyState) -> bool {
         let empty_mods: KeyboardModifiers = KeyboardModifiers {
                 mods: MOD_NONE,
@@ -274,7 +274,7 @@ impl Mode for Default {
         return EVENT_PASS_THROUGH
     }
 
-    fn view_request_geometry(&self, view: WlcView, geometry: Geometry) {
+    fn view_request_geometry(&mut self, view: WlcView, geometry: Geometry) {
         if let Ok(mut tree) = try_lock_tree() {
             tree.update_floating_geometry(view, geometry).unwrap_or_else(|_| {
                 warn!("Could not find view {:#?} \
@@ -284,7 +284,7 @@ impl Mode for Default {
         }
     }
 
-    fn on_pointer_button(&self, view: WlcView, _time: u32,
+    fn on_pointer_button(&mut self, view: WlcView, _time: u32,
                             mods: KeyboardModifiers, button: u32,
                                 state: ButtonState, point: Point) -> bool {
         if state == ButtonState::Pressed {
@@ -368,13 +368,13 @@ impl Mode for Default {
         EVENT_PASS_THROUGH
     }
 
-    fn on_pointer_scroll(&self, _view: WlcView, _time: u32,
+    fn on_pointer_scroll(&mut self, _view: WlcView, _time: u32,
                             _mods_ptr: KeyboardModifiers, _axis: ScrollAxis,
                             _heights: [f64; 2]) -> bool {
         EVENT_PASS_THROUGH
     }
 
-    fn on_pointer_motion(&self, view: WlcView, _time: u32, point: Point) -> bool {
+    fn on_pointer_motion(&mut self, view: WlcView, _time: u32, point: Point) -> bool {
         let mut result = EVENT_PASS_THROUGH;
         let mut maybe_action = None;
         {
@@ -415,7 +415,7 @@ impl Mode for Default {
         result
     }
 
-    fn view_pre_render(&self, view: WlcView) {
+    fn view_pre_render(&mut self, view: WlcView) {
         if let Ok(mut tree) = lock_tree() {
             tree.render_borders(view).unwrap_or_else(|err| {
                 match err {

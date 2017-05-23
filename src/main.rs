@@ -35,7 +35,6 @@ mod commands;
 mod ipc;
 mod layout;
 mod render;
-mod lockscreen;
 
 
 mod wayland;

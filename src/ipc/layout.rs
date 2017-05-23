@@ -171,7 +171,7 @@ dbus_interface! {
     }
 
     fn LockScreen() -> success: DBusResult<bool> {
-        use ::lockscreen::spawn_lock_screen;
+        use ::modes::spawn_lock_screen;
         spawn_lock_screen();
         Ok(true)
     }

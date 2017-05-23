@@ -20,6 +20,7 @@ way_cooler.programs = {
   -- via the lock_screen keybinding, the screen is locked and all input goes
   -- to the lock screen program. Once the program closes, all input is restored.
   -- lock_screen = "/path/to/lock-screen-program"
+  lock_screen = "/usr/bin/weston-terminal"
 }
 
 -- Registering programs to run at startup
