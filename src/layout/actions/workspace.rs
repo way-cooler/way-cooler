@@ -2,7 +2,7 @@ use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use super::super::LayoutTree;
-use super::super::core::container::{Container, ContainerType};
+use super::super::core::container::{Container, ContainerType, Layout};
 use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
@@ -105,7 +105,7 @@ impl LayoutTree {
             self.set_container_visibility(new_worksp_parent_ix, false);
         }
         // Set the new one to visible
-        self.set_container_visibility(workspace_ix, true);
+        self.container_visibilty_wrapper(workspace_ix, true);
         // Focus on the new output
         match self.tree[new_worksp_parent_ix] {
             Container::Output { handle, .. } => {
@@ -203,7 +203,6 @@ impl LayoutTree {
                 trace!("Attempted to move a view to the same workspace {}!", name);
                 return;
             }
-            self.set_container_visibility(curr_work_ix, false);
             let new_output_ix = self.tree.parent_of(next_work_ix)
                 .expect("Target workspace had no parent");
             match self.tree[new_output_ix] {
@@ -268,8 +267,6 @@ impl LayoutTree {
                 self.focus_on_next_container(curr_work_ix);
             }
 
-            self.set_container_visibility(curr_work_ix, true);
-
             if !self.tree[active_ix].floating() {
                 self.normalize_container(active_ix);
             }
@@ -294,6 +291,35 @@ impl LayoutTree {
             .expect("cur_work_ix was not a workspace");
         self.tree[next_work_ix].update_fullscreen_c(fullscreen_id, true)
             .expect("next_work_ix was not a workspace");
+    }
+
+    /// Wrapper around `set_container_visibility`, so that tabbed/stacked
+    /// is handled correctly. Might need to generalize this else where.
+    /// For now, just used in workspace switching.
+    fn container_visibilty_wrapper(&mut self, node_ix: NodeIndex, val: bool) {
+        let mut set = false;
+        match self.tree[node_ix] {
+            Container::Container { layout, .. } => {
+                match layout {
+                    Layout::Tabbed | Layout::Stacked => {
+                        if val {
+                            set = true;
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+        if !set {
+            self.tree[node_ix].set_visibility(val);
+            for child in self.tree.children_of(node_ix) {
+                self.container_visibilty_wrapper(child, val)
+            }
+        } else {
+            self.tree.next_active_node(node_ix)
+                .map(|node| self.container_visibilty_wrapper(node, val));
+        }
     }
 }
 
