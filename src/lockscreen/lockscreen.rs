@@ -8,6 +8,7 @@ use nix::libc::pid_t;
 ///
 /// The view is optional, because after spawning it we must find it in the
 /// `view_created` callback.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LockScreen {
     /// Pid of the lock screen program.
     pid: pid_t,

@@ -18,10 +18,12 @@ use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockResult};
 mod mode;
 mod default;
 mod custom_lua;
+mod lock_screen;
 pub mod commands;
 pub use self::mode::Mode;
 pub use self::default::Default;
 pub use self::custom_lua::CustomLua;
+pub use self::lock_screen::LockScreen;
 
 /// If the event is handled by way-cooler
 pub const EVENT_BLOCKED: bool = true;
@@ -40,7 +42,8 @@ pub const RIGHT_CLICK: u32 = 0x111;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Modes {
     Default(Default),
-    CustomLua(CustomLua)
+    CustomLua(CustomLua),
+    LockScreen(LockScreen)
 }
 
 lazy_static! {
@@ -62,7 +65,8 @@ impl Deref for Modes {
     fn deref(&self) -> &(Mode + 'static) {
         match *self {
             Modes::Default(ref mode) => mode as &Mode,
-            Modes::CustomLua(ref mode) => mode as &Mode
+            Modes::CustomLua(ref mode) => mode as &Mode,
+            Modes::LockScreen(ref mode) => mode as &Mode
         }
     }
 }
