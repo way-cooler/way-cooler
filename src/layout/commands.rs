@@ -7,7 +7,8 @@ use super::Tree;
 use ::registry;
 
 use uuid::Uuid;
-use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType};
+use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
+              VIEW_BIT_UNMANAGED};
 use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
@@ -357,7 +358,9 @@ impl Tree {
         }
         view.set_mask(output.get_mask());
         let has_parent = view.get_parent() != WlcView::root();
-        if view.get_type() != ViewType::empty() || has_parent {
+        if view.get_type() != ViewType::empty() || has_parent ||
+            view.get_type().intersects(VIEW_BIT_UNMANAGED)
+        {
             try!(tree.add_floating_view(view, None));
         } else {
             try!(tree.add_view(view));
