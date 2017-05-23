@@ -237,10 +237,16 @@ impl LayoutTree {
                             self.layout_helper(visible_child,
                                                c_geometry,
                                                fullscreen_apps);
-                            // set all the children invisible
-                            self.set_container_visibility(node_ix, false);
-                            // set the focused child to be visible
-                            self.set_container_visibility(visible_child, true);
+                            let workspace_ix = self.tree.ancestor_of_type(
+                                node_ix, ContainerType::Workspace)
+                                .expect("Node did not have a workspace as an ancestor");
+                            // Set visibilty if on active workspace
+                            if self.tree.on_path(workspace_ix) {
+                                // set all the children invisible
+                                self.set_container_visibility(node_ix, false);
+                                // set the focused child to be visible
+                                self.set_container_visibility(visible_child, true);
+                            }
                         }
                         // TODO Propogate error
                         self.draw_borders_rec(children).ok();
