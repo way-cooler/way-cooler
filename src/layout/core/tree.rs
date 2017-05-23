@@ -228,8 +228,17 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
-        if let Some(old_active) = old_active {
-            self.set_borders(old_active, borders::Mode::Inactive)?;
+        if let Some(old_active_ix) = old_active {
+            match self.tree[node_ix] {
+                Container::View { handle, .. } => {
+                    let parent = handle.get_parent();
+                    let parent_node = self.tree.lookup_view(parent);
+                    if parent_node != old_active {
+                        self.set_borders(old_active_ix, borders::Mode::Inactive)?;
+                    }
+                },
+                _ => {}
+            }
         }
         self.set_borders(node_ix, borders::Mode::Active)?;
         Ok(())
