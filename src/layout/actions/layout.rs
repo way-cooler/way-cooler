@@ -575,8 +575,11 @@ impl LayoutTree {
             }
         }
         if new_layout == Layout::Vertical || new_layout == Layout::Horizontal {
-            for child_ix in self.tree.children_of(node_ix) {
-                self.tree[child_ix].set_visibility(true);
+            let workspace_ix = self.tree.ancestor_of_type(
+                node_ix, ContainerType::Workspace)
+                .expect("Node did not have a workspace as an ancestor");
+            if self.tree.on_path(workspace_ix) {
+                self.set_container_visibility(node_ix, true)
             }
         }
     }
