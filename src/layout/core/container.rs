@@ -594,7 +594,7 @@ impl Container {
                         // side border that is never drawn. And thus it
                         // over-draws.
                         let thickness = Borders::thickness() as i32;
-                        geometry.origin.x += thickness;
+                        geometry.origin.x += thickness / 2;
                         geometry.size.w = geometry.size.w.saturating_sub(thickness as u32);
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
                             borders_ = new_borders;
