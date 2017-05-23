@@ -201,18 +201,7 @@ impl LayoutTree {
                     .unwrap_or("not set".into()),
                   node_ix.index());
         }
-        let id;
-        let mut parent_node = None;
-        {
-            let container = &self.tree[node_ix];
-            id = container.get_id();
-            match *container {
-                Container::View { handle, .. } => {
-                    parent_node = self.tree.lookup_view(handle.get_parent());
-                },
-                _ => {}
-            };
-        }
+        let id = self.tree[node_ix].get_id();
         if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
             if fullscreen_id != id {
                 return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))

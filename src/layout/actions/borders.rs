@@ -1,17 +1,8 @@
-use std::cmp;
-
 use petgraph::graph::NodeIndex;
-use rustwlc::{WlcView, Geometry, Point, Size, ResizeEdge};
 
 use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
-use super::super::core::container::{self, Container, ContainerType, ContainerErr,
-                                    Layout, Handle};
-use ::layout::core::borders::Borders;
-use ::render::Renderable;
-use ::debug_enabled;
-use uuid::Uuid;
-
+use super::super::core::container::{Container, ContainerType};
 
 /// The mode the borders can be in. This affects the color primarily.
 pub enum Mode {
