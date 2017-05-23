@@ -98,14 +98,14 @@ impl LayoutTree {
         // Only set the old one to be invisible if new and old share output.
         if new_worksp_parent_ix == old_worksp_parent_ix {
             // Set the old one to invisible
-            self.tree.set_family_visible(old_worksp_ix, false);
+            self.set_container_visibility(old_worksp_ix, false);
         } else {
             // Set all views on the target output to be invisible,
             // to clear the old workspace visibilty out.
-            self.tree.set_family_visible(new_worksp_parent_ix, false);
+            self.set_container_visibility(new_worksp_parent_ix, false);
         }
         // Set the new one to visible
-        self.tree.set_family_visible(workspace_ix, true);
+        self.set_container_visibility(workspace_ix, true);
         // Focus on the new output
         match self.tree[new_worksp_parent_ix] {
             Container::Output { handle, .. } => {
@@ -203,7 +203,7 @@ impl LayoutTree {
                 trace!("Attempted to move a view to the same workspace {}!", name);
                 return;
             }
-            self.tree.set_family_visible(curr_work_ix, false);
+            self.set_container_visibility(curr_work_ix, false);
             let new_output_ix = self.tree.parent_of(next_work_ix)
                 .expect("Target workspace had no parent");
             match self.tree[new_output_ix] {
@@ -268,7 +268,7 @@ impl LayoutTree {
                 self.focus_on_next_container(curr_work_ix);
             }
 
-            self.tree.set_family_visible(curr_work_ix, true);
+            self.set_container_visibility(curr_work_ix, true);
 
             if !self.tree[active_ix].floating() {
                 self.normalize_container(active_ix);
