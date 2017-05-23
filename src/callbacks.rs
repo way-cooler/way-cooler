@@ -65,12 +65,6 @@ pub extern fn view_destroyed(view: WlcView) {
 }
 
 pub extern fn view_focus(current: WlcView, focused: bool) {
-    if let Ok(lock_screen) = try_lock_lock_screen() {
-        if let Some(ref lock_screen) = *lock_screen {
-            lock_screen.view().map(|v| v.set_state(VIEW_ACTIVATED, focused));
-            return
-        }
-    }
     trace!("view_focus: {:?} {}", current, focused);
     if let Ok(mode) = read_current_mode() {
         mode.view_focused(current, focused)
@@ -93,11 +87,6 @@ pub extern fn view_move_to_output(current: WlcView,
 }
 
 pub extern fn view_request_state(view: WlcView, state: ViewState, toggle: bool) {
-    if let Ok(lock_screen) = lock_lock_screen() {
-        if lock_screen.is_some() {
-            return
-        }
-    }
     trace!("Setting {:?} to state {:?}", view, state);
     if let Ok(mode) = read_current_mode() {
         mode.view_request_state(view, state, toggle)
