@@ -170,9 +170,6 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            for child_ix in &children {
-                                self.tree[*child_ix].set_visibility(true);
-                            }
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
                             // TODO Propogate error
@@ -222,9 +219,6 @@ impl LayoutTree {
                             self.generic_tile(node_ix, geometry, children.as_slice(),
                                               new_size_f, remaining_size_f, new_point_f,
                                               fullscreen_apps);
-                            for child_ix in &children {
-                                self.tree[*child_ix].set_visibility(true);
-                            }
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
                             // TODO Propogate error
@@ -502,12 +496,11 @@ impl LayoutTree {
                 let parent_id = try!(self.parent_of(id)).get_id();
                 return self.toggle_cardinal_tiling(parent_id)
             }
-            let container = &mut self.tree[node_ix];
-            let new_layout = match container.get_layout()? {
+            let new_layout = match self.tree[node_ix].get_layout()? {
                 Layout::Horizontal => Layout::Vertical,
                 _ => Layout::Horizontal
             };
-            container.set_layout(new_layout)?;
+            self.set_layout(node_ix, new_layout)
         }
         self.validate();
         Ok(())
@@ -579,6 +572,11 @@ impl LayoutTree {
             ref container => {
                 warn!("Can not set layout on non-container {:#?}", container);
                 return;
+            }
+        }
+        if new_layout == Layout::Vertical || new_layout == Layout::Horizontal {
+            for child_ix in self.tree.children_of(node_ix) {
+                self.tree[child_ix].set_visibility(true);
             }
         }
     }
