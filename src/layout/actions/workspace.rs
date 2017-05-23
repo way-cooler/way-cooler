@@ -203,6 +203,7 @@ impl LayoutTree {
                 trace!("Attempted to move a view to the same workspace {}!", name);
                 return;
             }
+            self.set_container_visibility(curr_work_ix, false);
             let new_output_ix = self.tree.parent_of(next_work_ix)
                 .expect("Target workspace had no parent");
             match self.tree[new_output_ix] {
@@ -266,7 +267,7 @@ impl LayoutTree {
             else {
                 self.focus_on_next_container(curr_work_ix);
             }
-
+            self.container_visibilty_wrapper(curr_work_ix, true);
             if !self.tree[active_ix].floating() {
                 self.normalize_container(active_ix);
             }
