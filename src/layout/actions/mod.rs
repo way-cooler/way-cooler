@@ -5,3 +5,4 @@ pub mod workspace;
 pub mod resize;
 pub mod pointer;
 pub mod background;
+pub mod borders;

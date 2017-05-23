@@ -13,6 +13,7 @@ use super::super::LayoutTree;
 use super::super::ActionErr;
 use super::container::{Container, ContainerType, ContainerErr, Layout, Handle};
 use super::borders::{Borders};
+use ::layout::actions::borders;
 use ::layout::actions::focus::FocusError;
 use ::layout::actions::movement::MovementError;
 use ::layout::actions::layout::LayoutErr;
@@ -221,26 +222,7 @@ impl LayoutTree {
                 self.active_container.map(|node| node.index().to_string())
                 .unwrap_or("not set".into()),
                 node_ix.index());
-        if let Some(active_ix) = self.active_container {
-            if parent_node != self.active_container {
-                {
-                    let active_c = &mut self.tree[active_ix];
-                    active_c.clear_border_color()?;
-                    active_c.draw_borders()?;
-                }
-                let parent_ix = self.tree.parent_of(active_ix)?;
-                let parent_c = &mut self.tree[parent_ix];
-                parent_c.clear_border_color()
-                    .map(|_| parent_c.draw_borders()).ok();
-            }
-        }
-        self.tree[node_ix].active_border_color()?;
-        {
-            let parent_ix = self.tree.parent_of(node_ix)?;
-            let parent_c = &mut self.tree[parent_ix];
-            parent_c.active_border_color()
-                .map(|_| parent_c.draw_borders()).ok();
-        }
+        let old_active = self.active_container;
         self.active_container = Some(node_ix);
         let c_type; let id;
         {
@@ -257,7 +239,10 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
-        self.tree[node_ix].draw_borders()?;
+        if let Some(old_active) = old_active {
+            self.set_borders(old_active, borders::Mode::Inactive)?;
+        }
+        self.set_borders(node_ix, borders::Mode::Active)?;
         Ok(())
     }
 

@@ -7,6 +7,7 @@ use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, ContainerErr,
                                     Layout, Handle};
+use super::borders;
 use ::layout::core::borders::Borders;
 use ::render::Renderable;
 use ::debug_enabled;
@@ -850,18 +851,8 @@ impl LayoutTree {
             let children = self.tree.children_of(parent_ix);
             let index = children.iter().position(|&node_ix| node_ix == child_ix)
                 .map(|num| (num + 1).to_string());
-            let container;
             if Some(child_ix) != self.active_container {
-                // TODO Just unpaint conditonally all up the tree
-                // This should be the same for the parent drawing below
-                // in the else case
-                if !self.tree.on_path(parent_ix) {
-                    let parent_container = &mut self.tree[parent_ix];
-                    parent_container.clear_border_color()?;
-                    parent_container.draw_borders()?;
-                }
-                container = &mut self.tree[child_ix];
-                container.clear_border_color()?;
+                self.set_borders(child_ix, borders::Mode::Inactive)?;
             } else {
                 match self.tree[parent_ix] {
                     Container::Container { layout, ref mut borders, .. } => {
@@ -877,19 +868,11 @@ impl LayoutTree {
                     },
                     _ => {}
                 }
-                {
-                    let parent_container = &mut self.tree[parent_ix];
-                    parent_container.active_border_color()?;
-                    parent_container.draw_borders()?;
-                }
-                container = &mut self.tree[child_ix];
-                container.active_border_color()?;
+                self.set_borders(child_ix, borders::Mode::Active)?;
             }
-            container.draw_borders()?;
         }
         Ok(())
     }
-
 }
 
 #[cfg(test)]
