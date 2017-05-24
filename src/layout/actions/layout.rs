@@ -231,11 +231,8 @@ impl LayoutTree {
                             return;
                         }
                         children.push(node_ix);
-                        let c_geometry = match self.tree[node_ix] {
-                            Container::Container { apparent_geometry, .. } =>
-                                apparent_geometry,
-                            _ => unreachable!()
-                        };
+                        let c_geometry = self.tree[node_ix].get_geometry()
+                            .expect("Container had no geometry");
                         if let Some(visible_child) = self.tree.next_active_node(node_ix) {
                             self.layout_helper(visible_child,
                                                c_geometry,
