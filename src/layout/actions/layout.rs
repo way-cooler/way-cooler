@@ -414,12 +414,7 @@ impl LayoutTree {
                 Handle::Output(handle) => handle,
                 _ => unreachable!()
             };
-            let borders = Borders::new(active_geometry, output)
-                // TODO This will change when we get proper tabbed/stacked borders
-                .map(|mut b| {
-                    b.title = format!("{:?} container", new_layout);
-                    b
-                });
+            let borders = Borders::new(active_geometry, output);
             let mut new_container = Container::new_container(active_geometry,
                                                              borders);
             new_container.set_layout(new_layout).ok();

@@ -583,9 +583,18 @@ impl Container {
                 }
                 Ok(())
             },
-            Container::Container { ref mut borders,
+            Container::Container { layout,
+                                   ref mut borders,
                                    apparent_geometry: mut geometry, .. } => {
                 if let Some(mut borders_) = borders.take() {
+                    // update the title of the borders
+
+                    borders_.title = match layout {
+                        Layout::Tabbed | Layout::Stacked => {
+                            borders_.title
+                        },
+                        _ => format!("{:?} container", layout)
+                    };
                     if borders_.geometry != geometry {
                         // NOTE This is a hack to work around how borders work...
                         // This fixes a bug where the title border extends too
