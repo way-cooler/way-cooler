@@ -8,7 +8,7 @@ use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size,
               VIEW_FULLSCREEN, VIEW_BIT_MODAL};
 
-use super::borders::{Borders, BordersDraw, ContainerDraw};
+use super::borders::{Borders, ViewDraw, ContainerDraw};
 use super::tree::TreeError;
 use ::render::{Renderable, Drawable};
 use ::layout::commands::CommandResult;
@@ -583,7 +583,7 @@ impl Container {
                             return Ok(())
                         }
                     }
-                    *borders = BordersDraw::new(borders_.enable_cairo().unwrap())
+                    *borders = ViewDraw::new(borders_.enable_cairo().unwrap())
                         .draw(geometry).ok();
                 }
                 Ok(())
