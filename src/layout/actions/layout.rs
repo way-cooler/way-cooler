@@ -231,11 +231,9 @@ impl LayoutTree {
                             return;
                         }
                         children.push(node_ix);
-                        let c_geometry = self.tree[node_ix].get_geometry()
-                            .expect("Container had no geometry");
                         if let Some(visible_child) = self.tree.next_active_node(node_ix) {
                             self.layout_helper(visible_child,
-                                               c_geometry,
+                                               geometry,
                                                fullscreen_apps);
                             let workspace_ix = self.tree.ancestor_of_type(
                                 node_ix, ContainerType::Workspace)
