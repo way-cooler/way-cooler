@@ -596,6 +596,7 @@ impl Container {
 
                     borders_.title = match layout {
                         Layout::Tabbed | Layout::Stacked => {
+                            // Already filled in from `layout.rs`
                             borders_.title
                         },
                         _ => format!("{:?} container", layout)
