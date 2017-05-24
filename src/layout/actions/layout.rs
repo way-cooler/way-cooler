@@ -247,6 +247,8 @@ impl LayoutTree {
                             }
                         }
                         // TODO Propogate error
+                        self.add_gaps(node_ix)
+                            .expect("Couldn't add gaps to tabbed/stacked container");
                         self.draw_borders_rec(children).ok();
                     },
                 }
@@ -736,8 +738,10 @@ impl LayoutTree {
                             Layout::Vertical => {
                                 geometry.size.h = geometry.size.h.saturating_sub(gap / 2)
                             },
-                            // TODO Gaps for tabbed/stacked
-                            _ => {}
+                            _ => {
+                                // Nothing special for the last container,
+                                // since only one is visible at a time
+                            }
                         }
                     }
                     match layout {
@@ -750,9 +754,8 @@ impl LayoutTree {
                             geometry.size.h = geometry.size.h.saturating_sub(gap / 2);
                         },
                         Layout::Tabbed | Layout::Stacked => {
-                            /* Should not be gaps within a stacked / tabbed,
-                             * because only one view is visible at a time.
-                             */
+                            geometry.size.w = geometry.size.w.saturating_sub(gap);
+                            geometry.size.h = geometry.size.h.saturating_sub(gap)
                         }
                     }
                     handle.set_geometry(ResizeEdge::empty(), geometry);
