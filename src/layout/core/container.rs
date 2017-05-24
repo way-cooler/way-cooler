@@ -272,9 +272,8 @@ impl Container {
                     size: resolution
                 })
             },
-            Container::Workspace { geometry, .. } => Some(geometry),
-            Container::Container { apparent_geometry, .. } =>
-                Some(apparent_geometry),
+            Container::Workspace { geometry, .. } |
+            Container::Container { geometry, .. } => Some(geometry),
             Container::View { effective_geometry, .. } => {
                 Some(effective_geometry)
             },

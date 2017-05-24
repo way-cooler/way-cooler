@@ -131,7 +131,7 @@ impl LayoutTree {
                         let children = self.tree.grounded_children(node_ix);
                         let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
-                            let c_geometry = self.tree[*child_ix].get_actual_geometry()
+                            let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
                             c_geometry.size.w as f32
                         }).collect(), geometry.size.w as f32);
@@ -180,7 +180,7 @@ impl LayoutTree {
                         let children = self.tree.grounded_children(node_ix);
                         let children_len = children.len();
                         let mut scale = LayoutTree::calculate_scale(children.iter().map(|child_ix| {
-                            let c_geometry = self.tree[*child_ix].get_actual_geometry()
+                            let c_geometry = self.tree[*child_ix].get_geometry()
                                 .expect("Child had no geometry");
                             c_geometry.size.h as f32
                         }).collect(), geometry.size.h as f32);
@@ -796,7 +796,6 @@ impl LayoutTree {
                     let thickness = Borders::thickness();
                     let edge_thickness = thickness / 2;
                     let title_size = Borders::title_bar_size();
-
                     geometry.origin.y += edge_thickness as i32;
                     geometry.origin.y += (title_size / 2) as i32;
                     geometry.size.h = geometry.size.h.saturating_sub(edge_thickness);
@@ -822,17 +821,17 @@ impl LayoutTree {
             .expect("Container had no geometry");
         match *container {
             Container::View { handle, .. } => {
-                let borders = Borders::thickness();
-                if borders == 0 {
+                let thickness = Borders::thickness();
+                if thickness == 0 {
                     return Ok(())
                 }
-                let edge_thickness = (borders / 2) as i32;
+                let edge_thickness = (thickness / 2) as i32;
                 let title_size = Borders::title_bar_size();
                 geometry.origin.x += edge_thickness;
                 geometry.origin.y += edge_thickness;
                 geometry.origin.y += title_size as i32;
-                geometry.size.w = geometry.size.w.saturating_sub(borders);
-                geometry.size.h = geometry.size.h.saturating_sub(borders);
+                geometry.size.w = geometry.size.w.saturating_sub(thickness);
+                geometry.size.h = geometry.size.h.saturating_sub(thickness);
                 geometry.size.h = geometry.size.h.saturating_sub(title_size);
                 handle.set_geometry(ResizeEdge::empty(), geometry);
             },
