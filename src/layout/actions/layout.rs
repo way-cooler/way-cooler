@@ -791,7 +791,9 @@ impl LayoutTree {
 
         match *container {
             Container::Container { ref mut apparent_geometry,
+                                   geometry: ref mut actual_geometry,
                                    ref borders, .. } => {
+                *actual_geometry = geometry;
                 if borders.is_some() {
                     let thickness = Borders::thickness();
                     let edge_thickness = thickness / 2;
