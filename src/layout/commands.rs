@@ -516,7 +516,7 @@ impl Tree {
         // NOTE Since tiling is somewhat expensive,
         // this can be a bottleneck that can be possibly optimized.
         if layout == Layout::Tabbed || layout == Layout::Stacked {
-            self.0.layout_active_of(ContainerType::Workspace);
+            self.0.layout_active_of(ContainerType::Container);
         }
         Ok(())
     }

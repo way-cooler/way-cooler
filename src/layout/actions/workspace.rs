@@ -300,8 +300,7 @@ impl LayoutTree {
     }
 
     /// Wrapper around `set_container_visibility`, so that tabbed/stacked
-    /// is handled correctly. Might need to generalize this else where.
-    /// For now, just used in workspace switching.
+    /// is handled correctly (i.e, it's visibilty checks are skipped).
     fn container_visibilty_wrapper(&mut self, node_ix: NodeIndex, val: bool) {
         let mut set = false;
         match self.tree[node_ix] {
