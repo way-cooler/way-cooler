@@ -791,7 +791,8 @@ impl LayoutTree {
                                    ref borders, .. } => {
                 *actual_geometry = geometry;
                 if borders.is_some() {
-                    let thickness = Borders::thickness();
+                    let gap = Borders::gap_size();
+                    let thickness = Borders::thickness() + gap;
                     let edge_thickness = thickness / 2;
                     let title_size = Borders::title_bar_size();
                     geometry.origin.y += edge_thickness as i32;

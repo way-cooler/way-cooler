@@ -20,6 +20,7 @@ impl ContainerDraw {
     fn draw_title_bar(mut self,
                       mut x: f64,
                       mut w: f64,) -> Result<Self, DrawErr<Borders>> {
+        let gap = Borders::gap_size() as f64;
         let title_size = Borders::title_bar_size() as f64;
         let title_color = self.base.inner().title_background_color();
         let title_font_color = self.base.inner().title_font_color();
@@ -27,9 +28,10 @@ impl ContainerDraw {
         if x < 0.0 {
             w += x;
         }
-        let title_x = Borders::thickness() as f64;
+        let title_x = Borders::thickness() as f64 + gap / 2.0;
         let title_y = title_size - 5.0;
-        x = 0.0;
+        x = gap / 2.0;
+        w -= gap;
 
         // Draw background of title bar
         self.base.set_source_rgb(1.0, 0.0, 0.0);
