@@ -117,6 +117,9 @@ pub enum Container {
         floating: bool,
         /// If the container is fullscreen
         fullscreen: bool,
+        /// The handle for the output the container resides in.
+        /// Used for border drawing
+        output_handle: WlcOutput,
         /// The apparent geometry, as seen by the user.
         /// This is the size of the container including borders.
         /// Used in `update_container_geo_for_borders` and in border drawing
@@ -177,11 +180,13 @@ impl Container {
 
     /// Creates a new container
     pub fn new_container(geometry: Geometry,
+                         output_handle: WlcOutput,
                          borders: Option<Borders>) -> Container {
         Container::Container {
             layout: Layout::Horizontal,
             floating: false,
             fullscreen: false,
+            output_handle,
             apparent_geometry: geometry,
             geometry,
             id: Uuid::new_v4(),
@@ -638,11 +643,10 @@ impl Container {
                     }
                 }
             },
-            Container::Container { ref mut borders, ..} => {
-                // TODO FIXME
-                let output = WlcOutput::focused();
+            Container::Container { output_handle,
+                                   ref mut borders, ..} => {
                 *borders = borders.take().and_then(|b| b.reallocate_buffer(geo))
-                    .or_else(|| Borders::new(geo, output));
+                    .or_else(|| Borders::new(geo, output_handle));
             }
             ref container => {
                 error!("Tried to resize border to {:#?} on {:#?}", geo, container);
@@ -797,7 +801,9 @@ mod tests {
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
-        }, None);
+        },
+                                                     WlcView::root().as_output(),
+                                                     None);
         let view = Container::new_view(WlcView::root(), None);
 
         /* Container first, the only thing we can set the layout on */
@@ -837,7 +843,7 @@ mod tests {
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
-        }, None);
+        }, WlcView::root().as_output(), None);
         let mut view = Container::new_view(WlcView::root(), None);
         // by default, none are floating.
         assert!(!root.floating());

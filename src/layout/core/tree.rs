@@ -925,6 +925,7 @@ pub mod tests {
                                                                    fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
                                                  Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
                                                                           None),
                                                  false);
         let workspace_2_ix = tree.add_child(output_ix,
@@ -932,6 +933,7 @@ pub mod tests {
                                                                      fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
                                                  Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
                                                                           None),
                                                  false);
         /* Workspace 1 containers */
@@ -940,12 +942,17 @@ pub mod tests {
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
                                                Container::new_container(fake_geometry.clone(),
+                                                                        fake_output,
                                                                         None),
                                                false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone(), None), true);
+                                                Container::new_view(fake_view_1.clone(),
+                                                                    None),
+                                                true);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone(), None), false);
+                                                Container::new_view(fake_view_1.clone(),
+                                                                    None),
+                                                false);
         let mut layout_tree = LayoutTree {
             tree: tree,
             active_container: None
@@ -1227,7 +1234,9 @@ pub mod tests {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h: 0}
         };
-        let new_container = Container::new_container(geometry, None);
+        let new_container = Container::new_container(geometry,
+                                                     WlcView::root().as_output(),
+                                                     None);
         tree.add_container(new_container, active_ix).unwrap();
         let new_active_ix = tree.active_container.unwrap();
         // The view moved, since it was placed in the new container

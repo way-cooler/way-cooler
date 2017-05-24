@@ -417,7 +417,14 @@ impl LayoutTree {
                 _ => unreachable!()
             };
             let borders = Borders::new(active_geometry, output);
+            let output_c = self.tree.ancestor_of_type(active_ix,
+                                                      ContainerType::Output)?;
+            let output_handle = match self.tree[output_c].get_handle()? {
+                Handle::Output(output) => output,
+                _ => unreachable!()
+            };
             let mut new_container = Container::new_container(active_geometry,
+                                                             output_handle,
                                                              borders);
             new_container.set_layout(new_layout).ok();
             self.add_container(new_container, active_ix)?;

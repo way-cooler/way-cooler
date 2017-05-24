@@ -848,13 +848,16 @@ mod tests {
                                                 Container::new_workspace("1".to_string(),
                                                                    fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
-                                                 Container::new_container(fake_geometry.clone(), None),
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
+                                                                          None),
                                                  false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
                                                                      fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
                                                  Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
                                                                           None),
                                                  false);
         /* Workspace 1 containers */
@@ -863,6 +866,7 @@ mod tests {
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
                                                Container::new_container(fake_geometry.clone(),
+                                                                        fake_output,
                                                                         None),
                                                false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,

@@ -2,7 +2,7 @@ use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use super::super::LayoutTree;
-use super::super::core::container::{Container, ContainerType, Layout};
+use super::super::core::container::{Container, ContainerType, Layout, Handle};
 use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
@@ -33,10 +33,15 @@ impl LayoutTree {
             .expect("init_workspace: invalid output").get_geometry()
             .expect("init_workspace: no geometry for output");
         let worksp = Container::new_workspace(name.to_string(), geometry);
+        let output_handle = match self.tree[output_ix].get_handle() {
+            Ok(Handle::Output(output)) => output,
+            Err(err) => panic!("Could not get handle from output: {:#?}", err),
+            _ => unreachable!()
+        };
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let container = Container::new_container(geometry, None);
+        let container = Container::new_container(geometry, output_handle, None);
         let container_ix = self.tree.add_child(worksp_ix, container, false);
         self.tree.set_ancestor_paths_active(container_ix);
         self.validate();
