@@ -60,6 +60,10 @@ impl LayoutTree {
                 match (layout, direction) {
                     (Layout::Horizontal, Direction::Left) |
                     (Layout::Horizontal, Direction::Right) |
+                    (Layout::Tabbed, Direction::Left) |
+                    (Layout::Tabbed, Direction::Right) |
+                    (Layout::Stacked, Direction::Up) |
+                    (Layout::Stacked, Direction::Down) |
                     (Layout::Vertical, Direction::Up) |
                     (Layout::Vertical, Direction::Down) => {
                         if let Some(ancestor_ix) = move_ancestor {
