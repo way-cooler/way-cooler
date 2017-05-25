@@ -10,7 +10,6 @@ use super::super::core::container::{Container, ContainerType, ContainerErr,
 use super::borders;
 use ::layout::core::borders::Borders;
 use ::render::Renderable;
-use ::debug_enabled;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -359,7 +358,7 @@ impl LayoutTree {
         }
         try!(self.tree.move_into(floating_ix, node_ix)
              .map_err(|err| TreeError::PetGraph(err)));
-        self.normalize_container(node_ix);
+        self.normalize_container(node_ix).ok();
         let root_ix = self.tree.root_ix();
         let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
                              .map_err(|_| TreeError::NoActiveContainer));
@@ -590,6 +589,9 @@ impl LayoutTree {
             }
         }
         if new_layout == Layout::Vertical || new_layout == Layout::Horizontal {
+            for child_ix in self.tree.children_of(node_ix) {
+                self.normalize_container(child_ix).ok();
+            }
             let workspace_ix = self.tree.ancestor_of_type(
                 node_ix, ContainerType::Workspace)
                 .expect("Node did not have a workspace as an ancestor");
@@ -605,30 +607,33 @@ impl LayoutTree {
     ///
     /// Useful if a container's children want to be evenly distributed, or a new view
     /// is being added.
-    pub fn normalize_view(&mut self, view: WlcView) {
-        if let Some(view_ix) = self.tree.descendant_with_handle(self.tree.root_ix(),
-                                                                view.into()) {
-            self.normalize_container(view_ix);
+    pub fn normalize_view(&mut self, view: WlcView) -> CommandResult {
+        if let Some(view_ix) = self.tree
+            .descendant_with_handle(self.tree.root_ix(), view.into()) {
+            match self.normalize_container(view_ix) {
+                Ok(_) => Ok(()),
+                Err(TreeError::ContainerWasFloating(node_ix)) => {
+                    warn!("Node {:?} was floating! Not normalizing", node_ix);
+                    Ok(())
+                },
+                err => err
+            }
+        } else {
+            Err(TreeError::ViewNotFound(view))
         }
     }
 
     /// Normalizes the geometry of a view or a container of views so that
     /// the view is the same size as its siblings.
-    pub fn normalize_container(&mut self, node_ix: NodeIndex) {
+    pub fn normalize_container(&mut self, node_ix: NodeIndex) -> CommandResult {
         // if floating, do not normalize
         if self.tree[node_ix].floating() {
-            if cfg!(debug_assertions) || !debug_enabled() {
-                error!("Tried to normalize {:?}\n{:#?}", node_ix, self);
-                panic!("Tried to normalize a floating view, are you sure you want to do that?")
-            } else {
-                warn!("Tried to normalize {:?}\n{:#?}", node_ix, self);
-                return
-            }
+            return Err(TreeError::ContainerWasFloating(node_ix))
         }
         match self.tree[node_ix].get_type() {
             ContainerType::Container  => {
                 for child_ix in self.tree.grounded_children(node_ix) {
-                    self.normalize_container(child_ix)
+                    self.normalize_container(child_ix).ok();
                 }
             },
             ContainerType::View  => {
@@ -674,6 +679,7 @@ impl LayoutTree {
                 panic!("Can only normalize the view on a view or container")
             }
         }
+        Ok(())
     }
 
     /// Tiles these containers above all the other containers in its workspace.

@@ -276,7 +276,7 @@ impl LayoutTree {
             }
             self.container_visibilty_wrapper(curr_work_ix, true);
             if !self.tree[active_ix].floating() {
-                self.normalize_container(active_ix);
+                self.normalize_container(active_ix).ok();
             }
         }
         let root_ix = self.tree.root_ix();

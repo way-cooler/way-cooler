@@ -151,7 +151,8 @@ impl LayoutTree {
                          .map_err(|err| MovementError::Tree(
                              Box::new(TreeError::PetGraph(err)))));
                     match self.tree[node_ix].get_handle()? {
-                        Handle::View(view) => self.normalize_view(view),
+                        Handle::View(view) => self.normalize_view(view)
+                            .map_err(|err| MovementError::Tree(Box::new(err)))?,
                         _ => unreachable!()
                     }
                 },
@@ -232,7 +233,9 @@ impl LayoutTree {
         }.map_err(|err| MovementError::Tree(Box::new(TreeError::PetGraph(err)))));
         match self.tree[node_to_move] {
             Container::View { handle, .. } => {
-                self.normalize_view(handle);
+                self.normalize_view(handle)
+                    .map_err(|err| MovementError::Tree(
+                    Box::new(err)))?;
                 Ok(parent_ix)
             },
             _ => {

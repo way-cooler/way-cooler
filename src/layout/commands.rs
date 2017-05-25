@@ -378,10 +378,10 @@ impl Tree {
         if view.get_type() != ViewType::empty() || has_parent ||
             view.get_type().intersects(VIEW_BIT_UNMANAGED)
         {
-            try!(tree.add_floating_view(view, None));
+            tree.add_floating_view(view, None)?;
         } else {
-            try!(tree.add_view(view));
-            tree.normalize_view(view);
+            tree.add_view(view)?;
+            tree.normalize_view(view)?;
         }
         tree.layout_active_of(ContainerType::Workspace);
         Ok(())

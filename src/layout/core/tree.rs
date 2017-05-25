@@ -78,6 +78,8 @@ impl Direction {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TreeError {
+    /// The container was floating, and that was unexpected.
+    ContainerWasFloating(NodeIndex),
     /// A Node can not be found in the tree with this Node Handle.
     NodeNotFound(Uuid),
     /// The node was removed from the tree already.
