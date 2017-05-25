@@ -151,6 +151,7 @@ impl LayoutTree {
                 self.set_active_node(active_ix)
                     .expect("Could not set new active node");
                 self.tree.set_ancestor_paths_active(active_ix);
+                self.layout(workspace_ix);
                 self.validate();
                 self.validate_path();
                 return;
@@ -179,6 +180,7 @@ impl LayoutTree {
         }
         trace!("Focusing on next container");
         self.focus_on_next_container(workspace_ix);
+        self.layout(workspace_ix);
         self.validate();
         self.validate_path();
     }

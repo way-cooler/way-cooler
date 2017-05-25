@@ -584,7 +584,7 @@ impl InnerTree {
     }
 
     /// Collects all children of a node, sorted by active number.
-    fn children_of_by_active(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
+    pub fn children_of_by_active(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges(node_ix).collect::<Vec<_>>();
         edges.sort_by_key(|e| e.weight().active);
         edges.into_iter().map(|e| e.target()).collect()

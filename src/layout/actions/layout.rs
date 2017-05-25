@@ -226,26 +226,33 @@ impl LayoutTree {
                         }
                     },
                     Layout::Tabbed | Layout::Stacked => {
-                        let mut children = self.tree.grounded_children(node_ix);
-                        if children.len() == 0 {
-                            return;
+                        let workspace_ix = self.tree.ancestor_of_type(
+                            node_ix, ContainerType::Workspace)
+                            .expect("Node did not have a workspace as an ancestor");
+                        // If we are on the wrong workspace, don't do any tiling.
+                        if !self.tree.on_path(workspace_ix) {
+                            return
                         }
-                        children.push(node_ix);
-                        if let Some(visible_child) = self.tree.next_active_node(node_ix) {
-                            self.layout_helper(visible_child,
-                                               geometry,
-                                               fullscreen_apps);
-                            let workspace_ix = self.tree.ancestor_of_type(
-                                node_ix, ContainerType::Workspace)
-                                .expect("Node did not have a workspace as an ancestor");
-                            // Set visibilty if on active workspace
-                            if self.tree.on_path(workspace_ix) {
-                                // set all the children invisible
-                                self.set_container_visibility(node_ix, false);
-                                // set the focused child to be visible
-                                self.set_container_visibility(visible_child, true);
+                        // Set everything invisible,
+                        // set floating and focused view to be visible.
+                        self.set_container_visibility(node_ix, false);
+                        let mut children = self.tree
+                            .children_of_by_active(node_ix);
+                        let mut seen = false;
+                        for child_ix in &children {
+                            if self.tree[*child_ix].floating() {
+                                self.set_container_visibility(*child_ix, true);
+                                continue
+                            }
+                            if !seen {
+                                seen = true;
+                                self.layout_helper(*child_ix,
+                                                   geometry,
+                                                   fullscreen_apps);
+                                self.set_container_visibility(*child_ix, true);
                             }
                         }
+                        children.push(node_ix);
                         // TODO Propogate error
                         self.add_gaps(node_ix)
                             .expect("Couldn't add gaps to tabbed/stacked container");
