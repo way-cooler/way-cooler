@@ -59,8 +59,6 @@ impl<T: Renderable> BaseDraw<T> {
 
     /// Finishes drawing on the border, yielding `Renderable`.
     pub fn finish(mut self, border_g: Geometry) -> T {
-        //TODO Why not this again?
-        //self.reallocate_buffer(border_g);
         self.inner.set_geometry(border_g);
         self.inner
     }

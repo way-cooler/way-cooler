@@ -87,8 +87,12 @@ impl LayoutTree {
                 match (layout, direction) {
                     (Layout::Horizontal, Direction::Left) |
                     (Layout::Horizontal, Direction::Right) |
+                    (Layout::Tabbed, Direction::Left) |
+                    (Layout::Tabbed, Direction::Right) |
                     (Layout::Vertical, Direction::Up) |
-                    (Layout::Vertical, Direction::Down) => {
+                    (Layout::Vertical, Direction::Down) |
+                    (Layout::Stacked,  Direction::Up) |
+                    (Layout::Stacked,  Direction::Down) => {
                         let siblings = self.tree.children_of(parent_ix);
                         let cur_index = siblings.iter().position(|node| {
                             *node == node_ix
@@ -306,6 +310,25 @@ impl LayoutTree {
                 try!(self.set_active_node(floating_children[0]));
             }
             Ok(())
+        }
+    }
+
+    /// Sets all the nodes under and at the node index to the given
+    /// visibilty setting
+    pub fn set_container_visibility(&mut self, node_ix: NodeIndex, val: bool) {
+        let container_c;
+        {
+            let container = &mut self.tree[node_ix];
+            container_c = container.get_type();
+            container.set_visibility(val);
+        }
+        match container_c {
+            ContainerType::View => {},
+            _ => {
+                for child_ix in self.tree.children_of(node_ix) {
+                    self.set_container_visibility(child_ix, val);
+                }
+            }
         }
     }
 }

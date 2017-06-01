@@ -5,7 +5,8 @@ use petgraph::graph::NodeIndex;
 use super::super::LayoutTree;
 use super::super::commands::CommandResult;
 use super::super::core::{Direction, ShiftDirection, TreeError};
-use super::super::core::container::{Container, ContainerType, Handle, Layout};
+use super::super::core::container::{Container, ContainerType, ContainerErr,
+                                    Handle, Layout};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MovementError {
@@ -17,6 +18,12 @@ pub enum MovementError {
     Tree(Box<TreeError>),
     /// Expected the view to be floating, but it was not
     NotFloating(NodeIndex)
+}
+
+impl From<ContainerErr> for MovementError {
+    fn from(err: ContainerErr) -> MovementError {
+        MovementError::Tree(Box::new(err.into()))
+    }
 }
 
 
@@ -53,6 +60,10 @@ impl LayoutTree {
                 match (layout, direction) {
                     (Layout::Horizontal, Direction::Left) |
                     (Layout::Horizontal, Direction::Right) |
+                    (Layout::Tabbed, Direction::Left) |
+                    (Layout::Tabbed, Direction::Right) |
+                    (Layout::Stacked, Direction::Up) |
+                    (Layout::Stacked, Direction::Down) |
                     (Layout::Vertical, Direction::Up) |
                     (Layout::Vertical, Direction::Down) => {
                         if let Some(ancestor_ix) = move_ancestor {
@@ -139,11 +150,10 @@ impl LayoutTree {
                     try!(self.tree.move_into(node_ix, swap_ix)
                          .map_err(|err| MovementError::Tree(
                              Box::new(TreeError::PetGraph(err)))));
-                    if let Some(handle) = self.tree[node_ix].get_handle() {
-                        match handle {
-                            Handle::View(view) => self.normalize_view(view),
-                            _ => unreachable!()
-                        }
+                    match self.tree[node_ix].get_handle()? {
+                        Handle::View(view) => self.normalize_view(view)
+                            .map_err(|err| MovementError::Tree(Box::new(err)))?,
+                        _ => unreachable!()
                     }
                 },
                 _ => return Err(MovementError::Tree(
@@ -223,7 +233,9 @@ impl LayoutTree {
         }.map_err(|err| MovementError::Tree(Box::new(TreeError::PetGraph(err)))));
         match self.tree[node_to_move] {
             Container::View { handle, .. } => {
-                self.normalize_view(handle);
+                self.normalize_view(handle)
+                    .map_err(|err| MovementError::Tree(
+                    Box::new(err)))?;
                 Ok(parent_ix)
             },
             _ => {
@@ -259,7 +271,7 @@ impl LayoutTree {
                 return Err(TreeError::UuidWrongType(id, vec!(ContainerType::View)))
             }
         }
-        container.draw_borders();
+        container.draw_borders()?;
         Ok(())
     }
 }

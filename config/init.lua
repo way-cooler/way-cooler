@@ -100,6 +100,8 @@ local keys = {
   key({ mod }, "h", "split_horizontal"),
   key({ mod }, "v", "split_vertical"),
   key({ mod }, "e", "horizontal_vertical_switch"),
+  key({ mod }, "s", "tile_stacked"),
+  key({ mod }, "w", "tile_tabbed"),
   key({ mod }, "f", "fullscreen_toggle"),
   key({ mod, "Shift" }, "q", "close_window"),
   key({ mod, "Shift" }, "space", "toggle_float_active"),

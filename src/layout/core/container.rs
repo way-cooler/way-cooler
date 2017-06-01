@@ -8,7 +8,7 @@ use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size,
               VIEW_FULLSCREEN, VIEW_BIT_MODAL};
 
-use super::borders::{Borders, BordersDraw};
+use super::borders::{Borders, ViewDraw, ContainerDraw};
 use super::tree::TreeError;
 use ::render::{Renderable, Drawable};
 use ::layout::commands::CommandResult;
@@ -48,12 +48,13 @@ pub enum ContainerType {
     View
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContainerErr {
     /// A bad operation on the container type.
     /// The human readable string provides more context.
-    BadOperationOn(ContainerType, &'static str)
+    BadOperationOn(ContainerType, String)
 }
+
 
 impl ContainerType {
     /// Whether this container can be used as the parent of another
@@ -73,7 +74,9 @@ impl ContainerType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
     Horizontal,
-    Vertical
+    Vertical,
+    Tabbed,
+    Stacked
 }
 
 /// Represents an item in the container tree.
@@ -114,7 +117,17 @@ pub enum Container {
         floating: bool,
         /// If the container is fullscreen
         fullscreen: bool,
+        /// The handle for the output the container resides in.
+        /// Used for border drawing
+        output_handle: WlcOutput,
+        /// The apparent geometry, as seen by the user.
+        /// This is the size of the container including borders.
+        /// Used in `update_container_geo_for_borders` and in border drawing
+        /// for containers.
+        apparent_geometry: Geometry,
         /// The geometry of the container, relative to the parent container
+        /// This is used for tiling children containers and is the "real"
+        /// geometry for the container.
         geometry: Geometry,
         /// UUID associated with container, client program can use container
         id: Uuid,
@@ -166,14 +179,18 @@ impl Container {
     }
 
     /// Creates a new container
-    pub fn new_container(geometry: Geometry) -> Container {
+    pub fn new_container(geometry: Geometry,
+                         output_handle: WlcOutput,
+                         borders: Option<Borders>) -> Container {
         Container::Container {
             layout: Layout::Horizontal,
             floating: false,
             fullscreen: false,
-            geometry: geometry,
+            output_handle,
+            apparent_geometry: geometry,
+            geometry,
             id: Uuid::new_v4(),
-            borders: None
+            borders
         }
     }
 
@@ -193,7 +210,7 @@ impl Container {
     /// Sets the visibility of this container
     pub fn set_visibility(&mut self, visibility: bool) {
         let mask = if visibility { 1 } else { 0 };
-        if let Some(handle) = self.get_handle() {
+        if let Ok(handle) = self.get_handle() {
             match handle {
                 Handle::View(view) => {
                     view.set_mask(mask)
@@ -215,11 +232,13 @@ impl Container {
     }
 
     /// Gets the view handle of the view container, if this is a view container
-    pub fn get_handle(&self) -> Option<Handle> {
+    pub fn get_handle(&self) -> Result<Handle, ContainerErr> {
         match *self {
-            Container::View { ref handle, ..} => Some(Handle::View(handle.clone())),
-            Container::Output { ref handle, .. } => Some(Handle::Output(handle.clone())),
-            _ => None
+            Container::View { ref handle, ..} => Ok(Handle::View(handle.clone())),
+            Container::Output { ref handle, .. } => Ok(Handle::Output(handle.clone())),
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(),
+                "Only views and outputs have handles".into()))
         }
     }
 
@@ -266,19 +285,20 @@ impl Container {
         }
     }
 
-    /// Gets the actual geometry for a `WlcView` or `WlcOutput`
+    /// Gets the actual geometry for a `WlcView`, `Container`, or `WlcOutput`.
     ///
     /// Unlike `get_geometry`, this does not account for borders/gaps,
     /// and instead is just a thin wrapper around
-    /// `handle.get_geometry`/`handle.get_resolution`.
+    /// `handle.get_geometry`/`container.geometry`/`handle.get_resolution`.
     ///
     /// Most of the time you want `get_geometry`, as you should account for the
     /// borders, gaps, and top bar.
     ///
-    /// For non-`View`/`Output` containers, this always returns `None`
+    /// For non-`View`/`Container`/`Output` containers, this always returns `None`
     pub fn get_actual_geometry(&self) -> Option<Geometry> {
         match *self {
             Container::View { handle, .. } => handle.get_geometry(),
+            Container::Container { geometry, .. } => Some(geometry),
             Container::Output { handle, .. } => {
                 handle.get_resolution()
                     .map(|size|
@@ -312,14 +332,30 @@ impl Container {
         }
     }
 
-    pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), String>{
+    pub fn set_layout(&mut self, new_layout: Layout) -> Result<(), ContainerErr>{
         match *self {
-            Container::Container { ref mut layout, .. } => *layout = new_layout,
-            ref other => return Err(
+            Container::Container { ref mut layout, ref mut borders, .. } => {
+                *layout = new_layout;
+                if let Some(ref mut borders) = borders.as_mut() {
+                    borders.title = format!("{:?} container", new_layout);
+                }
+                Ok(())
+            },
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(),
                 format!("Can only set the layout of a container, not {:?}",
-                        other))
+                        other)))
         }
-        Ok(())
+    }
+
+    pub fn get_layout(&self) -> Result<Layout, ContainerErr> {
+        match *self {
+            Container::Container { layout, .. } => Ok(layout),
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(),
+                "Only containers have a layout!".into()
+            ))
+        }
     }
 
     pub fn get_id(&self) -> Uuid {
@@ -525,7 +561,14 @@ impl Container {
         }
     }
 
-    pub fn draw_borders(&mut self) {
+    /// Draws the borders around the container.
+    ///
+    /// If the type of the container is not `Container` or `View`, then an
+    /// error is returned.
+    ///
+    /// If there are no borders associated with the `Container`/`View`,
+    /// then argument returns `Ok` but nothing is done.
+    pub fn draw_borders(&mut self) -> Result<(), ContainerErr> {
         // TODO Eventually, we should use an enum to choose which way to draw the
         // border, but for now this will do.
         match *self {
@@ -537,17 +580,49 @@ impl Container {
                         if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
                             borders_ = new_borders;
                         } else {
-                            return
+                            return Ok(())
                         }
                     }
-                    *borders = BordersDraw::new(borders_.enable_cairo().unwrap())
+                    *borders = ViewDraw::new(borders_.enable_cairo().unwrap())
                         .draw(geometry).ok();
                 }
+                Ok(())
             },
-            Container::Container { ref mut borders, .. } => {
-                borders.take();
+            Container::Container { layout,
+                                   ref mut borders,
+                                   apparent_geometry: mut geometry, .. } => {
+                if let Some(mut borders_) = borders.take() {
+                    // update the title of the borders
+
+                    borders_.title = match layout {
+                        Layout::Tabbed | Layout::Stacked => {
+                            // Already filled in from `layout.rs`
+                            borders_.title
+                        },
+                        _ => format!("{:?} container", layout)
+                    };
+                    if borders_.geometry != geometry {
+                        // NOTE This is a hack to work around how borders work...
+                        // This fixes a bug where the title border extends too
+                        // far to the left, because it allocates space for a
+                        // side border that is never drawn. And thus it
+                        // over-draws.
+                        let thickness = Borders::thickness() as i32;
+                        geometry.origin.x += thickness / 2;
+                        geometry.size.w = geometry.size.w.saturating_sub(thickness as u32);
+                        if let Some(new_borders) = borders_.reallocate_buffer(geometry) {
+                            borders_ = new_borders;
+                        } else {
+                            return Ok(())
+                        }
+                    }
+                    *borders = ContainerDraw::new(borders_.enable_cairo().unwrap())
+                        .draw(geometry).ok();
+                }
+                Ok(())
             },
-            _ => panic!("Tried to render a non-view / non-container")
+            ref other => Err(ContainerErr::BadOperationOn(
+                other.get_type(), "Tried to render a non-view/container".into()))
         }
     }
 
@@ -569,11 +644,10 @@ impl Container {
                     }
                 }
             },
-            Container::Container { ref mut borders, ..} => {
-                // TODO FIXME
-                let output = WlcOutput::focused();
+            Container::Container { output_handle,
+                                   ref mut borders, ..} => {
                 *borders = borders.take().and_then(|b| b.reallocate_buffer(geo))
-                    .or_else(|| Borders::new(geo, output));
+                    .or_else(|| Borders::new(geo, output_handle));
             }
             ref container => {
                 error!("Tried to resize border to {:#?} on {:#?}", geo, container);
@@ -602,7 +676,7 @@ impl Container {
             },
             _ => Err(TreeError::Container(
                 ContainerErr::BadOperationOn(c_type,
-                                               "active_border_color")))
+                                               "active_border_color".into())))
         }
     }
 
@@ -623,7 +697,7 @@ impl Container {
             },
             _ => Err(TreeError::Container(
                 ContainerErr::BadOperationOn(c_type,
-                                             "active_border_color")))
+                                             "active_border_color".into())))
         }
     }
 
@@ -728,7 +802,9 @@ mod tests {
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
-        });
+        },
+                                                     WlcView::root().as_output(),
+                                                     None);
         let view = Container::new_view(WlcView::root(), None);
 
         /* Container first, the only thing we can set the layout on */
@@ -768,7 +844,7 @@ mod tests {
         let mut container = Container::new_container(Geometry {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h:0}
-        });
+        }, WlcView::root().as_output(), None);
         let mut view = Container::new_view(WlcView::root(), None);
         // by default, none are floating.
         assert!(!root.floating());

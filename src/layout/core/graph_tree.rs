@@ -107,6 +107,32 @@ impl InnerTree {
         result
     }
 
+    /// Determines if the node is on the active path.
+    pub fn on_path(&self, node_ix: NodeIndex) -> bool {
+        let mut next_ix = Some(self.root);
+        while let Some(cur_ix) = next_ix {
+            let maybe_edge = self.graph.edges(cur_ix)
+                .find(|e| e.weight().is_active());
+            if let Some(edge) = maybe_edge {
+                if edge.target() == node_ix {
+                    return true
+                }
+                next_ix = Some(edge.target());
+            } else {
+                next_ix = None;
+            }
+        }
+        return false
+    }
+
+    /// Gets the immediant child of the node that is active.
+    /// If there is no active child (e.g, there are no childern),
+    /// then `None` is returned.
+    pub fn next_active_node(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
+        self.graph.edges(node_ix).find(|e| e.weight().is_active())
+            .map(|edge| edge.target())
+    }
+
     /// Follows the active path beneath the node until it ends.
     /// Returns the last node in the chain.
     pub fn follow_path(&self, node_ix: NodeIndex) -> NodeIndex {
@@ -193,7 +219,7 @@ impl InnerTree {
     pub fn add_child(&mut self, parent_ix: NodeIndex, val: Container, active: bool) -> NodeIndex {
         let id = val.get_id();
         let maybe_view = match val.get_handle() {
-            Some(Handle::View(view)) => Some(view),
+            Ok(Handle::View(view)) => Some(view),
             _ => None
         };
         let child_ix = self.graph.add_node(val);
@@ -558,7 +584,7 @@ impl InnerTree {
     }
 
     /// Collects all children of a node, sorted by active number.
-    fn children_of_by_active(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
+    pub fn children_of_by_active(&self, node_ix: NodeIndex) -> Vec<NodeIndex> {
         let mut edges = self.graph.edges(node_ix).collect::<Vec<_>>();
         edges.sort_by_key(|e| e.weight().active);
         edges.into_iter().map(|e| e.target()).collect()
@@ -743,15 +769,6 @@ impl InnerTree {
         nodes
     }
 
-    /// Sets the node and its children's visibility
-    pub fn set_family_visible(&mut self, node_ix: NodeIndex, visible: bool) {
-        trace!("Setting {:?} to {}", node_ix, if visible {"visible"} else {"invisible"});
-        self.get_mut(node_ix).map(|c| c.set_visibility(visible));
-        for child in self.children_of(node_ix) {
-            self.set_family_visible(child, visible);
-        }
-    }
-
     /// Modifies the ancestor paths so that the only complete path from the root
     /// goes to this node.
     ///
@@ -831,18 +848,27 @@ mod tests {
                                                 Container::new_workspace("1".to_string(),
                                                                    fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
+                                                                          None),
+                                                 false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
                                                                      fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
+                                                                          None),
+                                                 false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
                                                 Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                               Container::new_container(fake_geometry.clone(),
+                                                                        fake_output,
+                                                                        None),
+                                               false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
                                                 Container::new_view(fake_view_1.clone(), None), false);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,

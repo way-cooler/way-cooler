@@ -55,7 +55,9 @@ dbus_interface! {
         // for now this is _ok_, but we are swallowing an potential Tree lock error here.
         match axis {
             Layout::Horizontal => layout_cmd::split_horizontal(),
-            Layout::Vertical => layout_cmd::split_vertical()
+            Layout::Vertical => layout_cmd::split_vertical(),
+            Layout::Tabbed => layout_cmd::tile_tabbed(),
+            Layout::Stacked => layout_cmd::tile_stacked()
         }
         Ok(true)
     }

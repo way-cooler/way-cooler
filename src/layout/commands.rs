@@ -82,6 +82,22 @@ pub fn split_horizontal() {
     }
 }
 
+pub fn tile_tabbed() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.0.set_active_layout(Layout::Tabbed).unwrap_or_else(|err| {
+            warn!("Could not tile as tabbed: {:?}", err);
+        })
+    }
+}
+
+pub fn tile_stacked() {
+    if let Ok(mut tree) = try_lock_tree() {
+        tree.0.set_active_layout(Layout::Stacked).unwrap_or_else(|err| {
+            warn!("Could not tile as stacked: {:?}", err);
+        })
+    }
+}
+
 pub fn fullscreen_toggle() {
     if let Ok(mut tree) = try_lock_tree() {
         if let Some(id) = tree.active_id() {
@@ -232,8 +248,8 @@ impl Tree {
 
     /// Determines if the container is in the currently active workspace.
     pub fn container_in_active_workspace(&self, id: Uuid) -> Result<bool, TreeError> {
-        let view = match try!(self.0.lookup(id)).get_handle() {
-            Some(Handle::View(view)) => view,
+        let view = match try!(self.0.lookup(id)).get_handle()? {
+            Handle::View(view) => view,
             _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
         };
         if let Some(active_workspace) = self.0.active_ix_of(ContainerType::Workspace) {
@@ -313,9 +329,10 @@ impl Tree {
     }
 
     pub fn output_resolution(&self, id: Uuid) -> Result<Size, TreeError> {
-        let output = match try!(self.0.lookup(id)).get_handle() {
-            Some(Handle::Output(output)) => output,
-            _ => return Err(TreeError::UuidNotAssociatedWith(ContainerType::Output))
+        let output = match try!(self.0.lookup(id)).get_handle()? {
+            Handle::Output(output) => output,
+            _ => return Err(TreeError::UuidNotAssociatedWith(
+                ContainerType::Output))
         };
         Ok(output.get_resolution().expect("Output had no resolution"))
     }
@@ -361,10 +378,10 @@ impl Tree {
         if view.get_type() != ViewType::empty() || has_parent ||
             view.get_type().intersects(VIEW_BIT_UNMANAGED)
         {
-            try!(tree.add_floating_view(view, None));
+            tree.add_floating_view(view, None)?;
         } else {
-            try!(tree.add_view(view));
-            tree.normalize_view(view);
+            tree.add_view(view)?;
+            tree.normalize_view(view)?;
         }
         tree.layout_active_of(ContainerType::Workspace);
         Ok(())
@@ -402,11 +419,10 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
-        match try!(self.0.lookup(id)).get_handle() {
-            Some(Handle::View(view)) => return self.remove_view(view),
-            Some(Handle::Output(_)) | None => {
+        match try!(self.0.lookup(id)).get_handle()? {
+            Handle::View(view) => self.remove_view(view),
+            Handle::Output(_) =>
                 Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
-            }
         }
     }
 
@@ -415,7 +431,7 @@ impl Tree {
                       .map_err(|_|TreeError::ViewNotFound(view)));
         let container = try!(self.0.lookup_mut(id));
         container.set_name(Container::get_title(view));
-        container.draw_borders();
+        container.draw_borders()?;
         Ok(())
     }
 
@@ -455,12 +471,14 @@ impl Tree {
             Correct way is to have active_ix_of to return a proper `Result<NodeIndex, TreeError>`
             however that would break too much code and needs a branch to itself.
 
-            For now, in order to have the IPC not break Way Cooler, this will return an incorrect error.
+            For now, in order to have the IPC not break Way Cooler,
+            this will return an incorrect error.
             */
             if let Some(workspace_ix) = self.0.active_ix_of(ContainerType::Workspace) {
                 let workspace = &mut self.0.tree[workspace_ix];
-                try!(workspace.update_fullscreen_c(id, toggle)
-                     .map_err(|_| TreeError::UuidWrongType(workspace.get_id(), vec![ContainerType::Workspace])));
+                workspace.update_fullscreen_c(id, toggle).map_err(
+                    |_| TreeError::UuidWrongType(workspace.get_id(),
+                                                 vec![ContainerType::Workspace]))?;
             } else {
                 // WRONG ID! See TODO above
                 return Err(TreeError::UuidWrongType(id, vec![ContainerType::Workspace]))
@@ -493,7 +511,13 @@ impl Tree {
     }
 
     pub fn move_focus(&mut self, dir: Direction) -> CommandResult {
-        try!(self.0.move_focus(dir));
+        self.0.move_focus(dir)?;
+        let layout = self.0.active_layout()?;
+        // NOTE Since tiling is somewhat expensive,
+        // this can be a bottleneck that can be possibly optimized.
+        if layout == Layout::Tabbed || layout == Layout::Stacked {
+            self.0.layout_active_of(ContainerType::Container);
+        }
         Ok(())
     }
 
@@ -586,10 +610,16 @@ impl Tree {
 
     /// Renders the borders for the view.
     pub fn render_borders(&mut self, view: WlcView) -> CommandResult {
-        let id = try!(self.lookup_handle(view.into())
-                      .map_err(|_|TreeError::ViewNotFound(view)));
-        let container = try!(self.0.lookup_mut(id));
-        container.render_borders();
+        let node_ix = try!(self.lookup_handle(view.into()).ok()
+                      .and_then(|id| self.0.tree.lookup_id(id))
+                      .ok_or_else(||TreeError::ViewNotFound(view)));
+        self.0.tree[node_ix].render_borders();
+        // Render parent container too, if applicable.
+        let mut parent_ix = self.0.tree.parent_of(node_ix)?;
+        while self.0.tree[parent_ix].get_type() != ContainerType::Workspace {
+            self.0.tree[parent_ix].render_borders();
+            parent_ix = self.0.tree.parent_of(parent_ix)?
+        }
         Ok(())
     }
 }

@@ -5,13 +5,13 @@ use ::render::{BaseDraw, Drawable, DrawErr};
 
 /// Draws the borders around windows.
 /// They are all of the same size, including the top.
-pub struct BordersDraw {
+pub struct ViewDraw {
     base: BaseDraw<Borders>
 }
 
-impl BordersDraw {
+impl ViewDraw {
     pub fn new(base: BaseDraw<Borders>) -> Self {
-        BordersDraw {
+        ViewDraw {
             base: base
         }
     }
@@ -202,7 +202,7 @@ impl BordersDraw {
     }
 }
 
-impl Drawable<Borders> for BordersDraw {
+impl Drawable<Borders> for ViewDraw {
     fn draw(mut self, view_g: Geometry) -> Result<Borders, DrawErr<Borders>> {
         let mut border_g = view_g;
         let thickness = Borders::thickness();
@@ -241,7 +241,7 @@ impl Drawable<Borders> for BordersDraw {
     }
 }
 
-impl Deref for BordersDraw {
+impl Deref for ViewDraw {
     type Target = BaseDraw<Borders>;
 
     fn deref(&self) -> &BaseDraw<Borders> {
@@ -249,7 +249,7 @@ impl Deref for BordersDraw {
     }
 }
 
-impl DerefMut for BordersDraw {
+impl DerefMut for ViewDraw {
     fn deref_mut(&mut self) -> &mut BaseDraw<Borders> {
         &mut self.base
     }

@@ -2,7 +2,7 @@ use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use super::super::LayoutTree;
-use super::super::core::container::{Container, ContainerType};
+use super::super::core::container::{Container, ContainerType, Layout, Handle};
 use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
@@ -33,11 +33,16 @@ impl LayoutTree {
             .expect("init_workspace: invalid output").get_geometry()
             .expect("init_workspace: no geometry for output");
         let worksp = Container::new_workspace(name.to_string(), geometry);
+        let output_handle = match self.tree[output_ix].get_handle() {
+            Ok(Handle::Output(output)) => output,
+            Err(err) => panic!("Could not get handle from output: {:#?}", err),
+            _ => unreachable!()
+        };
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let container_ix = self.tree.add_child(worksp_ix,
-                                               Container::new_container(geometry), false);
+        let container = Container::new_container(geometry, output_handle, None);
+        let container_ix = self.tree.add_child(worksp_ix, container, false);
         self.tree.set_ancestor_paths_active(container_ix);
         self.validate();
         container_ix
@@ -89,7 +94,7 @@ impl LayoutTree {
             let container = &mut self.tree[active_ix];
             container.clear_border_color()
                 .expect("Could not clear old active border color");
-            container.draw_borders();
+            container.draw_borders().expect("Could not draw borders");
         }
         let old_worksp_parent_ix = self.tree.parent_of(old_worksp_ix)
             .expect("Old workspace had no parent");
@@ -98,14 +103,14 @@ impl LayoutTree {
         // Only set the old one to be invisible if new and old share output.
         if new_worksp_parent_ix == old_worksp_parent_ix {
             // Set the old one to invisible
-            self.tree.set_family_visible(old_worksp_ix, false);
+            self.set_container_visibility(old_worksp_ix, false);
         } else {
             // Set all views on the target output to be invisible,
             // to clear the old workspace visibilty out.
-            self.tree.set_family_visible(new_worksp_parent_ix, false);
+            self.set_container_visibility(new_worksp_parent_ix, false);
         }
         // Set the new one to visible
-        self.tree.set_family_visible(workspace_ix, true);
+        self.container_visibilty_wrapper(workspace_ix, true);
         // Focus on the new output
         match self.tree[new_worksp_parent_ix] {
             Container::Output { handle, .. } => {
@@ -146,6 +151,7 @@ impl LayoutTree {
                 self.set_active_node(active_ix)
                     .expect("Could not set new active node");
                 self.tree.set_ancestor_paths_active(active_ix);
+                self.layout(workspace_ix);
                 self.validate();
                 self.validate_path();
                 return;
@@ -174,6 +180,7 @@ impl LayoutTree {
         }
         trace!("Focusing on next container");
         self.focus_on_next_container(workspace_ix);
+        self.layout(workspace_ix);
         self.validate();
         self.validate_path();
     }
@@ -203,7 +210,7 @@ impl LayoutTree {
                 trace!("Attempted to move a view to the same workspace {}!", name);
                 return;
             }
-            self.tree.set_family_visible(curr_work_ix, false);
+            self.set_container_visibility(curr_work_ix, false);
             let new_output_ix = self.tree.parent_of(next_work_ix)
                 .expect("Target workspace had no parent");
             match self.tree[new_output_ix] {
@@ -267,11 +274,9 @@ impl LayoutTree {
             else {
                 self.focus_on_next_container(curr_work_ix);
             }
-
-            self.tree.set_family_visible(curr_work_ix, true);
-
+            self.container_visibilty_wrapper(curr_work_ix, true);
             if !self.tree[active_ix].floating() {
-                self.normalize_container(active_ix);
+                self.normalize_container(active_ix).ok();
             }
         }
         let root_ix = self.tree.root_ix();
@@ -294,6 +299,34 @@ impl LayoutTree {
             .expect("cur_work_ix was not a workspace");
         self.tree[next_work_ix].update_fullscreen_c(fullscreen_id, true)
             .expect("next_work_ix was not a workspace");
+    }
+
+    /// Wrapper around `set_container_visibility`, so that tabbed/stacked
+    /// is handled correctly (i.e, it's visibilty checks are skipped).
+    fn container_visibilty_wrapper(&mut self, node_ix: NodeIndex, val: bool) {
+        let mut set = false;
+        match self.tree[node_ix] {
+            Container::Container { layout, .. } => {
+                match layout {
+                    Layout::Tabbed | Layout::Stacked => {
+                        if val {
+                            set = true;
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+        if !set {
+            self.tree[node_ix].set_visibility(val);
+            for child in self.tree.children_of(node_ix) {
+                self.container_visibilty_wrapper(child, val)
+            }
+        } else {
+            self.tree.next_active_node(node_ix)
+                .map(|node| self.container_visibilty_wrapper(node, val));
+        }
     }
 }
 

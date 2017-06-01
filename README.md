@@ -32,7 +32,8 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
 
 ## Current Features
 - i3-style tiling
-  * Horizontal/vertical layouts
+  * Horizontal/Vertical layouts
+  * Tabbed/Stacked layouts
   * Nest containers with different layouts
   * Floating windows per workspace
 - Client application support via the D-Bus IPC
@@ -43,14 +44,13 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
   * Lua is the configuration format, allowing the user to enhance their window manager in any way they want.
   * Utilities library included to aid communicating with Way Cooler
 - X programs supported through XWayland
-- Borders around windows
-- Gaps between windows
+- Borders around containers
+- Gaps between containers
 - Basic X11 bar support (e.g [lemonbar][], [polybar][])
 - Screen grabber / screen shot taker
 
 ## Planned Features
 
-- i3 tabbed/stacked tiling
 - Notification support
 - Lock screen
 - Tiling window through configurable Lua scripts (awesome-style)

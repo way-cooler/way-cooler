@@ -1,5 +1,4 @@
 use std::iter;
-use std::fmt::{self, Debug};
 use std::cmp::{Eq, PartialEq};
 use rustwlc::{Geometry, Size, WlcOutput};
 use rustwlc::render::{calculate_stride};
@@ -12,7 +11,7 @@ use ::render::{Color, Renderable};
 /// The borders of a container.
 ///
 /// This type just deals with rendering,
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Borders {
     /// The title displayed in the title border.
     pub title: String,
@@ -107,6 +106,33 @@ impl Renderable for Borders {
         geometry.size.w += thickness;
         geometry.size.h += thickness;
         geometry.size.h += title_size;
+        let output_res = self.output.get_resolution()
+            .expect("Could not get output's resolution");
+
+        // Need to do geometry check here, because it's possible we'll allocate
+        // a buffer that is the right size to hold the data, but ultimately
+        // will be too big to be rendered, which will cause an ugly wrap-around
+        if geometry.origin.x + geometry.size.w as i32 > output_res.w as i32 {
+            let offset = (geometry.origin.x + geometry.size.w as i32) - output_res.w as i32;
+            geometry.origin.x -= offset as i32;
+        }
+        if geometry.origin.y + geometry.size.h as i32 > output_res.h as i32 {
+            let offset = (geometry.origin.y + geometry.size.h as i32) - output_res.h as i32;
+            geometry.origin.y -= offset as i32;
+        }
+        if geometry.origin.x < 0 {
+            geometry.origin.x = 0;
+        }
+        if geometry.origin.y < 0 {
+            geometry.origin.y = 0;
+        }
+        if geometry.size.w > output_res.w {
+            geometry.size.w = output_res.w;
+        }
+        if geometry.size.h > output_res.h {
+            geometry.size.h = output_res.h;
+        }
+
         let Size { w, h } = geometry.size;
         if w == self.geometry.size.w && h == self.geometry.size.h {
             return Some(self);
@@ -304,13 +330,9 @@ impl Borders {
     pub fn title(&self) -> &str {
         self.title.as_str()
     }
-}
 
-impl Debug for Borders {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Borders")
-            .field("geometry", &self.geometry as &Debug)
-            .finish()
+    pub fn set_title(&mut self, title: String) {
+        self.title = title;
     }
 }
 

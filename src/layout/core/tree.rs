@@ -13,6 +13,7 @@ use super::super::LayoutTree;
 use super::super::ActionErr;
 use super::container::{Container, ContainerType, ContainerErr, Layout, Handle};
 use super::borders::{Borders};
+use ::layout::actions::borders;
 use ::layout::actions::focus::FocusError;
 use ::layout::actions::movement::MovementError;
 use ::layout::actions::layout::LayoutErr;
@@ -77,6 +78,8 @@ impl Direction {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TreeError {
+    /// The container was floating, and that was unexpected.
+    ContainerWasFloating(NodeIndex),
     /// A Node can not be found in the tree with this Node Handle.
     NodeNotFound(Uuid),
     /// The node was removed from the tree already.
@@ -118,6 +121,18 @@ pub enum TreeError {
     OutputExists(WlcOutput),
     /// Handle was not found
     HandleNotFound(Handle),
+}
+
+impl From<ContainerErr> for TreeError {
+    fn from(err: ContainerErr) -> TreeError {
+        TreeError::Container(err)
+    }
+}
+
+impl From<GraphError> for TreeError {
+    fn from(err: GraphError) -> TreeError {
+        TreeError::PetGraph(err)
+    }
 }
 
 impl LayoutTree {
@@ -188,18 +203,7 @@ impl LayoutTree {
                     .unwrap_or("not set".into()),
                   node_ix.index());
         }
-        let id;
-        let mut parent_node = None;
-        {
-            let container = &self.tree[node_ix];
-            id = container.get_id();
-            match *container {
-                Container::View { handle, .. } => {
-                    parent_node = self.tree.lookup_view(handle.get_parent());
-                },
-                _ => {}
-            };
-        }
+        let id = self.tree[node_ix].get_id();
         if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
             if fullscreen_id != id {
                 return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
@@ -209,16 +213,7 @@ impl LayoutTree {
                 self.active_container.map(|node| node.index().to_string())
                 .unwrap_or("not set".into()),
                 node_ix.index());
-        if let Some(active_ix) = self.active_container {
-            let active_c = &mut self.tree[active_ix];
-            if parent_node != self.active_container {
-                active_c.clear_border_color()
-                    .expect("Could not clear border color");
-                active_c.draw_borders();
-            }
-        }
-        self.tree[node_ix].active_border_color()
-            .expect("Could set active border color");
+        let old_active = self.active_container;
         self.active_container = Some(node_ix);
         let c_type; let id;
         {
@@ -235,7 +230,19 @@ impl LayoutTree {
         if !self.tree[node_ix].floating() {
             self.tree.set_ancestor_paths_active(node_ix);
         }
-        self.tree[node_ix].draw_borders();
+        if let Some(old_active_ix) = old_active {
+            match self.tree[node_ix] {
+                Container::View { handle, .. } => {
+                    let parent = handle.get_parent();
+                    let parent_node = self.tree.lookup_view(parent);
+                    if parent_node != old_active {
+                        self.set_borders(old_active_ix, borders::Mode::Inactive)?;
+                    }
+                },
+                _ => {}
+            }
+        }
+        self.set_borders(node_ix, borders::Mode::Active)?;
         Ok(())
     }
 
@@ -319,6 +326,16 @@ impl LayoutTree {
         } else {
             false
         }
+    }
+
+    pub fn active_layout(&self) -> Result<Layout, TreeError> {
+        let mut node_ix = self.active_container
+            .ok_or(TreeError::NoActiveContainer)?;
+        if self.tree[node_ix].get_type() == ContainerType::View {
+            node_ix = self.tree.parent_of(node_ix)
+                .expect("Node had no parent");
+        }
+        self.tree[node_ix].get_layout().map_err(TreeError::Container)
     }
 
     /// Add a new view container with the given WlcView to the active container
@@ -909,22 +926,35 @@ pub mod tests {
                                                 Container::new_workspace("1".to_string(),
                                                                    fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
+                                                                          None),
+                                                 false);
         let workspace_2_ix = tree.add_child(output_ix,
                                                 Container::new_workspace("2".to_string(),
                                                                      fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                                 Container::new_container(fake_geometry.clone(),
+                                                                          fake_output,
+                                                                          None),
+                                                 false);
         /* Workspace 1 containers */
         let wkspc_1_view = tree.add_child(root_container_1_ix,
                                                 Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
-                                                Container::new_container(fake_geometry.clone()), false);
+                                               Container::new_container(fake_geometry.clone(),
+                                                                        fake_output,
+                                                                        None),
+                                               false);
         let wkspc_2_sub_view_1 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone(), None), true);
+                                                Container::new_view(fake_view_1.clone(),
+                                                                    None),
+                                                true);
         let wkspc_2_sub_view_2 = tree.add_child(wkspc_2_container,
-                                                Container::new_view(fake_view_1.clone(), None), false);
+                                                Container::new_view(fake_view_1.clone(),
+                                                                    None),
+                                                false);
         let mut layout_tree = LayoutTree {
             tree: tree,
             active_container: None
@@ -1181,7 +1211,7 @@ pub mod tests {
             // should still be focused on the previous container.
             // though the active index might be different
             let active_ix = tree.active_container.unwrap();
-            assert_eq!(active_container, tree.tree[active_ix]);
+            assert_eq!(active_container.get_id(), tree.tree[active_ix].get_id());
             let new_parent = tree.tree[tree.tree.parent_of(active_ix).unwrap()]
                 .clone();
             let new_layout = match new_parent {
@@ -1206,7 +1236,9 @@ pub mod tests {
             origin: Point { x: 0, y: 0},
             size: Size { w: 0, h: 0}
         };
-        let new_container = Container::new_container(geometry);
+        let new_container = Container::new_container(geometry,
+                                                     WlcView::root().as_output(),
+                                                     None);
         tree.add_container(new_container, active_ix).unwrap();
         let new_active_ix = tree.active_container.unwrap();
         // The view moved, since it was placed in the new container
