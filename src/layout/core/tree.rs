@@ -1211,7 +1211,7 @@ pub mod tests {
             // should still be focused on the previous container.
             // though the active index might be different
             let active_ix = tree.active_container.unwrap();
-            assert_eq!(active_container, tree.tree[active_ix]);
+            assert_eq!(active_container.get_id(), tree.tree[active_ix].get_id());
             let new_parent = tree.tree[tree.tree.parent_of(active_ix).unwrap()]
                 .clone();
             let new_layout = match new_parent {
