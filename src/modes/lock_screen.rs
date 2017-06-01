@@ -252,6 +252,10 @@ pub fn lock_screen_with_path(path: PathBuf) -> Result<(), LockScreenErr> {
             return Err(LockScreenErr::AlreadyLocked),
         _ => {}
     };
+    // TODO This can fail badly, and we should use child_try_wait.
+    // It's possible the program can fail to spawn a window, which
+    // means we'll be waiting forever.
+    // HOWEVER that's behind a nightly flag, so we must wait.
     let child = Command::new(path).spawn()
         .map_err(|io_er| LockScreenErr::IO(io_er))?;
     let id = child.id();
