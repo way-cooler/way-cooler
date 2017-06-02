@@ -48,11 +48,11 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
 - Gaps between containers
 - Basic X11 bar support (e.g [lemonbar][], [polybar][])
 - Screen grabber / screen shot taker
+- Lock screen
 
 ## Planned Features
 
 - Notification support
-- Lock screen
 - Tiling window through configurable Lua scripts (awesome-style)
 - Swappable status bars/docs/menus
   * A status bar built with [Conrod](https://github.com/PistonDevelopers/conrod) and [Lua][]
