@@ -443,6 +443,17 @@ impl Tree {
         Ok(())
     }
 
+    /// Resets the focus to be whatever the active path points to.
+    /// This is useful when the `active_container` is `None`, e.g when
+    /// closing the lock screen.
+    pub fn reset_focus(&mut self) -> CommandResult {
+        let root_ix = self.0.tree.root_ix();
+        let to_focus = self.0.tree.follow_path(root_ix);
+        let to_focus_id = self.0.tree[to_focus].get_id();
+        self.0.focus_on(to_focus_id)?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     /// Sets the active container to be the container at the UUID
     /// Fails if the container is not a container or view, or if the

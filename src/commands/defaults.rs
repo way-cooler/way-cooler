@@ -107,6 +107,10 @@ pub fn register_defaults() {
     // Modes
     register("default_mode", Arc::new(mode_cmds::set_default_mode));
     register("custom_mode", Arc::new(mode_cmds::set_custom_mode));
+    // Command that spawns the lock screen and moves to lock screen mode.
+    // Must have one specified in the registry first in order for it to work.
+    register("lock_screen", Arc::new(mode_cmds::spawn_lock_screen));
+
 }
 
 // All of the methods defined should be registered.

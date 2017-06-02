@@ -169,4 +169,10 @@ dbus_interface! {
             .map(|container| container.name())
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
+
+    fn LockScreen() -> success: DBusResult<bool> {
+        use ::modes::spawn_lock_screen;
+        spawn_lock_screen();
+        Ok(true)
+    }
 }

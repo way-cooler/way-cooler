@@ -13,7 +13,13 @@ way_cooler.programs = {
   -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
   --
   -- Make sure you add the script to start your bar in the init function!
-  x11_bar = "lemonbar"
+  x11_bar = "lemonbar",
+
+  -- The path to the lock screen program used by Way Cooler.
+  -- Once this program has been launched by Way Cooler
+  -- via the lock_screen keybinding, the screen is locked and all input goes
+  -- to the lock screen program. Once the program closes, all input is restored.
+  lock_screen = "wc-lock"
 }
 
 -- Registering programs to run at startup
@@ -74,15 +80,18 @@ local key = way_cooler.key
 local keys = {
   -- Open dmenu
   key({ mod }, "d", util.program.spawn_once("dmenu_run")),
+
   -- Open terminal
   key({ mod }, "return", util.program.spawn_once("weston-terminal")),
+
+  -- lock screen
+  key({ mod, "Shift" }, "l", "lock_screen"),
 
   -- Lua methods can be bound as well
   key({ mod, "Shift" }, "h", function () print("Hello world!") end),
 
   -- Some Lua dmenu stuff
   key({ mod }, "l", "dmenu_eval"),
-  key({ mod, "Shift" }, "l", "dmenu_lua_dofile"),
 
   -- Move focus
   key({ mod }, "left", "focus_left"),
