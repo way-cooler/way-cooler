@@ -1,6 +1,5 @@
 # Way Cooler
-
-[![Gitter](https://badges.gitter.im/way-cooler/way-cooler.svg)](https://gitter.im/way-cooler/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Gitter](https://badges.gitter.im/Immington-Industries/way-cooler.svg)](https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Crates.io](https://img.shields.io/crates/v/way-cooler.svg)](https://crates.io/crates/way-cooler)
 [![Build Status](https://travis-ci.org/way-cooler/way-cooler.svg?branch=master)](https://travis-ci.org/way-cooler/way-cooler)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/way-cooler/)
