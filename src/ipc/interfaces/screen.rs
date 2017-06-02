@@ -2,8 +2,8 @@ use dbus::arg::{Array};
 use dbus::tree::MethodErr;
 use dbus::MessageItem;
 
-use super::utils::{parse_uuid, lock_tree_dbus};
-use super::{DBusFactory, DBusObjPath};
+use ::ipc::utils::{parse_uuid, lock_tree_dbus};
+use ::ipc::{DBusFactory, DBusObjPath};
 use ::render::screen_scrape::{write_screen_scrape_lock, read_screen_scrape_lock,
                               scraped_pixels_lock, sync_scrape};
 

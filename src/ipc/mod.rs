@@ -13,8 +13,9 @@ pub use self::dbus_message::DBusMessage;
 mod session;
 pub use self::session::DBusSession;
 
-mod layout;
-mod screen;
+mod interfaces;
+pub use self::interfaces::screen;
+pub use self::interfaces::layout;
 
 pub const VERSION: u32 = 1;
 

@@ -2,11 +2,11 @@
 
 /// Dbus macro for Layout code
 
-use super::utils::{parse_edge, parse_uuid, parse_direction, parse_axis, lock_tree_dbus};
+use ::ipc::utils::{parse_edge, parse_uuid, parse_direction, parse_axis, lock_tree_dbus};
 
 use dbus::tree::MethodErr;
 
-use super::super::layout::{Layout, commands as layout_cmd};
+use ::layout::{Layout, commands as layout_cmd};
 use rustwlc::{ResizeEdge, Point};
 
 dbus_interface! {
