@@ -12,7 +12,7 @@ way_cooler.programs = {
   -- Name of the window that will be the bar window.
   -- This is a hack to get X11 bars and non-Way Cooler supported bars working.
   --
-  -- Make sure you add the script to start your bar in the init function!
+  -- Make sure you set your bar program to spawn at startup!
   x11_bar = "lemonbar",
 
   -- The path to the lock screen program used by Way Cooler.
