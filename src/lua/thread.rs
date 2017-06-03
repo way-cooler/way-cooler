@@ -161,7 +161,7 @@ pub fn init() {
     // Immediately update all the values that the init file set
     send(LuaQuery::UpdateRegistryFromCache)
         .expect("Could not update registry from cache");
-    
+
     // Re-tile the layout tree, to make any changes appear immediantly.
     if let Ok(mut tree) = lock_tree() {
         tree.layout_active_of(ContainerType::Root)
