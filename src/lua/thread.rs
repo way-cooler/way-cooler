@@ -118,7 +118,7 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 
 /// Initialize the Lua thread.
 pub fn init() {
-    debug!("Initializing...");
+    info!("Initializing lua...");
     let (tx, receiver) = channel();
     *SENDER.lock().expect(ERR_LOCK_SENDER) = Some(tx);
     let mut lua = Lua::new();
@@ -164,6 +164,7 @@ pub fn init() {
 }
 
 pub fn on_compositor_ready() {
+    info!("Running lua on_init()");
     // Call the special init hook function that we read from the init file
     send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned()))
         .err()
