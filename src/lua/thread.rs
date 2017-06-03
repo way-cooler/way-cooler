@@ -152,10 +152,23 @@ pub fn init() {
         info!("Skipping config search");
     }
 
+    // Only ready after loading libs
+    *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
+    debug!("Entering main loop...");
+    let _lua_handle = thread::Builder::new()
+        .name("Lua thread".to_string())
+        .spawn(move || { main_loop(receiver, &mut lua) });
+    // Immediately update all the values that the init file set
+    send(LuaQuery::UpdateRegistryFromCache)
+        .expect("Could not update registry from cache");
+}
+
+pub fn on_compositor_ready() {
     // Call the special init hook function that we read from the init file
-    if let Err(error) = lua.execute::<()>(INIT_LUA_FUNC) {
-        error!("Lua init callback returned an error: {:?}", error);
-    }
+    send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned()))
+        .err()
+        .map(|error| { error!("Lua init callback returned an error: {:?}", error); error });
+    
     // Re-tile the layout tree, to make any changes appear immediantly.
     if let Ok(mut tree) = lock_tree() {
         tree.layout_active_of(ContainerType::Root)
@@ -168,16 +181,6 @@ pub fn init() {
                 .expect("Could not focus on the focused id");
         }
     }
-
-    // Only ready after loading libs
-    *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
-    debug!("Entering main loop...");
-    let _lua_handle = thread::Builder::new()
-        .name("Lua thread".to_string())
-        .spawn(move || { main_loop(receiver, &mut lua) });
-    // Immediately update all the values that the init file set
-    send(LuaQuery::UpdateRegistryFromCache)
-        .expect("Could not update registry from cache");
 }
 
 /// Main loop of the Lua thread:
