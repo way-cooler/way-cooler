@@ -48,6 +48,7 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    // TODO Rename ChangeContainerLayout
     fn SplitContainer(container_id: String, split_axis: String) -> success: DBusResult<bool> {
         let uuid = try!(parse_uuid("container_id", &container_id));
         let axis = try!(parse_axis("split_direction", split_axis.as_str()));
@@ -118,6 +119,7 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    // TODO Remove
     fn Debug() -> success: DBusResult<String> {
         Ok(format!("{}", layout_cmd::tree_as_json()))
     }
@@ -131,6 +133,7 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    // TODO Rename to Fullscreen
     fn FullScreen(container_id: String, toggle: bool) -> success: DBusResult<bool> {
         let mut tree = try!(lock_tree_dbus());
         let uuid = try!(try!(parse_uuid("container_id", &container_id))
@@ -149,6 +152,7 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    // TODO Remove
     fn GrabAtCorner(container_id: String, dir: String) -> success: DBusResult<bool> {
         let mut tree = try!(lock_tree_dbus());
         let uuid = try!(try!(parse_uuid("container_id", &container_id))

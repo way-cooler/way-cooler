@@ -49,8 +49,10 @@ pub fn parse_direction(arg: &'static str, text: &str) -> DBusResult<Direction> {
 
 pub fn parse_axis(arg: &'static str, text: &str) -> DBusResult<Layout> {
     match text.to_lowercase().as_str() {
-        "vertical" | "v" => Ok(Layout::Vertical),
-        "horizontal" | "h" => Ok(Layout::Horizontal),
+        "vertical" => Ok(Layout::Vertical),
+        "horizontal" => Ok(Layout::Horizontal),
+        "tabbed" => Ok(Layout::Tabbed),
+        "stacked" => Ok(Layout::Stacked),
         _ => Err(MethodErr::invalid_arg(
             &format!("{}: {} is not a valid axis direction. \
                       May be either 'horizontal' or 'vertical'", arg, text)))
