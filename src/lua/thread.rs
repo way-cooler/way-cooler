@@ -161,14 +161,6 @@ pub fn init() {
     // Immediately update all the values that the init file set
     send(LuaQuery::UpdateRegistryFromCache)
         .expect("Could not update registry from cache");
-}
-
-pub fn on_compositor_ready() {
-    info!("Running lua on_init()");
-    // Call the special init hook function that we read from the init file
-    send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned()))
-        .err()
-        .map(|error| { error!("Lua init callback returned an error: {:?}", error); error });
     
     // Re-tile the layout tree, to make any changes appear immediantly.
     if let Ok(mut tree) = lock_tree() {
@@ -182,6 +174,14 @@ pub fn on_compositor_ready() {
                 .expect("Could not focus on the focused id");
         }
     }
+}
+
+pub fn on_compositor_ready() {
+    info!("Running lua on_init()");
+    // Call the special init hook function that we read from the init file
+    send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned()))
+        .err()
+        .map(|error| { error!("Lua init callback returned an error: {:?}", error); error });
 }
 
 /// Main loop of the Lua thread:
