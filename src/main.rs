@@ -188,6 +188,7 @@ fn main() {
     callbacks::init();
     commands::init();
     registry::init();
+    lua::init();
     ipc::init();
 
     info!("Running wlc...");

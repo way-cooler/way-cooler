@@ -128,8 +128,7 @@ pub extern fn pointer_motion(view: WlcView, time: u32, point: &Point) -> bool {
 
 pub extern fn compositor_ready() {
     info!("Preparing compositor!");
-    info!("Initializing Lua...");
-    lua::init();
+    lua::on_compositor_ready();
     keys::init();
 }
 
