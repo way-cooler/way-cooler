@@ -11,6 +11,7 @@ type TestTreeResult = Result<UnitTestTree, TreeError>;
 #[derive(Debug)]
 pub struct UnitTestTree(Tree);
 
+#[allow(dead_code)]
 impl UnitTestTree {
     pub fn new() -> Self {
         UnitTestTree (

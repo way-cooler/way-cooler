@@ -333,6 +333,7 @@ impl LayoutTree {
     ///
     /// If a workspace is not found, this is considered a hard error and
     /// it will panic.
+    #[allow(dead_code)]
     pub fn current_workspace(&self) -> Result<&str, TreeError> {
         let active_ix = self.active_container
             .ok_or(TreeError::NoActiveContainer)?;

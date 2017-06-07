@@ -226,6 +226,7 @@ pub fn set_performing_action(val: Option<Action>) {
 /// These commands are the interface that the rest of Way Cooler has to the
 /// tree. Any action done, whether through a callback, or from the IPC/Lua thread
 /// it will have to go through one of these methods.
+#[allow(dead_code)]
 impl Tree {
     /// Gets the uuid of the active container, if there is an active container
     pub fn active_id(&self) -> Option<Uuid> {
