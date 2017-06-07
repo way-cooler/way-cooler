@@ -21,7 +21,7 @@ impl UnitTestTree {
     }
 
     /// Attempts to add an output to the tree.
-    pub fn add_output(mut self) -> TestTreeResult {
+    pub fn add_new_output(mut self) -> TestTreeResult {
         let fake_output = WlcView::root().as_output();
         self.0.add_output(fake_output)?;
         Ok(self)
@@ -32,20 +32,20 @@ impl UnitTestTree {
     ///
     /// NOTE If you don't add anything to this workspace, it will be
     /// removed if you switch to another one.
-    pub fn switch_to_workspace(mut self, name: &str) -> TestTreeResult {
+    pub fn add_workspace(mut self, name: &str) -> TestTreeResult {
         self.0.switch_to_workspace(name)?;
         assert_eq!(self.0.current_workspace()?, name);
         Ok(self)
     }
 
     /// Sets the active container to the given layout.
-    pub fn set_active_layout(mut self, layout: Layout) -> TestTreeResult {
+    pub fn set_layout(mut self, layout: Layout) -> TestTreeResult {
         self.0.set_active_layout(layout)?;
         Ok(self)
     }
 
     /// Adds a view, and sets it as the active container
-    pub fn add_view(mut self) -> TestTreeResult {
+    pub fn add_new_view(mut self) -> TestTreeResult {
         let fake_view = WlcView::root();
         self.0.add_view(fake_view)?;
         Ok(self)
@@ -85,13 +85,13 @@ impl DerefMut for UnitTestTree {
 /// The active container is the only view in the first workspace
 pub fn basic_tree() -> UnitTestTree {
     UnitTestTree::new()
-        .add_output().unwrap()
-        .switch_to_workspace("1").unwrap()
-        .add_view().unwrap()
-        .switch_to_workspace("2").unwrap()
-        .add_view().unwrap()
-        .set_active_layout(Layout::Horizontal).unwrap()
-        .add_view().unwrap()
-        .switch_to_workspace("1").unwrap()
+        .add_new_output().unwrap()
+        .add_workspace("1").unwrap()
+        .add_new_view().unwrap()
+        .add_workspace("2").unwrap()
+        .add_new_view().unwrap()
+        .set_layout(Layout::Horizontal).unwrap()
+        .add_new_view().unwrap()
+        .add_workspace("1").unwrap()
 }
 
