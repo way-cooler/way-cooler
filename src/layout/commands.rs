@@ -37,7 +37,7 @@ pub fn remove_active() {
         if handle_to_remove.is_none() {
             if let Err(err) = tree.0.remove_active() {
                 warn!("Could not remove the active container! {:?}\n{:?}\n{:?}",
-                      tree.0.get_active_container(), err, *tree.0);
+                      tree.0.get_active_container(), err, tree.0);
             };
         }
     }
@@ -281,9 +281,17 @@ impl Tree {
         Ok(())
     }
 
+    /// Toggles between horizontal and vertical layout.
+    ///
+    /// If on neither, defaults to horizontal.
     pub fn toggle_cardinal_tiling(&mut self, id: Uuid) -> CommandResult {
         self.0.toggle_cardinal_tiling(id)
             .and_then(|_| self.layout_active_of(ContainerType::Workspace))
+    }
+
+    /// Sets the active container to the given layout.
+    pub fn set_active_layout(&mut self, layout: Layout) -> CommandResult {
+        self.0.set_active_layout(layout)
     }
 
     pub fn toggle_floating_focus(&mut self) -> CommandResult {
@@ -348,6 +356,11 @@ impl Tree {
     pub fn switch_to_workspace(&mut self, name: &str) -> CommandResult {
         self.0.switch_to_workspace(name);
         Ok(())
+    }
+
+    /// Gets the current workspace we are focused on
+    pub fn current_workspace(&self) -> Result<&str, TreeError> {
+        self.0.current_workspace()
     }
 
     /// Tiles the active container of some container type. Never fails

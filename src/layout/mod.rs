@@ -17,11 +17,22 @@ use rustc_serialize::json::{Json, ToJson};
 use std::sync::{Mutex, MutexGuard, TryLockError, PoisonError};
 
 /// A wrapper around tree, to hide its methods
-pub struct Tree(TreeGuard);
+#[derive(Debug)]
+pub struct Tree(LayoutTree);
 /// Mutex guard around the tree
-pub type TreeGuard = MutexGuard<'static, LayoutTree>;
+pub type TreeGuard = MutexGuard<'static, Tree>;
 /// Error for trying to lock the tree
 pub type TreeErr = TryLockError<TreeGuard>;
+
+impl Tree {
+    /// Constructs a new tree.
+    pub fn new() -> Self {
+        Tree(LayoutTree {
+            tree: InnerTree::new(),
+            active_container: None
+        })
+    }
+}
 
 
 #[derive(Debug)]
@@ -31,11 +42,8 @@ pub struct LayoutTree {
 }
 
 lazy_static! {
-    static ref TREE: Mutex<LayoutTree> = {
-        Mutex::new(LayoutTree {
-            tree: InnerTree::new(),
-            active_container: None
-        })
+    static ref TREE: Mutex<Tree> = {
+        Mutex::new(Tree::new())
     };
     static ref PREV_ACTION: Mutex<Option<Action>> = Mutex::new(None);
 }
@@ -80,14 +88,14 @@ impl ToJson for LayoutTree {
 
 /// Attempts to lock the tree. If the Result is Err, then the lock could
 /// not be returned at this time, already locked.
-pub fn try_lock_tree() -> Result<Tree, TreeErr> {
+pub fn try_lock_tree() -> Result<TreeGuard, TreeErr> {
     let tree = try!(TREE.try_lock());
-    Ok(Tree(tree))
+    Ok(tree)
 }
 
-pub fn lock_tree() -> Result<Tree, PoisonError<TreeGuard>> {
+pub fn lock_tree() -> Result<TreeGuard, PoisonError<TreeGuard>> {
     let tree = try!(TREE.lock());
-    Ok(Tree(tree))
+    Ok(tree)
 }
 
 /// Attempts to lock the action mutex. If the Result is Err, then the lock could

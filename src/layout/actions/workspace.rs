@@ -1,7 +1,7 @@
 use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use super::super::LayoutTree;
+use super::super::{LayoutTree, TreeError};
 use super::super::core::container::{Container, ContainerType, Layout, Handle};
 use ::debug_enabled;
 
@@ -327,6 +327,19 @@ impl LayoutTree {
             self.tree.next_active_node(node_ix)
                 .map(|node| self.container_visibilty_wrapper(node, val));
         }
+    }
+
+    /// Gets the current workspace we are focused on
+    ///
+    /// If a workspace is not found, this is considered a hard error and
+    /// it will panic.
+    pub fn current_workspace(&self) -> Result<&str, TreeError> {
+        let active_ix = self.active_container
+            .ok_or(TreeError::NoActiveContainer)?;
+        let workspace_ix = self.tree.ancestor_of_type(active_ix,
+                                                      ContainerType::Workspace)?;
+        Ok(self.tree[workspace_ix].get_name()
+           .expect("workspace_ix didn't point to a workspace!"))
     }
 }
 
