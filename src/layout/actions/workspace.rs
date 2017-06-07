@@ -150,12 +150,13 @@ impl LayoutTree {
                 }
                 // TODO Propogate this when this is refactored
                 match self.set_active_node(active_ix) {
-                    Ok(_) |
                     Err(TreeError::Focus(
-                        FocusError::BlockedByFullscreen(_,_))) => {
-                            Ok(())
+                        FocusError::BlockedByFullscreen(_, focus_id))) => {
+                        // If blocked, didn't get a chance to set it
+                        self.active_container = self.tree.lookup_id(focus_id);
+                        Ok(())
                     },
-                    err => err
+                    other => other
                 }.expect("Could not set new active node");
                 self.tree.set_ancestor_paths_active(active_ix);
                 self.layout(workspace_ix);
