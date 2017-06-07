@@ -2,6 +2,9 @@ mod actions;
 mod core;
 pub mod commands;
 
+#[cfg(test)]
+mod unit_tests;
+
 pub use self::actions::movement::MovementError;
 pub use self::actions::focus::FocusError;
 
