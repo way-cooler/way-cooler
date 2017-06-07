@@ -7,12 +7,12 @@ use dbus::tree::MethodErr;
 
 use super::{DBusResult};
 
-use layout::{Direction, Layout, Tree, lock_tree};
+use layout::{Direction, Layout, TreeGuard, lock_tree};
 
 use rustwlc::{ResizeEdge, RESIZE_TOP, RESIZE_BOTTOM,
               RESIZE_LEFT, RESIZE_RIGHT};
 
-pub fn lock_tree_dbus() -> DBusResult<Tree> {
+pub fn lock_tree_dbus() -> DBusResult<TreeGuard> {
     match lock_tree() {
         Ok(tree) => Ok(tree),
         Err(err) => Err(MethodErr::failed(&format!("{:?}", err)))
