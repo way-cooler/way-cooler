@@ -21,6 +21,7 @@ dbus_interface! {
         }
     }
 
+    /// TODO Make this optional, and actually do something with it!
     fn ToggleFloat(container_id: String) -> success: DBusResult<bool> {
         let maybe_uuid = try!(parse_uuid("container_id", &container_id));
         match maybe_uuid {
@@ -69,6 +70,14 @@ dbus_interface! {
                         .or_else(|| tree.active_id())
                         .ok_or(MethodErr::failed(&"No active container")));
         tree.toggle_cardinal_tiling(uuid)
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
+    fn SetActiveLayout(layout: String) -> success: DBusResult<bool> {
+        let mut tree = lock_tree_dbus()?;
+        let layout = parse_axis("split_direction", split_axis.as_str())?;
+        tree.set_active_layout(layout)
             .and(Ok(true))
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
