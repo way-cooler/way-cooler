@@ -70,7 +70,7 @@ fn log_format(record: &log::LogRecord) -> String {
     let color = match record.level() {
         LogLevel::Info => "",
         LogLevel::Trace => "\x1B[37m",
-        LogLevel::Debug => "\x1B[37m",
+        LogLevel::Debug => "\x1B[44m",
         LogLevel::Warn =>  "\x1B[33m",
         LogLevel::Error => "\x1B[31m",
     };
