@@ -1,18 +1,19 @@
 //! Container types
 
+use std::fmt;
+
 use uuid::Uuid;
-
-pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
-
 use rustwlc::handle::{WlcView, WlcOutput};
 use rustwlc::{Geometry, ResizeEdge, Point, Size,
               VIEW_FULLSCREEN, VIEW_BIT_MODAL};
 
-use super::borders::{Borders, ViewDraw, ContainerDraw};
-use super::tree::TreeError;
 use ::render::{Renderable, Drawable};
 use ::layout::commands::CommandResult;
+use super::borders::{Borders, ViewDraw, ContainerDraw};
+use super::tree::TreeError;
 use super::bar::Bar;
+
+pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 
 /// A handle to either a view or output
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +78,17 @@ pub enum Layout {
     Vertical,
     Tabbed,
     Stacked
+}
+
+impl fmt::Display for Layout {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match *self {
+            Layout::Horizontal => "horizontal",
+            Layout::Vertical => "vertical",
+            Layout::Tabbed => "tabbed",
+            Layout::Stacked => "stacked",
+        })
+    }
 }
 
 /// Represents an item in the container tree.
