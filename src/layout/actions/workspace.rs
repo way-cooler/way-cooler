@@ -130,7 +130,7 @@ impl LayoutTree {
                 if let Err(err) = self.remove_workspace(old_worksp_ix) {
                     warn!("Tried to remove empty workspace {:#?}, error: {:?}",
                         old_worksp_ix, err);
-                    debug!("{:#?}", self);
+                    info!("{:#?}", self);
                     panic!("Could not remove old workspace");
                 }
             }
@@ -255,7 +255,7 @@ impl LayoutTree {
             let next_work_root_ix = next_work_children[0];
 
             // Move the container
-            debug!("Moving container {:?} to workspace {}",
+            info!("Moving container {:?} to workspace {}",
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
 

@@ -204,7 +204,7 @@ impl LayoutTree {
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
         if self.active_container != Some(node_ix) {
-            debug!("Active container was {}, is now {}",
+            info!("Active container was {}, is now {}",
                   self.active_container.map(|node| node.index().to_string())
                     .unwrap_or("not set".into()),
                   node_ix.index());
@@ -373,7 +373,7 @@ impl LayoutTree {
             match self.set_active_node(view_ix) {
                 Ok(_) => {},
                 Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
-                    debug!("Blocked focus by fullscreen");
+                    info!("Blocked focus by fullscreen");
                 },
                 Err(err) => return Err(err)
             }
@@ -434,7 +434,7 @@ impl LayoutTree {
         match self.set_active_node(new_container_ix) {
             Ok(_) => {}
             Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
-                debug!("Blocked focus by fullscreen");
+                info!("Blocked focus by fullscreen");
             },
             Err(err) => return Err(err)
         }

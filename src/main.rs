@@ -141,7 +141,7 @@ pub fn init_logs() {
 
 fn log_environment() {
     for (key, value) in env::vars() {
-        debug!("{}: {}", key, value);
+        info!("{}: {}", key, value);
     }
 }
 

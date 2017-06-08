@@ -122,9 +122,9 @@ pub fn init() {
     let (tx, receiver) = channel();
     *SENDER.lock().expect(ERR_LOCK_SENDER) = Some(tx);
     let mut lua = Lua::new();
-    debug!("Loading Lua libraries...");
+    info!("Loading Lua libraries...");
     lua.openlibs();
-    debug!("Loading way-cooler libraries...");
+    info!("Loading way-cooler libraries...");
     rust_interop::register_libraries(&mut lua);
 
     let (use_config, maybe_init_file) = init_path::get_config();
@@ -132,7 +132,7 @@ pub fn init() {
         match maybe_init_file {
             Ok(init_file) => {
                 let _: () = lua.execute_from_reader(init_file)
-                    .map(|r| { debug!("Read init.lua successfully"); r })
+                    .map(|r| { info!("Read init.lua successfully"); r })
                     .or_else(|err| {
                         // Keeping this an error, so that it is visible
                         // in release builds.
@@ -155,7 +155,7 @@ pub fn init() {
 
     // Only ready after loading libs
     *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
-    debug!("Entering main loop...");
+    info!("Entering main loop...");
     let _lua_handle = thread::Builder::new()
         .name("Lua thread".to_string())
         .spawn(move || { main_loop(receiver, &mut lua) });
