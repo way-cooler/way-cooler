@@ -117,11 +117,11 @@ impl Mode for Default {
                 let outputs = tree.outputs();
                 return tree.add_background(view, outputs.as_slice()).map(|_| true)
                     .unwrap_or_else(|err| {
-                        error!("Could not add background due to {:?}", err);
+                        warn!("Could not add background due to {:?}", err);
                         true
                     })
             } else {
-                error!("Could not lock tree");
+                warn!("Could not lock tree to place background");
             }
             return false
         }
@@ -150,11 +150,11 @@ impl Mode for Default {
                     match err {
                         TreeError::ViewNotFound(_) => {},
                         _ => {
-                            error!("Error in view_destroyed: {:?}", err);
+                            warn!("Error in view_destroyed: {:?}", err);
                         }
                     }});
             },
-            Err(err) => error!("Could not delete view {:?}, {:?}", view, err)
+            Err(err) => warn!("Could not delete view {:?}, {:?}", view, err)
         }
     }
 
@@ -164,7 +164,7 @@ impl Mode for Default {
             match tree.set_active_view(current) {
                 Ok(_) => {},
                 Err(err) => {
-                    error!("Could not set {:?} to be active view: {:?}", current, err);
+                    warn!("Could not set {:?} to be active view: {:?}", current, err);
                 }
             }
         }
@@ -176,7 +176,7 @@ impl Mode for Default {
                 match tree.update_title(view) {
                     Ok(_) => {},
                     Err(err) => {
-                        error!("Could not update title for view {:?} because {:#?}",
+                        warn!("Could not update title for view {:?} because {:#?}",
                             view, err);
                     }
                 }
@@ -198,12 +198,14 @@ impl Mode for Default {
                         Ok(true) => {
                             tree.layout_active_of(ContainerType::Workspace)
                                 .unwrap_or_else(|err| {
-                                    error!("Could not layout active workspace for view {:?}: {:?}",
+                                    warn!("Could not layout active workspace \
+                                           for view {:?}: {:?}",
                                             view, err)
                                 });
                         },
                         Ok(false) => {},
-                        Err(err) => error!("Could not set {:?} fullscreen: {:?}", view, err)
+                        Err(err) => warn!("Could not set {:?} fullscreen: {:?}",
+                                           view, err)
                     }
                 } else {
                     warn!("Could not find view {:?} in tree", view);
@@ -215,24 +217,23 @@ impl Mode for Default {
     fn view_request_move(&mut self, view: WlcView, _dest: Point) {
         if let Ok(mut tree) = try_lock_tree() {
             if let Err(err) = tree.set_active_view(view) {
-                error!("view_request_move error: {:?}", err);
+                warn!("view_request_move error: {:?}", err);
             }
         }
     }
 
     fn view_request_resize(&mut self, view: WlcView, edge: ResizeEdge, point: Point) {
         if let Ok(mut tree) = try_lock_tree() {
-            match try_lock_action() {
-                Ok(guard) => {
-                    if guard.is_some() {
-                        if let Ok(id) = tree.lookup_handle(view.into()) {
-                            if let Err(err) = tree.resize_container(id, edge, point) {
-                                error!("Problem: Command returned error: {:#?}", err);
-                            }
-                        }
+            let in_action = try_lock_action()
+                .map(|action| action.is_some())
+                .unwrap_or(false);
+            if in_action {
+                if let Ok(id) = tree.lookup_handle(view.into()) {
+                    if let Err(err) = tree.resize_container(id, edge, point) {
+                        warn!("resize_container returned error: {:#?}",
+                                err);
                     }
-                },
-                _ => {}
+                }
             }
         }
     }
@@ -262,7 +263,7 @@ impl Mode for Default {
                                 // with or Lua is restarted or Lua has an error.
                                 // ATM Lua asynchronously logs this but in the future
                                 // an error popup/etc is a good idea.
-                                error!("Error sending keypress: {:?}", err);
+                                warn!("Error sending keypress: {:?}", err);
                             }
                         }
                     }
@@ -276,11 +277,13 @@ impl Mode for Default {
 
     fn view_request_geometry(&mut self, view: WlcView, geometry: Geometry) {
         if let Ok(mut tree) = try_lock_tree() {
-            tree.update_floating_geometry(view, geometry).unwrap_or_else(|_| {
-                warn!("Could not find view {:#?} \
-                    in order to update geometry w/ {:#?}",
-                    view, geometry);
-            });
+            match tree.update_floating_geometry(view, geometry) {
+                Ok(()) | Err(TreeError::ViewNotFound(_)) => {},
+                err => warn!("Could not find view {:#?} \
+                              in order to update geometry w/ {:#?} \
+                              because of {:#?}",
+                             view, geometry, err)
+            }
         }
     }
 
@@ -403,7 +406,7 @@ impl Mode for Default {
                             Err(TreeError::Movement(MovementError::NotFloating(_))) =>
                                 result = EVENT_PASS_THROUGH,
                             Err(err) => {
-                                error!("Error: {:#?}", err);
+                                warn!("Unexpected drarg error: {:#?}", err);
                                 result = EVENT_PASS_THROUGH
                             }
                         }

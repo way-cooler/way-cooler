@@ -197,7 +197,7 @@ pub fn performing_action() -> Option<Action> {
     if let Ok(action) = try_lock_action() {
         *action
     } else {
-        error!("Could not lock action mutex!");
+        warn!("Could not lock action mutex!");
         None
     }
 }

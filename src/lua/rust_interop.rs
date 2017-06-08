@@ -72,7 +72,7 @@ fn ipc_set(category: String) -> Result<(), &'static str> {
 }
 
 fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {
-    error!("Attempting to call `init_workspaces`, this is not implemented");
+    warn!("Attempting to call `init_workspaces`, this is not implemented");
     Ok(())
 }
 

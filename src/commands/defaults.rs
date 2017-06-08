@@ -37,8 +37,8 @@ pub fn register_defaults() {
                 trace!("Switching to workspace {}", $n);
                 if let Ok(mut tree) = try_lock_tree() {
                     tree.switch_to_workspace(&$n.to_string())
-                        .unwrap_or_else(|_| {
-                            error!("Could not switch workspace");
+                        .unwrap_or_else(|err| {
+                            warn!("Could not switch workspace: {:#?}", err);
                         });
                 }
             }
@@ -53,8 +53,9 @@ pub fn register_defaults() {
                 trace!("Switching to workspace {}", $n);
                 if let Ok(mut tree) = try_lock_tree() {
                     tree.send_active_to_workspace(&$n.to_string())
-                        .unwrap_or_else(|_| {
-                            error!("Could not send to a different workspace");
+                        .unwrap_or_else(|err| {
+                            warn!("Could not send to a different workspace,\
+                                   {:#?}", err);
                         })
                 }
             }

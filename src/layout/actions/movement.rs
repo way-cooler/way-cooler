@@ -70,7 +70,6 @@ impl LayoutTree {
                             match self.move_between_ancestors(node_to_move, ancestor_ix, direction) {
                                 Ok(new_parent_ix) => Ok(new_parent_ix),
                                 Err(MovementError::Tree(err)) => {
-                                    error!("Tree error moving between ancestors: {:?}", err);
                                     Err(*err)
                                 }
                                 Err(MovementError::MoveOutsideSiblings(node, dir)) => {

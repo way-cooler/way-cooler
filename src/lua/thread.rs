@@ -134,12 +134,13 @@ pub fn init() {
                 let _: () = lua.execute_from_reader(init_file)
                     .map(|r| { debug!("Read init.lua successfully"); r })
                     .or_else(|err| {
-                        error!("Lua error: {:?}", err);
-                        warn!("Defaulting to pre-compiled init.lua");
+                        // Keeping this an error, so that it is visible
+                        // in release builds.
+                        error!("init file error: {:?}", err);
+                        info!("Defaulting to pre-compiled init.lua");
                         lua.execute(init_path::DEFAULT_CONFIG)
                         })
                     .expect("Unable to load pre-compiled init file");
-                debug!("Read init.lua successfully");
             }
             Err(_) => {
                 warn!("Defaulting to pre-compiled init.lua");
@@ -179,9 +180,8 @@ pub fn init() {
 pub fn on_compositor_ready() {
     info!("Running lua on_init()");
     // Call the special init hook function that we read from the init file
-    send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned()))
-        .err()
-        .map(|error| { error!("Lua init callback returned an error: {:?}", error); error });
+    send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned())).err()
+        .map(|error| warn!("Lua init callback returned an error: {:?}", error));
 }
 
 /// Main loop of the Lua thread:
@@ -218,7 +218,8 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
             if let Err(error) = lua.execute::<()>(LUA_TERMINATE_CODE) {
-                error!("Lua termination callback returned an error: {:?}", error);
+                warn!("Lua termination callback returned an error: {:?}", error);
+                warn!("However, termination will continue");
             }
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
             thread_send(request.reply, LuaResponse::Pong);
@@ -229,7 +230,8 @@ fn handle_message(request: LuaMessage, lua: &mut Lua) -> bool {
         LuaQuery::Restart => {
             trace!("Received restart signal!");
             if let Err(error) = lua.execute::<()>(LUA_RESTART_CODE) {
-                error!("Lua restart callback returned an error: {:?}", error);
+                warn!("Lua restart callback returned an error: {:?}", error);
+                warn!("However, Lua will be restarted");
             }
             *RUNNING.write().expect(ERR_LOCK_RUNNING) = false;
             thread_send(request.reply, LuaResponse::Pong);

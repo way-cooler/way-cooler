@@ -311,13 +311,14 @@ impl Container {
         }
     }
 
-    /// Sets the geometry behind the container. Does nothing if container is root.
+    /// Sets the geometry behind the container. Panics if container is root.
     ///
     /// For view you need to set the appropriate edges (which can be empty).
     /// If you are not intending to set the geometry of a view, simply pass `ResizeEdge::empty()`
     pub fn set_geometry(&mut self, edges: ResizeEdge, geo: Geometry) {
         match *self {
-            Container::Root(_) => error!("Tried to set the geometry of the root!"),
+            Container::Root(_) =>
+                panic!("Tried to set the geometry of the root!"),
             Container::Output { ref handle, .. } => {
                 handle.set_resolution(geo.size, 1);
             },
