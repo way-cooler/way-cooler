@@ -1,6 +1,7 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
+use std::fmt;
 use std::collections::HashSet;
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
@@ -31,6 +32,18 @@ pub enum Direction {
     Right,
     Left
 }
+
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match *self {
+            Direction::Up => "up",
+            Direction::Down => "down",
+            Direction::Right => "right",
+            Direction::Left => "left",
+        })
+    }
+}
+
 const NUM_DIRECTIONS: usize = 4;
 
 impl Direction {
