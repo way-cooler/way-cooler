@@ -1,7 +1,7 @@
 use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
-use super::super::{LayoutTree, TreeError};
+use super::super::{LayoutTree, TreeError, FocusError};
 use super::super::core::container::{Container, ContainerType, Layout, Handle};
 use ::debug_enabled;
 
@@ -148,8 +148,16 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 }
-                self.set_active_node(active_ix)
-                    .expect("Could not set new active node");
+                // TODO Propogate this when this is refactored
+                match self.set_active_node(active_ix) {
+                    Err(TreeError::Focus(
+                        FocusError::BlockedByFullscreen(_, focus_id))) => {
+                        // If blocked, didn't get a chance to set it
+                        self.active_container = self.tree.lookup_id(focus_id);
+                        Ok(())
+                    },
+                    other => other
+                }.expect("Could not set new active node");
                 self.tree.set_ancestor_paths_active(active_ix);
                 self.layout(workspace_ix);
                 self.validate();

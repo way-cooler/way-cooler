@@ -34,7 +34,11 @@ impl UnitTestTree {
     /// removed if you switch to another one.
     pub fn add_workspace(mut self, name: &str) -> TestTreeResult {
         self.0.switch_to_workspace(name)?;
-        assert_eq!(self.0.current_workspace()?, name);
+        {
+            let cur_workspace_name = self.0.current_workspace()
+                .expect("After switching workspace, not focused on a container");
+            assert_eq!(cur_workspace_name, name);
+        }
         Ok(self)
     }
 
