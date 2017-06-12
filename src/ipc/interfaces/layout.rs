@@ -136,6 +136,15 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    fn SendActiveToWorkspace(w_name: String) -> success: DBusResult<bool> {
+        let mut tree = lock_tree_dbus()?;
+        let uuid = tree.active_id()
+            .ok_or(MethodErr::failed(&"No active container!"))?;
+        tree.send_to_workspace(uuid, w_name.as_str())
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
     fn SendToWorkspace(container_id: String, w_name: String) -> success: DBusResult<bool> {
         let mut tree = lock_tree_dbus()?;
         let uuid = parse_uuid("container_id", &container_id)?
