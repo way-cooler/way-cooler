@@ -28,7 +28,9 @@ pub enum GraphError {
     NoParent(NodeIndex),
     /// A node could not be found in the tree with this type.
     /// Gives the node where the search was started
-    NotFound(ContainerType, NodeIndex)
+    NotFound(ContainerType, NodeIndex),
+    /// Looking up a container by UUID failed.
+    LookupFailed(Uuid)
 }
 
 /// Layout tree implemented with petgraph.
@@ -235,7 +237,7 @@ impl InnerTree {
         if let Some(view) = maybe_view {
             self.view_map.insert(view, child_ix);
         }
-        debug!("Added new child {:?} for {:?}", child_ix, &self[child_ix]);
+        info!("Added new child {:?} for {:?}", child_ix, &self[child_ix]);
         child_ix
     }
 

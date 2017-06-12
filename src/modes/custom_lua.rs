@@ -286,12 +286,12 @@ fn send_to_lua<Q: Into<String>>(msg: Q) {
     match lua::send(LuaQuery::Execute(msg.clone())) {
         Ok(_) => {},
         Err(LuaSendError::Sender(err)) =>
-            error!("Error while executing {:?}: {:?}", msg, err),
+            warn!("Error while executing {:?}: {:?}", msg, err),
         Err(LuaSendError::ThreadUninitialized) =>
-            error!("Thread was not initilazed yet, could not execute {:?}",
+            warn!("Thread was not initilazed yet, could not execute {:?}",
                    msg),
         Err(LuaSendError::ThreadClosed) => {
-            error!("Thread closed, could not execute {:?}", msg)
+            warn!("Thread closed, could not execute {:?}", msg)
         }
     }
 }

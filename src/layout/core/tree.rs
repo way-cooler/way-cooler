@@ -1,6 +1,7 @@
 //! Main module to handle the layout.
 //! This is where the i3-specific code is.
 
+use std::fmt;
 use std::collections::HashSet;
 use std::ops::Deref;
 use petgraph::graph::NodeIndex;
@@ -31,6 +32,18 @@ pub enum Direction {
     Right,
     Left
 }
+
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match *self {
+            Direction::Up => "up",
+            Direction::Down => "down",
+            Direction::Right => "right",
+            Direction::Left => "left",
+        })
+    }
+}
+
 const NUM_DIRECTIONS: usize = 4;
 
 impl Direction {
@@ -204,7 +217,7 @@ impl LayoutTree {
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
         if self.active_container != Some(node_ix) {
-            debug!("Active container was {}, is now {}",
+            info!("Active container was {}, is now {}",
                   self.active_container.map(|node| node.index().to_string())
                     .unwrap_or("not set".into()),
                   node_ix.index());
@@ -373,7 +386,7 @@ impl LayoutTree {
             match self.set_active_node(view_ix) {
                 Ok(_) => {},
                 Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
-                    debug!("Blocked focus by fullscreen");
+                    info!("Blocked focus by fullscreen");
                 },
                 Err(err) => return Err(err)
             }
@@ -434,7 +447,7 @@ impl LayoutTree {
         match self.set_active_node(new_container_ix) {
             Ok(_) => {}
             Err(TreeError::Focus(FocusError::BlockedByFullscreen(_, _))) => {
-                debug!("Blocked focus by fullscreen");
+                info!("Blocked focus by fullscreen");
             },
             Err(err) => return Err(err)
         }
@@ -734,8 +747,8 @@ impl LayoutTree {
                 if child_parent != parent_ix {
                     error!("Child at {:?} has parent {:?}, expected {:?}",
                            child_ix, child_parent, parent_ix);
-                    trace!("The tree: {:#?}", this);
-                    panic!()
+                    error!("The tree: {:#?}", this);
+                    panic!("A child node did not point to the correct parent!")
                 }
                 validate_node_connections(this, child_ix);
             }
@@ -757,7 +770,7 @@ impl LayoutTree {
                     error!("Active container @ {:?} is not part of tree!", active_ix);
                     error!("Active container is {:?}", active);
                     trace!("The tree: {:#?}", self);
-                    panic!()
+                    panic!("Active container is not part of the tree!")
                 }
             }
         }
@@ -784,8 +797,8 @@ impl LayoutTree {
                 if self.tree.children_of(workspace_ix).len() == 0 {
                     error!("Workspace {:#?} has no children",
                            self.tree[workspace_ix]);
-                    trace!("The tree: {:#?}", self);
-                    panic!()
+                    error!("The tree: {:#?}", self);
+                    panic!("Workspace has no children")
                 }
                 for container_ix in self.tree.all_descendants_of(workspace_ix) {
                     match self.tree[container_ix] {
@@ -796,7 +809,7 @@ impl LayoutTree {
                                 && self.tree[parent_ix].get_type() != ContainerType::Workspace {
                                     error!("Tree in invalid state. {:?} is an empty non-root container\n \
                                             {:#?}", container_ix, *self);
-                                    panic!();
+                                    panic!("Empty non-root container detected!");
                             }
                             assert!(! self.tree.can_remove_empty_parent(container_ix));
                         },
@@ -851,7 +864,7 @@ impl LayoutTree {
                 if weight.is_active() {
                     if flipped {
                         error!("Divergent paths detected!");
-                        trace!("Tree: {:#?}", self);
+                        error!("Tree: {:#?}", self);
                         panic!("Divergent paths detected!");
                     }
                     flipped = true;
@@ -860,7 +873,7 @@ impl LayoutTree {
                 if seen.contains(&weight.active) {
                     error!("Active number already used!");
                     error!("Found {:?} in {:?}", weight.active, seen);
-                    trace!("Tree: {:#?}", self);
+                    error!("Tree: {:#?}", self);
                     panic!("Duplicate active number found");
                 }
                 seen.push(weight.active);
@@ -872,7 +885,7 @@ impl LayoutTree {
                         //warn!("Path: {:#?}", self.tree.active_path());
                         let children = self.tree.children_of(cur_ix);
                         if children.len() != 0 {
-                            warn!("{:#?}", self);
+                            error!("{:#?}", self);
                             error!("{:?}", children);
                             error!("Path did not end at a container/view, ended at {:?}!",
                                 container);

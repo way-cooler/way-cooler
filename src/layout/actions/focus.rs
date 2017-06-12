@@ -230,11 +230,11 @@ impl LayoutTree {
                 .expect("Could not set active container");
             match self.tree[new_active_ix] {
                 Container::View { ref handle, .. } => {
-                    debug!("Focusing on {:?}", handle);
+                    info!("Focusing on {:?}", handle);
                     handle.focus();
                 },
                 Container::Container { .. } => {
-                    debug!("No view found, focusing on nothing in workspace {:?}", parent_ix);
+                    info!("No view found, focusing on nothing in workspace {:?}", parent_ix);
                     WlcView::root().focus();
                 }
                 _ => unreachable!()
@@ -247,7 +247,7 @@ impl LayoutTree {
                                                                     ContainerType::View) {
                     match self.tree[view_ix] {
                         Container::View { handle, id, .. } => {
-                            debug!("Floating view found, focusing on {:#?}", handle);
+                            info!("Floating view found, focusing on {:#?}", handle);
                             handle.focus();
                             self.set_active_container(id)
                                 .expect("Could not set active container");

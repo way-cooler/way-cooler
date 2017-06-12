@@ -52,7 +52,7 @@ end
 --- Spawns the startup programs
 function util.program.spawn_startup_programs()
   for index, program in ipairs(util.program.programs) do
-    os.execute(program.bin .. " " .. program.args .. " &")
+    util.program.spawn(program.bin, program.args)
   end
 end
 

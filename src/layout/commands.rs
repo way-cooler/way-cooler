@@ -1,16 +1,19 @@
 //! Commands from the user to manipulate the tree
 
-use uuid::Uuid;
-use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
-              VIEW_BIT_UNMANAGED};
-use rustwlc::input::pointer;
-use rustc_serialize::json::{Json, ToJson};
+use std::fs::File;
+use std::io::Read;
 
 use super::{try_lock_tree, lock_tree, try_lock_action};
 use super::{Action, ActionErr, Bar, Container, ContainerType,
             Direction, Handle, Layout, TreeError, ResizeErr};
 use super::Tree;
 use ::registry;
+
+use uuid::Uuid;
+use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
+              VIEW_BIT_UNMANAGED};
+use rustwlc::input::pointer;
+use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
 
@@ -197,7 +200,7 @@ pub fn performing_action() -> Option<Action> {
     if let Ok(action) = try_lock_action() {
         *action
     } else {
-        error!("Could not lock action mutex!");
+        warn!("Could not lock action mutex!");
         None
     }
 }
@@ -270,6 +273,7 @@ impl Tree {
     }
 
     pub fn toggle_float(&mut self) -> CommandResult {
+        debug!("Layout.ToggleFloat()");
         if let Some(uuid) = self.active_id() {
             let is_floating: Result<bool, _> = self.0.lookup(uuid)
                 .and_then(|container| Ok(container.floating()));
@@ -286,24 +290,30 @@ impl Tree {
     ///
     /// If on neither, defaults to horizontal.
     pub fn toggle_cardinal_tiling(&mut self, id: Uuid) -> CommandResult {
+        debug!("Layout.ToggleCardinalTiling()");
         self.0.toggle_cardinal_tiling(id)
             .and_then(|_| self.layout_active_of(ContainerType::Workspace))
     }
 
     /// Sets the active container to the given layout.
     pub fn set_active_layout(&mut self, layout: Layout) -> CommandResult {
+        debug!("Layout.SetActiveLayout(\"{}\")", layout);
         self.0.set_active_layout(layout)
     }
 
     pub fn toggle_floating_focus(&mut self) -> CommandResult {
+        debug!("Layout.ToggleFloatingFocus()");
         self.0.toggle_floating_focus()
     }
 
-    pub fn move_active(&mut self, maybe_uuid: Option<Uuid>, direction: Direction) -> CommandResult {
+    pub fn move_active(&mut self, maybe_uuid: Option<Uuid>,
+                       direction: Direction) -> CommandResult {
         let uuid = try!(maybe_uuid
                         .or_else(|| self.0.get_active_container()
                                  .and_then(|container| Some(container.get_id())))
                         .ok_or(TreeError::NoActiveContainer));
+        debug!("Layout.MoveContainer(\"{}\", \"{}\")",
+               uuid, direction);
         try!(self.0.move_container(uuid, direction));
         try!(self.layout_active_of(ContainerType::Output));
         Ok(())
@@ -355,6 +365,7 @@ impl Tree {
 
     /// Adds a Workspace to the tree. Never fails
     pub fn switch_to_workspace(&mut self, name: &str) -> CommandResult {
+        debug!("Layout.SwitchWorkspace(\"{}\")", name);
         self.0.switch_to_workspace(name);
         Ok(())
     }
@@ -372,16 +383,28 @@ impl Tree {
 
     /// Attempts to set the node behind the id to be floating
     pub fn float_container(&mut self, id: Uuid) -> CommandResult {
+        debug!("Layout.ToggleFloat(\"{}\")", id);
         self.0.float_container(id)
     }
 
     /// Attempts to set the node behind the id to be not floating
     pub fn ground_container(&mut self, id: Uuid) -> CommandResult {
+        debug!("Layout.ToggleFloat(\"{}\")", id);
         self.0.ground_container(id)
     }
 
     /// Adds a view to the workspace of the active container
     pub fn add_view(&mut self, view: WlcView) -> CommandResult {
+        let pid = view.get_pid();
+        if let Ok(mut pid_f) = File::open(format!("/proc/{}/cmdline", pid)) {
+            let mut program_name = String::new();
+            pid_f.read_to_string(&mut program_name)
+                .expect("Could not read file for process name");
+            if program_name.ends_with('\0') {
+                program_name.pop();
+            }
+            debug!("Layout.SpawnProgram(\"{}\")", program_name);
+        }
         let tree = &mut self.0;
         let output = view.get_output();
         if tree.get_active_container().is_none() {
@@ -433,6 +456,7 @@ impl Tree {
     /// This WILL close the view, and should never be called from the
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
+        debug!("Layout.CloseView(\"{}\")", id);
         match try!(self.0.lookup(id)).get_handle()? {
             Handle::View(view) => self.remove_view(view),
             Handle::Output(_) =>
@@ -475,6 +499,7 @@ impl Tree {
     ///
     /// Can also not set floating containers to be active.
     pub fn set_active_container_by_id(&mut self, id: Uuid) -> CommandResult {
+        debug!("Layout.Focus(\"{}\")", id);
         self.0.set_active_container(id)
     }
 
@@ -483,6 +508,7 @@ impl Tree {
     /// If the container is a non-View/Container, then an error is returned
     /// and the flag is not set (it's only tracked for Views and Containers).
     pub fn set_fullscreen(&mut self, id: Uuid, toggle: bool) -> CommandResult {
+        debug!("Layout.FullScreen(\"{}\", {})", id, toggle);
         {
             let container = try!(self.0.lookup_mut(id));
             try!(container.set_fullscreen(toggle)
@@ -523,6 +549,7 @@ impl Tree {
     /// Focuses on the container. If the container is not floating and is a
     /// Container or a View, then it is also made the active container.
     pub fn focus(&mut self, id: Uuid) -> CommandResult {
+        debug!("Layout.focus(\"{}\")", id);
         self.set_active_container_by_id(id)
             .or_else(|_| {
                 self.0.focus_on(id)
@@ -536,6 +563,7 @@ impl Tree {
     }
 
     pub fn move_focus(&mut self, dir: Direction) -> CommandResult {
+        debug!("Layout.FocusDir(\"{}\")", dir);
         self.0.move_focus(dir)?;
         let layout = self.0.active_layout()?;
         // NOTE Since tiling is somewhat expensive,
@@ -548,6 +576,7 @@ impl Tree {
 
     /// Moves the active container to a workspace
     pub fn send_active_to_workspace(&mut self, workspace_name: &str) -> CommandResult {
+        debug!("Layout.SendActiveToWorkspace(\"{}\")", workspace_name);
         self.0.send_active_to_workspace(workspace_name);
         Ok(())
     }
@@ -587,6 +616,10 @@ impl Tree {
     }
 
     pub fn send_to_workspace(&mut self, id: Uuid, workspace_name: &str) -> CommandResult {
+        if self.0.tree.lookup_id(id).is_none() {
+            Err(::layout::GraphError::LookupFailed(id))?
+        }
+        debug!("Layout.SendToWorkspace(\"{}\", \"{}\")", id, workspace_name);
         self.0.send_to_workspace(id, workspace_name);
         Ok(())
     }

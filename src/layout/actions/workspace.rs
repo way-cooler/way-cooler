@@ -130,7 +130,7 @@ impl LayoutTree {
                 if let Err(err) = self.remove_workspace(old_worksp_ix) {
                     warn!("Tried to remove empty workspace {:#?}, error: {:?}",
                         old_worksp_ix, err);
-                    debug!("{:#?}", self);
+                    info!("{:#?}", self);
                     panic!("Could not remove old workspace");
                 }
             }
@@ -204,6 +204,8 @@ impl LayoutTree {
     pub fn send_to_workspace(&mut self, id: Uuid, name: &str) {
         let node_ix = self.tree.lookup_id(id);
         // Ensure focus
+        // TODO Need to not make it default, but need to add tests to make
+        // sure that doesn't cause a regression.
         if let Some(active_ix) = node_ix.or(self.active_container) {
             let curr_work_ix = self.active_ix_of(ContainerType::Workspace)
                 .expect("send_active: Not currently in a workspace!");
@@ -255,7 +257,7 @@ impl LayoutTree {
             let next_work_root_ix = next_work_children[0];
 
             // Move the container
-            debug!("Moving container {:?} to workspace {}",
+            info!("Moving container {:?} to workspace {}",
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
 

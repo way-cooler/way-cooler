@@ -92,7 +92,7 @@ unsafe extern "C" fn set_gamma(_client: *mut wl_client,
                                red: *mut wl_array,
                                green: *mut wl_array,
                                blue: *mut wl_array) {
-    debug!("Setting gamma");
+    info!("Setting gamma");
     if (*red).size != (*green).size || (*red).size != (*blue).size {
         ffi_dispatch!(
             WAYLAND_SERVER_HANDLE,
@@ -124,7 +124,7 @@ unsafe extern "C" fn set_gamma(_client: *mut wl_client,
 /// logs that the action occured.
 unsafe extern "C" fn reset_gamma(_client: *mut wl_client,
                                  _resource: *mut wl_resource) {
-    debug!("Resetting gamma");
+    info!("Resetting gamma");
 }
 
 /// Destroys the wl_resource.
@@ -146,7 +146,7 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
                                        _resource: *mut wl_resource,
                                        id: uint32_t,
                                        output: *mut wl_resource) {
-    debug!("Request received for control of the gamma ramps");
+    info!("Request received for control of the gamma ramps");
     let manager_resource = ffi_dispatch!(
         WAYLAND_SERVER_HANDLE,
         wl_resource_create,
@@ -159,7 +159,7 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
         warn!("This is triggering, dis bad?");
         return;
     }
-    debug!("Client requested control of the gamma ramps for {:?}", wlc_output);
+    info!("Client requested control of the gamma ramps for {:?}", wlc_output);
     let gamma_control_ptr = &mut GAMMA_CONTROL as *mut _ as *mut c_void;
     ffi_dispatch!(
         WAYLAND_SERVER_HANDLE,
@@ -169,7 +169,7 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
         output as *mut c_void,
         None
     );
-    debug!("Request granted for gamma ramp control of {:?}", wlc_output);
+    info!("Request granted for gamma ramp control of {:?}", wlc_output);
     gamma_control_send_gamma_size(manager_resource,
                                   wlc_output_get_gamma_size(wlc_output.0))
 }
@@ -181,7 +181,7 @@ unsafe extern "C" fn bind(client: *mut wl_client,
                               _data: *mut c_void,
                               version: u32,
                               id: u32) {
-    debug!("Binding Gamma Control resource");
+    info!("Binding Gamma Control resource");
     let cur_version = GammaControlManager::supported_version();
     if version > cur_version {
         warn!("Unsupported gamma control protocol version {}!", version);
@@ -232,7 +232,7 @@ unsafe extern "C" fn gamma_control_send_gamma_size(resource: *mut wl_resource,
 pub fn init() {
     let w_display = wayland::get_display();
     unsafe {
-        debug!("Initializing gamma control manager");
+        info!("Initializing gamma control manager");
         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                       wl_global_create,
                       w_display as *mut _,

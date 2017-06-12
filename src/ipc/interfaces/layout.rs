@@ -2,6 +2,8 @@
 
 /// Dbus macro for Layout code
 
+use std::process::{Command, Stdio};
+
 use ::ipc::utils::{parse_edge, parse_uuid, parse_direction, parse_axis, lock_tree_dbus};
 
 use dbus::tree::MethodErr;
@@ -21,6 +23,7 @@ dbus_interface! {
         }
     }
 
+    // TODO Make this optional, and actually do something with it!
     fn ToggleFloat(container_id: String) -> success: DBusResult<bool> {
         let maybe_uuid = try!(parse_uuid("container_id", &container_id));
         match maybe_uuid {
@@ -73,11 +76,28 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    fn SetActiveLayout(layout: String) -> success: DBusResult<bool> {
+        let mut tree = lock_tree_dbus()?;
+        let layout = parse_axis("layout", layout.as_str())?;
+        tree.set_active_layout(layout)
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
     fn SwitchWorkspace(w_name: String) -> success: DBusResult<bool> {
         let mut tree = try!(lock_tree_dbus());
         tree.switch_to_workspace(w_name.as_str())
             .and(Ok(true))
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
+    fn SpawnProgram(prog_name: String) -> pid: DBusResult<u32> {
+        Command::new(prog_name)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+            .map(|child| child.id())
     }
 
     fn CloseView(view_id: String) -> success: DBusResult<bool> {
@@ -101,6 +121,13 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    fn ToggleFloatingFocus() -> success: DBusResult<bool> {
+        let mut tree = lock_tree_dbus()?;
+        tree.toggle_floating_focus()
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
     fn FocusDir(direction: String) -> success: DBusResult<bool> {
         let direction = try!(parse_direction("direction", direction.as_str()));
         let mut tree = try!(lock_tree_dbus());
@@ -109,11 +136,20 @@ dbus_interface! {
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
     }
 
+    fn SendActiveToWorkspace(w_name: String) -> success: DBusResult<bool> {
+        let mut tree = lock_tree_dbus()?;
+        let uuid = tree.active_id()
+            .ok_or(MethodErr::failed(&"No active container!"))?;
+        tree.send_to_workspace(uuid, w_name.as_str())
+            .and(Ok(true))
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
     fn SendToWorkspace(container_id: String, w_name: String) -> success: DBusResult<bool> {
-        let mut tree = try!(lock_tree_dbus());
-        let uuid = try!(try!(parse_uuid("container_id", &container_id))
+        let mut tree = lock_tree_dbus()?;
+        let uuid = parse_uuid("container_id", &container_id)?
                         .or_else(|| tree.active_id())
-                        .ok_or(MethodErr::failed(&"No active container")));
+                        .ok_or(MethodErr::failed(&"No active container"))?;
         tree.send_to_workspace(uuid, w_name.as_str())
             .and(Ok(true))
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
