@@ -625,10 +625,12 @@ impl Tree {
     /// Updates the geometry of the view from an external request
     /// (such a request can come from the view itself)
     pub fn update_floating_geometry(&mut self, view: WlcView,
-                           geometry: Geometry) -> CommandResult {
+                                    geometry: Geometry) -> CommandResult {
         let container = self.0.lookup_view_mut(view)?;
         if container.floating() {
             container.set_geometry(ResizeEdge::empty(), geometry);
+            container.resize_borders(geometry);
+            container.draw_borders();
             Ok(())
         } else {
             let uuid = container.get_id();
