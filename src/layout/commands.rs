@@ -630,7 +630,7 @@ impl Tree {
         if container.floating() {
             container.set_geometry(ResizeEdge::empty(), geometry);
             container.resize_borders(geometry);
-            container.draw_borders();
+            container.draw_borders()?;
             Ok(())
         } else {
             let uuid = container.get_id();
