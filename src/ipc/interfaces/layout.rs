@@ -2,6 +2,8 @@
 
 /// Dbus macro for Layout code
 
+use std::process::{Command, Stdio};
+
 use ::ipc::utils::{parse_edge, parse_uuid, parse_direction, parse_axis, lock_tree_dbus};
 
 use dbus::tree::MethodErr;
@@ -87,6 +89,15 @@ dbus_interface! {
         tree.switch_to_workspace(w_name.as_str())
             .and(Ok(true))
             .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+    }
+
+    fn SpawnProgram(prog_name: String) -> pid: DBusResult<u32> {
+        Command::new(prog_name)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|err| MethodErr::failed(&format!("{:?}", err)))
+            .map(|child| child.id())
     }
 
     fn CloseView(view_id: String) -> success: DBusResult<bool> {
