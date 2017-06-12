@@ -204,6 +204,8 @@ impl LayoutTree {
     pub fn send_to_workspace(&mut self, id: Uuid, name: &str) {
         let node_ix = self.tree.lookup_id(id);
         // Ensure focus
+        // TODO Need to not make it default, but need to add tests to make
+        // sure that doesn't cause a regression.
         if let Some(active_ix) = node_ix.or(self.active_container) {
             let curr_work_ix = self.active_ix_of(ContainerType::Workspace)
                 .expect("send_active: Not currently in a workspace!");

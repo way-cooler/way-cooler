@@ -620,6 +620,9 @@ impl Tree {
     }
 
     pub fn send_to_workspace(&mut self, id: Uuid, workspace_name: &str) -> CommandResult {
+        if self.0.tree.lookup_id(id).is_none() {
+            Err(::layout::GraphError::LookupFailed(id))?
+        }
         debug!("Layout.SendToWorkspace(\"{}\", \"{}\")", id, workspace_name);
         self.0.send_to_workspace(id, workspace_name);
         Ok(())
