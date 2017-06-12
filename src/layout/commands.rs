@@ -1,16 +1,19 @@
 //! Commands from the user to manipulate the tree
 
-use uuid::Uuid;
-use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
-              VIEW_BIT_UNMANAGED};
-use rustwlc::input::pointer;
-use rustc_serialize::json::{Json, ToJson};
+use std::fs::File;
+use std::io::Read;
 
 use super::{try_lock_tree, lock_tree, try_lock_action};
 use super::{Action, ActionErr, Bar, Container, ContainerType,
             Direction, Handle, Layout, TreeError, ResizeErr};
 use super::Tree;
 use ::registry;
+
+use uuid::Uuid;
+use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
+              VIEW_BIT_UNMANAGED};
+use rustwlc::input::pointer;
+use rustc_serialize::json::{Json, ToJson};
 
 pub type CommandResult = Result<(), TreeError>;
 
@@ -391,6 +394,15 @@ impl Tree {
 
     /// Adds a view to the workspace of the active container
     pub fn add_view(&mut self, view: WlcView) -> CommandResult {
+        let mut program_name = String::new();
+        {
+            let pid = view.get_pid();
+            let mut pid_f = File::open(format!("/proc/{}/cmdline", pid))
+                .expect("Could not open proc/ file for pid of view");
+            pid_f.read_to_string(&mut program_name)
+                .expect("Could not read file for process name");
+        }
+        debug!("Layout.SpawnProgram(\"{}\")", program_name);
         let tree = &mut self.0;
         let output = view.get_output();
         if tree.get_active_container().is_none() {
