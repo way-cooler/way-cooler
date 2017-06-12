@@ -576,11 +576,7 @@ impl Tree {
 
     /// Moves the active container to a workspace
     pub fn send_active_to_workspace(&mut self, workspace_name: &str) -> CommandResult {
-        self.0.active_container.map(|active_ix| {
-            let id = self.0.tree[active_ix].get_id();
-            debug!("Layout.SendToWorkspace(\"{}\", \"{}\")",
-                   id, workspace_name);
-        });
+        debug!("Layout.SendActiveToWorkspace(\"{}\")", workspace_name);
         self.0.send_active_to_workspace(workspace_name);
         Ok(())
     }
