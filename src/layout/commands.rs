@@ -1,11 +1,5 @@
 //! Commands from the user to manipulate the tree
 
-use super::{try_lock_tree, lock_tree, try_lock_action};
-use super::{Action, ActionErr, Bar, Container, ContainerType,
-            Direction, Handle, Layout, TreeError};
-use super::Tree;
-use ::registry;
-
 use uuid::Uuid;
 use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
               VIEW_BIT_UNMANAGED};
