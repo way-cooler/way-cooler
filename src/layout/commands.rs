@@ -12,6 +12,12 @@ use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
 use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
+use super::{try_lock_tree, lock_tree, try_lock_action};
+use super::{Action, ActionErr, Bar, Container, ContainerType,
+            Direction, Handle, Layout, TreeError, ResizeErr};
+use super::Tree;
+use ::registry;
+
 pub type CommandResult = Result<(), TreeError>;
 
 /* These commands are exported to take nothing and return nothing,
@@ -626,11 +632,14 @@ impl Tree {
     /// (such a request can come from the view itself)
     pub fn update_floating_geometry(&mut self, view: WlcView,
                            geometry: Geometry) -> CommandResult {
-        let container = try!(self.0.lookup_view_mut(view));
+        let container = self.0.lookup_view_mut(view)?;
         if container.floating() {
-            container.set_geometry(ResizeEdge::empty(), geometry)
+            container.set_geometry(ResizeEdge::empty(), geometry);
+            Ok(())
+        } else {
+            let uuid = container.get_id();
+            Err(ResizeErr::ExpectedFloating(uuid))?
         }
-        Ok(())
     }
 
     /// Renders the borders for the view.

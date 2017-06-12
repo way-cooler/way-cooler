@@ -7,6 +7,8 @@ mod unit_tests;
 
 pub use self::actions::movement::MovementError;
 pub use self::actions::focus::FocusError;
+pub use self::actions::resize::ResizeErr;
+pub use self::core::GraphError;
 
 pub use self::core::action::{Action, ActionErr};
 pub use self::core::container::{Container, ContainerType, Handle, Layout};
