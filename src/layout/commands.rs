@@ -395,15 +395,16 @@ impl Tree {
 
     /// Adds a view to the workspace of the active container
     pub fn add_view(&mut self, view: WlcView) -> CommandResult {
-        let mut program_name = String::new();
-        {
-            let pid = view.get_pid();
-            let mut pid_f = File::open(format!("/proc/{}/cmdline", pid))
-                .expect("Could not open proc/ file for pid of view");
+        let pid = view.get_pid();
+        if let Ok(mut pid_f) = File::open(format!("/proc/{}/cmdline", pid)) {
+            let mut program_name = String::new();
             pid_f.read_to_string(&mut program_name)
                 .expect("Could not read file for process name");
+            if program_name.ends_with('\0') {
+                program_name.pop();
+            }
+            debug!("Layout.SpawnProgram(\"{}\")", program_name);
         }
-        debug!("Layout.SpawnProgram(\"{}\")", program_name);
         let tree = &mut self.0;
         let output = view.get_output();
         if tree.get_active_container().is_none() {
