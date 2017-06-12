@@ -135,6 +135,12 @@ impl From<GraphError> for TreeError {
     }
 }
 
+impl From<ResizeErr> for TreeError {
+    fn from(err: ResizeErr) -> TreeError {
+        TreeError::Resize(err)
+    }
+}
+
 impl LayoutTree {
     /// Drops every node in the tree, essentially invalidating it
     pub fn destroy_tree(&mut self) {

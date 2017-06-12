@@ -1,16 +1,16 @@
 //! Commands from the user to manipulate the tree
 
-use super::{try_lock_tree, lock_tree, try_lock_action};
-use super::{Action, ActionErr, Bar, Container, ContainerType,
-            Direction, Handle, Layout, TreeError};
-use super::Tree;
-use ::registry;
-
 use uuid::Uuid;
 use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
               VIEW_BIT_UNMANAGED};
 use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
+
+use super::{try_lock_tree, lock_tree, try_lock_action};
+use super::{Action, ActionErr, Bar, Container, ContainerType,
+            Direction, Handle, Layout, TreeError, ResizeErr};
+use super::Tree;
+use ::registry;
 
 pub type CommandResult = Result<(), TreeError>;
 
@@ -625,12 +625,17 @@ impl Tree {
     /// Updates the geometry of the view from an external request
     /// (such a request can come from the view itself)
     pub fn update_floating_geometry(&mut self, view: WlcView,
-                           geometry: Geometry) -> CommandResult {
-        let container = try!(self.0.lookup_view_mut(view));
+                                    geometry: Geometry) -> CommandResult {
+        let container = self.0.lookup_view_mut(view)?;
         if container.floating() {
-            container.set_geometry(ResizeEdge::empty(), geometry)
+            container.set_geometry(ResizeEdge::empty(), geometry);
+            container.resize_borders(geometry);
+            container.draw_borders()?;
+            Ok(())
+        } else {
+            let uuid = container.get_id();
+            Err(ResizeErr::ExpectedFloating(uuid))?
         }
-        Ok(())
     }
 
     /// Renders the borders for the view.
