@@ -18,8 +18,11 @@ If a container is toggled to be in a state it is already in then no error is ret
 ## Examples
 ```python
 from pydbus import SessionBus
+from time import sleep
 bus = SessionBus()
 layout = bus.get(bus_name='org.way-cooler', object_path='/org/way_cooler/Layout')
 active_id = layout.ActiveContainerId()
-layout.FullScreen(active_id)
+layout.FullScreen(active_id, True)
+sleep(1)
+layout.FullScreen(active_id, False)
 ```
