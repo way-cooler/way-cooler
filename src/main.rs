@@ -86,6 +86,25 @@ fn log_format(record: &log::LogRecord) -> String {
             color, record.level(), module_path, file, line, record.args())
 }
 
+/// Ensures that the environment is set up correctly. E.g:
+/// * XDG_RUNTIME_DIR is set to a directory that exists.
+fn ensure_good_env() {
+    use std::env::VarError;
+    match env::var("XDG_RUNTIME_DIR") {
+        Ok(_) => {/* Do nothing, logged in `log_environment` */},
+        Err(VarError::NotUnicode(string)) => {
+            error!("The value set for XDG_RUNTIME_DIR ({:?}) \
+                    is not valid unicode!",
+                   string);
+            std::process::exit(1);
+        },
+        Err(VarError::NotPresent) => {
+            error!("XDG_RUNTIME_DIR is not set!");
+            std::process::exit(1);
+        }
+    }
+}
+
 /// Checks the loaded modules, and reports any problematic proprietary ones
 fn detect_proprietary() {
     // If DISPLAY is present, we are running embedded
@@ -180,6 +199,7 @@ fn main() {
     init_logs();
     log_environment();
     detect_proprietary();
+    ensure_good_env();
     // This prepares wlc, doesn't run main loop until run_wlc is called
     let run_wlc = rustwlc::init()
         .expect("Unable to initialize wlc!");
