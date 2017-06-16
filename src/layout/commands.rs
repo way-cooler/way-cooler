@@ -565,12 +565,9 @@ impl Tree {
     pub fn move_focus(&mut self, dir: Direction) -> CommandResult {
         debug!("Layout.FocusDir(\"{}\")", dir);
         self.0.move_focus(dir)?;
-        let layout = self.0.active_layout()?;
         // NOTE Since tiling is somewhat expensive,
         // this can be a bottleneck that can be possibly optimized.
-        if layout == Layout::Tabbed || layout == Layout::Stacked {
-            self.0.layout_active_of(ContainerType::Container);
-        }
+        self.0.layout_active_of(ContainerType::Workspace);
         Ok(())
     }
 

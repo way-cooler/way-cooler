@@ -234,22 +234,24 @@ impl LayoutTree {
                         }
                         // Set everything invisible,
                         // set floating and focused view to be visible.
-                        self.set_container_visibility(node_ix, false);
                         let mut children = self.tree
                             .children_of_by_active(node_ix);
-                        let mut seen = false;
+                        let mut seen = None;
                         for child_ix in &children {
                             if self.tree[*child_ix].floating() {
                                 self.set_container_visibility(*child_ix, true);
                                 continue
                             }
-                            if !seen {
-                                seen = true;
-                                self.layout_helper(*child_ix,
-                                                   geometry,
-                                                   fullscreen_apps);
-                                self.set_container_visibility(*child_ix, true);
+                            if seen.is_none() {
+                                seen = Some(*child_ix);
                             }
+                            self.layout_helper(*child_ix,
+                                               geometry,
+                                               fullscreen_apps);
+                        }
+                        self.set_container_visibility(node_ix, false);
+                        if let Some(child_ix) = seen {
+                            self.set_container_visibility(child_ix, true);
                         }
                         children.push(node_ix);
                         // TODO Propogate error
