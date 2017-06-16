@@ -457,8 +457,11 @@ impl Tree {
     /// `view_destroyed` callback, as it's possible the view from that callback is invalid.
     pub fn remove_view_by_id(&mut self, id: Uuid) -> CommandResult {
         debug!("Layout.CloseView(\"{}\")", id);
-        match try!(self.0.lookup(id)).get_handle()? {
-            Handle::View(view) => self.remove_view(view),
+        match self.0.lookup(id)?.get_handle()? {
+            Handle::View(view) => {
+                view.close();
+                Ok(())
+            },
             Handle::Output(_) =>
                 Err(TreeError::UuidNotAssociatedWith(ContainerType::View))
         }
