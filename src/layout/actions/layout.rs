@@ -236,21 +236,24 @@ impl LayoutTree {
                         // set floating and focused view to be visible.
                         let mut children = self.tree
                             .children_of_by_active(node_ix);
-                        let mut seen = None;
+                        let mut seen = false;
+                        // Pre-optimization, mostly < 7 floating views.
+                        let mut views_to_vis = Vec::with_capacity(8);
                         for child_ix in &children {
                             if self.tree[*child_ix].floating() {
-                                self.set_container_visibility(*child_ix, true);
+                                views_to_vis.push(*child_ix);
                                 continue
                             }
-                            if seen.is_none() {
-                                seen = Some(*child_ix);
+                            if !seen {
+                                seen = true;
+                                views_to_vis.push(*child_ix);
                             }
                             self.layout_helper(*child_ix,
                                                geometry,
                                                fullscreen_apps);
                         }
                         self.set_container_visibility(node_ix, false);
-                        if let Some(child_ix) = seen {
+                        for child_ix in views_to_vis {
                             self.set_container_visibility(child_ix, true);
                         }
                         children.push(node_ix);
