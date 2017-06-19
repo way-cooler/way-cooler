@@ -6,6 +6,8 @@ use std::io::Read;
 use super::{try_lock_tree, lock_tree, try_lock_action};
 use super::{Action, ActionErr, Bar, Container, ContainerType,
             Direction, Handle, Layout, TreeError, ResizeErr};
+use super::core::borders::Borders;
+use ::render::Renderable;
 use super::Tree;
 use ::registry;
 
@@ -411,11 +413,19 @@ impl Tree {
             return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
-        let has_parent = view.get_parent() != WlcView::root();
-        if view.get_type() != ViewType::empty() || has_parent ||
-            view.get_type().intersects(VIEW_BIT_UNMANAGED)
-        {
+        let parent = view.get_parent();
+        let view_bit = view.get_type();
+        // If this view is a subsurface
+        if view_bit.intersects(VIEW_BIT_UNMANAGED) {
             tree.add_floating_view(view, None)?;
+        } else if parent != WlcView::root() {
+            if view_bit != ViewType::empty() {
+                let geo = view.get_geometry().expect("View had no geometry");
+                let borders = Borders::new(geo, output);
+                tree.add_floating_view(view, borders)?;
+            } else {
+                tree.add_floating_view(view, None)?;
+            }
         } else {
             tree.add_view(view)?;
             tree.normalize_view(view)?;
