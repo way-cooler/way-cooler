@@ -2,7 +2,9 @@ use rustwlc::WlcOutput;
 use petgraph::graph::NodeIndex;
 use uuid::Uuid;
 use super::super::{LayoutTree, TreeError, FocusError};
-use super::super::core::container::{Container, ContainerType, Layout, Handle};
+use ::layout::core::container::{Container, ContainerType, Layout, Handle};
+use ::layout::core::borders::Borders;
+use ::render::Renderable;
 use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
@@ -41,7 +43,10 @@ impl LayoutTree {
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let container = Container::new_container(geometry, output_handle, None);
+        let borders = Borders::new(geometry, output_handle);
+        let container = Container::new_container(geometry,
+                                                 output_handle,
+                                                 borders);
         let container_ix = self.tree.add_child(worksp_ix, container, false);
         self.tree.set_ancestor_paths_active(container_ix);
         self.validate();
