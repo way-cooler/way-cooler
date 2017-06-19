@@ -413,12 +413,12 @@ impl Tree {
             return Err(TreeError::NoActiveContainer)
         }
         view.set_mask(output.get_mask());
-        let parent = view.get_parent();
-        let view_bit = view.get_type();
         // If this view is a subsurface
+        let has_parent = view.get_parent() != WlcView::root();
+        let view_bit = view.get_type();
         if view_bit.intersects(VIEW_BIT_UNMANAGED) {
             tree.add_floating_view(view, None)?;
-        } else if parent != WlcView::root() {
+        } else if has_parent {
             if view_bit != ViewType::empty() {
                 let geo = view.get_geometry().expect("View had no geometry");
                 let borders = Borders::new(geo, output);
@@ -426,7 +426,10 @@ impl Tree {
             } else {
                 tree.add_floating_view(view, None)?;
             }
-        } else {
+        } else if view_bit != ViewType::empty() {
+            tree.add_floating_view(view, None)?;
+        }
+        else {
             tree.add_view(view)?;
             tree.normalize_view(view)?;
         }
