@@ -175,14 +175,8 @@ impl LayoutTree {
                     .or_else(|_| self.tree.descendant_of_type(active_ix,
                                                               ContainerType::Container)).ok();
                 match self.tree[self.active_container.expect("Workspace had NO children!")] {
-                    Container::View { floating, .. } => {
-                        if !floating {
-                            self.tree.set_ancestor_paths_active(self.active_container.unwrap());
-                        } else {
-                            let root_c_ix = *self.tree.children_of(workspace_ix).get(0)
-                            .expect("The workspace we are switching to had no root container");
-                            self.tree.set_ancestor_paths_active(root_c_ix);
-                        }
+                    Container::View { .. } => {
+                        self.tree.set_ancestor_paths_active(self.active_container.unwrap());
                     },
                     Container::Container { .. } => {
                         self.tree.set_ancestor_paths_active(self.active_container.unwrap());

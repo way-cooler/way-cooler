@@ -242,7 +242,7 @@ impl InnerTree {
     }
 
     /// Add an existing node (detached in the graph) to the tree.
-    /// Note that floating nodes shouldn't exist for too long.
+    /// Note that un-attached nodes shouldn't exist for too long.
     fn attach_child(&mut self, parent_ix: NodeIndex, child_ix: NodeIndex) -> EdgeIndex {
         if self.has_parent(child_ix) {
             panic!("attach_child: child had a parent!")
@@ -319,8 +319,6 @@ impl InnerTree {
     /// Moves the node index at source so that it is a child of the target node.
     /// If the node was moved, the new parent of the source node is returned
     /// (which is always the same as the target node).
-    ///
-    /// If the source node is not floating, then the new connection is made active.
     pub fn move_into(&mut self, source: NodeIndex, target: NodeIndex)
                      -> Result<NodeIndex, GraphError> {
         let source_parent = try!(self.parent_of(source));
@@ -333,9 +331,7 @@ impl InnerTree {
             .unwrap_or(Path::zero());
         highest_weight.weight = *highest_weight + 1;
         self.graph.update_edge(target, source, highest_weight);
-        if !self[source].floating() {
-            self.set_ancestor_paths_active(source);
-        }
+        self.set_ancestor_paths_active(source);
         self.normalize_edge_weights(source_parent);
         self.normalize_edge_active(source_parent);
         self.normalize_edge_weights(target);
