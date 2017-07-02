@@ -1,4 +1,4 @@
-#Contributing to Way Cooler
+# Contributing to Way Cooler
 
 We are always looking for more help to improve Way Cooler. Even if you don't know how to write any Rust code, we always need better documentation, detailed bug reports, and suggestions for more features.
 
