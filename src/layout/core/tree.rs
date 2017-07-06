@@ -246,9 +246,7 @@ impl LayoutTree {
             _ => return Err(
                 TreeError::UuidWrongType(id, vec!(ContainerType::View, ContainerType::Container)))
         }
-        if !self.tree[node_ix].floating() {
-            self.tree.set_ancestor_paths_active(node_ix);
-        }
+        self.tree.set_ancestor_paths_active(node_ix);
         if let Some(old_active_ix) = old_active {
             match self.tree[node_ix] {
                 Container::View { handle, .. } => {

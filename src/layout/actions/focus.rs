@@ -39,9 +39,7 @@ impl LayoutTree {
             },
             _ => return Err(TreeError::Focus(FocusError::NotAView(uuid)))
         }
-        if !self.tree[node_ix].floating() {
-            self.tree.set_ancestor_paths_active(node_ix);
-        }
+        self.tree.set_ancestor_paths_active(node_ix);
         Ok(())
     }
     /// Focus on the container relative to the active container.
@@ -182,7 +180,8 @@ impl LayoutTree {
         match self.tree[last_ix] {
             Container::View { handle, .. } => {
                 handle.focus();
-                self.active_container = Some(last_ix);
+                self.set_active_container(id)
+                    .expect("Could not focus on next container");
                 return
             },
             Container::Container { .. } => {
@@ -288,17 +287,26 @@ impl LayoutTree {
             return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
         }
         if floating {
-            let root_ix = self.tree.root_ix();
-            let new_ix = self.tree.follow_path(root_ix);
-            match self.tree[new_ix].get_type() {
-                ContainerType::View | ContainerType::Container  => {
-                    try!(self.set_active_node(new_ix));
+            let parent_ix = self.tree.parent_of(active_ix)?;
+            let new_ix = {
+                let children = self.tree.children_of_by_active(parent_ix);
+                if children.len() == 1 {
+                    None
+                } else {
+                    children.get(1).map(|ix| *ix)
+                }
+            };
+            match new_ix.map(|new_ix| (self.tree[new_ix].get_type(), new_ix)) {
+                None => Ok(()),
+                Some((ContainerType::View, new_ix)) |
+                Some((ContainerType::Container, new_ix)) => {
+                    self.set_active_node(new_ix)?;
                     Ok(())
                 },
                 type_ => {
-                    error!("Path lead to the wrong container, {:#?}\n{:#?}\n{:#?}",
-                           active_ix, type_, self);
-                    panic!("toggle_floating_focused: bad path");
+                error!("Path lead to the wrong container, {:#?}\n{:#?}\n{:#?}",
+                       active_ix, type_, self);
+                panic!("toggle_floating_focused: bad path");
                 }
             }
         } else {
