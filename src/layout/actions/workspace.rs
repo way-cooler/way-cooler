@@ -227,11 +227,14 @@ impl LayoutTree {
                     fn set_output_recurse(this: &mut LayoutTree,
                                           node_ix: NodeIndex,
                                           output_handle: WlcOutput) {
-                        match this.tree[node_ix] {
-                            Container::View { handle, .. } => {
-                                handle.set_output(output_handle);
+                        match this.tree[node_ix].get_type() {
+                            ContainerType::View => {
+                                this.tree[node_ix].update_border_output(output_handle)
+                                    .expect("Could not update border output for view");
                             },
-                            Container::Container { .. } => {
+                            ContainerType::Container => {
+                                this.tree[node_ix].update_border_output(output_handle)
+                                    .expect("Could not update border output for view");
                                 for child_ix in this.tree.children_of(node_ix) {
                                     set_output_recurse(this, child_ix, output_handle)
                                 }

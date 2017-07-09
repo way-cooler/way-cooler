@@ -327,6 +327,16 @@ impl Borders {
         self.output
     }
 
+    /// Changes the output that this border resides in.
+    /// This will automatically re-trigger a reallocation
+    /// so that it renders correctly.
+    pub fn set_output(mut self, output: WlcOutput) -> Option<Self> {
+        self.output = output;
+        // Force copy
+        let geo = self.geometry;
+        self.reallocate_buffer(geo)
+    }
+
     pub fn title(&self) -> &str {
         self.title.as_str()
     }
