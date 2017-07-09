@@ -361,8 +361,8 @@ impl Tree {
     /// Binds a view to be the background for the given outputs.
     ///
     /// If there was a previous background, it is removed and deallocated.
-    pub fn add_background(&mut self, view: WlcView, outputs: &[Uuid]) -> CommandResult {
-        self.0.attach_background(view, outputs)
+    pub fn add_background(&mut self, view: WlcView, output: Uuid) -> CommandResult {
+        self.0.attach_background(view, output)
     }
 
     /// Adds a Workspace to the tree. Never fails
