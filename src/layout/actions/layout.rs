@@ -550,18 +550,18 @@ impl LayoutTree {
               RemainF: Fn(Geometry, Geometry) -> Size,
               PointF:  Fn(Size, Geometry) -> Point
     {
-        let mut sub_geometry = geometry.clone();
+        let mut sub_geometry = geometry;
         for (index, child_ix) in children.iter().enumerate() {
             let child_size = self.tree[*child_ix].get_geometry()
                 .expect("Child had no geometry").size;
-            let new_size = new_size_f(child_size, sub_geometry.clone());
+            let new_size = new_size_f(child_size, sub_geometry);
             sub_geometry = Geometry {
                 origin: sub_geometry.origin.clone(),
-                size: new_size.clone()
+                size: new_size
             };
             // If last child, then just give it the remaining height
             if index == children.len() - 1 {
-                let new_size = remaining_size_f(sub_geometry.clone(),
+                let new_size = remaining_size_f(sub_geometry,
                                                 self.tree[node_ix].get_geometry()
                                                 .expect("Container had no geometry"));
                 sub_geometry = Geometry {
@@ -569,10 +569,10 @@ impl LayoutTree {
                     size: new_size
                 };
             }
-            self.layout_helper(*child_ix, sub_geometry.clone(), fullscreen_apps);
+            self.layout_helper(*child_ix, sub_geometry, fullscreen_apps);
 
             // Next sub container needs to start where this one ends
-            let new_point = new_point_f(new_size.clone(), sub_geometry.clone());
+            let new_point = new_point_f(new_size, sub_geometry);
             sub_geometry = Geometry {
                 // lambda to calculate new point, given a new size
                 // which is calculated in the function

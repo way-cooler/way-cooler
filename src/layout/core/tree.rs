@@ -924,7 +924,7 @@ pub mod tests {
         let root_ix = tree.root_ix();
         let fake_size = Size { h: 800, w: 600 };
         let fake_geometry = Geometry {
-            size: fake_size.clone(),
+            size: fake_size,
             origin: Point { x: 0, y: 0 }
         };
 
@@ -933,7 +933,7 @@ pub mod tests {
                                                 Container::new_workspace("1".to_string(),
                                                                    fake_geometry), false);
         let root_container_1_ix = tree.add_child(workspace_1_ix,
-                                                 Container::new_container(fake_geometry.clone(),
+                                                 Container::new_container(fake_geometry,
                                                                           fake_output,
                                                                           None),
                                                  false);
@@ -941,7 +941,7 @@ pub mod tests {
                                                 Container::new_workspace("2".to_string(),
                                                                      fake_geometry), false);
         let root_container_2_ix = tree.add_child(workspace_2_ix,
-                                                 Container::new_container(fake_geometry.clone(),
+                                                 Container::new_container(fake_geometry,
                                                                           fake_output,
                                                                           None),
                                                  false);
@@ -950,7 +950,7 @@ pub mod tests {
                                                 Container::new_view(fake_view_1.clone(), None), false);
         /* Workspace 2 containers */
         let wkspc_2_container = tree.add_child(root_container_2_ix,
-                                               Container::new_container(fake_geometry.clone(),
+                                               Container::new_container(fake_geometry,
                                                                         fake_output,
                                                                         None),
                                                false);

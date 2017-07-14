@@ -113,7 +113,7 @@ impl LayoutTree {
 /// the current position of the pointer, and the previous place the pointer was at.
 fn calculate_resize(geo: Geometry, edge: ResizeEdge,
                     cur_pointer: Point, prev_pointer: Point) -> Geometry {
-    let mut new_geo = geo.clone();
+    let mut new_geo = geo;
     let dx = cur_pointer.x - prev_pointer.x;
     let dy = cur_pointer.y - prev_pointer.y;
     if edge.contains(RESIZE_LEFT) {
