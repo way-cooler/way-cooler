@@ -263,11 +263,10 @@ impl LayoutTree {
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
 
+            // If different outputs, show it on the new output.
             let cur_output_ix = self.tree.parent_of(curr_work_ix)
                 .expect("Couldn't get parent of current work index");
-            let next_is_vis = self.tree.on_path(next_work_root_ix);
-            // If different outputs, show it on the new output if workspace is vis.
-            if new_output_ix != cur_output_ix && next_is_vis {
+            if new_output_ix != cur_output_ix {
                 self.container_visibilty_wrapper(new_output_ix, true);
             }
 
