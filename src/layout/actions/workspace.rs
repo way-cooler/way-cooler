@@ -231,10 +231,26 @@ impl LayoutTree {
                             ContainerType::View => {
                                 this.tree[node_ix].update_border_output(output_handle)
                                     .expect("Could not update border output for view");
+                                // TODO this is duplicated in other places,
+                                // abstract into a function somewhere (not here)
+                                {
+                                    // Update the border colors
+                                    let container = &mut this.tree[node_ix];
+                                    container.clear_border_color()
+                                        .expect("Could not clear old active border color");
+                                    container.draw_borders().expect("Could not draw borders");
+                                }
                             },
                             ContainerType::Container => {
                                 this.tree[node_ix].update_border_output(output_handle)
                                     .expect("Could not update border output for view");
+                                {
+                                    // Update the border colors
+                                    let container = &mut this.tree[node_ix];
+                                    container.clear_border_color()
+                                        .expect("Could not clear old active border color");
+                                    container.draw_borders().expect("Could not draw borders");
+                                }
                                 for child_ix in this.tree.children_of(node_ix) {
                                     set_output_recurse(this, child_ix, output_handle)
                                 }
