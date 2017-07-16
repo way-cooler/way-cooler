@@ -708,6 +708,33 @@ impl Container {
         }
     }
 
+    /// Sets the new output that the border should render on.
+    pub fn update_border_output(&mut self, output: WlcOutput)
+                                -> Result<(), ContainerErr> {
+        let c_type = self.get_type();
+        match *self {
+            Container::View { handle, ref mut borders, .. }  => {
+                handle.set_output(output);
+                if let Some(borders_) = borders.take() {
+                    *borders = borders_.set_output(output);
+                }
+                Ok(())
+            }
+            Container::Container { ref mut borders, .. } => {
+                if let Some(borders_) = borders.take() {
+                    *borders = borders_.set_output(output);
+                }
+                Ok(())
+            },
+            _ => {
+                Err(ContainerErr::BadOperationOn(c_type,
+                                                 "Can only call \
+                                                  update_border_update on \
+                                                  View/Container".into()))?
+            }
+        }
+    }
+
     /// Gets the title for a wlc handle.
     /// Tries to get the title, then defers to class if blank,
     /// and finally to the app_id if that is blank as well.

@@ -114,8 +114,8 @@ impl Mode for Default {
             };
             view.set_geometry(ResizeEdge::empty(), fullscreen);
             if let Ok(mut tree) = lock_tree() {
-                let outputs = tree.outputs();
-                return tree.add_background(view, outputs.as_slice()).map(|_| true)
+                let output = tree.outputs()[0];
+                return tree.add_background(view, output).map(|_| true)
                     .unwrap_or_else(|err| {
                         warn!("Could not add background due to {:?}", err);
                         true

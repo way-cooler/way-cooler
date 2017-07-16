@@ -227,11 +227,30 @@ impl LayoutTree {
                     fn set_output_recurse(this: &mut LayoutTree,
                                           node_ix: NodeIndex,
                                           output_handle: WlcOutput) {
-                        match this.tree[node_ix] {
-                            Container::View { handle, .. } => {
-                                handle.set_output(output_handle);
+                        match this.tree[node_ix].get_type() {
+                            ContainerType::View => {
+                                this.tree[node_ix].update_border_output(output_handle)
+                                    .expect("Could not update border output for view");
+                                // TODO this is duplicated in other places,
+                                // abstract into a function somewhere (not here)
+                                {
+                                    // Update the border colors
+                                    let container = &mut this.tree[node_ix];
+                                    container.clear_border_color()
+                                        .expect("Could not clear old active border color");
+                                    container.draw_borders().expect("Could not draw borders");
+                                }
                             },
-                            Container::Container { .. } => {
+                            ContainerType::Container => {
+                                this.tree[node_ix].update_border_output(output_handle)
+                                    .expect("Could not update border output for view");
+                                {
+                                    // Update the border colors
+                                    let container = &mut this.tree[node_ix];
+                                    container.clear_border_color()
+                                        .expect("Could not clear old active border color");
+                                    container.draw_borders().expect("Could not draw borders");
+                                }
                                 for child_ix in this.tree.children_of(node_ix) {
                                     set_output_recurse(this, child_ix, output_handle)
                                 }
@@ -259,6 +278,13 @@ impl LayoutTree {
             info!("Moving container {:?} to workspace {}",
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
+
+            // If different outputs, show it on the new output.
+            let cur_output_ix = self.tree.parent_of(curr_work_ix)
+                .expect("Couldn't get parent of current work index");
+            if new_output_ix != cur_output_ix {
+                self.container_visibilty_wrapper(new_output_ix, true);
+            }
 
             // If it's a fullscreen app, then update the fullscreen lists
             self.transfer_fullscreen(curr_work_ix, next_work_ix, id);
