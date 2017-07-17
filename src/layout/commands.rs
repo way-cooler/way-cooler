@@ -671,9 +671,30 @@ impl Tree {
     /// Updates the geometry of the view from an external request
     /// (such a request can come from the view itself)
     pub fn update_floating_geometry(&mut self, view: WlcView,
-                                    geometry: Geometry) -> CommandResult {
+                                    mut geometry: Geometry) -> CommandResult {
         let container = self.0.lookup_view_mut(view)?;
         if container.floating() {
+            // If we didn't request it to be at 0,0, don't move
+            // WORKAROUND This is a workaround where certain popups
+            // (I'm looking at you, Firefox save), will request it to be at 0,0
+            // but with the correct size. This causes a race condition,
+            // where sometimes we get to update the origin first and sometimes
+            // the client does.
+
+            // NOTE This gets the "effective_geometry",
+            // so it's only updated from Way Cooler's side.
+            let effective_geo = container.get_geometry()
+                .expect("Updated a container that wasn't a view!");
+            if effective_geometry.origin != geometry.origin {
+                // And it's trying to put it in the top left.
+                if geometry.origin == Point::new(0, 0) {
+                    let output = view.get_output();
+                    let res = output.get_resolution()
+                        .expect("Output had no resolution");
+                    geometry.origin.x = (res.w / 2 - geometry.size.w / 2) as i32;
+                    geometry.origin.y = (res.h / 2 - geometry.size.h / 2) as i32;
+                }
+            }
             container.set_geometry(ResizeEdge::empty(), geometry);
             container.resize_borders(geometry);
             container.draw_borders()?;
