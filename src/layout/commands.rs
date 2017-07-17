@@ -675,7 +675,7 @@ impl Tree {
         let container = self.0.lookup_view_mut(view)?;
         if container.floating() {
             // If we didn't request it to be at 0,0, don't move
-            // WORKAROUND This is a workaround where certain popups
+            // FIXME WORKAROUND This is a workaround where certain popups
             // (I'm looking at you, Firefox save), will request it to be at 0,0
             // but with the correct size. This causes a race condition,
             // where sometimes we get to update the origin first and sometimes
