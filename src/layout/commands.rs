@@ -685,7 +685,7 @@ impl Tree {
             // so it's only updated from Way Cooler's side.
             let effective_geo = container.get_geometry()
                 .expect("Updated a container that wasn't a view!");
-            if effective_geometry.origin != geometry.origin {
+            if effective_geo.origin != geometry.origin {
                 // And it's trying to put it in the top left.
                 if geometry.origin == Point::new(0, 0) {
                     let output = view.get_output();
