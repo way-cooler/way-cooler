@@ -6,13 +6,15 @@ use std::sync::RwLock;
 use rustwlc::types::*; // Need * for bitflags...
 
 mod keypress;
-pub use self::keypress::KeyPress;
-
+mod action;
 mod event;
+
+pub use self::keypress::KeyPress;
 pub use self::event::KeyEvent;
+pub use self::action::Action;
 
 lazy_static! {
-    static ref BINDINGS: RwLock<HashMap<KeyPress, KeyEvent>> =
+    static ref BINDINGS: RwLock<HashMap<KeyPress, Action>> =
         RwLock::new(HashMap::new());
 
     static ref NAME_MAPPING: HashMap<&'static str, &'static str> = {
@@ -51,7 +53,8 @@ pub fn init() {
     if !is_quit_bound() {
         register(KeyPress::new(MOD_ALT | MOD_SHIFT, keysyms::KEY_Escape),
                  KeyEvent::Command(commands::get("way_cooler_quit")
-                                   .expect("Error reading commands::way_cooler_quit")));
+                                   .expect("Error reading commands::way_cooler_quit")),
+                 false);
     }
 }
 
@@ -63,10 +66,10 @@ pub fn clear_keys() {
 }
 
 /// Get a key mapping from the list.
-pub fn get(key: &KeyPress) -> Option<KeyEvent> {
+pub fn get(key: &KeyPress) -> Option<Action> {
     let bindings = BINDINGS.read()
         .expect("Keybindings/get: unable to lock keybindings");
-    bindings.get(key).map(KeyEvent::clone)
+    bindings.get(key).map(Action::clone)
 }
 
 /// Gets the current key modifier for mouse control
@@ -77,11 +80,13 @@ pub fn mouse_modifier() -> KeyMod {
 }
 
 /// Register a new set of key mappings
-pub fn register(key: KeyPress, event: KeyEvent) -> Option<KeyEvent> {
+pub fn register(key: KeyPress, event: KeyEvent, passthrough: bool)
+                -> Option<Action> {
     let mut bindings = BINDINGS.write()
         .expect("Keybindings/register: unable to lock keybindings");
-    trace!("Registering {} for {:?}", key, event);
-    bindings.insert(key, event)
+    let action = Action { event, passthrough };
+    trace!("Registering {} for {:?}", key, action);
+    bindings.insert(key, action)
 }
 
 /// Registers a modifier to be used with mouse commands
@@ -101,7 +106,8 @@ pub fn is_quit_bound() -> bool {
         .expect("Error reading commands::way_cooler_quit");
 
     for value in bindings.values() {
-        if let KeyEvent::Command(ref cmd) = *value {
+        let value = &value.event;
+        if let &KeyEvent::Command(ref cmd) = value {
             if (&**cmd as *const _) == (&*quit as *const _) {
                 return true;
             }
@@ -126,7 +132,7 @@ mod tests {
     #[test]
     fn add_key() {
         require_rustwlc!();
-        register(keypress(), KeyEvent::Command(Arc::new(test_cmd)));
+        register(keypress(), KeyEvent::Command(Arc::new(test_cmd)), false);
         assert!(get(&keypress()).is_some(), "Key not registered");
     }
 }

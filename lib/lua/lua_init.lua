@@ -30,15 +30,20 @@ commands.init_workspaces = function(settings)
 end
 
 -- Create a new keybinding to register with Rust
-commands.key = function(mods, key, action, loop)
+commands.key = function(mods, key, action, loop, passthrough)
     assert(type(mods) == 'table', "modifiers: expected table")
     assert(type(key) == 'string', "key: expected string")
     if loop == nil then loop = true end
+    if passthrough == nil then passthrough = false end
     if type(action) ~= 'string' and type(action) ~= 'function' then
         error("action: expected string or function", 2)
     end
     return {
-        mods = mods, key = key, action = action, loop = loop
+      mods = mods,
+      key = key,
+      action = action,
+      loop = loop,
+      passthrough = passthrough,
     }
 end
 
@@ -46,15 +51,15 @@ commands.on_init = function() end
 commands.on_restart = function() end
 commands.on_terminate = function() end
 
-local use_key = ", use the `key` or `way_cooler.key` method to create a keybinding"
+local use_key = ", use the `way_cooler.key` method to create a keybinding"
 -- Converts a list of modifiers to a string
 local function keymods_to_string(mods, key)
     table.insert(mods, key)
     return table.concat(mods, ',')
 end
 -- Save the action at the __key_map and tell Rust to register the Lua key
-local function register_lua_key(index, action, loop)
-    local map_ix = rust.register_lua_key(index, loop)
+local function register_lua_key(index, action, loop, passthrough)
+    local map_ix = rust.register_lua_key(index, loop, passthrough)
     __key_map[map_ix] = action
 end
 
@@ -63,20 +68,23 @@ commands.register_key = function(key)
     assert(key.mods, "keybinding missing modifiers" .. use_key)
     assert(key.key, "keybinding missing modifiers" .. use_key)
     assert(key.action, "keybinding missing action" .. use_key)
-    assert(key.loop, "keybinding missing repeat" .. use_key)
+    assert(key.loop ~= nil, "keybinding missing repeat" .. use_key)
+    assert(key.passthrough ~= nil, "keybinding missing passthrough" .. use_key)
     assert(type(key.mods) == 'table',
            "keybinding modifiers: expected table" .. use_key)
     assert(type(key.key) == 'string',
            "keybinding key: expected string" .. use_key)
     assert(type(key.loop) == 'boolean',
            "keybinding repeat: expected optional boolean" .. use_key)
+    assert(type(key.passthrough) == "boolean",
+           "keybinding passthrough: expected optional boolean" .. use_key)
 
     if (type(key.action) == 'string') then
         rust.register_command_key(keymods_to_string(key.mods, key.key),
-                                  key.action, key.loop)
+                                  key.action, key.loop, key.passthrough)
     elseif (type(key.action) == 'function') then
         register_lua_key(keymods_to_string(key.mods, key.key),
-                              key.action, key.loop)
+                              key.action, key.loop, key.passthrough)
     else
         error("keybinding action: expected string or a function"..use_key, 2)
     end
