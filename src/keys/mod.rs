@@ -89,6 +89,13 @@ pub fn register(key: KeyPress, event: KeyEvent, passthrough: bool)
     bindings.insert(key, action)
 }
 
+/// Unregisters a key mapping
+pub fn unregister(key: &KeyPress) -> Option<Action> {
+    let mut bindings = BINDINGS.write()
+        .expect("Keybindings/unregister: unable to lock keybindings");
+    bindings.remove(key)
+}
+
 /// Registers a modifier to be used with mouse commands
 pub fn register_mouse_modifier(modifier: KeyMod) {
     let mut key_mod = MOUSE_MODIFIER.write()

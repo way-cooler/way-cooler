@@ -67,7 +67,7 @@ end
 -- Register a keybinding
 commands.register_key = function(key)
     assert(key.mods, "keybinding missing modifiers" .. use_key)
-    assert(key.key, "keybinding missing modifiers" .. use_key)
+    assert(key.key, "keybinding missing key" .. use_key)
     assert(key.action, "keybinding missing action" .. use_key)
     assert(key.loop ~= nil, "keybinding missing repeat" .. use_key)
     assert(key.passthrough ~= nil, "keybinding missing passthrough" .. use_key)
@@ -89,6 +89,17 @@ commands.register_key = function(key)
     else
         error("keybinding action: expected string or a function"..use_key, 2)
     end
+end
+
+-- unregisters a keybinding
+commands.unregister_key = function(key)
+  assert(key.mods, "keybinding missing modifiers" .. use_key)
+  assert(key.key, "keybinding missing key" .. use_key)
+  assert(type(key.mods) == 'table',
+         "keybinding modifiers: expected table" .. use_key)
+  assert(type(key.key) == 'string',
+         "keybinding key: expected string" .. use_key)
+  rust.unregister_lua_key(keymods_to_string(key.mods, key.key))
 end
 
 -- Bind a key to use in conjunction with the mouse for certain commands (resize, move floating)

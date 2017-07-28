@@ -25,6 +25,7 @@ pub fn register_libraries(lua: &mut Lua) {
         let mut rust_table: LuaTable<_> = lua.empty_array("__rust");
         rust_table.set("init_workspaces", hlua::function1(init_workspaces));
         rust_table.set("register_lua_key", hlua::function3(register_lua_key));
+        rust_table.set("unregister_lua_key", hlua::function1(unregister_lua_key));
         rust_table.set("register_command_key", hlua::function4(register_command_key));
         rust_table.set("register_mouse_modifier", hlua::function1(register_mouse_modifier));
         rust_table.set("keypress_index", hlua::function1(keypress_index));
@@ -105,7 +106,29 @@ fn register_lua_key(mods: String, _repeat: bool, passthrough: bool)
         .map(|press| {
             keys::register(press.clone(), KeyEvent::Lua, passthrough);
             press.get_lua_index_string()
-        }).map_err(|_| format!("Invalid keys '{}'", mods))}
+        }).map_err(|_| format!("Invalid keys '{}'", mods))
+}
+
+/// Rust half of unregistering a Lua key. This pops it from the key table, if
+/// it exists.
+///
+/// If a key wasn't registered, a proper error string is raised.
+fn unregister_lua_key(mods: String) -> Result<String, String> {
+    error!("Got {:#?}", mods);
+    keypress_from_string(&mods).and_then(|press| {
+        if let Some(action) = keys::unregister(&press) {
+            trace!("Removed keybinding \"{}\" for {:?}", press, action);
+            Ok(press.get_lua_index_string())
+        } else {
+            let error_str = format!("Could not remove keybinding \"{}\": \
+                                     Not registered!",
+                                    press);
+            warn!("Could not remove keybinding \"{}\": Not registered!",
+                  press);
+            Err(error_str)
+        }
+    }).map_err(|_| format!("Invalid keys '{}'", mods))
+}
 
 /// Parses a keypress from a string
 fn keypress_from_string(mods: &str) -> Result<KeyPress, String> {
