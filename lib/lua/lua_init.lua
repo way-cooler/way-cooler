@@ -54,6 +54,7 @@ commands.on_terminate = function() end
 local use_key = ", use the `way_cooler.key` method to create a keybinding"
 -- Converts a list of modifiers to a string
 local function keymods_to_string(mods, key)
+    mods = {table.unpack(mods)}
     table.insert(mods, key)
     return table.concat(mods, ',')
 end
