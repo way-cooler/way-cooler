@@ -62,6 +62,9 @@ impl Mode for Default {
     }
 
     fn output_render_post(&mut self, output: WlcOutput) {
+        if WlcOutput::focused() != output {
+            return
+        }
         let need_to_fetch = read_screen_scrape_lock();
         if *need_to_fetch {
             if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
