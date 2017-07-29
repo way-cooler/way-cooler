@@ -114,7 +114,6 @@ fn register_lua_key(mods: String, _repeat: bool, passthrough: bool)
 ///
 /// If a key wasn't registered, a proper error string is raised.
 fn unregister_lua_key(mods: String) -> Result<String, String> {
-    error!("Got {:#?}", mods);
     keypress_from_string(&mods).and_then(|press| {
         if let Some(action) = keys::unregister(&press) {
             trace!("Removed keybinding \"{}\" for {:?}", press, action);
