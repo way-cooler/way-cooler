@@ -77,17 +77,20 @@ pub fn tile_switch() {
 
 pub fn split_vertical() {
     if let Ok(mut tree) = try_lock_tree() {
+        debug!("Layout.SplitVertical()");
         tree.0.toggle_active_layout(Layout::Vertical).ok();
     }
 }
 
 pub fn split_horizontal() {
+    debug!("Layout.SplitHorizontal()");
     if let Ok(mut tree) = try_lock_tree() {
         tree.0.toggle_active_layout(Layout::Horizontal).ok();
     }
 }
 
 pub fn tile_tabbed() {
+    debug!("Layout.SplitTabbed()");
     if let Ok(mut tree) = try_lock_tree() {
         tree.0.set_active_layout(Layout::Tabbed).unwrap_or_else(|err| {
             warn!("Could not tile as tabbed: {:?}", err);
@@ -97,6 +100,7 @@ pub fn tile_tabbed() {
 
 pub fn tile_stacked() {
     if let Ok(mut tree) = try_lock_tree() {
+        debug!("Layout.SplitStacked()");
         tree.0.set_active_layout(Layout::Stacked).unwrap_or_else(|err| {
             warn!("Could not tile as stacked: {:?}", err);
         })
