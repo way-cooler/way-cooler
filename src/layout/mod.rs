@@ -15,6 +15,7 @@ pub use self::core::container::{Container, ContainerType, Handle, Layout};
 pub use self::core::tree::{Direction, TreeError};
 pub use self::core::bar::Bar;
 use self::core::InnerTree;
+pub use self::core::MIN_SIZE;
 
 use petgraph::graph::NodeIndex;
 use rustc_serialize::json::{Json, ToJson};

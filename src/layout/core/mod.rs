@@ -8,3 +8,4 @@ mod graph_tree;
 
 pub use self::tree::{Direction, TreeError};
 pub use self::graph_tree::{InnerTree, GraphError, ShiftDirection};
+pub use self::container::MIN_SIZE;

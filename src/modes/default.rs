@@ -11,6 +11,7 @@ use ::keys::{self, KeyPress, KeyEvent};
 use ::layout::{lock_tree, try_lock_tree, try_lock_action, Action, ContainerType,
                     MovementError, TreeError, FocusError};
 use ::layout::commands::set_performing_action;
+use ::layout::MIN_SIZE;
 use ::lua::{self, LuaQuery};
 
 use ::render::screen_scrape::{read_screen_scrape_lock, scraped_pixels_lock,
@@ -276,6 +277,11 @@ impl Mode for Default {
     }
 
     fn view_request_geometry(&mut self, view: WlcView, geometry: Geometry) {
+        if geometry.size.w < MIN_SIZE.w || geometry.size.h < MIN_SIZE.h {
+            warn!("Ignoring requested geometry {:#?}, which is below min {:#?}",
+                  geometry, MIN_SIZE);
+            return;
+        }
         if let Ok(mut tree) = try_lock_tree() {
             match tree.update_floating_geometry(view, geometry) {
                 Ok(()) | Err(TreeError::ViewNotFound(_)) => {},
