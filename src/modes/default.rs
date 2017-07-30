@@ -249,8 +249,10 @@ impl Mode for Default {
         let press = KeyPress::new(mods.mods, sym);
 
         if state == KeyState::Pressed {
-            if let Some(action) = keys::get(&press) {
+            if let Some(key) = keys::get(&press) {
                 info!("[key] Found an action for {}, blocking event", press);
+                let action = key.event;
+                let passthrough = key.passthrough;
                 match action {
                     KeyEvent::Command(func) => {
                         func();
@@ -269,7 +271,7 @@ impl Mode for Default {
                         }
                     }
                 }
-                return EVENT_BLOCKED
+                return !passthrough
             }
         }
 
