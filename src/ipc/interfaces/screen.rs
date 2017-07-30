@@ -2,6 +2,8 @@ use dbus::arg::{Array};
 use dbus::tree::MethodErr;
 use dbus::MessageItem;
 
+use ::rustwlc::WlcOutput;
+use ::layout::Handle;
 use ::ipc::utils::{parse_uuid, lock_tree_dbus};
 use ::ipc::{DBusFactory, DBusObjPath};
 use ::render::screen_scrape::{write_screen_scrape_lock, read_screen_scrape_lock,
@@ -21,6 +23,14 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath {
                             .append((MessageItem::Array(outputs, "s".into())))
                     ])
                 }).outarg::<Array<String, Vec<String>>, _>("success")
+            )
+            .add_m(
+                f.method("ActiveScreen", (), |m| {
+                    let tree = lock_tree_dbus()?;
+                    let id = tree.lookup_handle(Handle::Output(WlcOutput::focused()))
+                        .map_err(|err| MethodErr::failed(&format!("{:?}", err)))?.to_string();
+                    Ok(vec![m.msg.method_return().append((MessageItem::Str(id)))])
+                }).outarg::<String, _>("success")
             )
             .add_m(
                 // TODO Make this take in a:
