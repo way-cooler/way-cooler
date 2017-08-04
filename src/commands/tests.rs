@@ -1,5 +1,4 @@
 //! Tests on the command API
-use std::sync::Arc;
 use std::collections::HashMap;
 
 use commands::{self, ComMap};
@@ -8,8 +7,8 @@ use commands::{self, ComMap};
 
 pub fn command_map() -> ComMap {
     let mut map: ComMap = HashMap::new();
-    map.insert("command".to_string(), Arc::new(command));
-    map.insert("panic_command".to_string(), Arc::new(panic_command));
+    map.insert("command".to_string(), command);
+    map.insert("panic_command".to_string(), panic_command);
     map
 }
 
@@ -25,7 +24,7 @@ pub fn panic_command() {
 #[test]
 fn add_commands() {
     // Command
-    assert!(commands::set("new_command".to_string(), Arc::new(command))
+    assert!(commands::set("new_command".to_string(), command)
         .is_none(), "New command was duplicate!");
 
     assert!(commands::get("new_command").is_some(),
