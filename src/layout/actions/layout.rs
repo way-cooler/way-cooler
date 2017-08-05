@@ -414,14 +414,7 @@ impl LayoutTree {
                 return Ok(())
             }
             if self.tree.grounded_children(parent_ix).len() == 1 {
-                // NOTE Do _NOT_ use set_layout,
-                // the normalization causes the issue described in #344
-                match self.tree[parent_ix] {
-                    Container::Container { ref mut layout , ..} => {
-                        *layout = new_layout
-                    },
-                    _ => unreachable!()
-                }
+                self.set_layout(parent_ix, new_layout);
                 return Ok(())
             }
 
