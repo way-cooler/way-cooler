@@ -433,12 +433,21 @@ impl Tree {
                         .expect("View had no geometry");
                     let borders = Borders::new(geo, output);
                     tree.add_floating_view(view, borders)?;
+                    view.focus();
                 },
                 VIEW_BIT_POPUP => {
                     tree.add_floating_view(view, None)?;
                 },
-                _ => {
-                    tree.add_floating_view(view, None)?;
+                v => {
+                    if v == ViewType::empty() {
+                        let geo = view.get_geometry()
+                            .expect("View had no geometry");
+                        let borders = Borders::new(geo, output);
+                        tree.add_floating_view(view, borders)?;
+                        view.focus();
+                    } else {
+                        tree.add_floating_view(view, None)?;
+                    }
                 }
             }
         } else if view_bit != ViewType::empty() {
