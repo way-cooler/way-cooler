@@ -409,7 +409,9 @@ impl Container {
                     v_g.size.h = MIN_SIZE.h;
                 }
                 // if modal, center it if in the top left.
-                if handle.get_type().contains(VIEW_BIT_MODAL) {
+                let put_in_center = handle.get_type().contains(VIEW_BIT_MODAL) ||
+                    handle.get_parent() != WlcView::root();
+                if put_in_center {
                     if v_g.origin.x == 0 && v_g.origin.y == 0 {
                         let output = handle.get_output();
                         let res = output.get_resolution()
