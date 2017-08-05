@@ -13,7 +13,7 @@ use ::registry;
 
 use uuid::Uuid;
 use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
-              VIEW_BIT_UNMANAGED};
+              VIEW_BIT_UNMANAGED, VIEW_BIT_MODAL, VIEW_BIT_POPUP};
 use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
@@ -427,12 +427,19 @@ impl Tree {
         if view_bit.intersects(VIEW_BIT_UNMANAGED) {
             tree.add_floating_view(view, None)?;
         } else if has_parent {
-            if view_bit != ViewType::empty() {
-                let geo = view.get_geometry().expect("View had no geometry");
-                let borders = Borders::new(geo, output);
-                tree.add_floating_view(view, borders)?;
-            } else {
-                tree.add_floating_view(view, None)?;
+            match view_bit {
+                VIEW_BIT_MODAL => {
+                    let geo = view.get_geometry()
+                        .expect("View had no geometry");
+                    let borders = Borders::new(geo, output);
+                    tree.add_floating_view(view, borders)?;
+                },
+                VIEW_BIT_POPUP => {
+                    tree.add_floating_view(view, None)?;
+                },
+                _ => {
+                    tree.add_floating_view(view, None)?;
+                }
             }
         } else if view_bit != ViewType::empty() {
             tree.add_floating_view(view, None)?;
