@@ -420,6 +420,10 @@ impl Tree {
         // If this view is a subsurface
         let has_parent = view.get_parent() != WlcView::root();
         let view_bit = view.get_type();
+        trace!("Adding view: {:?}\n w/ bit: {:?}\n has parent: {:?}\n\
+                title: {:?}\n class: {:?}\n appid: {:?}",
+               view, view_bit, has_parent,
+               view.get_title(), view.get_class(), view.get_app_id());
         if view_bit.intersects(VIEW_BIT_UNMANAGED) {
             tree.add_floating_view(view, None)?;
         } else if has_parent {
