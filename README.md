@@ -98,7 +98,7 @@ Finally, to install Way Cooler simply run the following cargo command:
 cargo install way-cooler
 ```
 
-You can try it out while running in an X environment, or switch to a TTY and run it as a standalone
+You can try it out while running in an X environment, or switch to a TTY and run it as a standalone.
 
 # Init File
 
