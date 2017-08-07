@@ -130,7 +130,13 @@ pub fn init() {
     let (use_config, maybe_init_file) = init_path::get_config();
     if use_config {
         match maybe_init_file {
-            Ok(init_file) => {
+            Ok((init_dir, init_file)) => {
+                if init_dir.components().next().is_some() {
+                    // Add the config directory to the package path.
+                    let mut package: hlua::LuaTable<_> = lua.get("package").expect("package not defined in Lua");
+                    let paths: String = package.get("path").expect("package.path not defined in Lua");
+                    package.set("path", paths + ";" + init_dir.join("?.lua").to_str().expect("init_dir not a valid UTF-8 string"));
+                }
                 let _: () = lua.execute_from_reader(init_file)
                     .map(|r| { info!("Read init.lua successfully"); r })
                     .or_else(|err| {
