@@ -77,7 +77,7 @@ Follow the development of these features in our [issues section] or checkout our
 
 For users who are not on Arch or NixOS, we have provided a simple install script that you can run in the terminal in order to install Way Cooler.
 
-Please go to the [download page on our site](http://way-cooler.org/download) in order to dwnload Way Cooler.
+Please go to the [download page on our site](http://way-cooler.org/download) in order to download Way Cooler.
 
 ## Build from source
 
@@ -98,7 +98,7 @@ Finally, to install Way Cooler simply run the following cargo command:
 cargo install way-cooler
 ```
 
-You can try it out while running in an X environment, or switch to a TTY and run it as a standalone
+You can try it out while running in an X environment, or switch to a TTY and run it as a standalone.
 
 # Init File
 

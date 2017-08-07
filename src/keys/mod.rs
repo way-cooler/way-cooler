@@ -115,7 +115,7 @@ pub fn is_quit_bound() -> bool {
     for value in bindings.values() {
         let value = &value.event;
         if let &KeyEvent::Command(ref cmd) = value {
-            if (&**cmd as *const _) == (&*quit as *const _) {
+            if (&*cmd as *const _) == (&quit as *const _) {
                 return true;
             }
         }
@@ -126,7 +126,6 @@ pub fn is_quit_bound() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     fn test_cmd() {
         assert!(true);
@@ -139,7 +138,7 @@ mod tests {
     #[test]
     fn add_key() {
         require_rustwlc!();
-        register(keypress(), KeyEvent::Command(Arc::new(test_cmd)), false);
+        register(keypress(), KeyEvent::Command(test_cmd), false);
         assert!(get(&keypress()).is_some(), "Key not registered");
     }
 }

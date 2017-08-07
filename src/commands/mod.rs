@@ -1,14 +1,14 @@
 //! way-cooler commands.
 
 use std::collections::hash_map::HashMap;
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 mod defaults;
 
 #[cfg(test)]
 mod tests;
 
-pub type CommandFn = Arc<Fn() + Send + Sync>;
+pub type CommandFn = fn();
 
 pub type ComMap = HashMap<String, CommandFn>;
 
