@@ -1,6 +1,5 @@
 //! Register commands on the registry.
 
-use std::sync::Arc;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::io::prelude::*;
@@ -23,12 +22,12 @@ pub fn register_defaults() {
         coms.insert(name.to_string(), val);
     };
 
-    register("way_cooler_quit", Arc::new(way_cooler_quit));
-    register("print_pointer", Arc::new(print_pointer));
+    register("way_cooler_quit", way_cooler_quit);
+    register("print_pointer", print_pointer);
 
-    register("dmenu_eval", Arc::new(dmenu_eval));
-    register("way_cooler_restart", Arc::new(way_cooler_restart));
-    register("dmenu_lua_dofile", Arc::new(dmenu_lua_dofile));
+    register("dmenu_eval", dmenu_eval);
+    register("way_cooler_restart", way_cooler_restart);
+    register("dmenu_lua_dofile", dmenu_lua_dofile);
 
     /// Generate switch_workspace methods and register them
     macro_rules! gen_switch_workspace {
@@ -42,7 +41,7 @@ pub fn register_defaults() {
                         });
                 }
             }
-            register(stringify!($b), Arc::new($b)); )+
+            register(stringify!($b), $b); )+
         }
     }
 
@@ -59,7 +58,7 @@ pub fn register_defaults() {
                         })
                 }
             }
-              register(stringify!($b), Arc::new($b)); )+
+              register(stringify!($b), $b); )+
         }
     }
 
@@ -87,30 +86,30 @@ pub fn register_defaults() {
                            move_to_workspace_0, "0");
 
     // Tiling and window controls
-    register("horizontal_vertical_switch", Arc::new(layout_cmds::tile_switch));
-    register("split_vertical", Arc::new(layout_cmds::split_vertical));
-    register("split_horizontal", Arc::new(layout_cmds::split_horizontal));
-    register("tile_tabbed", Arc::new(layout_cmds::tile_tabbed));
-    register("tile_stacked", Arc::new(layout_cmds::tile_stacked));
-    register("fullscreen_toggle", Arc::new(layout_cmds::fullscreen_toggle));
-    register("focus_left", Arc::new(layout_cmds::focus_left));
-    register("focus_right", Arc::new(layout_cmds::focus_right));
-    register("focus_up", Arc::new(layout_cmds::focus_up));
-    register("focus_down", Arc::new(layout_cmds::focus_down));
-    register("move_active_left", Arc::new(layout_cmds::move_active_left));
-    register("move_active_right", Arc::new(layout_cmds::move_active_right));
-    register("move_active_up", Arc::new(layout_cmds::move_active_up));
-    register("move_active_down", Arc::new(layout_cmds::move_active_down));
-    register("close_window", Arc::new(layout_cmds::remove_active));
-    register("toggle_float_active", Arc::new(layout_cmds::toggle_float));
-    register("toggle_float_focus", Arc::new(layout_cmds::toggle_float_focus));
+    register("horizontal_vertical_switch", layout_cmds::tile_switch);
+    register("split_vertical", layout_cmds::split_vertical);
+    register("split_horizontal", layout_cmds::split_horizontal);
+    register("tile_tabbed", layout_cmds::tile_tabbed);
+    register("tile_stacked", layout_cmds::tile_stacked);
+    register("fullscreen_toggle", layout_cmds::fullscreen_toggle);
+    register("focus_left", layout_cmds::focus_left);
+    register("focus_right", layout_cmds::focus_right);
+    register("focus_up", layout_cmds::focus_up);
+    register("focus_down", layout_cmds::focus_down);
+    register("move_active_left", layout_cmds::move_active_left);
+    register("move_active_right", layout_cmds::move_active_right);
+    register("move_active_up", layout_cmds::move_active_up);
+    register("move_active_down", layout_cmds::move_active_down);
+    register("close_window", layout_cmds::remove_active);
+    register("toggle_float_active", layout_cmds::toggle_float);
+    register("toggle_float_focus", layout_cmds::toggle_float_focus);
 
     // Modes
-    register("default_mode", Arc::new(mode_cmds::set_default_mode));
-    register("custom_mode", Arc::new(mode_cmds::set_custom_mode));
+    register("default_mode", mode_cmds::set_default_mode);
+    register("custom_mode", mode_cmds::set_custom_mode);
     // Command that spawns the lock screen and moves to lock screen mode.
     // Must have one specified in the registry first in order for it to work.
-    register("lock_screen", Arc::new(mode_cmds::spawn_lock_screen));
+    register("lock_screen", mode_cmds::spawn_lock_screen);
 
 }
 
