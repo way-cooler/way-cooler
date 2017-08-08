@@ -29,6 +29,8 @@ pub fn register_defaults() {
     register("way_cooler_restart", way_cooler_restart);
     register("dmenu_lua_dofile", dmenu_lua_dofile);
 
+    register("noop", noop);
+
     /// Generate switch_workspace methods and register them
     macro_rules! gen_switch_workspace {
         ( $($b:ident, $n:expr);+ ) => {
@@ -182,4 +184,11 @@ fn way_cooler_restart() {
     if let Err(err) = lua::send(lua::LuaQuery::Restart) {
         warn!("Could not send restart signal, {:?}", err);
     }
+}
+
+/// A no-op(eration) command.
+/// This can be used to register keys without assigning them an action (yet).
+/// The Lua configuration script could also create an empty Lua function,
+/// but doing it in Rust avoids a round-trip to Lua just to no nothing.
+fn noop () {
 }
