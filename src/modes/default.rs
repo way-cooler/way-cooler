@@ -282,7 +282,8 @@ impl Mode for Default {
     }
 
     fn view_request_geometry(&mut self, view: WlcView, geometry: Geometry) {
-        if geometry.size.w < MIN_SIZE.w && geometry.size.h < MIN_SIZE.h {
+        let unmanaged = view.get_type().intersects(VIEW_BIT_UNMANAGED);
+        if geometry.size.w < MIN_SIZE.w && geometry.size.h < MIN_SIZE.h && !unmanaged {
             warn!("Ignoring requested geometry {:#?}, which is below min {:#?}",
                   geometry, MIN_SIZE);
             return;
