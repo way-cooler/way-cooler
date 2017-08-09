@@ -13,7 +13,7 @@ use ::registry;
 
 use uuid::Uuid;
 use rustwlc::{Point, Size, Geometry, ResizeEdge, WlcView, WlcOutput, ViewType,
-              VIEW_BIT_UNMANAGED};
+              VIEW_BIT_UNMANAGED, VIEW_BIT_MODAL, VIEW_BIT_POPUP};
 use rustwlc::input::pointer;
 use rustc_serialize::json::{Json, ToJson};
 
@@ -420,15 +420,35 @@ impl Tree {
         // If this view is a subsurface
         let has_parent = view.get_parent() != WlcView::root();
         let view_bit = view.get_type();
+        trace!("Adding view: {:?}\n w/ bit: {:?}\n has parent: {:?}\n\
+                title: {:?}\n class: {:?}\n appid: {:?}",
+               view, view_bit.bits(), has_parent,
+               view.get_title(), view.get_class(), view.get_app_id());
         if view_bit.intersects(VIEW_BIT_UNMANAGED) {
             tree.add_floating_view(view, None)?;
         } else if has_parent {
-            if view_bit != ViewType::empty() {
-                let geo = view.get_geometry().expect("View had no geometry");
-                let borders = Borders::new(geo, output);
-                tree.add_floating_view(view, borders)?;
-            } else {
-                tree.add_floating_view(view, None)?;
+            match view_bit {
+                VIEW_BIT_MODAL => {
+                    let geo = view.get_geometry()
+                        .expect("View had no geometry");
+                    let borders = Borders::new(geo, output);
+                    tree.add_floating_view(view, borders)?;
+                    view.focus();
+                },
+                VIEW_BIT_POPUP => {
+                    tree.add_floating_view(view, None)?;
+                },
+                v => {
+                    if v == ViewType::empty() {
+                        let geo = view.get_geometry()
+                            .expect("View had no geometry");
+                        let borders = Borders::new(geo, output);
+                        tree.add_floating_view(view, borders)?;
+                        view.focus();
+                    } else {
+                        tree.add_floating_view(view, None)?;
+                    }
+                }
             }
         } else if view_bit != ViewType::empty() {
             tree.add_floating_view(view, None)?;
