@@ -2,16 +2,18 @@
 
 Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayland][wayland] and configurable using [Lua][].
 
-It is heavily inspired by the tiling and extensibility of both [i3][] and [awesome][].
+It is heavily inspired by the tiling of [i3][] and the extensibility of [awesome][].
 
-While Lua is used for the configuration, like awesome, extensions for Way Cooler are implemented as totally separate client programs using [D-Bus][].
-
-This means that you can use virtually any language to extend the window manager, with much better guarantees about interoperability between extensions.
+While Lua is used for the runtime configuration (like in [awesome][]), extensions for Way Cooler are implemented as totally separate client programs using [D-Bus][]. Currently we support 3 official extensions:
+* [way-cooler-bg](https://github.com/way-cooler/way-cooler-bg): Draws the background for Way Cooler.
+* [wc-grab](https://github.com/way-cooler/way-cooler-grab): Allows the user to take pictures of a screen.
+* [wc-lock](https://github.com/way-cooler/way-cooler-lock): Locks Way Cooler and requires their password to be entered to unlock.
 
 # Development
 
-Way Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to
-make it user friendly. Here's an example of what Way Cooler looks like today:
+Way Cooler is currently in beta. The core features have been added and it is in a usable state, but there will be backwards-incompatible changes in future versions that might require some user intervention. Once Way Cooler reaches 1.0, we will guarantee backwards compatibilty for both the configuration files and the D-Bus interfaces.
+
+Here are some examples of what Way Cooler looks like today:
 
 
 [![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
