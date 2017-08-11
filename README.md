@@ -61,7 +61,7 @@ Follow the development of these features in our [issues section] or checkout our
 
 ## On the AUR
 
-@vinipsmaker was kind enough to provide AUR packages:
+@vinipsmaker and @timidger maintain our AUR packages:
 
 [way-cooler][way-cooler-aur]
 
@@ -69,11 +69,11 @@ Follow the development of these features in our [issues section] or checkout our
 
 ## NixOS
 
-@miltador was kind enough to provide a [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
+@miltador mantains our [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
 
 ## openSUSE
 
-@jubalh was kind enough to provide an [openSUSE package](https://build.opensuse.org/package/show/X11:windowmanagers/way-cooler).
+@jubalh maintains our [openSUSE package](https://build.opensuse.org/package/show/X11:windowmanagers/way-cooler).
 Install with:
 
 ```
