@@ -15,9 +15,9 @@ Way Cooler is currently in beta. The core features have been added and it is in 
 
 Here are some examples of what Way Cooler looks like today:
 
-
-[![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
 [![](http://i.imgur.com/e89P4hw.png)](http://i.imgur.com/e89P4hw.png)
+[![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
+
 
 ## Motivation
 
