@@ -52,9 +52,9 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
 ## Planned Features
 
 - Notification support
-- Tiling window through configurable Lua scripts (awesome-style)
-- Swappable status bars/docs/menus
-  * A status bar built with [Conrod](https://github.com/PistonDevelopers/conrod) and [Lua][]
+- AwesomeWM compatibilty (see [this issue for more info](https://github.com/way-cooler/way-cooler/issues/338)
+- A dedicated status bar
+  * The status bar should be swappable, such that a user can implement their own or use a different one.
 - More customization settings
 
 Follow the development of these features in our [issues section] or checkout our [contribution guidelines](#Contributing) if you want to help out.
