@@ -11,7 +11,9 @@ While Lua is used for the runtime configuration (like in [awesome][]), extension
 
 # Development
 
-Way Cooler is currently in beta. The core features have been added and it is in a usable state, but there will be backwards-incompatible changes in future versions that might require some user intervention. Once Way Cooler reaches 1.0, we will guarantee backwards compatibilty for both the configuration files and the D-Bus interfaces.
+Way Cooler is currently in beta. The core features have been added and it is in a usable state, but there will be backwards-incompatible changes in future versions that might require some user intervention. 
+
+Once Way Cooler reaches 1.0, we will guarantee backwards compatibilty for both the configuration files and the D-Bus interfaces.
 
 Here are some examples of what Way Cooler looks like today:
 
