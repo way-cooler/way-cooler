@@ -15,7 +15,7 @@ Way Cooler is currently in beta. The core features have been added and it is in 
 
 Once Way Cooler reaches 1.0, we will guarantee backwards compatibilty for both the configuration files and the D-Bus interfaces.
 
-Here are some examples of what Way Cooler looks like today:
+Here are some pictures of what Way Cooler looks like today:
 
 [![](http://i.imgur.com/e89P4hw.png)](http://i.imgur.com/e89P4hw.png)
 [![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
