@@ -1,25 +1,25 @@
-# Way Cooler
-[![Gitter](https://badges.gitter.im/Immington-Industries/way-cooler.svg)](https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-[![Crates.io](https://img.shields.io/crates/v/way-cooler.svg)](https://crates.io/crates/way-cooler)
-[![Build Status](https://travis-ci.org/way-cooler/way-cooler.svg?branch=master)](https://travis-ci.org/way-cooler/way-cooler)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/way-cooler/)
+# <img src="http://i.imgur.com/OGeL1nN.png" width="60"> Way Cooler [![Gitter](https://badges.gitter.im/Immington-Industries/way-cooler.svg)](https://gitter.im/Immington-Industries/way-cooler?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![Crates.io](https://img.shields.io/crates/v/way-cooler.svg)](https://crates.io/crates/way-cooler) [![Build Status](https://travis-ci.org/way-cooler/way-cooler.svg?branch=master)](https://travis-ci.org/way-cooler/way-cooler) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/way-cooler/)
 
 Way Cooler is a customizable tiling window manager written in [Rust][] for [Wayland][wayland] and configurable using [Lua][].
 
-It is heavily inspired by the tiling and extensibility of both [i3][] and [awesome][].
+It is heavily inspired by the tiling of [i3][] and the extensibility of [awesome][].
 
-While Lua is used for the configuration, like awesome, extensions for Way Cooler are implemented as totally separate client programs using [D-Bus][].
-
-This means that you can use virtually any language to extend the window manager, with much better guarantees about interoperability between extensions.
+While Lua is used for the runtime configuration (like in [awesome][]), extensions for Way Cooler are implemented as totally separate client programs using [D-Bus][]. Currently we support 3 official extensions:
+* [way-cooler-bg](https://github.com/way-cooler/way-cooler-bg): Draws the background for Way Cooler.
+* [wc-grab](https://github.com/way-cooler/way-cooler-grab): Allows the user to take pictures of a screen.
+* [wc-lock](https://github.com/way-cooler/way-cooler-lock): Locks Way Cooler and requires their password to be entered to unlock.
 
 # Development
 
-Way Cooler is currently in alpha. The core features have been added and it is in a usable state, but more work is needed to
-make it user friendly. Here's an example of what Way Cooler looks like today:
+Way Cooler is currently in beta. The core features have been added and it is in a usable state, but there will be backwards-incompatible changes in future versions that might require some user intervention. 
 
+Once Way Cooler reaches 1.0, we will guarantee backwards compatibilty for both the configuration files and the D-Bus interfaces.
 
-[![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
+Here are some pictures of what Way Cooler looks like today:
+
 [![](http://i.imgur.com/e89P4hw.png)](http://i.imgur.com/e89P4hw.png)
+[![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
+
 
 ## Motivation
 
@@ -52,9 +52,9 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
 ## Planned Features
 
 - Notification support
-- Tiling window through configurable Lua scripts (awesome-style)
-- Swappable status bars/docs/menus
-  * A status bar built with [Conrod](https://github.com/PistonDevelopers/conrod) and [Lua][]
+- AwesomeWM compatibilty (see [this issue for more info](https://github.com/way-cooler/way-cooler/issues/338)
+- A dedicated status bar
+  * The status bar should be swappable, such that a user can implement their own or use a different one.
 - More customization settings
 
 Follow the development of these features in our [issues section] or checkout our [contribution guidelines](#Contributing) if you want to help out.
@@ -63,7 +63,7 @@ Follow the development of these features in our [issues section] or checkout our
 
 ## On the AUR
 
-@vinipsmaker was kind enough to provide AUR packages:
+@vinipsmaker and @timidger maintain our AUR packages:
 
 [way-cooler][way-cooler-aur]
 
@@ -71,11 +71,21 @@ Follow the development of these features in our [issues section] or checkout our
 
 ## NixOS
 
-@miltador was kind enough to provide a [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
+@miltador mantains our [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
+
+## openSUSE
+
+@jubalh maintains our [openSUSE package](https://build.opensuse.org/package/show/X11:windowmanagers/way-cooler).
+Install with:
+
+```
+zypper ar -f obs://X11:windowmanagers windowmanagers
+zypper in way-cooler
+```
 
 ## Installation Script
 
-For users who are not on Arch or NixOS, we have provided a simple install script that you can run in the terminal in order to install Way Cooler.
+For users who are not using the above mentioned Linux distributions, we have provided a simple install script that you can run in the terminal in order to install Way Cooler.
 
 Please go to the [download page on our site](http://way-cooler.org/download) in order to download Way Cooler.
 
@@ -118,6 +128,7 @@ Way Cooler was started by @Timidger and @SnirkImmington, but these fine people h
   + fixed background program to have solid colors be variable size at initilization
   + [added modes to the background program (fill, fit, stretch, title)](https://github.com/way-cooler/way-cooler-bg/pull/6#pullrequestreview-32859779)
 - @hedning fixed an unsigned underflow in the tiling code
+- @jubalh created the openSUSE package
 
 And of course, thanks to the Rust community and the developers of [wlc].
 
