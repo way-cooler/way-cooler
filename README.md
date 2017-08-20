@@ -118,6 +118,8 @@ All keyboard shortcuts are configurable through the init file. The recommended s
 # Contributors
 Way Cooler was started by @Timidger and @SnirkImmington, but these fine people have helped us:
 
+- @Dcelemeno for creating the logo
+- @platipo for creating the official backgrounds
 - @vinipsmaker created (and maintains) AUR packages
 - @miltador created NixOS package
 - @starfys created way-cooler desktop file
