@@ -17,6 +17,7 @@ Once Way Cooler reaches 1.0, we will guarantee backwards compatibilty for both t
 
 Here are some pictures of what Way Cooler looks like today:
 
+[![](http://i.imgur.com/UQAmli3.png)](http://i.imgur.com/UQAmli3.png)
 [![](http://i.imgur.com/e89P4hw.png)](http://i.imgur.com/e89P4hw.png)
 [![](http://imgur.com/A3V5x28.png)](http://imgur.com/A3V5x28.png)
 
