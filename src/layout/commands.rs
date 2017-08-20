@@ -365,8 +365,20 @@ impl Tree {
     /// Binds a view to be the background for the given outputs.
     ///
     /// If there was a previous background, it is removed and deallocated.
-    pub fn add_background(&mut self, view: WlcView, output: Uuid) -> CommandResult {
-        self.0.attach_background(view, output)
+    pub fn add_background(&mut self, view: WlcView, output: WlcOutput) -> CommandResult {
+        let id;
+        {
+            let output_c = self.0.output_by_handle_mut(output)
+                .ok_or(TreeError::OutputNotFound(output))?;
+            id = output_c.get_id();
+            match output_c.get_type() {
+                ContainerType::Output => {},
+                other => {
+                    return Err(TreeError::UuidNotAssociatedWith(other))
+                }
+            };
+        }
+        self.0.attach_background(view, id)
     }
 
     /// Adds a Workspace to the tree. Never fails

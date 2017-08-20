@@ -95,11 +95,10 @@ impl Mode for Default {
                 view.set_mask(1);
                 view.bring_to_front();
                 if let Ok(mut tree) = try_lock_tree() {
-                    for output in WlcOutput::list() {
-                        tree.add_bar(view, output).unwrap_or_else(|_| {
-                            warn!("Could not add bar {:#?} to output {:#?}", view, output);
-                        });
-                    }
+                    let output = WlcOutput::focused();
+                    tree.add_bar(view, output).unwrap_or_else(|_| {
+                        warn!("Could not add bar {:#?} to output {:#?}", view, output);
+                    });
                     return true;
                 }
             }
@@ -118,7 +117,7 @@ impl Mode for Default {
             };
             view.set_geometry(ResizeEdge::empty(), fullscreen);
             if let Ok(mut tree) = lock_tree() {
-                let output = tree.outputs()[0];
+                let output = WlcOutput::focused();
                 return tree.add_background(view, output).map(|_| true)
                     .unwrap_or_else(|err| {
                         warn!("Could not add background due to {:?}", err);
