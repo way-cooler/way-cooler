@@ -82,8 +82,8 @@ fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
         }
     }
 
-    // Gauss' trick
     let len = table.len().unwrap();
+    // Gauss' trick
     let desired_sum = (len * (len + 1)) / 2;
     if counter != desired_sum as f64 {
         return lua_object_to_json(table)
@@ -92,7 +92,7 @@ fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
     let mut json_arr: Vec<Json> = Vec::with_capacity(len as _);
 
     for entry in table.pairs::<Value, Value>() {
-        let (_, val) = entry.unwrap();
+        let (_, val) = entry?;
         let lua_val = lua_to_json(val)?;
         json_arr.push(lua_val);
     }
@@ -108,18 +108,19 @@ fn lua_object_to_json<'lua>(table: rlua::Table<'lua>)
     let mut json_obj: BTreeMap<String, Json> = BTreeMap::new();
 
     for entry in table.clone().pairs::<Value, Value>() {
-        let (key, val) = entry.unwrap();
+        let (key, val) = entry?;
         match key {
             Value::String(text) => {
                 let text = text.to_str().unwrap().into();
-                json_obj.insert(text, lua_to_json(val.clone())?);
+                json_obj.insert(text, lua_to_json(val)?);
             },
             Value::Number(ix) => {
-                json_obj.insert(ix.to_string(), lua_to_json(val.clone())?);
+                json_obj.insert(ix.to_string(), lua_to_json(val)?);
             }
-            _ => {
+            val => {
                 return Err(Error::RuntimeError(
-                    format!("Did not expect {:#?}", table)))
+                    format!("Did not expect {:#?} as key in {:#?}",
+                            val, table)))
             }
         }
     }

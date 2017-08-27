@@ -66,13 +66,12 @@ fn ipc_get<'lua>(lua: &'lua rlua::Lua, (category, key): (String, String))
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);
     handle.read(category)
-        .map_err(|_| Error::RuntimeError("Could not locate that category".into()))
+        .map_err(|_|
+                 Error::RuntimeError("Could not locate that category".into()))
         .and_then(|category| category.get(&key)
-                  .ok_or(Error::RuntimeError("Could not locate that key in the category".into()))
-                  .and_then(|value| {
-                      let value = value.to_json();
-                      json_to_lua(lua, value)
-                  }))
+                  .ok_or(Error::RuntimeError(
+                      "Could not locate that key in the category".into()))
+                  .and_then(|value| json_to_lua(lua, value.to_json())))
 }
 
 /// ipc 'set' handler

@@ -3,9 +3,7 @@
 
 use std::time::Duration;
 use std::thread;
-
-use hlua::any::AnyLuaValue;
-use hlua::{Lua, LuaError, LuaTable};
+use rlua::{self, Lua};
 
 use super::*;
 
@@ -21,7 +19,7 @@ fn wait_for_thread() {
 
 #[test]
 fn activate_thread() {
-    super::init();
+    super::init().unwrap();
 }
 
 #[test]
@@ -34,7 +32,10 @@ fn thread_exec_okay() {
     let hello_result = hello_receiver.recv()
         .expect("Unable to receive hello world");
     assert!(hello_result.is_ok());
-    assert_eq!(hello_result, LuaResponse::Pong);
+    match hello_result {
+        LuaResponse::Pong => {},
+        _ => panic!("Wrong type")
+    }
 
     let assert_receiver = send(LuaQuery::Execute(
         "assert(hello == 'hello world')".to_string()))
@@ -42,7 +43,10 @@ fn thread_exec_okay() {
     let assert_result = assert_receiver.recv()
         .expect("Unabel to receive hello assertion");
     assert!(hello_result.is_ok());
-    assert_eq!(assert_result, LuaResponse::Pong);
+    match assert_result {
+        LuaResponse::Pong => {},
+        _ => panic!("Wrong response")
+    }
 }
 
 #[test]
@@ -56,7 +60,7 @@ fn thread_exec_err() {
         .expect("receive assertion error result");
     assert!(assert_result.is_err(), "expected error from syntax error");
     if let LuaResponse::Error(err) = assert_result {
-        if let LuaError::ExecutionError(lua_err) = err {
+        if let rlua::Error::RuntimeError(lua_err) = err {
             assert!(lua_err.contains("Logic works"));
         }
         else {
@@ -75,8 +79,8 @@ fn thread_exec_err() {
         .expect("receive assertion error result");
     assert!(syn_err_result.is_err(), "expected error from syntax error");
     if let LuaResponse::Error(lua_err) = syn_err_result {
-        if let LuaError::SyntaxError(s_err) = lua_err {
-            assert!(s_err.contains("escape sequence"), "Got wrong error type");
+        if let rlua::Error::SyntaxError{message, .. } = lua_err {
+            assert!(message.contains("escape sequence"), "Got wrong error type");
         }
         else {
             panic!("Wrong type of lua error!");
@@ -95,7 +99,7 @@ fn thread_exec_file_ok() {
         "lib/test/lua-exec-file.lua".to_string())).unwrap();
     let file_result = file_receiver.recv().unwrap();
     if let LuaResponse::Error(err) = file_result {
-        if let LuaError::ReadError(ioerr) = err {
+        if let rlua::Error::RuntimeError(ioerr) = err {
             panic!("Lua thread was unable to execute file: {:?}", ioerr);
         }
         else {
@@ -103,14 +107,20 @@ fn thread_exec_file_ok() {
         }
     }
     assert!(file_result.is_ok());
-    assert_eq!(file_result, LuaResponse::Pong);
+    match file_result {
+        LuaResponse::Pong => {},
+        _ => panic!("Wrong response")
+    }
 
     // Print the method from the file
     let test_receiver = send(LuaQuery::Execute(
         "confirm_file()".to_string())).unwrap();
     let test_result = test_receiver.recv().unwrap();
     assert!(test_result.is_ok());
-    assert!(test_result == LuaResponse::Pong);
+    match test_result {
+        LuaResponse::Pong => {},
+        _ => panic!("Wrong response")
+    }
 }
 
 #[test]
@@ -126,7 +136,7 @@ fn thread_exec_file_err() {
     match run_result {
         LuaResponse::Error(err) => {
             match err {
-                LuaError::ExecutionError(ex) => {
+                rlua::Error::RuntimeError(ex) => {
                     assert!(ex.contains("Dude, 1 is totally equal to 0"));
                 },
                 _ => panic!("Got wrong hlua error type: {:?}", err)
@@ -144,8 +154,8 @@ fn thread_exec_file_err() {
     match syntax_result {
         LuaResponse::Error(err) => {
             match err {
-                LuaError::SyntaxError(serr) => {
-                    assert!(serr.contains("expected"));
+                rlua::Error::SyntaxError{message, .. } => {
+                    assert!(message.contains("expected"));
                 },
                 _ => panic!("Got wrong hlua error type: {:?}", err)
             }
@@ -166,27 +176,30 @@ fn test_rust_exec() {
     match rust_result {
         LuaResponse::Variable(Some(var)) => {
             match var {
-                AnyLuaValue::LuaBoolean(b) => {
+                rlua::Value::Boolean(b) => {
                     if !b {
                         panic!("Rust function failed!");
                     }
                 },
-                _ => panic!("Rust function returned wrong AnyLuaValue")
+                _ => panic!("Rust function returned wrong Lua value")
             }
         },
         _ => panic!("Got wrong LuaResponse from Rust function!")
     }
 }
 
-fn rust_lua_fn(lua: &mut Lua) -> AnyLuaValue {
+fn rust_lua_fn(lua: &mut Lua) -> rlua::Value<'static> {
     {
-        let mut foo = lua.empty_array("foo");
-        foo.set("bar", 12.0);
+        let globals = lua.globals();
+        let foo = lua.create_table();
+        foo.set("bar", 12.0).unwrap();
+        globals.set::<String, rlua::Table>("foo".into(), foo).unwrap();
     }
-    let maybe_foo = lua.get::<LuaTable<_>, _>("foo");
-    assert!(maybe_foo.is_some());
-    let mut foo = maybe_foo
+    let globals = lua.globals();
+    let maybe_foo = globals.get::<String, rlua::Table>("foo".into());
+    assert!(maybe_foo.is_ok());
+    let foo = maybe_foo
         .expect("asserted maybe_foo.is_some()");
-    assert!(foo.get::<f64, _>("bar").is_some());
-    AnyLuaValue::LuaBoolean(true)
+    assert!(foo.get::<String, f64>("bar".into()).is_ok());
+    rlua::Value::Boolean(true)
 }
