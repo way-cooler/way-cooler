@@ -4,14 +4,9 @@ use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
 use std::cmp::{PartialEq, Eq};
 
-use hlua;
-use hlua::Lua;
-use hlua::any::AnyLuaValue;
+use rlua;
 
 use keys::KeyPress;
-
-/// Methods that the Lua thread can execute.
-pub type LuaFunc = fn(&mut Lua) -> AnyLuaValue;
 
 /// Messages sent to the lua thread
 #[allow(dead_code)]
@@ -28,7 +23,7 @@ pub enum LuaQuery {
     /// Execute a file
     ExecFile(String),
     /// Execute some Rust using the Lua context.
-    ExecRust(LuaFunc),
+    ExecRust(fn(&mut rlua::Lua) -> rlua::Value<'static>),
 
     /// Handle the key press for the given key.
     HandleKey(KeyPress),
@@ -89,11 +84,11 @@ pub enum LuaResponse {
     /// If the identifier had length 0
     InvalidName,
     /// Lua variable obtained
-    Variable(Option<AnyLuaValue>),
+    Variable(Option<rlua::Value<'static>>),
     /// Lua error
-    Error(hlua::LuaError),
+    Error(rlua::Error),
     /// A function is returned
-    Function(hlua::functions_read::LuaFunction<String>),
+    Function(rlua::Function<'static>),
     /// Pong response from lua ping
     Pong,
 }
@@ -122,7 +117,8 @@ impl PartialEq for LuaResponse {
             (&LuaResponse::Pong, &LuaResponse::Pong) => true,
 
             (&LuaResponse::Variable(ref v1), &LuaResponse::Variable(ref v2)) =>
-                v1 == v2,
+                // TODO FIXME
+                false,//v1 == v2,
             (&LuaResponse::Error(ref e1), &LuaResponse::Error(ref e2)) =>
                 format!("{:?}", e1) == format!("{:?}", e2),
             (&LuaResponse::Function(_), &LuaResponse::Function(_)) => true,

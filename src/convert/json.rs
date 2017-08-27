@@ -3,12 +3,12 @@
 use rustwlc::{Geometry, Point, Size};
 use std::collections::BTreeMap;
 
-use hlua::any::AnyLuaValue;
-use hlua::any::AnyLuaValue::*;
+use rlua;
 use rustc_serialize::json::{Json, ToJson};
 
+// TODO Fix
 /// Converts a Json map into an AnyLuaValue
-pub fn json_to_lua(json: Json) -> AnyLuaValue {
+/*pub fn json_to_lua(json: Json) -> AnyLuaValue {
     match json {
         Json::String(val)  => LuaString(val),
         Json::Boolean(val) => LuaBoolean(val),
@@ -33,22 +33,20 @@ pub fn json_to_lua(json: Json) -> AnyLuaValue {
             LuaArray(lua_table)
         }
     }
-}
+}*/
 
-/// Converts an `AnyLuaValue` to a `Json`.
-///
-/// For an already-matched `LuaArray`, use `lua_array_to_json`.
-///
-/// For a `LuaArray` that should be mapped to a `JsonObject`,
-/// use `lua_object_to_json`.
-pub fn lua_to_json(lua: AnyLuaValue) -> Result<Json, AnyLuaValue> {
-    match lua {
-        LuaNil => Ok(Json::Null),
-        LuaString(val) => Ok(Json::String(val)),
-        LuaNumber(val) => Ok(Json::F64(val)),
-        LuaBoolean(val) => Ok(Json::Boolean(val)),
-        LuaArray(arr) => lua_array_to_json(arr),
-        LuaOther => Err(lua)
+/// Converts an `rlua::Value` to a `Json`.
+pub fn lua_to_json<'lua>(lua_value: rlua::Value<'lua>)
+                         -> Result<Json, rlua::Value<'lua>> {
+    use rlua::Value::*;
+    match lua_value {
+        Nil => Ok(Json::Null),
+        String(val) => Ok(Json::String(val.to_str().unwrap().into())),
+        Number(val) => Ok(Json::F64(val)),
+        Integer(val) => Ok(Json::I64(val as _)),
+        Boolean(val) => Ok(Json::Boolean(val)),
+        Table(arr) => lua_table_to_json(arr),
+        _ => Err(lua_value)
     }
 }
 
@@ -56,41 +54,45 @@ pub fn lua_to_json(lua: AnyLuaValue) -> Result<Json, AnyLuaValue> {
 ///
 /// # Result
 /// This function returns an Err if the Lua object has a non-String key.
-pub fn lua_array_to_json(arr: Vec<(AnyLuaValue, AnyLuaValue)>)
-                         -> Result<Json, AnyLuaValue> {
+pub fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
+                               -> Result<Json, rlua::Value<'lua>> {
+    use rlua::Value;
+    use rlua::Error;
     // Check if every key is a number
     let mut counter = 0.0; // Account for first index?
 
-    let mut return_early = false;
-    for &(ref key, ref _val) in &arr {
-        match *key {
-            LuaNumber(num) => {
+    for entry in table.clone().pairs::<Value, Value>() {
+        let (key, _ )= entry.unwrap();
+        match key {
+            Value::Number(num) => {
                 counter += num;
             }
-            LuaString(_) => {
+            Value::String(_) => {
                 break;
             }
             // Non-string keys are not allowed
             _ => {
-                return_early = true;
-                break;
+                return Err(Value::Error(Error::FromLuaConversionError {
+                    from: "Lua table",
+                    to: "JSON object",
+                    message: Some(format!("Could not convert {:#?}", table))
+                }))
             }
         }
     }
-    if return_early {
-        return Err(AnyLuaValue::LuaArray(arr));
-    }
 
     // Gauss' trick
-    let desired_sum = ((arr.len()) * (arr.len() + 1)) / 2;
+    let len = table.len().unwrap();
+    let desired_sum = (len * (len + 1)) / 2;
     if counter != desired_sum as f64 {
-        return lua_object_to_json(arr)
+        return lua_object_to_json(table)
     }
 
-    let mut json_arr: Vec<Json> = Vec::with_capacity(arr.len());
+    let mut json_arr: Vec<Json> = Vec::with_capacity(len as _);
 
-    for (_key, val) in arr.into_iter() {
-        let lua_val = try!(lua_to_json(val));
+    for entry in table.pairs::<Value, Value>() {
+        let (_, val) = entry.unwrap();
+        let lua_val = lua_to_json(val)?;
         json_arr.push(lua_val);
     }
     Ok(Json::Array(json_arr))
@@ -99,27 +101,25 @@ pub fn lua_array_to_json(arr: Vec<(AnyLuaValue, AnyLuaValue)>)
 /// Converts an AnyLuaValue object to a Json object.
 ///
 /// Will return an Err if the Lua object uses non-String keys.
-pub fn lua_object_to_json(obj: Vec<(AnyLuaValue, AnyLuaValue)>)
-                          -> Result<Json, AnyLuaValue> {
+pub fn lua_object_to_json<'lua>(table: rlua::Table<'lua>)
+                          -> Result<Json, rlua::Value<'lua>> {
+    use rlua::Value;
     let mut json_obj: BTreeMap<String, Json> = BTreeMap::new();
 
-    let mut error = false;
-    for &(ref key, ref val) in obj.iter() {
-        match *key {
-            LuaString(ref text) => {
-                json_obj.insert(text.clone(), try!(lua_to_json(val.clone())));
+    for entry in table.clone().pairs::<Value, Value>() {
+        let (key, val) = entry.unwrap();
+        match key {
+            Value::String(text) => {
+                let text = text.to_str().unwrap().into();
+                json_obj.insert(text, lua_to_json(val.clone())?);
             },
-            LuaNumber(ref ix) => {
-                json_obj.insert(ix.to_string(), try!(lua_to_json(val.clone())));
+            Value::Number(ix) => {
+                json_obj.insert(ix.to_string(), lua_to_json(val.clone())?);
             }
             _ => {
-                error = true;
-                break
+                return Err(Value::Table(table))
             }
         }
-    }
-    if error {
-        return Err(AnyLuaValue::LuaArray(obj))
     }
     Ok(Json::Object(json_obj))
 }
