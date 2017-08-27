@@ -38,8 +38,9 @@ pub fn json_to_lua<'lua>(lua: &'lua rlua::Lua, json: Json)
 
 /// Converts an `rlua::Value` to a `Json`.
 pub fn lua_to_json<'lua>(lua_value: rlua::Value<'lua>)
-                         -> Result<Json, rlua::Value<'lua>> {
+                         -> Result<Json, rlua::Error> {
     use rlua::Value::*;
+    use rlua::Error;
     match lua_value {
         Nil => Ok(Json::Null),
         String(val) => Ok(Json::String(val.to_str().unwrap().into())),
@@ -47,7 +48,8 @@ pub fn lua_to_json<'lua>(lua_value: rlua::Value<'lua>)
         Integer(val) => Ok(Json::I64(val as _)),
         Boolean(val) => Ok(Json::Boolean(val)),
         Table(arr) => lua_table_to_json(arr),
-        _ => Err(lua_value)
+        _ => Err(Error::RuntimeError(
+            format!("Did not expect {:#?}", lua_value)))
     }
 }
 
@@ -55,15 +57,15 @@ pub fn lua_to_json<'lua>(lua_value: rlua::Value<'lua>)
 ///
 /// # Result
 /// This function returns an Err if the Lua object has a non-String key.
-pub fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
-                               -> Result<Json, rlua::Value<'lua>> {
+fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
+                               -> Result<Json, rlua::Error> {
     use rlua::Value;
     use rlua::Error;
     // Check if every key is a number
     let mut counter = 0.0; // Account for first index?
 
     for entry in table.clone().pairs::<Value, Value>() {
-        let (key, _ )= entry.unwrap();
+        let (key, _ )= entry?;
         match key {
             Value::Number(num) => {
                 counter += num;
@@ -72,13 +74,11 @@ pub fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
                 break;
             }
             // Non-string keys are not allowed
-            _ => {
-                return Err(Value::Error(Error::FromLuaConversionError {
-                    from: "Lua table",
-                    to: "JSON object",
-                    message: Some(format!("Could not convert {:#?}", table))
-                }))
-            }
+            _ => return Err(Error::FromLuaConversionError {
+                from: "Lua table",
+                to: "JSON object",
+                message: Some(format!("Could not convert {:#?}", table))
+            })
         }
     }
 
@@ -102,9 +102,9 @@ pub fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
 /// Converts an AnyLuaValue object to a Json object.
 ///
 /// Will return an Err if the Lua object uses non-String keys.
-pub fn lua_object_to_json<'lua>(table: rlua::Table<'lua>)
-                          -> Result<Json, rlua::Value<'lua>> {
-    use rlua::Value;
+fn lua_object_to_json<'lua>(table: rlua::Table<'lua>)
+                          -> Result<Json, rlua::Error> {
+    use rlua::{Value, Error};
     let mut json_obj: BTreeMap<String, Json> = BTreeMap::new();
 
     for entry in table.clone().pairs::<Value, Value>() {
@@ -118,7 +118,8 @@ pub fn lua_object_to_json<'lua>(table: rlua::Table<'lua>)
                 json_obj.insert(ix.to_string(), lua_to_json(val.clone())?);
             }
             _ => {
-                return Err(Value::Table(table))
+                return Err(Error::RuntimeError(
+                    format!("Did not expect {:#?}", table)))
             }
         }
     }
