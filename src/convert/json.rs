@@ -18,11 +18,9 @@ pub fn json_to_lua<'lua>(lua: &'lua rlua::Lua, json: Json)
         Json::U64(val)     => Ok(Value::Number((val as u32) as f64)),
         Json::Null         => Ok(Value::Nil),
         Json::Array(vals)  => {
-            let mut new_vals = Vec::new();
-            let mut count = 1;
-            for val in vals {
-                new_vals.push((count, json_to_lua(lua, val)?));
-                count += 1;
+            let mut new_vals = Vec::with_capacity(vals.len());
+            for (idx, val) in vals.into_iter().enumerate() {
+                new_vals.push((idx, json_to_lua(lua, val)?));
             }
             lua.create_table_from(new_vals)
                 .map(|table| Value::Table(table))
