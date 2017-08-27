@@ -121,13 +121,13 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 }
 
 /// Initialize the Lua thread.
-pub fn init() {
+pub fn init() -> Result<(), rlua::Error> {
     info!("Initializing lua...");
     let (tx, receiver) = channel();
     *SENDER.lock().expect(ERR_LOCK_SENDER) = Some(tx);
     let mut lua = rlua::Lua::new();
     info!("Loading way-cooler libraries...");
-    rust_interop::register_libraries(&mut lua);
+    rust_interop::register_libraries(&mut lua)?;
 
     let (use_config, maybe_init_file) = init_path::get_config();
     if use_config {
@@ -136,15 +136,16 @@ pub fn init() {
                 if init_dir.components().next().is_some() {
                     // Add the config directory to the package path.
                     let globals = lua.globals();
-                    let mut package: rlua::Table = globals.get("package")
+                    let package: rlua::Table = globals.get("package")
                         .expect("package not defined in Lua");
                     let paths: String = package.get("path")
                         .expect("package.path not defined in Lua");
                     package.set("path", paths + ";" + init_dir.join("?.lua").to_str()
-                                .expect("init_dir not a valid UTF-8 string"));
+                                .expect("init_dir not a valid UTF-8 string"))?;
                 }
                 let mut init_contents = String::new();
-                init_file.read_to_string(&mut init_contents);
+                init_file.read_to_string(&mut init_contents)
+                    .expect("Could not read contents");
                 lua.exec(init_contents.as_str(), Some("init.lua".into()))
                     .map(|_:()| info!("Read init.lua successfully"))
                     .or_else(|err| {
@@ -192,6 +193,7 @@ pub fn init() {
                 .expect("Could not focus on the focused id");
         }
     }
+    Ok(())
 }
 
 pub fn on_compositor_ready() {
@@ -232,7 +234,6 @@ fn main_loop(receiver: Receiver<LuaMessage>, lua: LuaWrapper) {
 
 /// Handle each LuaQuery option sent to the thread
 fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
-    use rlua::Value;
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
@@ -261,7 +262,7 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
             let _new_handle = thread::Builder::new()
                 .name("Lua re-init".to_string())
                 .spawn(move || {
-                    init();
+                    init().expect("Could not init");
                     keys::init();
                 });
 
@@ -290,7 +291,8 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
 
             if let Ok(mut file) = try_file {
                 let mut file_contents = String::new();
-                file.read_to_string(&mut file_contents);
+                file.read_to_string(&mut file_contents)
+                    .expect("Could not read file contents");
                 let result = lua.exec::<rlua::Value>(file_contents.as_str(),
                                       Some(name.as_str()));
                 if let Err(err) = result {
@@ -341,7 +343,7 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
             let mut queue = REGISTRY_QUEUE.write().expect(ERR_LOCK_QUEUE);
             for category in queue.drain(0..) {
                 let globals = lua.globals();
-                let mut registry_cache: rlua::Table = globals.get("__registry_cache")
+                let registry_cache: rlua::Table = globals.get("__registry_cache")
                     .expect("__registry_cache wasn't defined");
                 let category_str = lua.create_string(category.as_str());
                 if let Ok(mut category_table) = registry_cache.get::<rlua::String, rlua::Table>(category_str) {
@@ -363,7 +365,7 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
     return true
 }
 
-fn update_values<'lua>(mut table: &mut rlua::Table<'lua>,
+fn update_values<'lua>(table: &mut rlua::Table<'lua>,
                     category: &mut registry::Category) {
     use rlua::Value;
     let mut keys = Vec::new();
@@ -394,7 +396,7 @@ fn update_values<'lua>(mut table: &mut rlua::Table<'lua>,
             .expect("Could not get the value we just made")
             .as_object_mut()
             .expect("The inner value was not an object!");
-        if let Ok(mut inner_table) = table.get::<rlua::String, rlua::Table>(key) {
+        if let Ok(inner_table) = table.get::<rlua::String, rlua::Table>(key) {
             for entry in inner_table.pairs::<rlua::String, Value>() {
                 if let Ok((key, value)) = entry {
                     match value {

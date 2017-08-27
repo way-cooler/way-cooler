@@ -2,7 +2,6 @@
 
 use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
-use std::cmp::{PartialEq, Eq};
 
 use rlua;
 
