@@ -6,34 +6,37 @@ use std::collections::BTreeMap;
 use rlua;
 use rustc_serialize::json::{Json, ToJson};
 
-// TODO Fix
-/// Converts a Json map into an AnyLuaValue
-/*pub fn json_to_lua(json: Json) -> AnyLuaValue {
+/// Converts a Json map into a Lua value
+pub fn json_to_lua<'lua>(lua: &'lua rlua::Lua, json: Json)
+                         -> Result<rlua::Value<'lua>, rlua::Error> {
+    use rlua::Value;
     match json {
-        Json::String(val)  => LuaString(val),
-        Json::Boolean(val) => LuaBoolean(val),
-        Json::F64(val)     => LuaNumber(val),
-        Json::I64(val)     => LuaNumber((val as i32) as f64),
-        Json::U64(val)     => LuaNumber((val as u32) as f64),
-        Json::Null         => LuaNil,
+        Json::String(val)  => Ok(Value::String(lua.create_string(&val))),
+        Json::Boolean(val) => Ok(Value::Boolean(val)),
+        Json::F64(val)     => Ok(Value::Number(val)),
+        Json::I64(val)     => Ok(Value::Number((val as i32) as f64)),
+        Json::U64(val)     => Ok(Value::Number((val as u32) as f64)),
+        Json::Null         => Ok(Value::Nil),
         Json::Array(vals)  => {
-            let mut lua_arr = Vec::with_capacity(vals.len());
-            for (ix, val) in vals.into_iter().enumerate() {
-                lua_arr.push((LuaNumber(ix as f64 + 1.0),
-                              json_to_lua(val)));
+            let mut new_vals = Vec::new();
+            let mut count = 1;
+            for val in vals {
+                new_vals.push((count, json_to_lua(lua, val)?));
+                count += 1;
             }
-            LuaArray(lua_arr)
+            lua.create_table_from(new_vals)
+                .map(|table| Value::Table(table))
         },
         Json::Object(vals) => {
-            let mut lua_table = Vec::with_capacity(vals.len());
-            for (key, val) in vals.into_iter() {
-                lua_table.push((LuaString(key),
-                                json_to_lua(val)));
+            let mut new_vals = BTreeMap::new();
+            for (k, v) in vals {
+                new_vals.insert(k, json_to_lua(lua, v)?);
             }
-            LuaArray(lua_table)
+            lua.create_table_from(new_vals)
+                .map(|table| Value::Table(table))
         }
     }
-}*/
+}
 
 /// Converts an `rlua::Value` to a `Json`.
 pub fn lua_to_json<'lua>(lua_value: rlua::Value<'lua>)

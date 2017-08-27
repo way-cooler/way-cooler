@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::{send, LuaQuery, running};
 use rlua;
 use rlua::prelude::LuaResult;
+use ::convert::json::json_to_lua;
 
 use registry::{self};
 use commands;
@@ -58,8 +59,8 @@ fn ipc_run(_lua: &rlua::Lua, command: String) -> Result<(), rlua::Error> {
 }
 
 /// IPC 'get' handler
-fn ipc_get<'lua>(_lua: &'lua rlua::Lua, (category, key): (String, String))
-                 -> Result<rlua::Table<'lua>, rlua::Error> {
+fn ipc_get<'lua>(lua: &'lua rlua::Lua, (category, key): (String, String))
+                 -> Result<rlua::Value<'lua>, rlua::Error> {
     use rlua::Error;
     let lock = registry::clients_read();
     let client = lock.client(Uuid::nil()).unwrap();
@@ -68,10 +69,10 @@ fn ipc_get<'lua>(_lua: &'lua rlua::Lua, (category, key): (String, String))
         .map_err(|_| Error::RuntimeError("Could not locate that category".into()))
         .and_then(|category| category.get(&key)
                   .ok_or(Error::RuntimeError("Could not locate that key in the category".into()))
-                  // TODO FIXME
-                  .and_then(|value| Ok(value.to_json()))); panic!("REEEEEEE")
-                  //.and_then(|value| lua.create_table_from::<String, Json, Vec<(String, Json)>>(value.as_object().unwrap()
-                  //                                        .iter().collect())))
+                  .and_then(|value| {
+                      let value = value.to_json();
+                      json_to_lua(lua, value)
+                  }))
 }
 
 /// ipc 'set' handler

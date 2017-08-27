@@ -153,5 +153,4 @@ way_cooler.on_terminate = function()
   util.program.terminate_startup_programs()
 end
 
-way_cooler.thingie = "hello"
-print(way_cooler.thingie)
+print(way_cooler.gaps.size)
