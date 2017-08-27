@@ -152,5 +152,3 @@ end
 way_cooler.on_terminate = function()
   util.program.terminate_startup_programs()
 end
-
-print(way_cooler.gaps.size)
