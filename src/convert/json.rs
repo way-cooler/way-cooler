@@ -14,8 +14,8 @@ pub fn json_to_lua<'lua>(lua: &'lua rlua::Lua, json: Json)
         Json::String(val)  => Ok(Value::String(lua.create_string(&val))),
         Json::Boolean(val) => Ok(Value::Boolean(val)),
         Json::F64(val)     => Ok(Value::Number(val)),
-        Json::I64(val)     => Ok(Value::Number((val as i32) as f64)),
-        Json::U64(val)     => Ok(Value::Number((val as u32) as f64)),
+        Json::I64(val)     => Ok(Value::Number(val as f64)),
+        Json::U64(val)     => Ok(Value::Number(val as f64)),
         Json::Null         => Ok(Value::Nil),
         Json::Array(vals)  => {
             let mut new_vals = Vec::with_capacity(vals.len());
