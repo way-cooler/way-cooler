@@ -7,6 +7,7 @@ use super::{send, LuaQuery, running};
 use rlua;
 use rlua::prelude::LuaResult;
 use ::convert::json::json_to_lua;
+use ::awesome;
 
 use registry::{self};
 use commands;
@@ -47,8 +48,10 @@ pub fn register_libraries(lua: &mut rlua::Lua) -> LuaResult<()> {
     let awesome_init_code = include_str!("../../lib/lua/awesome_init.lua");
     let util_code = include_str!("../../lib/lua/utils.lua");
     lua.exec::<()>(util_code, Some("utils.lua"))?;
-    lua.exec::<()>(init_code, Some("lua_init.lua"))?;
     lua.exec::<()>(awesome_init_code, Some("awesome_init.lua"))?;
+    awesome::init(&lua)
+        .expect("Could not initialize awesome compatibilty modules");
+    lua.exec::<()>(init_code, Some("lua_init.lua"))?;
     trace!("Lua register_libraries complete");
     Ok(())
 }
