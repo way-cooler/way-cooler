@@ -102,7 +102,6 @@ You will need the following dependencies installed on your machine to install Wa
 - Cargo
   * The package manager / build system used by Rust
 - Cairo
-- Lua 53
 
 Finally, to install Way Cooler simply run the following cargo command:
 
