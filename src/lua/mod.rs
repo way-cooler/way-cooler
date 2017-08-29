@@ -10,6 +10,7 @@ mod types;
 mod thread;
 mod rust_interop;
 mod init_path;
+mod utils;
 
 pub struct LuaWrapper(pub Lua);
 
@@ -23,3 +24,4 @@ lazy_static! {
 pub use self::types::{LuaQuery, LuaResponse};
 pub use self::thread::{init, on_compositor_ready, running, send, update_registry_value,
                        LuaSendError};
+pub use self::utils::mods_to_lua;

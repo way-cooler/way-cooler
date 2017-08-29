@@ -35,10 +35,9 @@ mod commands;
 mod ipc;
 mod layout;
 mod render;
-
-
 mod wayland;
 mod modes;
+mod awesome;
 
 use std::env;
 use std::fs::File;
@@ -50,6 +49,7 @@ use log::LogLevel;
 use nix::sys::signal::{self, SigHandler, SigSet, SigAction, SaFlags};
 
 use rustwlc::types::LogType;
+use lua::LUA;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
@@ -210,6 +210,8 @@ fn main() {
     registry::init();
     lua::init()
         .expect("Could not initialize lua thread!");
+    awesome::init(&LUA.lock().expect("LUA lock poisoned").0)
+        .expect("Could not initialize awesome compatibilty modules");
     ipc::init();
 
     info!("Running wlc...");

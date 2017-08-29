@@ -16,6 +16,7 @@ use ::lua::{self, LuaQuery};
 
 use ::render::screen_scrape::{read_screen_scrape_lock, scraped_pixels_lock,
                               sync_scrape};
+use ::awesome;
 
 use registry::{self};
 use super::Mode;
@@ -249,7 +250,9 @@ impl Mode for Default {
         };
         let sym = keyboard::get_keysym_for_key(key, empty_mods);
         let press = KeyPress::new(mods.mods, sym);
-
+        awesome::keygrabber_handle(mods, sym, state).unwrap_or_else(|err| {
+            warn!("handling keygrabber returned error: {:#?}", err);
+        });
         if state == KeyState::Pressed {
             if let Some(key) = keys::get(&press) {
                 info!("[key] Found an action for {}, blocking event", press);
