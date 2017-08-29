@@ -40,7 +40,7 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
   * See an example application [here](https://github.com/way-cooler/Way-Cooler-Example-Clients). It displays the tree in a somewhat organized format, and is actually really helpful for both debugging the tree and understanding how subcontainers work.
   * Enables dynamic configuration at runtime, without having to reload a configuration file
   * Allows extensions of the window manager to exist as separate programs talking over the IPC
-- A Lua environment designed to make extending Way Cooler simple and easy
+- A Lua 53 environment designed to make extending Way Cooler simple and easy
   * Lua is the configuration format, allowing the user to enhance their window manager in any way they want.
   * Utilities library included to aid communicating with Way Cooler
 - X programs supported through XWayland

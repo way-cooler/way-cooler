@@ -12,7 +12,7 @@ extern crate dummy_rustwlc as rustwlc;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate hlua;
+extern crate rlua;
 extern crate rustc_serialize;
 extern crate json_macro;
 extern crate nix;
@@ -208,7 +208,8 @@ fn main() {
     callbacks::init();
     commands::init();
     registry::init();
-    lua::init();
+    lua::init()
+        .expect("Could not initialize lua thread!");
     ipc::init();
 
     info!("Running wlc...");

@@ -4,66 +4,78 @@
 use rustc_serialize::json::ToJson;
 use uuid::Uuid;
 use super::{send, LuaQuery, running};
-use hlua::{self, Lua, LuaTable};
-use hlua::any::AnyLuaValue;
+use rlua;
+use rlua::prelude::LuaResult;
+use ::convert::json::json_to_lua;
 
 use registry::{self};
 use commands;
 use keys::{self, KeyPress, KeyEvent};
-use convert::json::{json_to_lua};
 
 use super::thread::{update_registry_value};
-
-type ValueResult = Result<AnyLuaValue, &'static str>;
 
 /// We've `include!`d the code which initializes from the Lua side.
 
 /// Register all the Rust functions for the lua libraries
-pub fn register_libraries(lua: &mut Lua) {
+pub fn register_libraries(lua: &mut rlua::Lua) -> LuaResult<()> {
     trace!("Registering Rust libraries...");
     {
-        let mut rust_table: LuaTable<_> = lua.empty_array("__rust");
-        rust_table.set("init_workspaces", hlua::function1(init_workspaces));
-        rust_table.set("register_lua_key", hlua::function3(register_lua_key));
-        rust_table.set("unregister_lua_key", hlua::function1(unregister_lua_key));
-        rust_table.set("register_command_key", hlua::function4(register_command_key));
-        rust_table.set("register_mouse_modifier", hlua::function1(register_mouse_modifier));
-        rust_table.set("keypress_index", hlua::function1(keypress_index));
-        rust_table.set("ipc_run", hlua::function1(ipc_run));
-        rust_table.set("ipc_get", hlua::function2(ipc_get));
-        rust_table.set("ipc_set", hlua::function1(ipc_set));
+        let rust_table = lua.create_table();
+        rust_table.set("init_workspaces",
+                       lua.create_function(init_workspaces))?;
+        rust_table.set("register_lua_key",
+                       lua.create_function(register_lua_key))?;
+        rust_table.set("unregister_lua_key",
+                       lua.create_function(unregister_lua_key))?;
+        rust_table.set("register_command_key",
+                       lua.create_function(register_command_key))?;
+        rust_table.set("register_mouse_modifier",
+                       lua.create_function(register_mouse_modifier))?;
+        rust_table.set("keypress_index",
+                       lua.create_function(keypress_index))?;
+        rust_table.set("ipc_run",
+                       lua.create_function(ipc_run))?;
+        rust_table.set("ipc_get",
+                       lua.create_function(ipc_get))?;
+        rust_table.set("ipc_set",
+                       lua.create_function(ipc_set))?;
+        let globals = lua.globals();
+        globals.set("__rust", rust_table)?;
     }
     trace!("Executing Lua init...");
     let init_code = include_str!("../../lib/lua/lua_init.lua");
     let util_code = include_str!("../../lib/lua/utils.lua");
-    let _: () = lua.execute::<_>(util_code)
-        .expect("Unable to execute Lua util code!");
-    let _: () = lua.execute::<_>(init_code)
-        .expect("Unable to execute Lua init code!");
+    lua.exec::<()>(util_code, Some("utils.lua"))?;
+    lua.exec::<()>(init_code, Some("lua_init.lua"))?;
     trace!("Lua register_libraries complete");
+    Ok(())
 }
 
 /// Run a command
-fn ipc_run(command: String) -> Result<(), &'static str> {
+fn ipc_run(_lua: &rlua::Lua, command: String) -> Result<(), rlua::Error> {
+    use rlua::Error;
     commands::get(&command).map(|com| com())
-        .ok_or("Command does not exist")
+        .ok_or(Error::RuntimeError("Command does not exist".into()))
 }
 
 /// IPC 'get' handler
-fn ipc_get(category: String, key: String) -> ValueResult {
+fn ipc_get<'lua>(lua: &'lua rlua::Lua, (category, key): (String, String))
+                 -> Result<rlua::Value<'lua>, rlua::Error> {
+    use rlua::Error;
     let lock = registry::clients_read();
     let client = lock.client(Uuid::nil()).unwrap();
     let handle = registry::ReadHandle::new(&client);
     handle.read(category)
-        .map_err(|_| "Could not locate that category")
+        .map_err(|_|
+                 Error::RuntimeError("Could not locate that category".into()))
         .and_then(|category| category.get(&key)
-                  .ok_or("Could not locate that key in the category")
-                  .and_then(|value| Ok(value.to_json()))
-                  .and_then(|value| Ok(json_to_lua(value))))
+                  .ok_or(Error::RuntimeError(
+                      "Could not locate that key in the category".into()))
+                  .and_then(|value| json_to_lua(lua, value.to_json())))
 }
 
 /// ipc 'set' handler
-fn ipc_set(category: String) -> Result<(), &'static str> {
+fn ipc_set(_lua: &rlua::Lua, category: String) -> Result<(), rlua::Error> {
     update_registry_value(category);
     if running() {
         send(LuaQuery::UpdateRegistryFromCache)
@@ -72,48 +84,60 @@ fn ipc_set(category: String) -> Result<(), &'static str> {
     Ok(())
 }
 
-fn init_workspaces(_options: AnyLuaValue) -> Result<(), &'static str> {
+fn init_workspaces(_: &rlua::Lua, _: rlua::Value) -> Result<(), rlua::Error> {
     warn!("Attempting to call `init_workspaces`, this is not implemented");
     Ok(())
 }
 
 /// Registers a modifier to be used in conjunction with mouse commands
-fn register_mouse_modifier(modifier: String) -> Result<(), String> {
-    let modifier = try!(keys::keymod_from_names(&[modifier.as_str()]));
+fn register_mouse_modifier(_lua: &rlua::Lua, modifier: String)
+                           -> Result<(), rlua::Error> {
+    use rlua::Error;
+    let modifier = keys::keymod_from_names(&[modifier.as_str()])
+        .map_err(|txt| Error::RuntimeError(txt))?;
     keys::register_mouse_modifier(modifier);
     Ok(())
 }
 
 /// Registers a command keybinding.
-fn register_command_key(mods: String, command: String,
-                        _repeat: bool, passthrough: bool)
-                        -> Result<(), String> {
+fn register_command_key(_lua: &rlua::Lua,
+                        (mods, command, _repeat, passthrough):
+                        (String, String, bool, bool))
+                        -> Result<(), rlua::Error> {
+    use rlua::Error;
     if let Ok(press) = keypress_from_string(&mods) {
         commands::get(&command)
-            .ok_or(format!("Command {} for keybinding {} not found", command, press))
-            .map(|command| { keys::register(press, KeyEvent::Command(command), passthrough); })
+            .ok_or(Error::RuntimeError(
+                format!("Command {} for keybinding {} not found", command, press)))
+            .map(|command|
+                keys::register(press, KeyEvent::Command(command), passthrough))?;
+        Ok(())
     }
     else {
-        Err(format!("Invalid keypress {}, {}", mods, command))
+        Err(Error::RuntimeError(format!("Invalid keypress {}, {}", mods, command)))
     }
 }
 
 /// Rust half of registering a Lua key: store the KeyPress in the keys table
 /// and send Lua back the index for __key_map.
-fn register_lua_key(mods: String, _repeat: bool, passthrough: bool)
-                    -> Result<String, String> {
+fn register_lua_key(_lua: &rlua::Lua, (mods, _repeat, passthrough):
+                          (String, bool, bool))
+                          -> Result<String, rlua::Error> {
+    use rlua::Error;
     keypress_from_string(&mods)
         .map(|press| {
             keys::register(press.clone(), KeyEvent::Lua, passthrough);
             press.get_lua_index_string()
-        }).map_err(|_| format!("Invalid keys '{}'", mods))
+        }).map_err(|_| Error::RuntimeError(format!("Invalid keys '{}'", mods)))
 }
 
 /// Rust half of unregistering a Lua key. This pops it from the key table, if
 /// it exists.
 ///
 /// If a key wasn't registered, a proper error string is raised.
-fn unregister_lua_key(mods: String) -> Result<String, String> {
+fn unregister_lua_key(_lua: &rlua::Lua, mods: String)
+                            -> Result<String, rlua::Error> {
+    use rlua::Error;
     keypress_from_string(&mods).and_then(|press| {
         if let Some(action) = keys::unregister(&press) {
             trace!("Removed keybinding \"{}\" for {:?}", press, action);
@@ -126,7 +150,8 @@ fn unregister_lua_key(mods: String) -> Result<String, String> {
                   press);
             Err(error_str)
         }
-    }).map_err(|_| format!("Invalid keys '{}'", mods))
+    }).map_err(|err|
+               Error::RuntimeError(format!("Invalid keys '{}': {:#?}", mods, err)))
 }
 
 /// Parses a keypress from a string
@@ -140,6 +165,9 @@ fn keypress_from_string(mods: &str) -> Result<KeyPress, String> {
     }
 }
 
-fn keypress_index(press: String) -> Result<String, String> {
-    keypress_from_string(&press).map(|key| key.get_lua_index_string())
+fn keypress_index(_lua: &rlua::Lua, press: String) -> Result<String, rlua::Error> {
+    use rlua::Error;
+    keypress_from_string(&press)
+        .map(|key| key.get_lua_index_string())
+        .map_err(|err_msg| Error::RuntimeError(err_msg))
 }
