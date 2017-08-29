@@ -9,6 +9,7 @@ use std::fmt::Result as FmtResult;
 use std::sync::{Mutex, RwLock};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::io::Read;
+use super::LUA;
 
 use convert::json::lua_to_json;
 
@@ -24,10 +25,6 @@ use super::super::keys;
 use registry::{self};
 
 use ::layout::{lock_tree, ContainerType};
-
-struct LuaWrapper(pub rlua::Lua);
-
-unsafe impl Send for LuaWrapper{}
 
 lazy_static! {
     /// Sends requests to the Lua thread
@@ -125,7 +122,8 @@ pub fn init() -> Result<(), rlua::Error> {
     info!("Initializing lua...");
     let (tx, receiver) = channel();
     *SENDER.lock().expect(ERR_LOCK_SENDER) = Some(tx);
-    let mut lua = rlua::Lua::new();
+    let mut lua = LUA.lock().expect("LUA was poisoned!");
+    let mut lua = &mut lua.0;
     info!("Loading way-cooler libraries...");
     rust_interop::register_libraries(&mut lua)?;
 
@@ -173,10 +171,9 @@ pub fn init() -> Result<(), rlua::Error> {
     // Only ready after loading libs
     *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
     info!("Entering main loop...");
-    let lua = LuaWrapper(lua);
     let _lua_handle = thread::Builder::new()
         .name("Lua thread".to_string())
-        .spawn(move || main_loop(receiver, lua));
+        .spawn(move || main_loop(receiver));
     // Immediately update all the values that the init file set
     send(LuaQuery::UpdateRegistryFromCache)
         .expect("Could not update registry from cache");
@@ -209,11 +206,11 @@ pub fn on_compositor_ready() {
 /// * Wait for a message from the receiver
 /// * Handle message
 /// * Send response
-fn main_loop(receiver: Receiver<LuaMessage>, lua: LuaWrapper) {
-    let mut lua = lua.0;
+fn main_loop(receiver: Receiver<LuaMessage>) {
     loop {
         trace!("Lua: awaiting request");
         let request = receiver.recv();
+        let mut lua = LUA.lock().expect("LUA was poisoned!");
         match request {
             Err(e) => {
                 error!("Lua thread: unable to receive message: {}", e);
@@ -224,7 +221,7 @@ fn main_loop(receiver: Receiver<LuaMessage>, lua: LuaWrapper) {
             }
             Ok(message) => {
                 trace!("Handling a request");
-                if !handle_message(message, &mut lua) {
+                if !handle_message(message, &mut lua.0) {
                     return
                 }
             }
