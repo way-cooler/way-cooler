@@ -44,9 +44,11 @@ pub fn register_libraries(lua: &mut rlua::Lua) -> LuaResult<()> {
     }
     trace!("Executing Lua init...");
     let init_code = include_str!("../../lib/lua/lua_init.lua");
+    let awesome_init_code = include_str!("../../lib/lua/awesome_init.lua");
     let util_code = include_str!("../../lib/lua/utils.lua");
     lua.exec::<()>(util_code, Some("utils.lua"))?;
     lua.exec::<()>(init_code, Some("lua_init.lua"))?;
+    lua.exec::<()>(awesome_init_code, Some("awesome_init.lua"))?;
     trace!("Lua register_libraries complete");
     Ok(())
 }
