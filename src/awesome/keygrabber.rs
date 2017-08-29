@@ -55,7 +55,12 @@ fn call_keygrabber(lua: &Lua,
 
 fn run(lua: &Lua, function: rlua::Function) -> rlua::Result<()> {
     let keygrabber_table = lua.globals().get::<_, Table>(AWESOME_TABLE)?;
-    keygrabber_table.set(SECRET_CALLBACK, function)
+    match keygrabber_table.get::<_, Value>(SECRET_CALLBACK)? {
+        Value::Function(_) =>
+            Err(rlua::Error::RuntimeError("keygrabber callback already set!"
+                                          .into())),
+        _ => keygrabber_table.set(SECRET_CALLBACK, function)
+    }
 }
 
 fn stop(lua: &Lua, _: ()) -> rlua::Result<()> {
