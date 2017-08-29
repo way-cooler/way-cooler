@@ -43,7 +43,11 @@ pub fn lua_to_json<'lua>(lua_value: rlua::Value<'lua>)
     use rlua::Error;
     match lua_value {
         Nil => Ok(Json::Null),
-        String(val) => Ok(Json::String(val.to_str().unwrap().into())),
+        String(val) =>
+            val.to_str()
+            .map_err(|err| Error::RuntimeError(format!("Bad string: {:#?}",
+                                                       err)))
+                .map(|string| Json::String(string.into())),
         Number(val) => Ok(Json::F64(val)),
         Integer(val) => Ok(Json::I64(val as _)),
         Boolean(val) => Ok(Json::Boolean(val)),
@@ -82,7 +86,7 @@ fn lua_table_to_json<'lua>(table: rlua::Table<'lua>)
         }
     }
 
-    let len = table.len().unwrap();
+    let len = table.len()?;
     // Gauss' trick
     let desired_sum = (len * (len + 1)) / 2;
     if counter != desired_sum as f64 {
@@ -111,7 +115,7 @@ fn lua_object_to_json<'lua>(table: rlua::Table<'lua>)
         let (key, val) = entry?;
         match key {
             Value::String(text) => {
-                let text = text.to_str().unwrap().into();
+                let text = text.to_str()?.into();
                 json_obj.insert(text, lua_to_json(val)?);
             },
             Value::Number(ix) => {
