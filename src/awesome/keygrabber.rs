@@ -1,11 +1,12 @@
-//! AwesomeWM Keygrabber
+//! AwesomeWM Keygrabber interface
+
 use ::lua::LUA;
 use rlua::{self, Lua, Table, Function, Value};
 use rustwlc::*;
 #[allow(deprecated)]
 use rustwlc::xkb::Keysym;
 
-const AWESOME_TABLE: &str = "keygrabber";
+pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const SECRET_CALLBACK: &str = "__callback";
 
 /// Init the methods defined on this interface.
@@ -15,7 +16,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     keygrabber_table.set("stop", lua.create_function(stop))?;
     keygrabber_table.set("isrunning", lua.create_function(isrunning))?;
     let globals = lua.globals();
-    globals.set(AWESOME_TABLE, keygrabber_table)
+    globals.set(KEYGRABBER_TABLE, keygrabber_table)
 }
 
 #[allow(deprecated)]
@@ -48,13 +49,13 @@ fn call_keygrabber(lua: &Lua,
                    -> rlua::Result<()> {
     let globals = lua.globals();
     let lua_callback = globals
-        .get::<_, Table>(AWESOME_TABLE).expect("keygrabber table not defined")
+        .get::<_, Table>(KEYGRABBER_TABLE).expect("keygrabber table not defined")
         .get::<_, Function>(SECRET_CALLBACK)?;
     lua_callback.call((mods, key, event))
 }
 
 fn run(lua: &Lua, function: rlua::Function) -> rlua::Result<()> {
-    let keygrabber_table = lua.globals().get::<_, Table>(AWESOME_TABLE)?;
+    let keygrabber_table = lua.globals().get::<_, Table>(KEYGRABBER_TABLE)?;
     match keygrabber_table.get::<_, Value>(SECRET_CALLBACK)? {
         Value::Function(_) =>
             Err(rlua::Error::RuntimeError("keygrabber callback already set!"
@@ -64,12 +65,12 @@ fn run(lua: &Lua, function: rlua::Function) -> rlua::Result<()> {
 }
 
 fn stop(lua: &Lua, _: ()) -> rlua::Result<()> {
-    let keygrabber_table = lua.globals().get::<_, Table>(AWESOME_TABLE)?;
+    let keygrabber_table = lua.globals().get::<_, Table>(KEYGRABBER_TABLE)?;
     keygrabber_table.set(SECRET_CALLBACK, Value::Nil)
 }
 
 fn isrunning(lua: &Lua, _: ()) -> rlua::Result<bool> {
-    let keygrabber_table = lua.globals().get::<_, Table>(AWESOME_TABLE)?;
+    let keygrabber_table = lua.globals().get::<_, Table>(KEYGRABBER_TABLE)?;
     match keygrabber_table.get::<_, Value>(SECRET_CALLBACK)? {
         Value::Function(_) => Ok(true),
         _ => Ok(false)
