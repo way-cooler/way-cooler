@@ -249,7 +249,7 @@ impl Mode for Default {
                 leds: KeyboardLed::empty()
         };
         let sym = keyboard::get_keysym_for_key(key, empty_mods);
-        let press = KeyPress::new(mods.mods, sym);
+        let press = KeyPress::new(mods.mods, sym.clone());
         awesome::keygrabber_handle(mods, sym, state).unwrap_or_else(|err| {
             warn!("handling keygrabber returned error: {:#?}", err);
         });
