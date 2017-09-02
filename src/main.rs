@@ -35,10 +35,9 @@ mod commands;
 mod ipc;
 mod layout;
 mod render;
-
-
 mod wayland;
 mod modes;
+mod awesome;
 
 use std::env;
 use std::fs::File;
