@@ -24,15 +24,18 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 /// defined with the input.
 pub fn keygrabber_handle(mods: KeyboardModifiers, sym: Keysym, state: KeyState)
                          -> rlua::Result<()> {
-    let lua = LUA.lock().expect("LUA was poisoned");
+    let lua = LUA.lock()
+        .map_err(|err| rlua::Error::RuntimeError(
+            format!("Lua lock was poisoned {:#?}", err)))?;
     let lua_state = if state == KeyState::Pressed {
         "press"
     } else {
         "release"
     }.into();
-    let lua_sym = sym.get_name().expect("Key symbol did not have a defined name");
-    let lua_mods = ::lua::mods_to_lua(&lua.0, mods.mods)
-        .expect("Could not convert mods to lua representation");
+    let lua_sym = sym.get_name()
+        .ok_or_else(|| rlua::Error::RuntimeError(
+                 format!("Symbol did not have a name: {:#?}", sym)))?;
+    let lua_mods = ::lua::mods_to_lua(&lua.0, mods.mods)?;
     let res = call_keygrabber(&lua.0, (lua_mods, lua_sym, lua_state));
     match res {
         Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => {Ok(())},
