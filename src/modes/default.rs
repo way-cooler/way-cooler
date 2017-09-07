@@ -304,6 +304,9 @@ impl Mode for Default {
     fn on_pointer_button(&mut self, view: WlcView, _time: u32,
                             mods: KeyboardModifiers, button: u32,
                                 state: ButtonState, point: Point) -> bool {
+        awesome::mousegrabber_handle(point.x, point.y, Some((button, state)))
+            .unwrap_or_else(|err|
+                            warn!("handling keygrabber returned error: {:#?}", err));
         if state == ButtonState::Pressed {
             let mouse_mod = keys::mouse_modifier();
             if button == LEFT_CLICK && !view.is_root() {
@@ -399,6 +402,9 @@ impl Mode for Default {
                 maybe_action = action_lock.clone();
             }
         }
+        awesome::mousegrabber_handle(point.x, point.y, None)
+            .unwrap_or_else(|err|
+                            warn!("handling keygrabber returned error: {:#?}", err));
         match maybe_action {
             None => result = EVENT_PASS_THROUGH,
             Some(action) => {
