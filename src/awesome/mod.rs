@@ -3,6 +3,7 @@ use rlua::{self, Lua};
 pub mod keygrabber;
 pub mod mousegrabber;
 pub mod awful;
+pub mod drawable;
 mod signal;
 mod object;
 mod class;
