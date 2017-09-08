@@ -4,6 +4,7 @@ pub mod keygrabber;
 pub mod mousegrabber;
 pub mod awful;
 mod signal;
+mod object;
 
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
