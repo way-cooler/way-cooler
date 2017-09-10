@@ -4,14 +4,17 @@
 use rlua::{self, ToLuaMulti};
 
 #[derive(Debug, Clone)]
-pub struct Signal {
+pub struct Signal<'a> {
     pub name: String,
-    pub funcs: Vec<rlua::Function<'static>>
+    // TODO FIXME
+    // this is wrong, 'static lifetime can never exist.
+    // best way to fix this?
+    pub funcs: Vec<rlua::Function<'a>>
 }
 
-unsafe impl Send for Signal {}
+unsafe impl Send for Signal<'static> {}
 
-impl Signal {
+impl Signal<'static> {
     pub fn new(name: String, funcs: Vec<rlua::Function<'static>>) -> Self {
         Signal { name, funcs }
     }

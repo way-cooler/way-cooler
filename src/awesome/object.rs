@@ -3,7 +3,7 @@
 use std::fmt::Display;
 use rlua::{self, Lua, MetaMethod, AnyUserData, UserData, UserDataMethods};
 
-pub fn add_meta_methods<T: UserData + Display>(methods: &mut UserDataMethods<T>) {
+pub fn add_meta_methods<T: UserData<'static> + Display>(methods: &mut UserDataMethods<'static, T>) {
     methods.add_meta_method(MetaMethod::ToString, |lua, obj: &T, _: ()| {
         Ok(lua.create_string(&format!("{}", obj)))
     });
@@ -14,7 +14,7 @@ pub fn add_meta_methods<T: UserData + Display>(methods: &mut UserDataMethods<T>)
 }
 
 
-fn connect_signal_simple<T: UserData>(lua: &Lua, this: &mut T,
+fn connect_signal_simple<T: UserData<'static>>(lua: &Lua, this: &mut T,
                                       (name, function): (String, rlua::Function))
                                       -> rlua::Result<()> {
     panic!()
