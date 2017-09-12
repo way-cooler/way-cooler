@@ -93,3 +93,48 @@ impl <T: 'static> Drawable<T> {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use rlua::{self, Lua, Value, ToLua};
+    use super::*;
+
+    fn noop(input: &mut ()) {}
+
+    #[test]
+    fn test_drawable_geometry() {
+        let lua = Lua::new();
+        let drawable = Drawable::allocator(&lua, noop, ());
+        lua.globals().set("drawable", drawable).unwrap();
+        lua.eval::<()>(r#"
+                       print(drawable)
+                       table = drawable:geometry()
+                       assert(table.x == 0)
+                       assert(table.y == 0)
+                       assert(table.width == 0)
+                       assert(table.height == 0)
+                       "#,
+                       None).unwrap();
+    }
+
+    #[test]
+    fn test_drawable_refresh() {
+        static mut num_refreshed: u32 = 0;
+        let lua = Lua::new();
+        fn update(input: &mut String) {
+            println!("{:?}", input);
+            unsafe {
+                num_refreshed = 1;
+            }
+        }
+        let drawable = Drawable::allocator(&lua, update, "input".into());
+        lua.globals().set("drawable", drawable).unwrap();
+        lua.eval::<()>(r#"
+                     print(drawable)
+                     drawable:refresh()
+                "#,
+                 None).unwrap();
+        unsafe {
+            assert_eq!(num_refreshed, 1);
+        }
+    }
+}
