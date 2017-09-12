@@ -7,10 +7,9 @@ use rlua::{self, Lua, UserData, AnyUserData, UserDataMethods, MetaMethod};
 use ::render::Renderable;
 use super::{object, class, Signal};
 
-pub type DrawableRefreshCallback<T: UserData<'static>> = fn (&mut T);
+pub type DrawableRefreshCallback<T: 'static> = fn (&mut T);
 
-pub struct Drawable<T: UserData<'static>> {
-    signals: Vec<Signal<'static>>,
+pub struct Drawable<T: 'static> {
     surface: Option<ImageSurface>,
     geometry: Geometry,
     refreshed: bool,
@@ -18,22 +17,18 @@ pub struct Drawable<T: UserData<'static>> {
     data: T
 }
 
-impl <T: UserData<'static>> Display for Drawable<T> {
+impl <T> Display for Drawable<T> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "Display: {:p}", self)
     }
 }
 
-impl <T: UserData<'static>> UserData<'static> for Drawable<T> {
-    fn add_methods(methods: &mut UserDataMethods<'static, Self>) {
+impl <T: 'static> UserData for Drawable<T> {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
         object::add_meta_methods(methods);
         class::add_meta_methods(methods);
-        //methods.add_method_mut("refresh", Drawable::refresh);
-        //methods.add_method_mut("geometry", Drawable::geometry);
-        methods.add_method_mut("foo", |_, this: &mut Drawable<T>, func: rlua::Function<'static>| {
-            //this.signals[0].funcs.push(func);
-            Ok(())
-        });;
+        methods.add_method_mut("refresh", Drawable::refresh);
+        methods.add_method_mut("geometry", Drawable::geometry);
 
         // for properties, original awesome has a good solution.
         // store the properties in essentially a { "prop_name": {cb_new, cb_index, cb_newindex}}
@@ -58,15 +53,13 @@ pub fn init() -> rlua::Result<()> {
     // This will just set up properties, and the drawable super class global.
 }
 
-/*
-impl <T: UserData<'static>> Drawable<T> {
+impl <T: 'static> Drawable<T> {
     /// Allocator for a new drawable to be created in the Lua registry.
     pub fn allocator(lua: &Lua,
-                        refresh_callback: DrawableRefreshCallback<T>,
-                        data: T) -> AnyUserData {
+                     refresh_callback: DrawableRefreshCallback<T>,
+                     data: T) -> AnyUserData {
         // TODO Emit "new" signal
         let drawable = Drawable {
-            signals: Vec::new(),
             surface: None,
             geometry: Geometry::zero(),
             refreshed: false,
@@ -100,4 +93,3 @@ impl <T: UserData<'static>> Drawable<T> {
     }
 }
 
-*/
