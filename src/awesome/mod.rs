@@ -3,6 +3,7 @@ use rlua::{self, Lua};
 pub mod keygrabber;
 pub mod mousegrabber;
 pub mod awful;
+pub mod button;
 pub mod drawable;
 mod signal;
 mod object;
@@ -16,5 +17,6 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     keygrabber::init(lua)?;
     mousegrabber::init(lua)?;
     awful::init(lua)?;
+    button::init(lua)?;
     Ok(())
 }
