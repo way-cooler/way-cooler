@@ -7,9 +7,12 @@
 use rlua::{self, Lua, ToLuaMulti, Table};
 use super::Object;
 
+// TODO FIXME Make this take a list of functions, it won't be that much harder.
+// Don't bother checking for duplicates.
+
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
-pub fn connect_signal(lua: &Lua, obj: Object, name: String, func: rlua::Function)
+pub fn connect_signal(lua: &Lua, obj: &Object, name: String, func: rlua::Function)
                       -> rlua::Result<()>{
     let signals = obj.signals();
     if let Ok(table) = signals.get::<_, Table>(name.as_str()) {

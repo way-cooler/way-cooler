@@ -11,6 +11,34 @@ pub struct Object<'lua> {
     table: Table<'lua>
 }
 
+/// Construct a new object, used when using the default Objectable::new.
+pub struct ObjectBuilder<'lua>{
+    lua: &'lua Lua,
+    object: Object<'lua>
+}
+
+impl <'lua> ObjectBuilder<'lua> {
+    pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
+        let meta = self.object.table.get_metatable()
+            .expect("Object had no meta table");
+        for entry in new_meta.pairs::<rlua::Value, rlua::Value>() {
+            let (key, value) = entry?;
+            meta.set(key, value)?;
+        }
+        Ok(self)
+    }
+
+    pub fn add_to_signals(self, name: String, func: rlua::Function)
+                          -> rlua::Result<Self> {
+        connect_signal(self.lua, &self.object, name, func)?;
+        Ok(self)
+    }
+
+    pub fn build(self) -> Object<'lua> {
+        self.object
+    }
+}
+
 /// Trait implemented by all objects that represent OO lua objects.
 ///
 /// This trait allows casting an object gotten back from the Lua runtime
@@ -46,7 +74,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     //
     // That would mean we can reduce usage of to_object, which is costy / not panic safe.
 
-    fn new(lua: &'lua Lua) -> rlua::Result<Object>
+    fn new(lua: &'lua Lua) -> rlua::Result<ObjectBuilder>
     {
         let object = S::default();
         let object_table = lua.create_table();
@@ -58,7 +86,8 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
             Ok(format!("{}", object_table.get::<_, S>("data")?))
         }))?;
         object_table.set_metatable(Some(meta));
-        Ok(Object { table: object_table })
+        let object = Object { table: object_table };
+        Ok(ObjectBuilder { object, lua })
     }
 }
 
@@ -113,7 +142,7 @@ pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Val
         "connect_signal" => {
             let func = lua.create_function(
                 |lua, (obj_table, signal, func): (Table, String, rlua::Function)| {
-                    connect_signal(lua, Object { table: obj_table }, signal, func)
+                    connect_signal(lua, &Object { table: obj_table }, signal, func)
             });
             func.bind(obj_table).map(rlua::Value::Function)
         },
