@@ -46,27 +46,24 @@ fn default_index<'lua>(lua: &'lua Lua, (button_table, index): (Table<'lua>, Stri
     let button = button_table.raw_get::<_, Button>("data").unwrap();
     match index.as_str() {
         "connect_signal" => {
-            lua.globals().set("__temp", button_table);
-            Ok(rlua::Value::Function(lua.create_function(|lua, val: rlua::Value| {
-                let button_table = lua.globals().get::<_, Table>("__temp").unwrap();
-                lua.globals().set("__temp", rlua::Value::Nil);
+            let func = lua.create_function(|lua, (button_table, val): (Table, rlua::Value)| {
                 let signals = button_table.get_metatable()
                     .expect("no meta")
                     .get::<_, Table>("signals")
                     .expect("signals was not a table");
                 signals.set(signals.len().expect("No length"), val);
                 Ok(())
-            })))
+            });
+            func.bind(button_table).map(rlua::Value::Function)
         },
         "emit_signal" => {
-            lua.globals().set("__temp", button_table);
-            Ok(rlua::Value::Function(lua.create_function(|lua, val: rlua::Value| {
-                let button_table = lua.globals().get::<_, Table>("__temp").unwrap();
-                lua.globals().set("__temp", rlua::Value::Nil);
+            let func = lua.create_function(|lua, (button_table, val): (Table, rlua::Value)| {
                 let signals = button_table.get_metatable().unwrap().get::<_, Table>("signals").unwrap();
                 signals.get::<_,rlua::Function>(0).unwrap().call::<_,()>(button_table);
                 Ok(())
-            })))
+            });
+            func.bind(button_table).map(rlua::Value::Function)
+
         },
         "num" => Ok(rlua::Value::Number(button.num as _)),
         // TODO Error here
