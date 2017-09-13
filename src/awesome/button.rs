@@ -13,8 +13,7 @@ pub struct Button<'lua>(Table<'lua>);
 
 impl <'lua> ToLua<'lua> for Button<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        let obj: Object<'lua> = self.0.into();
-        obj.to_lua(lua)
+        self.to_object().to_lua(lua)
     }
 }
 
@@ -27,6 +26,10 @@ impl <'lua> Objectable<'lua, Button<'lua>> for Button<'lua> {
             use rlua::Error;
             Err(Error::RuntimeError("Could not cast object to button".into()))
         }
+    }
+
+    fn to_object(self) -> Object<'lua> {
+        Object { table: self.0 }
     }
 }
 

@@ -8,22 +8,14 @@ use super::signal::{connect_signal, emit_signal};
 
 /// All Lua objects can be cast to this.
 pub struct Object<'lua> {
+    // TODO Not pub
     pub table: Table<'lua>
 }
 
 /// When a struct implements this, it can be used as an object
 pub trait Objectable<'lua, T> {
     fn cast(Object<'lua>) -> rlua::Result<T>;
-}
-
-// TODO Move this to TryFrom and check that data exists and is
-// the right type.
-// Can't just yet cause TryFrom is still nightly...
-
-impl <'lua> From<Table<'lua>> for Object<'lua> {
-    fn from(table: Table<'lua>) -> Self {
-        Object { table }
-    }
+    fn to_object(self) -> Object<'lua>;
 }
 
 impl <'lua> ToLua<'lua> for Object<'lua> {
@@ -50,7 +42,7 @@ impl <'lua> Object<'lua> {
             Ok(format!("{}", object_table.get::<_, T>("data")?))
         }))?;
         object_table.set_metatable(Some(meta));
-        Ok(object_table.into())
+        Ok(Object { table: object_table })
     }
 }
 
@@ -73,7 +65,7 @@ pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Val
         "connect_signal" => {
             let func = lua.create_function(
                 |lua, (obj_table, signal, func): (Table, String, rlua::Function)| {
-                    connect_signal(lua, obj_table.into(), signal, func)
+                    connect_signal(lua, Object { table: obj_table }, signal, func)
             });
             func.bind(obj_table).map(rlua::Value::Function)
         },
@@ -83,7 +75,7 @@ pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Val
                     // TODO FIXME this seems wrong to always pass the object table in,
                     // but maybe that's always how object signal emitting should work?
                     // Look this up, double check!
-                    emit_signal(lua, &obj_table.clone().into(), signal, obj_table)
+                    emit_signal(lua, &Object { table: obj_table.clone() }, signal, obj_table)
                 });
             func.bind(obj_table).map(rlua::Value::Function)
         }
