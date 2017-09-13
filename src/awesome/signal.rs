@@ -5,12 +5,13 @@
 //! the methods defined here are just to make it easier to use.
 
 use rlua::{self, ToLuaMulti, Table};
+use super::Object;
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
-pub fn connect_signal(table: Table, name: String, func: rlua::Function)
+pub fn connect_signal(obj: Object, name: String, func: rlua::Function)
                       -> rlua::Result<()>{
-    let signals = table.get::<_, Table>("signals")?;
+    let signals = obj.signals();
     if let Ok(table) = signals.get::<_, Table>(name.as_str()) {
         let length = table.len()?;
         table.set(length + 1, func)
@@ -20,11 +21,11 @@ pub fn connect_signal(table: Table, name: String, func: rlua::Function)
 }
 
 /// Evaluate the functions associated with a signal.
-pub fn emit_signal<'lua, A>(table: Table<'lua>, name: String, args: A)
+pub fn emit_signal<'lua, A>(obj: &'lua Object, name: String, args: A)
                             -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone
     {
-    let signals = table.get::<_, Table>("signals")?;
+    let signals = obj.signals();
     if let Ok(table) = signals.get::<_, Table>(name) {
         for entry in table.pairs::<rlua::Value, rlua::Function>() {
             if let Ok((_, func)) = entry {

@@ -8,6 +8,7 @@ mod signal;
 mod object;
 mod class;
 
+pub use self::object::Object;
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 
