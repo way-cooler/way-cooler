@@ -1,28 +1,51 @@
 use std::fmt::{self, Display, Formatter};
-use rlua::{self, Table, Lua, UserData, UserDataMethods};
-use super::object;
+use rlua::{self, Table, Lua, UserData, AnyUserData, UserDataMethods, ToLua,
+           Value};
+use super::object::{self, Object, Objectable};
 
 #[derive(Clone, Debug)]
-pub struct Button {
+pub struct ButtonState {
     num: u32
 }
 
-impl Display for Button {
+#[derive(Clone, Debug)]
+pub struct Button<'lua>(Table<'lua>);
+
+impl <'lua> ToLua<'lua> for Button<'lua> {
+    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
+        let obj: Object<'lua> = self.0.into();
+        obj.to_lua(lua)
+    }
+}
+
+impl <'lua> Objectable<'lua, Button<'lua>> for Button<'lua> {
+    fn cast(obj: Object<'lua>) -> rlua::Result<Button> {
+        let data = obj.table.get::<_, AnyUserData>("data")?;
+        if data.is::<ButtonState>() {
+            Ok(Button(obj.table))
+        } else {
+            use rlua::Error;
+            Err(Error::RuntimeError("Could not cast object to button".into()))
+        }
+    }
+}
+
+impl Display for ButtonState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "Button: {:p}", self)
     }
 }
 
-impl UserData for Button {
+impl UserData for ButtonState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {/*TODO Does this need anything?*/}
 }
 
 /// Makes a new button stored in a table beside its signals
-pub fn new(lua: &Lua, num: u32) -> rlua::Result<Table> {
-    let button = Button { num };
-    let table = object::add_meta_methods(lua, button)?;
-    table.get_metatable().unwrap().set("num", 1)?;
-    Ok(table)
+pub fn new(lua: &Lua, num: u32) -> rlua::Result<Button> {
+    let button = ButtonState { num };
+    let object = Object::to_object(lua, button)?;
+    object.table.get_metatable().unwrap().set("num", 1)?;
+    Button::cast(object)
 }
 
 

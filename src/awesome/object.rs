@@ -3,12 +3,17 @@
 use std::fmt::Display;
 use std::convert::From;
 use rlua::{self, Lua, Table, MetaMethod, UserData, Value, UserDataMethods,
-           FromLua};
+           FromLua, ToLua};
 use super::signal::{connect_signal, emit_signal};
 
 /// All Lua objects can be cast to this.
 pub struct Object<'lua> {
-    table: Table<'lua>
+    pub table: Table<'lua>
+}
+
+/// When a struct implements this, it can be used as an object
+pub trait Objectable<'lua, T> {
+    fn cast(Object<'lua>) -> rlua::Result<T>;
 }
 
 // TODO Move this to TryFrom and check that data exists and is
@@ -21,27 +26,32 @@ impl <'lua> From<Table<'lua>> for Object<'lua> {
     }
 }
 
+impl <'lua> ToLua<'lua> for Object<'lua> {
+    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
+        Ok(Value::Table(self.table))
+    }
+}
+
 impl <'lua> Object<'lua> {
     pub fn signals(&self) -> rlua::Table {
         self.table.get::<_, Table>("signals")
             .expect("Object table did not have signals defined!")
     }
-}
 
-
-pub fn add_meta_methods<T>(lua: &Lua, object: T) -> rlua::Result<Table>
-    where T: UserData + Display + Clone
-{
-    let object_table = lua.create_table();
-    object_table.set("data", object)?;
-    let meta = lua.create_table();
-    meta.set("signals", lua.create_table())?;
-    meta.set("__index", lua.create_function(default_index))?;
-    meta.set("__tostring", lua.create_function(|_, object_table: Table| {
-        Ok(format!("{}", object_table.get::<_, T>("data")?))
-    }))?;
-    object_table.set_metatable(Some(meta));
-    Ok(object_table)
+    pub fn to_object<T>(lua: &'lua Lua, object: T) -> rlua::Result<Self>
+        where T: UserData + Display + Clone
+    {
+        let object_table = lua.create_table();
+        object_table.set("data", object)?;
+        let meta = lua.create_table();
+        meta.set("signals", lua.create_table())?;
+        meta.set("__index", lua.create_function(default_index))?;
+        meta.set("__tostring", lua.create_function(|_, object_table: Table| {
+            Ok(format!("{}", object_table.get::<_, T>("data")?))
+        }))?;
+        object_table.set_metatable(Some(meta));
+        Ok(object_table.into())
+    }
 }
 
 pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Value<'lua>))
