@@ -46,7 +46,7 @@ impl UserData for ButtonState {
 
 /// Makes a new button stored in a table beside its signals
 pub fn new(lua: &Lua, num: u32) -> rlua::Result<Object> {
-    let object = Object::new::<ButtonState>(lua)?;
+    let object = Button::new(lua)?;
     let button = Button::cast(object)?;
     button.0.get_metatable().unwrap().set("num", 1)?;
     Ok(Object::to_object(button))

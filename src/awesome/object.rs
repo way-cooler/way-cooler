@@ -18,7 +18,7 @@ pub struct Object<'lua> {
 ///
 /// You can't do anything to the object until it has been converted into a
 /// canonical form using this trait.
-pub trait Objectable<'lua, T, S: UserData> {
+pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
         let data = obj.table.get::<_, AnyUserData>("data")?;
         if data.is::<S>() {
@@ -40,6 +40,26 @@ pub trait Objectable<'lua, T, S: UserData> {
     /// Used internally by cast, though there's nothing wrong with it being
     /// used outside of internal object use.
     fn get_table(self) -> Table<'lua>;
+
+    // TODO make this return a builder so it's easier to modify the meta table
+    // without having to resort to to_object.
+    //
+    // That would mean we can reduce usage of to_object, which is costy / not panic safe.
+
+    fn new(lua: &'lua Lua) -> rlua::Result<Object>
+    {
+        let object = S::default();
+        let object_table = lua.create_table();
+        object_table.set("data", object)?;
+        let meta = lua.create_table();
+        meta.set("signals", lua.create_table())?;
+        meta.set("__index", lua.create_function(default_index))?;
+        meta.set("__tostring", lua.create_function(|_, object_table: Table| {
+            Ok(format!("{}", object_table.get::<_, S>("data")?))
+        }))?;
+        object_table.set_metatable(Some(meta));
+        Ok(Object { table: object_table })
+    }
 }
 
 impl <'lua> ToLua<'lua> for Object<'lua> {
@@ -53,7 +73,10 @@ impl <'lua> Object<'lua> {
     ///
     /// This requires a check to ensure data integrity, and it's often useless.
     /// Please don't use this method unless you need to.
-    pub fn to_object<T, S: UserData, O: Objectable<'lua, T, S>>(obj: O) -> Self {
+    pub fn to_object<T, S, O>(obj: O) -> Self
+        where S: Default + Display + Clone + UserData,
+              O: Objectable<'lua, T, S>
+    {
         let table = obj.get_table();
         let has_data = table.contains_key("data")
             .expect("Could not get data field of object table");
@@ -64,26 +87,6 @@ impl <'lua> Object<'lua> {
     pub fn signals(&self) -> rlua::Table {
         self.table.get::<_, Table>("signals")
             .expect("Object table did not have signals defined!")
-    }
-
-    // TODO make this return a builder so it's easier to modify the meta table
-    // without having to resort to to_object.
-    //
-    // That would mean we can reduce usage of to_object, which is costy / not panic safe.
-    pub fn new<T>(lua: &'lua Lua) -> rlua::Result<Self>
-        where T: UserData + Default + Display + Clone
-    {
-        let object = T::default();
-        let object_table = lua.create_table();
-        object_table.set("data", object)?;
-        let meta = lua.create_table();
-        meta.set("signals", lua.create_table())?;
-        meta.set("__index", lua.create_function(default_index))?;
-        meta.set("__tostring", lua.create_function(|_, object_table: Table| {
-            Ok(format!("{}", object_table.get::<_, T>("data")?))
-        }))?;
-        object_table.set_metatable(Some(meta));
-        Ok(Object { table: object_table })
     }
 }
 
