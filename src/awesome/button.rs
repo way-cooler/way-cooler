@@ -14,7 +14,7 @@ pub struct Button<'lua>(Table<'lua>);
 
 impl <'lua> ToLua<'lua> for Button<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        Object::to_object(self).to_lua(lua)
+        self.0.to_lua(lua)
     }
 }
 

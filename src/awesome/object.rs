@@ -11,7 +11,13 @@ pub struct Object<'lua> {
     table: Table<'lua>
 }
 
-/// When a struct implements this, it can be used as an object
+/// Trait implemented by all objects that represent OO lua objects.
+///
+/// This trait allows casting an object gotten back from the Lua runtime
+/// into a concrete object so that Rust can do things with it.
+///
+/// You can't do anything to the object until it has been converted into a
+/// canonical form using this trait.
 pub trait Objectable<'lua, T, S: UserData> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
         let data = obj.table.get::<_, AnyUserData>("data")?;
@@ -23,11 +29,16 @@ pub trait Objectable<'lua, T, S: UserData> {
         }
     }
 
-    /// Internal function used by cast
-    /// Should **not** be used directly, but must be implemented because
-    //// only implementor knows how to construct a `T`
+    /// Given the internal object table, constructs a concrete object out
+    /// of it.
+    ///
+    /// This is only used internally, which is why it's prefixed with a "_"
+    /// Please do not use it outside of object.rs.
     fn _wrap(table: Table<'lua>) -> T;
 
+    /// Gets the internal table for the concrete object.
+    /// Used internally by cast, though there's nothing wrong with it being
+    /// used outside of internal object use.
     fn get_table(self) -> Table<'lua>;
 }
 
@@ -38,6 +49,10 @@ impl <'lua> ToLua<'lua> for Object<'lua> {
 }
 
 impl <'lua> Object<'lua> {
+    /// Coerces a concrete object into a generic object.
+    ///
+    /// This requires a check to ensure data integrity, and it's often useless.
+    /// Please don't use this method unless you need to.
     pub fn to_object<T, S: UserData, O: Objectable<'lua, T, S>>(obj: O) -> Self {
         let table = obj.get_table();
         let has_data = table.contains_key("data")
@@ -51,6 +66,10 @@ impl <'lua> Object<'lua> {
             .expect("Object table did not have signals defined!")
     }
 
+    // TODO make this return a builder so it's easier to modify the meta table
+    // without having to resort to to_object.
+    //
+    // That would mean we can reduce usage of to_object, which is costy / not panic safe.
     pub fn new<T>(lua: &'lua Lua) -> rlua::Result<Self>
         where T: UserData + Default + Display + Clone
     {
@@ -68,6 +87,10 @@ impl <'lua> Object<'lua> {
     }
 }
 
+/// Default indexing of an Awesome object.
+///
+/// Automatically looks up contents in meta table, so instead of overriding this
+/// it's easier to just add the required data in the meta table.
 pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Value<'lua>))
                        -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
