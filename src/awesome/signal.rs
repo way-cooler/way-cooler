@@ -17,7 +17,7 @@ pub fn connect_signal(lua: &Lua, obj: Object, name: String, func: rlua::Function
         table.set(length + 1, func)
     } else {
         let table = lua.create_table();
-        table.set(1, func);
+        table.set(1, func)?;
         signals.set(name, table)
     }
 }

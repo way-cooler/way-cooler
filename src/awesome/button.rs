@@ -26,12 +26,13 @@ pub fn new(lua: &Lua, num: u32) -> rlua::Result<Table> {
     button_table.set("data", Button { num })?;
     let meta = lua.create_table();
     meta.set("__index", lua.create_function(object::default_index))?;
-    meta.set("signals", lua.create_table());
+    meta.set("signals", lua.create_table())?;
     // yep the value I have doesn't matter
     // this won't happen for realz, just for testing.
-    meta.set("num", 1);
-    meta.set("__tostring", lua.create_function(|_, button_table: Table|
-                                               Ok(format!("{}", button_table.get::<_, Button>("data").unwrap()))));
+    meta.set("num", 1).unwrap();
+    meta.set("__tostring", lua.create_function(|_, button_table: Table| {
+        Ok(format!("{}", button_table.get::<_, Button>("data")?))
+    }))?;
     button_table.set_metatable(Some(meta));
     Ok(button_table)
 }
@@ -43,8 +44,6 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 
 
 mod test {
-    use rlua::*;
-    use super::*;
     #[test]
     fn basic_test() {
         let lua = Lua::new();

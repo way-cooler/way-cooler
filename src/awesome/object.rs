@@ -2,8 +2,8 @@
 
 use std::fmt::Display;
 use std::convert::From;
-use rlua::{self, Lua, Table, MetaMethod, AnyUserData, UserData, Value,
-           UserDataMethods, FromLua};
+use rlua::{self, Lua, Table, MetaMethod, UserData, Value, UserDataMethods,
+           FromLua};
 use super::signal::{connect_signal, emit_signal};
 
 /// All Lua objects can be cast to this.
