@@ -118,7 +118,7 @@ impl <'lua> Object<'lua> {
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
-pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Value<'lua>))
+fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Value<'lua>))
                        -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
     if let Some(meta) = obj_table.get_metatable() {
@@ -129,11 +129,26 @@ pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Val
             }
         }
     }
-    // TODO Handle non string indexing?
-    // double check C code
     let index = String::from_lua(index, lua)?;
-    // TODO FIXME handle special "valid" property
     match index.as_str() {
+        // TODO FIXME This should also be usable for invalid objects!
+        // might need to abstract logic...?
+        "valid" => {
+            // this requires class being implemented
+            unimplemented!();
+            /*
+            // TODO object table? Why not Objectable?
+            Value::Boolean(class.checker.and_then(|checker| checker(obj_table))
+                           // TODO Only true if this is really an object!
+                           // Make it objectable to make it so!
+                           .unwrap_or(true))
+            */
+        },
+        "data" => {
+            obj_table.get("data")
+        },
+        // TODO Move these into the meta table itself
+        // (so only check valid property and data)
         "connect_signal" => {
             let func = lua.create_function(
                 |lua, (obj_table, signal, func): (Table, String, rlua::Function)| {
@@ -152,6 +167,18 @@ pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Val
             func.bind(obj_table).map(rlua::Value::Function)
         }
         index => {
+            // TODO FIXME
+            // get dem properties from the ancestor class
+            /*
+            if let Some(prop) = get_prop() {
+                prop.index(lua, obj_table::<_, SomeGenericObjectThing>("data"));
+            } else {
+                // use index_miss_handler or index_miss_property if that doesn't exist
+                // if neither exist, return Nil!
+            }
+            */
+
+            // TODO Never error, only nil!
             let err_msg = format!("Could not find index \"{:#?}\"", index);
             warn!("{}", err_msg);
             Err(rlua::Error::RuntimeError(err_msg))
