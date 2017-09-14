@@ -69,11 +69,6 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     /// used outside of internal object use.
     fn get_table(self) -> Table<'lua>;
 
-    // TODO make this return a builder so it's easier to modify the meta table
-    // without having to resort to to_object.
-    //
-    // That would mean we can reduce usage of to_object, which is costy / not panic safe.
-
     fn new(lua: &'lua Lua) -> rlua::Result<ObjectBuilder>
     {
         let object = S::default();
