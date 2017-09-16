@@ -7,6 +7,7 @@ pub mod button;
 mod signal;
 mod object;
 mod class;
+mod property;
 
 pub use self::object::Object;
 pub use self::keygrabber::keygrabber_handle;
