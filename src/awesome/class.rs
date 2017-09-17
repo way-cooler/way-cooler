@@ -10,7 +10,7 @@ use super::property::Property;
 
 pub type Allocator = fn(&Lua) -> rlua::Result<Object>;
 pub type Collector = fn(Object);
-pub type PropF = fn(&Lua, Object) -> i32;
+pub type PropF<'lua> = rlua::Function<'lua>;
 pub type Checker = fn(&Object) -> bool;
 
 #[derive(Debug)]
@@ -28,12 +28,8 @@ pub struct ClassState {
     parent: Option<String>,
     allocator: Option<Allocator>,
     collector: Option<Collector>,
-    properties: Vec<Property>,
-    index_miss_property: Option<PropF>,
-    newindex_miss_property: Option<PropF>,
     checker: Option<Checker>,
     instances: u32,
-    tostring: Option<PropF>,
     /// The global Lua key that corresponds to this class' function.
     /// Stored this way so that it's not tied to Lua lifetime.
     index_miss_handler_global: Option<String>,
@@ -54,9 +50,10 @@ impl <'lua> ClassBuilder<'lua> {
         Ok(self)
     }
 
-    pub fn property(self, prop: Property) -> rlua::Result<Self> {
-        let class = self.0.table.get::<_, AnyUserData>("data")?;
-        class.borrow_mut::<ClassState>()?.properties.push(prop);
+    pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
+        let properties = self.0.table.get::<_, Table>("properties")?;
+        let length = properties.len().unwrap_or(0) + 1;
+        properties.set(length, prop);
         Ok(self)
     }
 
@@ -79,12 +76,8 @@ impl Default for ClassState {
             parent: Option::default(),
             allocator: Option::default(),
             collector: Option::default(),
-            properties: Vec::new(),
-            index_miss_property: Option::default(),
-            newindex_miss_property: Option::default(),
             checker: Option::default(),
             instances: 0,
-            tostring: Option::default(),
             index_miss_handler_global: Option::default(),
             newindex_miss_handler_global: Option::default(),
 
@@ -98,34 +91,40 @@ impl <'lua> Class<'lua> {
     pub fn new(lua: &'lua Lua,
                allocator: Option<Allocator>,
                collector: Option<Collector>,
-               checker: Option<Checker>,
-               index_miss_property: Option<PropF>,
-               newindex_miss_property: Option<PropF>)
-               -> rlua::Result<ClassBuilder> {
+               checker: Option<Checker>)
+               -> rlua::Result<ClassBuilder<'lua>> {
         let mut class = ClassState::default();
-        class.allocator = allocator.into();
-        class.collector = collector.into();
-        class.index_miss_property = index_miss_property.into();
-        class.newindex_miss_property = newindex_miss_property.into();
-        class.checker = checker.into();
-
-        // TODO Do same thing as in option, e.g throw this sucker in a table
-        // set the meta table to be the correct thing.
-        // the meta table is going to be the thing that changes, because different clasess have different methods
-        // so do the same thing as in the object I guess
-
+        class.allocator = allocator;
+        class.collector = collector;
+        class.checker = checker;
         let table = lua.create_table();
         table.set("data", class)?;
+        table.set("index_miss_property",
+                    lua.create_function(index_miss_property))?;
+        table.set("newindex_miss_property",
+                    lua.create_function(newindex_miss_property))?;
+        table.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         let meta = lua.create_table();
         meta.set("signals", lua.create_table())?;
         meta.set("__index", lua.create_function(object::default_index))?;
+        // TODO __tostring
         table.set_metatable(Some(meta));
         Ok(ClassBuilder(Class { table }))
+    }
+
+    pub fn properties(&self) -> rlua::Result<Table<'lua>> {
+        self.table.get("properties")
     }
 }
 
 
 // TODO Implement
 // TODO return rlua::Value in result, however that will cause lifetime issues...
-pub fn index_miss_property(lua: &Lua, obj: Object) -> i32 {unimplemented!()}
-pub fn newindex_miss_property(lua: &Lua, obj: Object) -> i32 {unimplemented!()}
+pub fn index_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
+                                 -> rlua::Result<Value<'lua>> {
+    unimplemented!()
+}
+pub fn newindex_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
+                                    -> rlua::Result<Value<'lua>> {
+    unimplemented!()
+}
