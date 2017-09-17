@@ -46,18 +46,24 @@ impl UserData for ButtonState {
 }
 
 /// Makes a new button stored in a table beside its signals
-pub fn new(lua: &Lua) -> rlua::Result<Object> {
+pub fn allocator(lua: &Lua) -> rlua::Result<Object> {
     let meta = lua.create_table();
+    // TODO remove
     meta.set("num", 1)?;
     Ok(Button::new(lua)?
        .add_to_meta(meta)?
        .build())
 }
 
+pub fn new<'lua>(lua: &'lua Lua, _table: Table<'lua>)
+                 -> rlua::Result<Object<'lua>> {
+    allocator(lua)
+}
+
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     // TODO Add properties to class
-    let class = Class::new(lua, Some(new), None, None,
+    let class = Class::new(lua, Some(allocator), None, None,
                Some(class::index_miss_property),
                Some(class::newindex_miss_property))?;
     Ok(class
