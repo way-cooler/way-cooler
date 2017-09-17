@@ -60,8 +60,8 @@ impl <'lua> ClassBuilder<'lua> {
         Ok(self)
     }
 
-    pub fn build(self) -> Class<'lua> {
-        self.0
+    pub fn build(self) -> rlua::Result<Class<'lua>> {
+        Ok(self.0)
     }
 }
 

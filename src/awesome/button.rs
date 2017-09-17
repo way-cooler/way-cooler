@@ -66,28 +66,29 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
     let class = Class::new(lua, Some(allocator), None, None,
                Some(class::index_miss_property),
                Some(class::newindex_miss_property))?;
-    Ok(class
+    class
+        .method(&lua, "__call".into(), lua.create_function(new))?
         /*
         .property(Property::new("button",
                                 Some(set_button),
                                 Some(get_button),
-                                Some(set_button)))
+                                Some(set_button)))?
         .property(Property::new("modifiers",
                                 Some(set_modifiers),
                                 Some(get_modifiers),
-                                Some(set_modifiers)))
+                                Some(set_modifiers)))?
         */
-        .build())
+        .build()
 }
 
 mod test {
     #[test]
-    fn basic_test() {
+    fn button_object_test() {
         use rlua::Lua;
-        use super::new;
+        use super::allocator;
         let lua = Lua::new();
-        lua.globals().set("button0", new(&lua, 0).unwrap());
-        lua.globals().set("button1", new(&lua, 1).unwrap());
+        lua.globals().set("button0", allocator(&lua).unwrap());
+        lua.globals().set("button1", allocator(&lua).unwrap());
         lua.eval(r#"
                  assert(button0.num == 1)
                  assert(button1.num == 1)
@@ -97,6 +98,22 @@ mod test {
                  assert(button0.num == 3)
 "#,
         None).unwrap()
+    }
+
+    #[test]
+    fn button_class_test() {
+        use rlua::Lua;
+        use super::super::button;
+        let lua = Lua::new();
+        let button_class = button::init(&lua).unwrap();
+        lua.globals().set("button", button_class);
+        lua.eval(r#"
+a_button = button()
+assert(a_button.num == 1)
+a_button.connect_signal("test", function(button) button.num = 2 end)
+a_button.emit_signal("test")
+assert(a_button.num == 2)
+"#, None).unwrap()
     }
 }
 
