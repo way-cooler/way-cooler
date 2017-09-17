@@ -46,6 +46,14 @@ pub struct ClassState {
 pub struct ClassBuilder<'lua>(Class<'lua>);
 
 impl <'lua> ClassBuilder<'lua> {
+    pub fn method(self, lua: &Lua, name: String, meth: rlua::Function)
+                  -> rlua::Result<Self> {
+        let meta = self.0.table.get_metatable()
+            .expect("Class had no meta table!");
+        meta.set(name, meth)?;
+        Ok(self)
+    }
+
     pub fn property(self, prop: Property) -> rlua::Result<Self> {
         let class = self.0.table.get::<_, AnyUserData>("data")?;
         class.borrow_mut::<ClassState>()?.properties.push(prop);
