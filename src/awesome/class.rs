@@ -2,24 +2,20 @@
 
 use std::sync::Arc;
 use std::default::Default;
+use std::borrow::BorrowMut;
 use rlua::{self, Lua, ToLua, Table, MetaMethod, UserData, UserDataMethods,
-           Value};
-use super::object::Object;
+           Value, AnyUserData};
+use super::object::{self, Object};
 use super::property::Property;
 
-pub type Allocator = fn(&Lua) -> Object;
+pub type Allocator = fn(&Lua) -> rlua::Result<Object>;
 pub type Collector = fn(Object);
 pub type PropF = fn(&Lua, Object) -> i32;
 pub type Checker = fn(&Object) -> bool;
 
+#[derive(Debug)]
 pub struct Class<'lua> {
     table: Table<'lua>
-}
-
-impl <'lua> ToLua<'lua> for Class<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.table.to_lua(lua)
-    }
 }
 
 pub struct ClassState {
@@ -46,6 +42,27 @@ pub struct ClassState {
     newindex_miss_handler_global: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct ClassBuilder<'lua>(Class<'lua>);
+
+impl <'lua> ClassBuilder<'lua> {
+    pub fn property(self, prop: Property) -> rlua::Result<Self> {
+        let class = self.0.table.get::<_, AnyUserData>("data")?;
+        class.borrow_mut::<ClassState>()?.properties.push(prop);
+        Ok(self)
+    }
+
+    pub fn build(self) -> Class<'lua> {
+        self.0
+    }
+}
+
+impl <'lua> ToLua<'lua> for Class<'lua> {
+    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
+        self.table.to_lua(lua)
+    }
+}
+
 impl Default for ClassState {
     fn default() -> Self {
         ClassState {
@@ -70,27 +87,19 @@ impl Default for ClassState {
 impl UserData for ClassState {}
 
 impl <'lua> Class<'lua> {
-    pub fn new<ALLOC, COLLECT, CHECK, PROP>(lua: &'lua Lua,
-                                            allocator: ALLOC,
-                                            collector: COLLECT,
-                                            index_miss_property: PROP,
-                                            newindex_miss_property: PROP,
-                                            checker: CHECK,
-                                            tostring: PROP)
-                                            -> rlua::Result<Self>
-        where ALLOC: Into<Option<Allocator>>,
-              COLLECT: Into<Option<Collector>>,
-              CHECK: Into<Option<Checker>>,
-              PROP: Into<Option<PropF>>,
-    {
+    pub fn new(lua: &'lua Lua,
+               allocator: Option<Allocator>,
+               collector: Option<Collector>,
+               checker: Option<Checker>,
+               index_miss_property: Option<PropF>,
+               newindex_miss_property: Option<PropF>)
+               -> rlua::Result<ClassBuilder> {
         let mut class = ClassState::default();
         class.allocator = allocator.into();
         class.collector = collector.into();
         class.index_miss_property = index_miss_property.into();
         class.newindex_miss_property = newindex_miss_property.into();
         class.checker = checker.into();
-        // might not be needed
-        class.tostring = tostring.into();
 
         // TODO Do same thing as in option, e.g throw this sucker in a table
         // set the meta table to be the correct thing.
@@ -99,6 +108,16 @@ impl <'lua> Class<'lua> {
 
         let table = lua.create_table();
         table.set("data", class)?;
-        Ok(Class { table })
+        let meta = lua.create_table();
+        meta.set("signals", lua.create_table())?;
+        meta.set("__index", lua.create_function(object::default_index))?;
+        table.set_metatable(Some(meta));
+        Ok(ClassBuilder(Class { table }))
     }
 }
+
+
+// TODO Implement
+// TODO return rlua::Value in result, however that will cause lifetime issues...
+pub fn index_miss_property(lua: &Lua, obj: Object) -> i32 {unimplemented!()}
+pub fn newindex_miss_property(lua: &Lua, obj: Object) -> i32 {unimplemented!()}

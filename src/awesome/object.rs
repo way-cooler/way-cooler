@@ -118,7 +118,7 @@ impl <'lua> Object<'lua> {
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
-fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Value<'lua>))
+pub fn default_index<'lua>(lua: &'lua Lua, (obj_table, index): (Table<'lua>, Value<'lua>))
                        -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
     if let Some(meta) = obj_table.get_metatable() {

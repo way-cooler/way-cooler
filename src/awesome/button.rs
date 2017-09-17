@@ -3,6 +3,7 @@ use std::default::Default;
 use rlua::{self, Table, Lua, UserData, AnyUserData, UserDataMethods, ToLua,
            Value};
 use super::object::{self, Object, Objectable};
+use super::class::{self, Class};
 
 #[derive(Clone, Debug)]
 pub struct ButtonState {
@@ -45,7 +46,7 @@ impl UserData for ButtonState {
 }
 
 /// Makes a new button stored in a table beside its signals
-pub fn new(lua: &Lua, num: u32) -> rlua::Result<Object> {
+pub fn new(lua: &Lua) -> rlua::Result<Object> {
     let meta = lua.create_table();
     meta.set("num", 1)?;
     Ok(Button::new(lua)?
@@ -54,16 +55,24 @@ pub fn new(lua: &Lua, num: u32) -> rlua::Result<Object> {
 }
 
 
-// TODODDDDDOOOOO
-// FIXME
-// work on making sure the filled in methods on "object.rs" is correct.
-// then implement enough "class.rs" so that I can impl this function:
-
-
-pub fn init(lua: &Lua) -> rlua::Result<()> {
-    unimplemented!()
+pub fn init(lua: &Lua) -> rlua::Result<Class> {
+    // TODO Add properties to class
+    let class = Class::new(lua, Some(new), None, None,
+               Some(class::index_miss_property),
+               Some(class::newindex_miss_property))?;
+    Ok(class
+        /*
+        .property(Property::new("button",
+                                Some(set_button),
+                                Some(get_button),
+                                Some(set_button)))
+        .property(Property::new("modifiers",
+                                Some(set_modifiers),
+                                Some(get_modifiers),
+                                Some(set_modifiers)))
+        */
+        .build())
 }
-
 
 mod test {
     #[test]
