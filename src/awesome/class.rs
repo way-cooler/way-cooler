@@ -52,6 +52,7 @@ impl <'lua> ClassBuilder<'lua> {
     pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
         let properties = self.class.table.get::<_, Table>("properties")?;
         let length = properties.len().unwrap_or(0) + 1;
+        // TODO make sure no duplicate names...
         properties.set(length, prop)?;
         Ok(self)
     }

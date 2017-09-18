@@ -86,6 +86,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         meta.set("__class", class)?;
         meta.set("signals", lua.create_table())?;
         meta.set("__index", lua.create_function(default_index))?;
+        meta.set("__newindex", lua.create_function(default_newindex))?;
         meta.set("__tostring", lua.create_function(|_, object_table: Table| {
             Ok(format!("{}", object_table.get::<_, S>("data")?))
         }))?;
@@ -122,6 +123,9 @@ impl <'lua> Object<'lua> {
             .expect("Object table did not have signals defined!")
     }
 }
+
+
+// TODO Abstract these two functions, they have similar functionality
 
 /// Default indexing of an Awesome object.
 ///
@@ -197,9 +201,41 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                             }
                         }
                     }
+                    // TODO miss handler
                 }
             }
             Ok(rlua::Value::Nil)
         }
     }
+}
+
+/// Default new indexing (assignment) of an Awesome object.
+///
+/// Automatically looks up contents in meta table, so instead of overriding this
+/// it's easier to just add the required data in the meta table.
+pub fn default_newindex<'lua>(lua: &'lua Lua,
+                              (obj_table, index, val):
+                              (Table<'lua>, String, Value<'lua>))
+                              -> rlua::Result<Value<'lua>> {
+    // Look up in metatable first
+    if let Some(meta) = obj_table.get_metatable() {
+        if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
+            match val {
+                Value::Nil => {},
+                val => return Ok(val)
+            }
+        }
+        let class = meta.get::<_, Table>("__class")?;
+        let props = class.get::<_, Vec<Property>>("properties")?;
+        for prop in props {
+            if prop.name.as_str() == index {
+                // Property exists and has a newindex callback
+                if let Some(newindex) = prop.cb_newindex {
+                    return newindex.bind(obj_table)?.call(val)
+                }
+            }
+        }
+        // TODO miss handler
+    }
+    Ok(Value::Nil)
 }

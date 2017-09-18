@@ -28,6 +28,20 @@ impl <'lua> Button<'lua> {
     pub fn set_button(&self, new_val: Option<i32>) -> rlua::Result<()> {
         let mut button = self.0.get::<_, ButtonState>("data")?;
         button.button = new_val;
+        self.0.set("data", button)?;
+        Ok(())
+    }
+
+    pub fn modifiers(&self) -> rlua::Result<KeyMod> {
+        let button = self.0.get::<_, ButtonState>("data")?;
+        Ok(button.modifiers)
+    }
+
+    pub fn set_modifiers(&self, mods: Table<'lua>) -> rlua::Result<()> {
+        use ::lua::mods_to_rust;
+        let mut button = self.0.get::<_, ButtonState>("data")?;
+        button.modifiers = mods_to_rust(mods)?;
+        self.0.set("data", button)?;
         Ok(())
     }
 }
@@ -95,6 +109,9 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .build()
 }
 
+// TODO Try to see if I can make this pass in an Object,
+// or even better a Button
+
 fn set_button<'lua>(_: &'lua Lua, (table, num): (Table, i32))
                     -> rlua::Result<Value<'lua>> {
     let button = Button::cast(table.into())?;
@@ -107,20 +124,25 @@ fn get_button<'lua>(_: &'lua Lua, table: Table<'lua>)
     Button::cast(table.into())?.button()
 }
 
-fn set_modifiers<'lua>(_: &'lua Lua, button: Table)
+fn set_modifiers<'lua>(_: &'lua Lua, (table, modifiers): (Table, Table))
                        -> rlua::Result<Value<'lua>> {
-    unimplemented!()
+    println!("called here");
+    let button = Button::cast(table.into())?;
+    button.set_modifiers(modifiers)?;
+    Ok(Value::Nil)
 }
 
-fn get_modifiers<'lua>(_: &'lua Lua, button: Table)
+fn get_modifiers<'lua>(lua: &'lua Lua, table: Table<'lua>)
                     -> rlua::Result<Value<'lua>> {
-    unimplemented!()
+    use ::lua::mods_to_lua;
+    mods_to_lua(lua, Button::cast(table.into())?.modifiers()?).map(Value::Table)
 }
 
 #[cfg(test)]
 mod test {
-    use rlua::Lua;
+    use rlua::{self, Table, Lua};
     use super::super::button;
+    use super::super::object;
 
     #[test]
     fn button_object_test() {
@@ -201,6 +223,23 @@ assert(button0.button == 0)
  a_button.emit_signal("test", nil)
  assert(a_button.button == nil)
  "#, None).unwrap()
+    }
+
+    #[test]
+    fn button_modifiers_test() {
+        use rustwlc::*;
+        use self::button::Button;
+        use self::object::{Object, Objectable};
+        let lua = Lua::new();
+        button::init(&lua).unwrap();
+        lua.globals().set("a_button", button::allocator(&lua).unwrap());
+        let button = Button::cast(lua.globals().get::<_, Table>("a_button")
+                                  .unwrap().into()).unwrap();
+        assert_eq!(button.modifiers().unwrap(), KeyMod::empty());
+        lua.eval::<()>(r#"
+a_button.modifiers = { "Caps" }
+"#, None).unwrap();
+        assert_eq!(button.modifiers().unwrap(), MOD_CAPS);
     }
 }
 
