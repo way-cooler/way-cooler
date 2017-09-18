@@ -5,6 +5,8 @@ use std::convert::From;
 use rlua::{self, Lua, Table, MetaMethod, UserData, AnyUserData, Value,
            UserDataMethods, FromLua, ToLua};
 use super::signal::{connect_signal, emit_signal};
+use super::class::Class;
+use super::property::Property;
 
 /// All Lua objects can be cast to this.
 pub struct Object<'lua> {
@@ -69,12 +71,13 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     /// used outside of internal object use.
     fn get_table(self) -> Table<'lua>;
 
-    fn new(lua: &'lua Lua) -> rlua::Result<ObjectBuilder>
+    fn new(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>>
     {
         let object = S::default();
         let object_table = lua.create_table();
         object_table.set("data", object)?;
         let meta = lua.create_table();
+        meta.set("__class", class)?;
         meta.set("signals", lua.create_table())?;
         meta.set("__index", lua.create_function(default_index))?;
         meta.set("__tostring", lua.create_function(|_, object_table: Table| {
@@ -168,22 +171,21 @@ pub fn default_index<'lua>(lua: &'lua Lua,
             func.bind(obj_table).map(rlua::Value::Function)
         }
         index => {
-            // TODO FIXME
-            // get dem properties from the ancestor class
-            /*
-            if let Some(prop) = get_prop() {
-                prop.index(lua, obj_table::<_, SomeGenericObjectThing>("data"));
-            } else {
-                // use index_miss_handler or index_miss_property if that doesn't exist
-                // if neither exist, return Nil!
+            // Try see if there is a property of the class with the name
+            if let Some(meta) = obj_table.get_metatable() {
+                if let Ok(class) = meta.get::<_, Table>("__class") {
+                    let props = class.get::<_, Vec<Property>>("properties")?;
+                    for prop in props {
+                        if prop.name.as_str() == index {
+                            // Property exists and has an index callback
+                            if let Some(index) = prop.cb_index {
+                                return index.call(obj_table)
+                            }
+                        }
+                    }
+                }
             }
-            */
-
-            // TODO Never error, only nil!
-            let err_msg = format!("Could not find index \"{:#?}\"", index);
-            println!("{}", err_msg);
-            warn!("{}", err_msg);
-            Err(rlua::Error::RuntimeError(err_msg))
+            Ok(rlua::Value::Nil)
         }
     }
 }

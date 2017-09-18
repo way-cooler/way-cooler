@@ -41,6 +41,7 @@ pub struct ClassState {
 #[derive(Debug)]
 pub struct ClassBuilder<'lua>(Class<'lua>);
 
+// TODO Store lua as well so I don't have to pass it in everywhere...
 impl <'lua> ClassBuilder<'lua> {
     pub fn method(self, lua: &Lua, name: String, meth: rlua::Function)
                   -> rlua::Result<Self> {
@@ -54,6 +55,13 @@ impl <'lua> ClassBuilder<'lua> {
         let properties = self.0.table.get::<_, Table>("properties")?;
         let length = properties.len().unwrap_or(0) + 1;
         properties.set(length, prop);
+        Ok(self)
+    }
+
+    pub fn save_class(mut self, lua: &'lua Lua, name: &str)
+                      -> rlua::Result<Self> {
+        lua.globals().set(name, self.0.table)?;
+        self.0.table = lua.globals().get(name)?;
         Ok(self)
     }
 
@@ -106,6 +114,7 @@ impl <'lua> Class<'lua> {
         table.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         let meta = lua.create_table();
         meta.set("signals", lua.create_table())?;
+        // TODO Is this the correct indexing function? Hm.
         meta.set("__index", lua.create_function(object::default_index))?;
         // TODO __tostring
         table.set_metatable(Some(meta));
@@ -127,4 +136,10 @@ pub fn index_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
 pub fn newindex_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
                                     -> rlua::Result<Value<'lua>> {
     unimplemented!()
+}
+
+pub fn button_class(lua: &Lua) -> rlua::Result<Class> {
+    let table = lua.globals().get::<_, Table>("__button_class")?;
+    // TODO Assert is correct table
+    Ok(Class { table })
 }

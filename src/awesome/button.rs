@@ -51,7 +51,8 @@ pub fn allocator(lua: &Lua) -> rlua::Result<Object> {
     let meta = lua.create_table();
     // TODO remove
     meta.set("num", 1)?;
-    Ok(Button::new(lua)?
+    let class = class::button_class(lua)?;
+    Ok(Button::new(lua, class)?
        .add_to_meta(meta)?
        .build())
 }
@@ -63,9 +64,7 @@ pub fn new<'lua>(lua: &'lua Lua, _table: Table<'lua>)
 
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    // TODO Add properties to class
-    let class = Class::new(lua, Some(allocator), None, None)?;
-    class
+    Class::new(lua, Some(allocator), None, None)?
         .method(&lua, "__call".into(), lua.create_function(new))?
         .property(Property::new("button".into(),
                                 Some(lua.create_function(set_button)),
@@ -75,25 +74,28 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
                                 Some(lua.create_function(set_modifiers)),
                                 Some(lua.create_function(get_modifiers)),
                                 Some(lua.create_function(set_modifiers))))?
+        .save_class(lua, "__button_class")?
         .build()
 }
 
-fn set_button<'lua>(lua: &'lua Lua, button: Table<'lua>)
+fn set_button<'lua>(lua: &'lua Lua, button: Table)
                     -> rlua::Result<Value<'lua>> {
+    println!("Setting button?");
     unimplemented!()
 }
 
-fn get_button<'lua>(lua: &'lua Lua, button: Table<'lua>)
+fn get_button<'lua>(lua: &'lua Lua, button: Table)
                     -> rlua::Result<Value<'lua>> {
+    println!("Gett button?");
     unimplemented!()
 }
 
-fn set_modifiers<'lua>(lua: &'lua Lua, button: Table<'lua>)
+fn set_modifiers<'lua>(lua: &'lua Lua, button: Table)
                        -> rlua::Result<Value<'lua>> {
     unimplemented!()
 }
 
-fn get_modifiers<'lua>(lua: &'lua Lua, button: Table<'lua>)
+fn get_modifiers<'lua>(lua: &'lua Lua, button: Table)
                     -> rlua::Result<Value<'lua>> {
     unimplemented!()
 }
@@ -136,11 +138,13 @@ assert(a_button.num == 2)
     #[test]
     fn button_property_test() {
         let lua = Lua::new();
+        super::init(&lua);
         let button_class = button::init(&lua).unwrap();
         assert_eq!(button_class.properties().unwrap().len().unwrap(), 2);
         lua.globals().set("button", button_class).unwrap();
         lua.eval(r#"
 a_button = button()
+--a_button.button = 5
 print(a_button.button)
 a_button.emit_signal("button")
 button.emit_signal("button")
