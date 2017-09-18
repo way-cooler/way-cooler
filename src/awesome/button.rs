@@ -1,10 +1,10 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, AnyUserData, UserDataMethods, ToLua,
-           Value};
-use super::object::{self, Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use super::object::{Object, Objectable};
 use super::property::Property;
 use super::class::{self, Class};
+#[allow(deprecated)]
 use rustwlc::xkb::Keysym;
 use rustwlc::types::KeyMod;
 
@@ -95,28 +95,29 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .build()
 }
 
-fn set_button<'lua>(lua: &'lua Lua, (table, num): (Table, i32))
+fn set_button<'lua>(_: &'lua Lua, (table, num): (Table, i32))
                     -> rlua::Result<Value<'lua>> {
     let button = Button::cast(table.into())?;
     button.set_button(Some(num))?;
     Ok(Value::Nil)
 }
 
-fn get_button<'lua>(lua: &'lua Lua, table: Table<'lua>)
+fn get_button<'lua>(_: &'lua Lua, table: Table<'lua>)
                     -> rlua::Result<Value<'lua>> {
     Button::cast(table.into())?.button()
 }
 
-fn set_modifiers<'lua>(lua: &'lua Lua, button: Table)
+fn set_modifiers<'lua>(_: &'lua Lua, button: Table)
                        -> rlua::Result<Value<'lua>> {
     unimplemented!()
 }
 
-fn get_modifiers<'lua>(lua: &'lua Lua, button: Table)
+fn get_modifiers<'lua>(_: &'lua Lua, button: Table)
                     -> rlua::Result<Value<'lua>> {
     unimplemented!()
 }
 
+#[cfg(test)]
 mod test {
     use rlua::Lua;
     use super::super::button;

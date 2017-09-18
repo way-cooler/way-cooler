@@ -25,7 +25,7 @@ pub fn connect_signal(lua: &Lua, obj: &Object, name: String, func: Function)
     }
 }
 
-pub fn disconnect_signal(lua: &Lua, obj: &Object, name: String)
+pub fn disconnect_signal(_: &Lua, obj: &Object, name: String)
                          -> rlua::Result<()> {
     let signals = obj.signals();
     signals.set(name, Value::Nil)

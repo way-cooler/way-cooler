@@ -2,7 +2,7 @@
 
 use std::fmt::Display;
 use std::convert::From;
-use rlua::{self, Lua, Table, MetaMethod, UserData, AnyUserData, Value,
+use rlua::{self, Lua, Table, UserData, AnyUserData, Value,
            UserDataMethods, FromLua, ToLua};
 use super::signal::{disconnect_signal, connect_signal, emit_signal};
 use super::class::Class;
@@ -96,7 +96,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
 }
 
 impl <'lua> ToLua<'lua> for Object<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
+    fn to_lua(self, _: &'lua Lua) -> rlua::Result<Value<'lua>> {
         Ok(Value::Table(self.table))
     }
 }
