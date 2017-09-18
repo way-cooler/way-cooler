@@ -140,7 +140,7 @@ pub fn newindex_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
 }
 
 pub fn button_class(lua: &Lua) -> rlua::Result<Class> {
-    let table = lua.globals().get::<_, Table>("__button_class")
+    let table = lua.globals().get::<_, Table>("button")
         .expect("Button class was not set! Did you call button::init?");
     // TODO Assert is correct table
     Ok(Class { table })

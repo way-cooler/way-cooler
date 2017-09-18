@@ -105,7 +105,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
                                 Some(lua.create_function(set_modifiers)),
                                 Some(lua.create_function(get_modifiers)),
                                 Some(lua.create_function(set_modifiers))))?
-        .save_class("__button_class")?
+        .save_class("button")?
         .build()
 }
 
@@ -167,8 +167,7 @@ assert(button0.button == 3)
     #[test]
     fn button_class_test() {
         let lua = Lua::new();
-        let button_class = button::init(&lua).unwrap();
-        lua.globals().set("button", button_class).unwrap();
+        button::init(&lua).unwrap();
         lua.eval(r#"
 a_button = button()
 assert(a_button.button == nil)
@@ -181,10 +180,8 @@ assert(a_button.button == 2)
     #[test]
     fn button_property_test() {
         let lua = Lua::new();
-        button::init(&lua).unwrap();
         let button_class = button::init(&lua).unwrap();
         assert_eq!(button_class.properties().unwrap().len().unwrap(), 2);
-        lua.globals().set("button", button_class).unwrap();
         lua.eval(r#"
 a_button = button()
 assert(a_button.button == nil)
@@ -196,8 +193,7 @@ assert(a_button.button == 5)
     #[test]
     fn button_remove_signal_test() {
         let lua = Lua::new();
-        let button_class = button::init(&lua).unwrap();
-        lua.globals().set("button", button_class).unwrap();
+        button::init(&lua).unwrap();
         lua.eval(r#"
 button0 = button()
 assert(button0.button == nil)
