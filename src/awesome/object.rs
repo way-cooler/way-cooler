@@ -3,7 +3,7 @@
 use std::fmt::Display;
 use std::convert::From;
 use rlua::{self, Lua, Table, UserData, AnyUserData, Value,
-           UserDataMethods, FromLua, ToLua};
+           FromLua, ToLua};
 use super::signal::{disconnect_signal, connect_signal, emit_signal};
 use super::class::Class;
 use super::property::Property;
