@@ -63,9 +63,7 @@ impl Default for ButtonState {
     }
 }
 
-impl UserData for ButtonState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {/*TODO Does this need anything?*/}
-}
+impl UserData for ButtonState {}
 
 /// Makes a new button stored in a table beside its signals
 pub fn allocator(lua: &Lua) -> rlua::Result<Object> {
@@ -84,7 +82,7 @@ pub fn new<'lua>(lua: &'lua Lua, _table: Table<'lua>)
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     Class::new(lua, Some(allocator), None, None)?
-        .method(&lua, "__call".into(), lua.create_function(new))?
+        .method("__call".into(), lua.create_function(new))?
         .property(Property::new("button".into(),
                                 Some(lua.create_function(set_button)),
                                 Some(lua.create_function(get_button)),
@@ -93,7 +91,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
                                 Some(lua.create_function(set_modifiers)),
                                 Some(lua.create_function(get_modifiers)),
                                 Some(lua.create_function(set_modifiers))))?
-        .save_class(lua, "__button_class")?
+        .save_class("__button_class")?
         .build()
 }
 

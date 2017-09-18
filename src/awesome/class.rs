@@ -38,35 +38,36 @@ pub struct ClassState {
     newindex_miss_handler_global: Option<String>,
 }
 
-#[derive(Debug)]
-pub struct ClassBuilder<'lua>(Class<'lua>);
+pub struct ClassBuilder<'lua>{
+    lua: &'lua Lua,
+    class: Class<'lua>
+}
 
-// TODO Store lua as well so I don't have to pass it in everywhere...
 impl <'lua> ClassBuilder<'lua> {
-    pub fn method(self, lua: &Lua, name: String, meth: rlua::Function)
+    pub fn method(self, name: String, meth: rlua::Function)
                   -> rlua::Result<Self> {
-        let meta = self.0.table.get_metatable()
+        let meta = self.class.table.get_metatable()
             .expect("Class had no meta table!");
         meta.set(name, meth)?;
         Ok(self)
     }
 
     pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
-        let properties = self.0.table.get::<_, Table>("properties")?;
+        let properties = self.class.table.get::<_, Table>("properties")?;
         let length = properties.len().unwrap_or(0) + 1;
         properties.set(length, prop);
         Ok(self)
     }
 
-    pub fn save_class(mut self, lua: &'lua Lua, name: &str)
+    pub fn save_class(mut self, name: &str)
                       -> rlua::Result<Self> {
-        lua.globals().set(name, self.0.table)?;
-        self.0.table = lua.globals().get(name)?;
+        self.lua.globals().set(name, self.class.table)?;
+        self.class.table = self.lua.globals().get(name)?;
         Ok(self)
     }
 
     pub fn build(self) -> rlua::Result<Class<'lua>> {
-        Ok(self.0)
+        Ok(self.class)
     }
 }
 
@@ -118,7 +119,10 @@ impl <'lua> Class<'lua> {
         meta.set("__index", lua.create_function(object::default_index))?;
         // TODO __tostring
         table.set_metatable(Some(meta));
-        Ok(ClassBuilder(Class { table }))
+        Ok(ClassBuilder{
+            lua: lua,
+            class: Class { table }
+        })
     }
 
     pub fn properties(&self) -> rlua::Result<Table<'lua>> {
@@ -128,7 +132,6 @@ impl <'lua> Class<'lua> {
 
 
 // TODO Implement
-// TODO return rlua::Value in result, however that will cause lifetime issues...
 pub fn index_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
                                  -> rlua::Result<Value<'lua>> {
     unimplemented!()

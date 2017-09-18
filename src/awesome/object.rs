@@ -176,9 +176,6 @@ pub fn default_index<'lua>(lua: &'lua Lua,
         "emit_signal" => {
             let func = lua.create_function(
                 |lua, (obj_table, signal, args): (Table, String, rlua::Value)| {
-                    // TODO FIXME this seems wrong to always pass the object table in,
-                    // but maybe that's always how object signal emitting should work?
-                    // Look this up, double check!
                     emit_signal(lua, &Object { table: obj_table.clone() }, signal, obj_table)
                 });
             func.bind(obj_table).map(rlua::Value::Function)
