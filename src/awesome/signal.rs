@@ -31,11 +31,11 @@ pub fn emit_signal<'lua, A>(lua: &'lua Lua, obj: &'lua Object, name: String, arg
     where A: ToLuaMulti<'lua> + Clone
     {
     let signals = obj.signals();
-    println!("Checking {}", name);
+    println!("Checking signal {}", name);
     if let Ok(table) = signals.get::<_, Table>(name) {
         for entry in table.pairs::<rlua::Value, rlua::Function>() {
             if let Ok((_, func)) = entry {
-                println!("Executing func {:?}", func);
+                println!("Found func for signal");
                 func.call(args.clone())?
             }
         }

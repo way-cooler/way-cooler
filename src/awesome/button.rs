@@ -106,18 +106,19 @@ mod test {
 
     #[test]
     fn button_object_test() {
-        use super::allocator;
         let lua = Lua::new();
-        lua.globals().set("button0", allocator(&lua).unwrap());
-        lua.globals().set("button1", allocator(&lua).unwrap());
+        button::init(&lua).unwrap();
+        lua.globals().set("button0", button::allocator(&lua).unwrap());
+        lua.globals().set("button1", button::allocator(&lua).unwrap());
         lua.eval(r#"
-                 assert(button0.num == 1)
-                 assert(button1.num == 1)
-                 button0.connect_signal("test", function(button) button.num = 3 end)
-                 button0.emit_signal("test")
-                 assert(button1.num == 1)
-                 assert(button0.num == 3)
-"#,
+ print(button0.num)
+ assert(button0.num == 1)
+ assert(button1.num == 1)
+ button0.connect_signal("test", function(button) button.num = 3 end)
+ button0.emit_signal("test")
+ assert(button1.num == 1)
+ assert(button0.num == 3)
+ "#,
         None).unwrap()
     }
 
@@ -138,7 +139,7 @@ assert(a_button.num == 2)
     #[test]
     fn button_property_test() {
         let lua = Lua::new();
-        super::init(&lua);
+        button::init(&lua);
         let button_class = button::init(&lua).unwrap();
         assert_eq!(button_class.properties().unwrap().len().unwrap(), 2);
         lua.globals().set("button", button_class).unwrap();
