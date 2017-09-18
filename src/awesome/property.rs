@@ -28,7 +28,7 @@ impl <'lua> ToLua<'lua> for Property<'lua> {
 }
 
 impl <'lua> FromLua<'lua> for Property<'lua> {
-    fn from_lua(val: Value<'lua>, lua: &'lua Lua) -> rlua::Result<Self> {
+    fn from_lua(val: Value<'lua>, _: &'lua Lua) -> rlua::Result<Self> {
         if let Value::Table(table) = val {
             let name = table.get("name")?;
             let meta = table.get_metatable()

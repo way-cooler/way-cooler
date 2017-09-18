@@ -1,10 +1,7 @@
 //! Utility methods and constructors for Lua classes
 
-use std::sync::Arc;
 use std::default::Default;
-use std::borrow::BorrowMut;
-use rlua::{self, Lua, ToLua, Table, MetaMethod, UserData, UserDataMethods,
-           Value, AnyUserData};
+use rlua::{self, Lua, ToLua, Table, UserData, Value};
 use super::object::{self, Object};
 use super::property::Property;
 
@@ -55,7 +52,7 @@ impl <'lua> ClassBuilder<'lua> {
     pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
         let properties = self.class.table.get::<_, Table>("properties")?;
         let length = properties.len().unwrap_or(0) + 1;
-        properties.set(length, prop);
+        properties.set(length, prop)?;
         Ok(self)
     }
 

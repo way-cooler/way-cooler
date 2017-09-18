@@ -176,7 +176,11 @@ pub fn default_index<'lua>(lua: &'lua Lua,
         "emit_signal" => {
             let func = lua.create_function(
                 |lua, (obj_table, signal, args): (Table, String, rlua::Value)| {
-                    emit_signal(lua, &Object { table: obj_table.clone() }, signal, obj_table)
+                    emit_signal(lua,
+                                &Object { table: obj_table.clone() },
+                                signal,
+                                obj_table,
+                                args)
                 });
             func.bind(obj_table).map(rlua::Value::Function)
         }
