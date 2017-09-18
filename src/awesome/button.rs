@@ -112,10 +112,15 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 // TODO Try to see if I can make this pass in an Object,
 // or even better a Button
 
-fn set_button<'lua>(_: &'lua Lua, (table, num): (Table, i32))
+fn set_button<'lua>(_: &'lua Lua, (table, val): (Table, Value))
                     -> rlua::Result<Value<'lua>> {
+    use rlua::Value::*;
     let button = Button::cast(table.into())?;
-    button.set_button(Some(num))?;
+    match val {
+        Number(num) => button.set_button(Some(num as _))?,
+        Integer(num) => button.set_button(Some(num as _))?,
+        _ => button.set_button(None)?
+    }
     Ok(Value::Nil)
 }
 
@@ -126,7 +131,6 @@ fn get_button<'lua>(_: &'lua Lua, table: Table<'lua>)
 
 fn set_modifiers<'lua>(_: &'lua Lua, (table, modifiers): (Table, Table))
                        -> rlua::Result<Value<'lua>> {
-    println!("called here");
     let button = Button::cast(table.into())?;
     button.set_modifiers(modifiers)?;
     Ok(Value::Nil)
@@ -151,14 +155,13 @@ mod test {
         lua.globals().set("button0", button::allocator(&lua).unwrap());
         lua.globals().set("button1", button::allocator(&lua).unwrap());
         lua.eval(r#"
- assert(button0.button == nil)
- assert(button1.button == nil)
- button0.connect_signal("test", function(button) button.button = 3 end)
- button0.emit_signal("test")
- assert(button1.button == nil)
- assert(button0.button == 3)
- "#,
-        None).unwrap()
+assert(button0.button == nil)
+assert(button1.button == nil)
+button0.connect_signal("test", function(button) button.button = 3 end)
+button0.emit_signal("test")
+assert(button1.button == nil)
+assert(button0.button == 3)
+"#, None).unwrap()
     }
 
     #[test]
@@ -169,9 +172,9 @@ mod test {
         lua.eval(r#"
 a_button = button()
 assert(a_button.button == nil)
-a_button.connect_signal("test", function(button) button.num = 2 end)
+a_button.connect_signal("test", function(button) button.button = 2 end)
 a_button.emit_signal("test")
-assert(a_button.num == 2)
+assert(a_button.button == 2)
 "#, None).unwrap()
     }
 
