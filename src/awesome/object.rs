@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::convert::From;
 use rlua::{self, Lua, Table, MetaMethod, UserData, AnyUserData, Value,
            UserDataMethods, FromLua, ToLua};
-use super::signal::{connect_signal, emit_signal};
+use super::signal::{disconnect_signal, connect_signal, emit_signal};
 use super::class::Class;
 use super::property::Property;
 
@@ -163,7 +163,14 @@ pub fn default_index<'lua>(lua: &'lua Lua,
             let func = lua.create_function(
                 |lua, (obj_table, signal, func): (Table, String, rlua::Function)| {
                     connect_signal(lua, &Object { table: obj_table }, signal, func)
-            });
+                });
+            func.bind(obj_table).map(rlua::Value::Function)
+        },
+        "disconnect_signal" => {
+            let func = lua.create_function(
+                |lua, (obj_table, signal): (Table, String)| {
+                    disconnect_signal(lua, &Object { table: obj_table }, signal)
+                });
             func.bind(obj_table).map(rlua::Value::Function)
         },
         "emit_signal" => {

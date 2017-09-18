@@ -25,6 +25,11 @@ pub fn connect_signal(lua: &Lua, obj: &Object, name: String, func: rlua::Functio
     }
 }
 
+pub fn disconnect_signal(lua: &Lua, obj: &Object, name: String) -> rlua::Result<()> {
+    let signals = obj.signals();
+    signals.set(name, rlua::Value::Nil)
+}
+
 /// Evaluate the functions associated with a signal.
 pub fn emit_signal<'lua, A>(lua: &'lua Lua, obj: &'lua Object, name: String, args: A)
                             -> rlua::Result<()>

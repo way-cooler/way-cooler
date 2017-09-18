@@ -130,7 +130,6 @@ mod test {
         lua.globals().set("button0", button::allocator(&lua).unwrap());
         lua.globals().set("button1", button::allocator(&lua).unwrap());
         lua.eval(r#"
- print(button0.button)
  assert(button0.button == nil)
  assert(button1.button == nil)
  button0.connect_signal("test", function(button) button.button = 3 end)
@@ -158,7 +157,7 @@ assert(a_button.num == 2)
     #[test]
     fn button_property_test() {
         let lua = Lua::new();
-        button::init(&lua);
+        button::init(&lua).unwrap();
         let button_class = button::init(&lua).unwrap();
         assert_eq!(button_class.properties().unwrap().len().unwrap(), 2);
         lua.globals().set("button", button_class).unwrap();
@@ -167,6 +166,24 @@ a_button = button()
 assert(a_button.button == nil)
 a_button.button = 5
 assert(a_button.button == 5)
+"#, None).unwrap()
+    }
+
+    #[test]
+    fn button_remove_signal_test() {
+        let lua = Lua::new();
+        let button_class = button::init(&lua).unwrap();
+        lua.globals().set("button", button_class).unwrap();
+        lua.eval(r#"
+button0 = button()
+assert(button0.button == nil)
+button0.connect_signal("test", function(button) button.button = 3 end)
+button0.emit_signal("test")
+assert(button0.button == 3)
+button0.button = 0
+button0.disconnect_signal("test")
+button0.emit_signal("test")
+assert(button0.button == 0)
 "#, None).unwrap()
     }
 }
