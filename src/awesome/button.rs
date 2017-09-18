@@ -184,5 +184,22 @@ button0.emit_signal("test")
 assert(button0.button == 0)
 "#, None).unwrap()
     }
+
+    #[test]
+    fn button_emit_signal_multiple_args() {
+        let lua = Lua::new();
+        button::init(&lua).unwrap();
+        lua.globals().set("a_button", button::allocator(&lua).unwrap());
+        lua.eval(r#"
+ assert(a_button.button == nil)
+ a_button.connect_signal("test", function(button, num) button.button = num end)
+ a_button.emit_signal("test", 5)
+ assert(a_button.button == 5)
+ a_button.emit_signal("test", -1)
+ assert(a_button.button == -1)
+ a_button.emit_signal("test", nil)
+ assert(a_button.button == nil)
+ "#, None).unwrap()
+    }
 }
 
