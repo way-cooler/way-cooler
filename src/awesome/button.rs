@@ -10,7 +10,7 @@ use rustwlc::types::KeyMod;
 
 #[derive(Clone, Debug)]
 pub struct ButtonState {
-    button: Option<i32>,
+    button: Option<u32>,
     modifiers: KeyMod
 }
 
@@ -25,7 +25,7 @@ impl <'lua> Button<'lua> {
             .unwrap_or(Value::Nil))
     }
 
-    pub fn set_button(&self, new_val: Option<i32>) -> rlua::Result<()> {
+    pub fn set_button(&self, new_val: Option<u32>) -> rlua::Result<()> {
         let mut button = self.0.get::<_, ButtonState>("data")?;
         button.button = new_val;
         self.0.set("data", button)?;
@@ -221,8 +221,6 @@ assert(button0.button == 0)
  a_button.connect_signal("test", function(button, num) button.button = num end)
  a_button.emit_signal("test", 5)
  assert(a_button.button == 5)
- a_button.emit_signal("test", -1)
- assert(a_button.button == -1)
  a_button.emit_signal("test", nil)
  assert(a_button.button == nil)
  "#, None).unwrap()
