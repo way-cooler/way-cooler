@@ -5,14 +5,32 @@ use rlua::{self, Table, Lua, UserData, AnyUserData, UserDataMethods, ToLua,
 use super::object::{self, Object, Objectable};
 use super::property::Property;
 use super::class::{self, Class};
+use rustwlc::xkb::Keysym;
+use rustwlc::types::KeyMod;
 
 #[derive(Clone, Debug)]
 pub struct ButtonState {
-    num: u32
+    button: Option<i32>,
+    modifiers: KeyMod
 }
 
 #[derive(Clone, Debug)]
 pub struct Button<'lua>(Table<'lua>);
+
+impl <'lua> Button<'lua> {
+    pub fn button(&self) -> rlua::Result<Value<'lua>> {
+        let button = self.0.get::<_, ButtonState>("data")?;
+        Ok(button.button
+            .map(|num| Value::Number(num as f64))
+            .unwrap_or(Value::Nil))
+    }
+
+    pub fn set_button(&self, new_val: Option<i32>) -> rlua::Result<()> {
+        let mut button = self.0.get::<_, ButtonState>("data")?;
+        button.button = new_val;
+        Ok(())
+    }
+}
 
 impl <'lua> ToLua<'lua> for Button<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
@@ -38,7 +56,10 @@ impl Display for ButtonState {
 
 impl Default for ButtonState {
     fn default() -> Self {
-        ButtonState { num: 0 }
+        ButtonState {
+            button: None,
+            modifiers: KeyMod::empty()
+        }
     }
 }
 
@@ -49,8 +70,6 @@ impl UserData for ButtonState {
 /// Makes a new button stored in a table beside its signals
 pub fn allocator(lua: &Lua) -> rlua::Result<Object> {
     let meta = lua.create_table();
-    // TODO remove
-    meta.set("num", 1)?;
     let class = class::button_class(lua)?;
     Ok(Button::new(lua, class)?
        .add_to_meta(meta)?
@@ -78,16 +97,16 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .build()
 }
 
-fn set_button<'lua>(lua: &'lua Lua, button: Table)
+fn set_button<'lua>(lua: &'lua Lua, (table, num): (Table, i32))
                     -> rlua::Result<Value<'lua>> {
-    println!("Setting button?");
-    unimplemented!()
+    let button = Button::cast(table.into())?;
+    button.set_button(Some(num))?;
+    Ok(Value::Nil)
 }
 
-fn get_button<'lua>(lua: &'lua Lua, button: Table)
+fn get_button<'lua>(lua: &'lua Lua, table: Table<'lua>)
                     -> rlua::Result<Value<'lua>> {
-    println!("Gett button?");
-    unimplemented!()
+    Button::cast(table.into())?.button()
 }
 
 fn set_modifiers<'lua>(lua: &'lua Lua, button: Table)
@@ -111,13 +130,13 @@ mod test {
         lua.globals().set("button0", button::allocator(&lua).unwrap());
         lua.globals().set("button1", button::allocator(&lua).unwrap());
         lua.eval(r#"
- print(button0.num)
- assert(button0.num == 1)
- assert(button1.num == 1)
- button0.connect_signal("test", function(button) button.num = 3 end)
+ print(button0.button)
+ assert(button0.button == nil)
+ assert(button1.button == nil)
+ button0.connect_signal("test", function(button) button.button = 3 end)
  button0.emit_signal("test")
- assert(button1.num == 1)
- assert(button0.num == 3)
+ assert(button1.button == nil)
+ assert(button0.button == 3)
  "#,
         None).unwrap()
     }
@@ -129,7 +148,7 @@ mod test {
         lua.globals().set("button", button_class).unwrap();
         lua.eval(r#"
 a_button = button()
-assert(a_button.num == 1)
+assert(a_button.button == nil)
 a_button.connect_signal("test", function(button) button.num = 2 end)
 a_button.emit_signal("test")
 assert(a_button.num == 2)
@@ -145,10 +164,9 @@ assert(a_button.num == 2)
         lua.globals().set("button", button_class).unwrap();
         lua.eval(r#"
 a_button = button()
---a_button.button = 5
-print(a_button.button)
-a_button.emit_signal("button")
-button.emit_signal("button")
+assert(a_button.button == nil)
+a_button.button = 5
+assert(a_button.button == 5)
 "#, None).unwrap()
     }
 }

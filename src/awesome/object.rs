@@ -13,6 +13,12 @@ pub struct Object<'lua> {
     table: Table<'lua>
 }
 
+impl <'lua> From<Table<'lua>> for Object<'lua> {
+    fn from(table: Table<'lua>) -> Self {
+        Object { table }
+    }
+}
+
 /// Construct a new object, used when using the default Objectable::new.
 pub struct ObjectBuilder<'lua>{
     lua: &'lua Lua,
