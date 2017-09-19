@@ -39,7 +39,7 @@ impl <'lua> ObjectBuilder<'lua> {
 
     pub fn add_to_signals(self, name: String, func: rlua::Function)
                           -> rlua::Result<Self> {
-        signal::connect_signal(self.lua, self.object.clone(), name, vec![func])?;
+        signal::connect_signal(self.lua, self.object.clone(), name, &[func])?;
         Ok(self)
     }
 
@@ -240,7 +240,7 @@ pub fn default_newindex<'lua>(lua: &'lua Lua,
 
 fn connect_signal(lua: &Lua, (obj_table, signal, func): (Table, String, Function))
                   -> rlua::Result<()> {
-    signal::connect_signal(lua, obj_table.into(), signal, vec![func])
+    signal::connect_signal(lua, obj_table.into(), signal, &[func])
 }
 
 fn disconnect_signal(lua: &Lua, (obj_table, signal): (Table, String))
