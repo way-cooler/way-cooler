@@ -118,6 +118,7 @@ fn set_button<'lua>(_: &'lua Lua, (table, val): (Table, Value))
         Integer(num) => button.set_button(num as _)?,
         _ => button.set_button(xcb_button_t::default())?
     }
+    // TODO Emit property
     Ok(Value::Nil)
 }
 
@@ -130,6 +131,7 @@ fn set_modifiers<'lua>(_: &'lua Lua, (table, modifiers): (Table, Table))
                        -> rlua::Result<Value<'lua>> {
     let button = Button::cast(table.into())?;
     button.set_modifiers(modifiers)?;
+    // TODO Emit property
     Ok(Value::Nil)
 }
 
@@ -234,6 +236,23 @@ assert(button0.button == 0)
 a_button.modifiers = { "Caps" }
 "#, None).unwrap();
         assert_eq!(button.modifiers().unwrap(), MOD_CAPS);
+    }
+
+    #[test]
+    fn button_multiple_modifiers_test() {
+        use rustwlc::*;
+        use self::button::Button;
+        use self::object::Objectable;
+        let lua = Lua::new();
+        button::init(&lua).unwrap();
+        lua.globals().set("a_button", button::allocator(&lua).unwrap());
+        let button = Button::cast(lua.globals().get::<_, Table>("a_button")
+                                  .unwrap().into()).unwrap();
+        assert_eq!(button.modifiers().unwrap(), KeyMod::empty());
+        lua.eval::<()>(r#"
+a_button.modifiers = { "Caps", "Mod2" }
+"#, None).unwrap();
+        assert_eq!(button.modifiers().unwrap(), MOD_CAPS | MOD_MOD2);
     }
 
     #[test]
