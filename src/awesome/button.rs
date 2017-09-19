@@ -120,9 +120,8 @@ fn set_button<'lua>(lua: &'lua Lua, (table, val): (Table, Value))
         _ => button.set_button(xcb_button_t::default())?
     }
     signal::emit_signal(lua,
-                        &table.clone().into(),
+                        table.into(),
                         "property::button".into(),
-                        table,
                         val)?;
     Ok(Value::Nil)
 }
@@ -137,9 +136,8 @@ fn set_modifiers<'lua>(lua: &'lua Lua, (table, modifiers): (Table, Table))
     let button = Button::cast(table.clone().into())?;
     button.set_modifiers(modifiers.clone())?;
     signal::emit_signal(lua,
-                        &table.clone().into(),
+                        table.into(),
                         "property::modifiers".into(),
-                        table,
                         modifiers)?;
     // TODO Emit property
     Ok(Value::Nil)

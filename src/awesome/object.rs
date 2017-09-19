@@ -118,9 +118,13 @@ impl <'lua> Object<'lua> {
         Object { table }
     }
 
-    pub fn signals(&self) -> rlua::Table {
+    pub fn signals(&self) -> rlua::Table<'lua> {
         self.table.get::<_, Table>("signals")
             .expect("Object table did not have signals defined!")
+    }
+
+    pub fn table(self) -> rlua::Table<'lua> {
+        self.table
     }
 }
 
@@ -181,9 +185,8 @@ pub fn default_index<'lua>(lua: &'lua Lua,
             let func = lua.create_function(
                 |lua, (obj_table, signal, args): (Table, String, rlua::Value)| {
                     emit_signal(lua,
-                                &Object { table: obj_table.clone() },
+                                Object { table: obj_table },
                                 signal,
-                                obj_table,
                                 args)
                 });
             func.bind(obj_table).map(rlua::Value::Function)

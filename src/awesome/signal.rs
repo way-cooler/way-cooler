@@ -32,11 +32,9 @@ pub fn disconnect_signal(_: &Lua, obj: &Object, name: String)
 }
 
 /// Evaluate the functions associated with a signal.
-// TODO I don't want to have to pass in obj_table, cause it's in the object!
 pub fn emit_signal<'lua, A>(lua: &'lua Lua,
-                            obj: &'lua Object,
+                            obj: Object<'lua>,
                             name: String,
-                            obj_table: Table<'lua>,
                             args: A)
                             -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone
@@ -45,6 +43,7 @@ pub fn emit_signal<'lua, A>(lua: &'lua Lua,
     trace!("Checking signal {}", name);
     // TODO fix this weird hack where I have to store the obj table in
     // lua so that I don't move it in each iteration of the loop...
+    let obj_table = obj.table();
     lua.globals().set("__temp", obj_table)?;
     if let Ok(table) = signals.get::<_, Table>(name) {
         for entry in table.pairs::<Value, Function>() {
