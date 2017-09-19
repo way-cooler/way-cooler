@@ -34,9 +34,12 @@ fn call_mousegrabber(lua: &Lua,
                      (x, y, button_events):
                      (i32, i32, Vec<bool>)) -> rlua::Result<()> {
     let globals = lua.globals();
-    let lua_callback = globals
+    let lua_callback = match globals
         .get::<_, Table>(MOUSEGRABBER_TABLE)?
-        .get::<_, Function>(SECRET_CALLBACK)?;
+        .get::<_, Function>(SECRET_CALLBACK) {
+        Ok(function) => function,
+        _ => return Ok(())
+    };
     let res_table = lua.create_table();
     res_table.set("x", x)?;
     res_table.set("y", y)?;
