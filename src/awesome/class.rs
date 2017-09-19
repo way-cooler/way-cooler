@@ -112,9 +112,7 @@ impl <'lua> Class<'lua> {
                  lua.create_function(set_index_miss_handler).bind(table.clone())?)?;
         meta.set("set_newindex_miss_handler",
                  lua.create_function(set_newindex_miss_handler).bind(table.clone())?)?;
-        // TODO Is this the correct indexing function? Hm.
-        meta.set("__index", lua.create_function(object::default_index))?;
-        // TODO __tostring
+        meta.set("__index", meta.clone())?;
         table.set_metatable(Some(meta));
         Ok(ClassBuilder{
             lua: lua,
