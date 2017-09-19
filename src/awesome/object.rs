@@ -148,7 +148,9 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                            (obj_table, index): (Table<'lua>, Value<'lua>))
                            -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
-    if let Some(meta) = obj_table.get_metatable() {
+    let meta = obj_table.get_metatable()
+        .expect("Object had no metatable");
+    if let Ok(class) = meta.get::<_, Table>("__class") {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
                 Value::Nil => {},
@@ -158,44 +160,41 @@ pub fn default_index<'lua>(lua: &'lua Lua,
     }
     let index = String::from_lua(index, lua)?;
     match index.as_str() {
-        // TODO FIXME This should also be usable for invalid objects!
-        // might need to abstract logic...?
         "valid" => {
-            // this requires class being implemented
-            unimplemented!();
-            /*
-            // TODO object table? Why not Objectable?
-            Value::Boolean(class.checker.and_then(|checker| checker(obj_table))
-                           // TODO Only true if this is really an object!
-                           // Make it objectable to make it so!
-                           .unwrap_or(true))
-            */
+            use super::class::ClassState;
+            Ok(Value::Boolean(
+                if let Ok(class) = meta.get::<_, Table>("__class") {
+                    let class: Class = class.into();
+                    class.checker()?
+                        .map(|checker| checker(obj_table.into()))
+                        .unwrap_or(true)
+                } else {
+                    false
+                }))
         },
         "data" => {
             obj_table.get("data")
         },
         index => {
             // Try see if there is a property of the class with the name
-            if let Some(meta) = obj_table.get_metatable() {
-                if let Ok(class) = meta.get::<_, Table>("__class") {
-                    let props = class.get::<_, Vec<Property>>("properties")?;
-                    for prop in props {
-                        if prop.name.as_str() == index {
-                            // Property exists and has an index callback
-                            if let Some(index) = prop.cb_index {
-                                return index.call(obj_table)
-                            }
+            if let Ok(class) = meta.get::<_, Table>("__class") {
+                let props = class.get::<_, Vec<Property>>("properties")?;
+                for prop in props {
+                    if prop.name.as_str() == index {
+                        // Property exists and has an index callback
+                        if let Some(index) = prop.cb_index {
+                            return index.call(obj_table)
                         }
                     }
-                    match class.get::<_, Function>("__index_miss_handler") {
-                        Ok(function) => {
-                            return function.bind(obj_table)?.call(index)
-                        },
-                        Err(_) => {}
-                    }
-                    // TODO property miss handler if index doesn't exst
+                }
+                match class.get::<_, Function>("__index_miss_handler") {
+                    Ok(function) => {
+                        return function.bind(obj_table)?.call(index)
+                    },
+                    Err(_) => {}
                 }
             }
+            // TODO property miss handler if index doesn't exst
             Ok(rlua::Value::Nil)
         }
     }

@@ -1,5 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
+use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::object::{Object, Objectable};
 use super::signal;
@@ -93,7 +94,7 @@ pub fn new<'lua>(lua: &'lua Lua, _table: Table<'lua>)
 
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    Class::new(lua, Some(allocator), None, None)?
+    Class::new(lua, Some(Rc::new(allocator)), None, None)?
         .method("__call".into(), lua.create_function(new))?
         .property(Property::new("button".into(),
                                 Some(lua.create_function(set_button)),
@@ -325,6 +326,18 @@ assert(not hit)
 a_button.button = nil
 assert(hit)
 "#, None).unwrap()
+    }
+
+    #[test]
+    fn button_test_valid() {
+        let lua = Lua::new();
+        button::init(&lua).unwrap();
+        lua.eval::<()>(r#"
+a_button = button()
+assert(a_button.valid)
+getmetatable(a_button).__class = nil
+assert(not a_button.valid)
+"#, None).unwrap();
     }
 }
 

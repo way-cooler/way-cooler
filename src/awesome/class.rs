@@ -1,20 +1,22 @@
 //! Utility methods and constructors for Lua classes
 
 use std::default::Default;
+use std::rc::Rc;
 use rlua::{self, Lua, ToLua, Table, UserData, AnyUserData, Value, Function};
 use super::object::{self, Object};
 use super::property::Property;
 
-pub type Allocator = fn(&Lua) -> rlua::Result<Object>;
-pub type Collector = fn(Object);
+pub type Allocator = Rc<Fn(&Lua) -> rlua::Result<Object>>;
+pub type Collector = Rc<Fn(Object)>;
 pub type PropF<'lua> = rlua::Function<'lua>;
-pub type Checker = fn(&Object) -> bool;
+pub type Checker = Rc<Fn(Object) -> bool>;
 
 #[derive(Debug)]
 pub struct Class<'lua> {
     table: Table<'lua>
 }
 
+#[derive(Clone)]
 pub struct ClassState {
     name: String,
     // TODO Needed? If we store this like the object surely it's not needed...
@@ -122,6 +124,17 @@ impl <'lua> Class<'lua> {
 
     pub fn properties(&self) -> rlua::Result<Table<'lua>> {
         self.table.get("properties")
+    }
+
+    pub fn checker(&self) -> rlua::Result<Option<Checker>> {
+        self.table.get::<_, ClassState>("data")
+            .map(|state| state.checker)
+    }
+}
+
+impl <'lua> From<Table<'lua>> for Class<'lua> {
+    fn from(table: Table<'lua>) -> Self {
+        Class { table }
     }
 }
 
