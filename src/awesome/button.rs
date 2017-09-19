@@ -19,7 +19,7 @@ pub struct Button<'lua>(Table<'lua>);
 impl <'lua> Button<'lua> {
     pub fn button(&self) -> rlua::Result<Value<'lua>> {
         let button = self.0.get::<_, ButtonState>("data")?;
-        Ok(Value::Number(button.button as _))
+        Ok(Value::Integer(button.button as _))
     }
 
     pub fn set_button(&self, new_val: xcb_button_t) -> rlua::Result<()> {
