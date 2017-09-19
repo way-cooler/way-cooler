@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::convert::From;
 use rlua::{self, Lua, Table, UserData, AnyUserData, Value,
            FromLua, ToLua, Function};
-use super::signal::{disconnect_signal, connect_signal, emit_signal};
+use super::signal;
 use super::class::Class;
 use super::property::Property;
 
@@ -39,7 +39,7 @@ impl <'lua> ObjectBuilder<'lua> {
 
     pub fn add_to_signals(self, name: String, func: rlua::Function)
                           -> rlua::Result<Self> {
-        connect_signal(self.lua, self.object.clone(), name, vec![func])?;
+        signal::connect_signal(self.lua, self.object.clone(), name, vec![func])?;
         Ok(self)
     }
 
@@ -86,6 +86,14 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         let meta = lua.create_table();
         meta.set("__class", class)?;
         meta.set("signals", lua.create_table())?;
+        meta.set("connect_signal",
+                 lua.create_function(connect_signal)
+                 .bind(object_table.clone())?)?;
+        meta.set("disconnect_signal",
+                 lua.create_function(disconnect_signal)
+                 .bind(object_table.clone())?)?;
+        meta.set("emit_signal", lua.create_function(emit_signal)
+                 .bind(object_table.clone())?)?;
         meta.set("__index", lua.create_function(default_index))?;
         meta.set("__newindex", lua.create_function(default_newindex))?;
         meta.set("__tostring", lua.create_function(|_, object_table: Table| {
@@ -166,32 +174,6 @@ pub fn default_index<'lua>(lua: &'lua Lua,
         "data" => {
             obj_table.get("data")
         },
-        // TODO Move these into the meta table itself
-        // (so only check valid property and data)
-        "connect_signal" => {
-            let func = lua.create_function(
-                |lua, (obj_table, signal, func): (Table, String, rlua::Function)| {
-                    connect_signal(lua, Object { table: obj_table }, signal, vec![func])
-                });
-            func.bind(obj_table).map(rlua::Value::Function)
-        },
-        "disconnect_signal" => {
-            let func = lua.create_function(
-                |lua, (obj_table, signal): (Table, String)| {
-                    disconnect_signal(lua, Object { table: obj_table }, signal)
-                });
-            func.bind(obj_table).map(rlua::Value::Function)
-        },
-        "emit_signal" => {
-            let func = lua.create_function(
-                |lua, (obj_table, signal, args): (Table, String, rlua::Value)| {
-                    emit_signal(lua,
-                                Object { table: obj_table },
-                                signal,
-                                args)
-                });
-            func.bind(obj_table).map(rlua::Value::Function)
-        }
         index => {
             // Try see if there is a property of the class with the name
             if let Some(meta) = obj_table.get_metatable() {
@@ -254,4 +236,19 @@ pub fn default_newindex<'lua>(lua: &'lua Lua,
         // TODO property miss handler if index doesn't exst
     }
     Ok(Value::Nil)
+}
+
+fn connect_signal(lua: &Lua, (obj_table, signal, func): (Table, String, Function))
+                  -> rlua::Result<()> {
+    signal::connect_signal(lua, obj_table.into(), signal, vec![func])
+}
+
+fn disconnect_signal(lua: &Lua, (obj_table, signal): (Table, String))
+                     -> rlua::Result<()> {
+    signal::disconnect_signal(lua, obj_table.into(), signal)
+}
+
+fn emit_signal(lua: &Lua, (obj_table, signal, args): (Table, String, Value))
+               -> rlua::Result<()> {
+    signal::emit_signal(lua, obj_table.into(), signal, args)
 }

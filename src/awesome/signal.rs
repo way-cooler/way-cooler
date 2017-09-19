@@ -12,6 +12,7 @@ use super::Object;
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
+// TODO Slice!!
 pub fn connect_signal(lua: &Lua, obj: Object, name: String, funcs: Vec<Function>)
                       -> rlua::Result<()>{
     let signals = obj.signals();
