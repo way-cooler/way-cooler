@@ -223,7 +223,7 @@ assert(button0.button == 0)
     fn button_modifiers_test() {
         use rustwlc::*;
         use self::button::Button;
-        use self::object::{Object, Objectable};
+        use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
         lua.globals().set("a_button", button::allocator(&lua).unwrap());
@@ -234,6 +234,38 @@ assert(button0.button == 0)
 a_button.modifiers = { "Caps" }
 "#, None).unwrap();
         assert_eq!(button.modifiers().unwrap(), MOD_CAPS);
+    }
+
+    #[test]
+    /// Tests that setting the button index property updates the
+    /// callback for all instances of button
+    fn button_index_property() {
+        use self::button::Button;
+        use self::object::Objectable;
+        let lua = Lua::new();
+        button::init(&lua).unwrap();
+        lua.globals().set("a_button", button::allocator(&lua).unwrap());
+        let button = Button::cast(lua.globals().get::<_, Table>("a_button")
+                                  .unwrap().into()).unwrap();
+        lua.eval::<()>(r#"
+hit = false
+button.set_index_miss_handler(function(button)
+    hit = true
+    return 5
+end)
+assert(not hit)
+a = button.button
+assert(a ~= 5)
+assert(not hit)
+a = a_button.aoeu
+assert(hit)
+assert(a == 5)
+a = nil
+hit = false
+a = button().aoeu
+assert(hit)
+assert(a == 5)
+"#, None).unwrap()
     }
 }
 

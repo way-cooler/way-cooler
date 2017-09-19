@@ -3,7 +3,7 @@
 use std::fmt::Display;
 use std::convert::From;
 use rlua::{self, Lua, Table, UserData, AnyUserData, Value,
-           FromLua, ToLua};
+           FromLua, ToLua, Function};
 use super::signal::{disconnect_signal, connect_signal, emit_signal};
 use super::class::Class;
 use super::property::Property;
@@ -201,7 +201,13 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                             }
                         }
                     }
-                    // TODO miss handler
+                    match class.get::<_, Function>("__index_miss_handler") {
+                        Ok(function) => {
+                            return function.bind(obj_table)?.call(index)
+                        },
+                        Err(_) => {}
+                    }
+                    // TODO property miss handler if index doesn't exst
                 }
             }
             Ok(rlua::Value::Nil)
@@ -235,7 +241,13 @@ pub fn default_newindex<'lua>(lua: &'lua Lua,
                 }
             }
         }
-        // TODO miss handler
+        match class.get::<_, Function>("__newindex_miss_handler") {
+            Ok(function) => {
+                return function.bind(obj_table)?.call(index)
+            },
+            Err(_) => {}
+        }
+        // TODO property miss handler if index doesn't exst
     }
     Ok(Value::Nil)
 }

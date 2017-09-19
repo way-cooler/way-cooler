@@ -1,7 +1,7 @@
 //! Utility methods and constructors for Lua classes
 
 use std::default::Default;
-use rlua::{self, Lua, ToLua, Table, UserData, Value};
+use rlua::{self, Lua, ToLua, Table, UserData, Value, Function};
 use super::object::{self, Object};
 use super::property::Property;
 
@@ -106,13 +106,13 @@ impl <'lua> Class<'lua> {
         class.checker = checker;
         let table = lua.create_table();
         table.set("data", class)?;
-        table.set("index_miss_property",
-                    lua.create_function(index_miss_property))?;
-        table.set("newindex_miss_property",
-                    lua.create_function(newindex_miss_property))?;
         table.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         let meta = lua.create_table();
         meta.set("signals", lua.create_table())?;
+        meta.set("set_index_miss_handler",
+                 lua.create_function(set_index_miss_handler).bind(table.clone())?)?;
+        meta.set("set_newindex_miss_handler",
+                 lua.create_function(set_newindex_miss_handler).bind(table.clone())?)?;
         // TODO Is this the correct indexing function? Hm.
         meta.set("__index", lua.create_function(object::default_index))?;
         // TODO __tostring
@@ -128,15 +128,19 @@ impl <'lua> Class<'lua> {
     }
 }
 
-
-// TODO Implement
-pub fn index_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
-                                 -> rlua::Result<Value<'lua>> {
-    unimplemented!()
+fn set_index_miss_handler<'lua>(lua: &'lua Lua, (obj, func): (Table, Function))
+                                 -> rlua::Result<()> {
+    let meta = obj.get_metatable()
+        .expect("Object had no metatable");
+    meta.set("__index_miss_handler", func)?;
+    Ok(())
 }
-pub fn newindex_miss_property<'lua>(lua: &'lua Lua, obj: Table<'lua>)
-                                    -> rlua::Result<Value<'lua>> {
-    unimplemented!()
+fn set_newindex_miss_handler<'lua>(lua: &'lua Lua, (obj, func): (Table, Function))
+                                    -> rlua::Result<()> {
+    let meta = obj.get_metatable()
+        .expect("Object had no metatable");
+    meta.set("__newindex_miss_handler", func)?;
+    Ok(())
 }
 
 pub fn button_class(lua: &Lua) -> rlua::Result<Class> {
