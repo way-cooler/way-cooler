@@ -107,9 +107,6 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .build()
 }
 
-// TODO Try to see if I can make this pass in an Object,
-// or even better a Button
-
 fn set_button<'lua>(lua: &'lua Lua, (table, val): (Table, Value))
                     -> rlua::Result<Value<'lua>> {
     use rlua::Value::*;
