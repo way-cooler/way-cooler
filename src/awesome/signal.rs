@@ -32,6 +32,7 @@ pub fn disconnect_signal(_: &Lua, obj: &Object, name: String)
 }
 
 /// Evaluate the functions associated with a signal.
+// TODO I don't want to have to pass in obj_table, cause it's in the object!
 pub fn emit_signal<'lua, A>(lua: &'lua Lua,
                             obj: &'lua Object,
                             name: String,
