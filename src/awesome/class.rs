@@ -1,7 +1,7 @@
 //! Utility methods and constructors for Lua classes
 
 use std::default::Default;
-use rlua::{self, Lua, ToLua, Table, UserData, Value, Function};
+use rlua::{self, Lua, ToLua, Table, UserData, AnyUserData, Value, Function};
 use super::object::{self, Object};
 use super::property::Property;
 
@@ -52,7 +52,6 @@ impl <'lua> ClassBuilder<'lua> {
     pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
         let properties = self.class.table.get::<_, Table>("properties")?;
         let length = properties.len().unwrap_or(0) + 1;
-        // TODO make sure no duplicate names...
         properties.set(length, prop)?;
         Ok(self)
     }
@@ -146,6 +145,7 @@ fn set_newindex_miss_handler<'lua>(lua: &'lua Lua, (obj, func): (Table, Function
 pub fn button_class(lua: &Lua) -> rlua::Result<Class> {
     let table = lua.globals().get::<_, Table>("button")
         .expect("Button class was not set! Did you call button::init?");
-    // TODO Assert is correct table
+    assert!(table.get::<_, AnyUserData>("data")?.is::<ClassState>(),
+            "This table was not a class!");
     Ok(Class { table })
 }

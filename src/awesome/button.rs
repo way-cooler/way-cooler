@@ -136,7 +136,6 @@ fn set_modifiers<'lua>(lua: &'lua Lua, (table, modifiers): (Table, Table))
                         table.into(),
                         "property::modifiers".into(),
                         modifiers)?;
-    // TODO Emit property
     Ok(Value::Nil)
 }
 

@@ -9,6 +9,7 @@ use super::class::Class;
 use super::property::Property;
 
 /// All Lua objects can be cast to this.
+#[derive(Clone, Debug)]
 pub struct Object<'lua> {
     table: Table<'lua>
 }
@@ -38,7 +39,7 @@ impl <'lua> ObjectBuilder<'lua> {
 
     pub fn add_to_signals(self, name: String, func: rlua::Function)
                           -> rlua::Result<Self> {
-        connect_signal(self.lua, &self.object, name, func)?;
+        connect_signal(self.lua, self.object.clone(), name, vec![func])?;
         Ok(self)
     }
 
@@ -170,14 +171,14 @@ pub fn default_index<'lua>(lua: &'lua Lua,
         "connect_signal" => {
             let func = lua.create_function(
                 |lua, (obj_table, signal, func): (Table, String, rlua::Function)| {
-                    connect_signal(lua, &Object { table: obj_table }, signal, func)
+                    connect_signal(lua, Object { table: obj_table }, signal, vec![func])
                 });
             func.bind(obj_table).map(rlua::Value::Function)
         },
         "disconnect_signal" => {
             let func = lua.create_function(
                 |lua, (obj_table, signal): (Table, String)| {
-                    disconnect_signal(lua, &Object { table: obj_table }, signal)
+                    disconnect_signal(lua, Object { table: obj_table }, signal)
                 });
             func.bind(obj_table).map(rlua::Value::Function)
         },
