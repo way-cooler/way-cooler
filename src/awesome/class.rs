@@ -3,7 +3,7 @@
 use std::default::Default;
 use std::rc::Rc;
 use rlua::{self, Lua, ToLua, Table, UserData, AnyUserData, Value, Function};
-use super::object::{self, Object};
+use super::object::Object;
 use super::property::Property;
 
 pub type Allocator = Rc<Fn(&Lua) -> rlua::Result<Object>>;
@@ -122,6 +122,7 @@ impl <'lua> Class<'lua> {
         })
     }
 
+    #[allow(dead_code)]
     pub fn properties(&self) -> rlua::Result<Table<'lua>> {
         self.table.get("properties")
     }
@@ -138,15 +139,15 @@ impl <'lua> From<Table<'lua>> for Class<'lua> {
     }
 }
 
-fn set_index_miss_handler<'lua>(lua: &'lua Lua, (obj, func): (Table, Function))
-                                 -> rlua::Result<()> {
+fn set_index_miss_handler<'lua>(_: &'lua Lua, (obj, func): (Table, Function))
+                                -> rlua::Result<()> {
     let meta = obj.get_metatable()
         .expect("Object had no metatable");
     meta.set("__index_miss_handler", func)?;
     Ok(())
 }
-fn set_newindex_miss_handler<'lua>(lua: &'lua Lua, (obj, func): (Table, Function))
-                                    -> rlua::Result<()> {
+fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (obj, func): (Table, Function))
+                                   -> rlua::Result<()> {
     let meta = obj.get_metatable()
         .expect("Object had no metatable");
     meta.set("__newindex_miss_handler", func)?;

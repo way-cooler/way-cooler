@@ -37,6 +37,7 @@ impl <'lua> ObjectBuilder<'lua> {
         Ok(self)
     }
 
+    #[allow(dead_code)]
     pub fn add_to_signals(self, name: String, func: rlua::Function)
                           -> rlua::Result<Self> {
         signal::connect_signal(self.lua, self.object.clone(), name, &[func])?;
@@ -116,6 +117,7 @@ impl <'lua> Object<'lua> {
     ///
     /// This requires a check to ensure data integrity, and it's often useless.
     /// Please don't use this method unless you need to.
+    #[allow(dead_code)]
     pub fn to_object<T, S, O>(obj: O) -> Self
         where S: Default + Display + Clone + UserData,
               O: Objectable<'lua, T, S>
@@ -150,7 +152,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
     // Look up in metatable first
     let meta = obj_table.get_metatable()
         .expect("Object had no metatable");
-    if let Ok(class) = meta.get::<_, Table>("__class") {
+    if meta.get::<_, Table>("__class").is_ok() {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
                 Value::Nil => {},
@@ -161,7 +163,6 @@ pub fn default_index<'lua>(lua: &'lua Lua,
     let index = String::from_lua(index, lua)?;
     match index.as_str() {
         "valid" => {
-            use super::class::ClassState;
             Ok(Value::Boolean(
                 if let Ok(class) = meta.get::<_, Table>("__class") {
                     let class: Class = class.into();
@@ -204,7 +205,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
-pub fn default_newindex<'lua>(lua: &'lua Lua,
+pub fn default_newindex<'lua>(_: &'lua Lua,
                               (obj_table, index, val):
                               (Table<'lua>, String, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {
