@@ -16,7 +16,7 @@ log = "0.3"
 env_logger = "0.3"
 dbus = "0.4"
 dbus-macros = "0.0.6"
-#rlua = "0.9"
+rlua = "0.9"
 bitflags = "0.7"
 petgraph = "0.4.5"
 rustc-serialize = "0.3"
@@ -28,10 +28,6 @@ wayland-server = { version = "0.9.1" }
 getopts = "0.2"
 cairo-rs = "0.1.1"
 xcb = "0.8.1"
-
-[dependencies.rlua]
-git = "https://github.com/chucklefish/rlua"
-branch = "master"
 
 [dev-dependencies]
 dummy-rustwlc = "0.6.3"
