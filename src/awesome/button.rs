@@ -148,7 +148,7 @@ fn get_modifiers<'lua>(lua: &'lua Lua, table: Table<'lua>)
 
 #[cfg(test)]
 mod test {
-    use rlua::{self, Table, Lua};
+    use rlua::{Table, Lua};
     use super::super::button;
     use super::super::object;
 
@@ -156,8 +156,10 @@ mod test {
     fn button_object_test() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("button0", button::allocator(&lua).unwrap());
-        lua.globals().set("button1", button::allocator(&lua).unwrap());
+        lua.globals().set("button0", button::allocator(&lua).unwrap())
+            .unwrap();
+        lua.globals().set("button1", button::allocator(&lua).unwrap())
+            .unwrap();
         lua.eval(r#"
 assert(button0.button == 0)
 assert(button1.button == 0)
@@ -215,7 +217,8 @@ assert(button0.button == 0)
     fn button_emit_signal_multiple_args() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap());
+        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+            .unwrap();
         lua.eval(r#"
  assert(a_button.button == 0)
  a_button.connect_signal("test", function(button, num) button.button = num end)
@@ -233,7 +236,8 @@ assert(button0.button == 0)
         use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap());
+        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+            .unwrap();
         let button = Button::cast(lua.globals().get::<_, Table>("a_button")
                                   .unwrap().into()).unwrap();
         assert_eq!(button.modifiers().unwrap(), KeyMod::empty());
@@ -250,7 +254,8 @@ a_button.modifiers = { "Caps" }
         use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap());
+        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+            .unwrap();
         let button = Button::cast(lua.globals().get::<_, Table>("a_button")
                                   .unwrap().into()).unwrap();
         assert_eq!(button.modifiers().unwrap(), KeyMod::empty());
@@ -264,13 +269,10 @@ a_button.modifiers = { "Caps", "Mod2" }
     /// Tests that setting the button index property updates the
     /// callback for all instances of button
     fn button_index_property() {
-        use self::button::Button;
-        use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap());
-        let button = Button::cast(lua.globals().get::<_, Table>("a_button")
-                                  .unwrap().into()).unwrap();
+        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+            .unwrap();
         lua.eval::<()>(r#"
 hit = false
 button.set_index_miss_handler(function(button)
