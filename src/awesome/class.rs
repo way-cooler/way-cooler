@@ -29,14 +29,7 @@ pub struct ClassState {
     allocator: Option<Allocator>,
     collector: Option<Collector>,
     checker: Option<Checker>,
-    instances: u32,
-    // TODO^ Down here too?
-    /// The global Lua key that corresponds to this class' function.
-    /// Stored this way so that it's not tied to Lua lifetime.
-    index_miss_handler_global: Option<String>,
-    /// The global Lua key that corresponds to this class' function.
-    /// Stored this way so that it's not tied to Lua lifetime.
-    newindex_miss_handler_global: Option<String>,
+    instances: u32
 }
 
 pub struct ClassBuilder<'lua>{
@@ -87,10 +80,7 @@ impl Default for ClassState {
             allocator: Option::default(),
             collector: Option::default(),
             checker: Option::default(),
-            instances: 0,
-            index_miss_handler_global: Option::default(),
-            newindex_miss_handler_global: Option::default(),
-
+            instances: 0
         }
     }
 }
@@ -99,10 +89,10 @@ impl UserData for ClassState {}
 
 impl <'lua> Class<'lua> {
     pub fn builder(lua: &'lua Lua,
-               allocator: Option<Allocator>,
-               collector: Option<Collector>,
-               checker: Option<Checker>)
-               -> rlua::Result<ClassBuilder<'lua>> {
+                   allocator: Option<Allocator>,
+                   collector: Option<Collector>,
+                   checker: Option<Checker>)
+                   -> rlua::Result<ClassBuilder<'lua>> {
         let mut class = ClassState::default();
         class.allocator = allocator;
         class.collector = collector;
@@ -142,16 +132,16 @@ impl <'lua> From<Table<'lua>> for Class<'lua> {
     }
 }
 
-fn set_index_miss_handler<'lua>(_: &'lua Lua, (obj, func): (Table, Function))
+fn set_index_miss_handler<'lua>(_: &'lua Lua, (class, func): (Table, Function))
                                 -> rlua::Result<()> {
-    let meta = obj.get_metatable()
+    let meta = class.get_metatable()
         .expect("Object had no metatable");
     meta.set("__index_miss_handler", func)?;
     Ok(())
 }
-fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (obj, func): (Table, Function))
+fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (Table, Function))
                                    -> rlua::Result<()> {
-    let meta = obj.get_metatable()
+    let meta = class.get_metatable()
         .expect("Object had no metatable");
     meta.set("__newindex_miss_handler", func)?;
     Ok(())
