@@ -27,6 +27,7 @@ wayland-sys = { version = "0.9.1", features = ["client", "dlopen"] }
 wayland-server = { version = "0.9.1" }
 getopts = "0.2"
 cairo-rs = "0.1.1"
+xcb = "0.8.1"
 
 [dev-dependencies]
 dummy-rustwlc = "0.6.3"

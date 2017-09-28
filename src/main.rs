@@ -23,6 +23,7 @@ extern crate cairo;
 #[macro_use]
 extern crate wayland_sys;
 extern crate wayland_server;
+extern crate xcb;
 
 #[macro_use]
 mod macros;

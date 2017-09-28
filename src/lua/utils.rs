@@ -1,6 +1,6 @@
 //! Utilities to talk to Lua
 
-use rlua::{self, Table};
+use rlua::{self, Lua, Table, Value};
 use rustwlc::*;
 
 const MOD_NAMES: [&str; 8] = ["Shift", "Caps", "Control", "Alt",
@@ -19,7 +19,7 @@ const MOUSE_EVENTS: [u32; 6] = [
     1 << 15  /* mask any */];
 
 /// Convert a modifier to the Lua interpretation
-pub fn mods_to_lua(lua: &rlua::Lua, mut mods: KeyMod) -> rlua::Result<Table> {
+pub fn mods_to_lua(lua: &Lua, mut mods: KeyMod) -> rlua::Result<Table> {
     let mut mods_list: Vec<String> = Vec::with_capacity(MOD_NAMES.len());
     for mod_name in &MOD_NAMES {
         if mods == MOD_NONE {
@@ -31,6 +31,28 @@ pub fn mods_to_lua(lua: &rlua::Lua, mut mods: KeyMod) -> rlua::Result<Table> {
         mods = KeyMod::from_bits_truncate(mods.bits() >> 1);
     }
     lua.create_table_from(mods_list.into_iter().enumerate())
+}
+
+/// Convert a modifier to the Rust interpretation, from the Lua interpretation
+pub fn mods_to_rust(mods_table: Table) -> rlua::Result<KeyMod> {
+    let mut mods = KeyMod::empty();
+    for modifier in mods_table.pairs::<Value, String>() {
+        match &*modifier?.1 {
+            "Shift" => mods.insert(MOD_SHIFT),
+            "Caps" => mods.insert(MOD_CAPS),
+            "Control" => mods.insert(MOD_CTRL),
+            "Alt" => mods.insert(MOD_ALT),
+            "Mod2" => mods.insert(MOD_MOD2),
+            "Mod3" => mods.insert(MOD_MOD3),
+            "Mod4" => mods.insert(MOD_MOD4),
+            "Mod5" => mods.insert(MOD_MOD5),
+            string => {
+                use rlua::Error::RuntimeError;
+                Err(RuntimeError(format!("{} is an invalid modifier", string)))?
+            }
+        }
+    }
+    Ok(mods)
 }
 
 /// Convert a mouse event from Wayland to the representation Lua expcets
