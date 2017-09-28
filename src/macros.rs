@@ -122,6 +122,20 @@ macro_rules! map(
     };
 );
 
+macro_rules! impl_objectable {
+    ($WrapperType: ident, $StateType: ty) => {
+        impl <'lua> Objectable<'lua, $WrapperType<'lua>, $StateType> for $WrapperType<'lua> {
+            fn _wrap(table: Table<'lua>) -> $WrapperType {
+                $WrapperType(table)
+            }
+
+            fn get_table(&self) -> Table<'lua> {
+                self.0.clone()
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rustc_serialize::Decodable;

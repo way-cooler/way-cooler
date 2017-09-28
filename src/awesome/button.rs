@@ -51,15 +51,7 @@ impl <'lua> ToLua<'lua> for Button<'lua> {
     }
 }
 
-impl <'lua> Objectable<'lua, Button<'lua>, ButtonState> for Button<'lua> {
-    fn _wrap(table: Table<'lua>) -> Button {
-        Button(table)
-    }
-
-    fn get_table(&self) -> Table<'lua> {
-        self.0.clone()
-    }
-}
+impl_objectable!(Button, ButtonState);
 
 impl Display for ButtonState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
