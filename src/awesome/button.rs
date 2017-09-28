@@ -20,25 +20,25 @@ pub struct Button<'lua>(Table<'lua>);
 
 impl <'lua> Button<'lua> {
     pub fn button(&self) -> rlua::Result<Value<'lua>> {
-        let button = self.0.get::<_, ButtonState>("data")?;
+        let button = self.state()?;
         Ok(Value::Integer(button.button as _))
     }
 
     pub fn set_button(&self, new_val: xcb_button_t) -> rlua::Result<()> {
-        let mut button = self.0.get::<_, ButtonState>("data")?;
+        let mut button = self.state()?;
         button.button = new_val;
         self.0.set("data", button)?;
         Ok(())
     }
 
     pub fn modifiers(&self) -> rlua::Result<KeyMod> {
-        let button = self.0.get::<_, ButtonState>("data")?;
+        let button = self.state()?;
         Ok(button.modifiers)
     }
 
     pub fn set_modifiers(&self, mods: Table<'lua>) -> rlua::Result<()> {
         use ::lua::mods_to_rust;
-        let mut button = self.0.get::<_, ButtonState>("data")?;
+        let mut button = self.state()?;
         button.modifiers = mods_to_rust(mods)?;
         self.0.set("data", button)?;
         Ok(())
@@ -56,8 +56,8 @@ impl <'lua> Objectable<'lua, Button<'lua>, ButtonState> for Button<'lua> {
         Button(table)
     }
 
-    fn get_table(self) -> Table<'lua> {
-        self.0
+    fn get_table(&self) -> Table<'lua> {
+        self.0.clone()
     }
 }
 

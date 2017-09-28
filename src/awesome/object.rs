@@ -74,10 +74,14 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     /// Please do not use it outside of object.rs.
     fn _wrap(table: Table<'lua>) -> T;
 
+    fn state(&self) -> rlua::Result<S> {
+        self.get_table().get::<_, S>("data")
+    }
+
     /// Gets the internal table for the concrete object.
     /// Used internally by cast, though there's nothing wrong with it being
     /// used outside of internal object use.
-    fn get_table(self) -> Table<'lua>;
+    fn get_table(&self) -> Table<'lua>;
 
     fn new(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>>
     {
