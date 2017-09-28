@@ -18,6 +18,23 @@ pub struct ButtonState {
 #[derive(Clone, Debug)]
 pub struct Button<'lua>(Table<'lua>);
 
+impl Display for ButtonState {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Button: {:p}", self)
+    }
+}
+
+impl Default for ButtonState {
+    fn default() -> Self {
+        ButtonState {
+            button: xcb_button_t::default(),
+            modifiers: KeyMod::empty()
+        }
+    }
+}
+
+impl UserData for ButtonState {}
+
 impl <'lua> Button<'lua> {
     pub fn button(&self) -> rlua::Result<Value<'lua>> {
         let button = self.state()?;
@@ -52,23 +69,6 @@ impl <'lua> ToLua<'lua> for Button<'lua> {
 }
 
 impl_objectable!(Button, ButtonState);
-
-impl Display for ButtonState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Button: {:p}", self)
-    }
-}
-
-impl Default for ButtonState {
-    fn default() -> Self {
-        ButtonState {
-            button: xcb_button_t::default(),
-            modifiers: KeyMod::empty()
-        }
-    }
-}
-
-impl UserData for ButtonState {}
 
 /// Makes a new button stored in a table beside its signals
 pub fn allocator(lua: &Lua) -> rlua::Result<Object> {
