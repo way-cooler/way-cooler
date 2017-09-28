@@ -123,6 +123,7 @@ impl <'lua> Object<'lua> {
     /// This requires a check to ensure data integrity, and it's often useless.
     /// Please don't use this method unless you need to.
     #[allow(dead_code)]
+    #[deprecated]
     pub fn to_object<T, S, O>(obj: O) -> Self
         where S: Default + Display + Clone + UserData,
               O: Objectable<'lua, T, S>
