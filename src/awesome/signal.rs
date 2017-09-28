@@ -11,7 +11,7 @@ use super::Object;
 /// doesn't exist.
 pub fn connect_signal(lua: &Lua, obj: Object, name: String, funcs: &[Function])
                       -> rlua::Result<()>{
-    let signals = obj.signals();
+    let signals = obj.signals()?;
     if let Ok(table) = signals.get::<_, Table>(name.as_str()) {
         let mut length = table.len()? + 1;
         for func in funcs {
@@ -30,7 +30,7 @@ pub fn connect_signal(lua: &Lua, obj: Object, name: String, funcs: &[Function])
 
 pub fn disconnect_signal(_: &Lua, obj: Object, name: String)
                          -> rlua::Result<()> {
-    let signals = obj.signals();
+    let signals = obj.signals()?;
     signals.set(name, Value::Nil)
 }
 
@@ -42,7 +42,7 @@ pub fn emit_signal<'lua, A>(_: &'lua Lua,
                             -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone
     {
-    let signals = obj.signals();
+    let signals = obj.signals()?;
     trace!("Checking signal {}", name);
     let obj_table = obj.table();
     if let Ok(table) = signals.get::<_, Table>(name) {

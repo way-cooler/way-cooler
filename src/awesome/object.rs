@@ -135,9 +135,8 @@ impl <'lua> Object<'lua> {
         Object { table }
     }
 
-    pub fn signals(&self) -> rlua::Table<'lua> {
+    pub fn signals(&self) -> rlua::Result<rlua::Table<'lua>> {
         self.table.get::<_, Table>("signals")
-            .expect("Object table did not have signals defined!")
     }
 
     pub fn table(self) -> rlua::Table<'lua> {
