@@ -144,9 +144,6 @@ impl <'lua> Object<'lua> {
     }
 }
 
-
-// TODO Abstract these two functions, they have similar functionality
-
 /// Default indexing of an Awesome object.
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
