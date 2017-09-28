@@ -27,6 +27,7 @@ pub struct ObjectBuilder<'lua>{
 }
 
 impl <'lua> ObjectBuilder<'lua> {
+    #[allow(dead_code)]
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
         let meta = self.object.table.get_metatable()
             .expect("Object had no meta table");
@@ -83,7 +84,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     /// used outside of internal object use.
     fn get_table(&self) -> Table<'lua>;
 
-    fn new(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>>
+    fn allocate(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>>
     {
         let object = S::default();
         let object_table = lua.create_table();
