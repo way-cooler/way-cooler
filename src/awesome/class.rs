@@ -8,7 +8,6 @@ use super::property::Property;
 
 pub type Allocator = Rc<Fn(&Lua) -> rlua::Result<Object>>;
 pub type Collector = Rc<Fn(Object)>;
-pub type PropF<'lua> = rlua::Function<'lua>;
 pub type Checker = Rc<Fn(Object) -> bool>;
 
 #[derive(Debug)]

@@ -1,5 +1,6 @@
 use rlua::{self, Lua, Value, ToLua, FromLua};
-use super::class::PropF;
+
+pub type PropF<'lua> = rlua::Function<'lua>;
 
 pub struct Property<'lua> {
     pub name: String,
