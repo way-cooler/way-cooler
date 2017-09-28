@@ -96,7 +96,7 @@ impl Default for ClassState {
 impl UserData for ClassState {}
 
 impl <'lua> Class<'lua> {
-    pub fn new(lua: &'lua Lua,
+    pub fn builder(lua: &'lua Lua,
                allocator: Option<Allocator>,
                collector: Option<Collector>,
                checker: Option<Checker>)
