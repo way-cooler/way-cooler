@@ -36,6 +36,14 @@ impl Default for ButtonState {
 impl UserData for ButtonState {}
 
 impl <'lua> Button<'lua> {
+    fn allocate(lua: &Lua) -> rlua::Result<Object> {
+        let meta = lua.create_table();
+        let class = class::button_class(lua)?;
+        Ok(Button::new(lua, class)?
+           .add_to_meta(meta)?
+           .build())
+    }
+
     pub fn button(&self) -> rlua::Result<Value<'lua>> {
         let button = self.state()?;
         Ok(Value::Integer(button.button as _))
@@ -70,23 +78,15 @@ impl <'lua> ToLua<'lua> for Button<'lua> {
 
 impl_objectable!(Button, ButtonState);
 
-/// Makes a new button stored in a table beside its signals
-pub fn allocator(lua: &Lua) -> rlua::Result<Object> {
-    let meta = lua.create_table();
-    let class = class::button_class(lua)?;
-    Ok(Button::new(lua, class)?
-       .add_to_meta(meta)?
-       .build())
-}
 
 pub fn new<'lua>(lua: &'lua Lua, _table: Table<'lua>)
                  -> rlua::Result<Object<'lua>> {
-    allocator(lua)
+    Button::allocate(lua)
 }
 
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    Class::new(lua, Some(Rc::new(allocator)), None, None)?
+    Class::new(lua, Some(Rc::new(Button::allocate)), None, None)?
         .method("__call".into(), lua.create_function(new))?
         .property(Property::new("button".into(),
                                 Some(lua.create_function(set_button)),
@@ -141,16 +141,16 @@ fn get_modifiers<'lua>(lua: &'lua Lua, table: Table<'lua>)
 #[cfg(test)]
 mod test {
     use rlua::{Table, Lua};
-    use super::super::button;
+    use super::super::button::{self, Button};
     use super::super::object;
 
     #[test]
     fn button_object_test() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("button0", button::allocator(&lua).unwrap())
+        lua.globals().set("button0", Button::allocate(&lua).unwrap())
             .unwrap();
-        lua.globals().set("button1", button::allocator(&lua).unwrap())
+        lua.globals().set("button1", Button::allocate(&lua).unwrap())
             .unwrap();
         lua.eval(r#"
 assert(button0.button == 0)
@@ -209,7 +209,7 @@ assert(button0.button == 0)
     fn button_emit_signal_multiple_args() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+        lua.globals().set("a_button", Button::allocate(&lua).unwrap())
             .unwrap();
         lua.eval(r#"
  assert(a_button.button == 0)
@@ -228,7 +228,7 @@ assert(button0.button == 0)
         use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+        lua.globals().set("a_button", Button::allocate(&lua).unwrap())
             .unwrap();
         let button = Button::cast(lua.globals().get::<_, Table>("a_button")
                                   .unwrap().into()).unwrap();
@@ -246,7 +246,7 @@ a_button.modifiers = { "Caps" }
         use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+        lua.globals().set("a_button", Button::allocate(&lua).unwrap())
             .unwrap();
         let button = Button::cast(lua.globals().get::<_, Table>("a_button")
                                   .unwrap().into()).unwrap();
@@ -263,7 +263,7 @@ a_button.modifiers = { "Caps", "Mod2" }
     fn button_index_property() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", button::allocator(&lua).unwrap())
+        lua.globals().set("a_button", Button::allocate(&lua).unwrap())
             .unwrap();
         lua.eval::<()>(r#"
 hit = false
