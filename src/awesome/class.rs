@@ -21,11 +21,6 @@ pub struct ClassState {
     // They stored in the meta table instead, to not have unsafety.
     // They are fetchable using getters.
     name: String,
-    // TODO Move stringly types to metatable only, not have fields and just have setters / getters?
-    // FIXME This __needs__ to happen to ensure gc doesn't collect!
-    // Have test that tests that hypo ^
-    signals_global: Option<String>,
-    parent: Option<String>,
     allocator: Option<Allocator>,
     collector: Option<Collector>,
     checker: Option<Checker>,
@@ -75,8 +70,6 @@ impl Default for ClassState {
     fn default() -> Self {
         ClassState {
             name: String::default(),
-            signals_global: Option::default(),
-            parent: Option::default(),
             allocator: Option::default(),
             collector: Option::default(),
             checker: Option::default(),
@@ -118,6 +111,22 @@ impl <'lua> Class<'lua> {
     #[allow(dead_code)]
     pub fn properties(&self) -> rlua::Result<Table<'lua>> {
         self.table.get("properties")
+    }
+
+    #[allow(dead_code)]
+    pub fn parent(&self) -> rlua::Result<Option<Class>> {
+        use rlua::Value;
+        match self.table.get::<_, Value>("parent")? {
+            Value::Table(table) => {
+                let data = table.get::<_, AnyUserData>("data")?;
+                if !data.is::<ClassState>() {
+                    Ok(None)
+                } else {
+                    Ok(Some(table.into()))
+                }
+            },
+            _ => Ok(None)
+        }
     }
 
     pub fn checker(&self) -> rlua::Result<Option<Checker>> {
