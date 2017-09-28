@@ -2,6 +2,10 @@ use rlua::{self, Lua, Value, ToLua, FromLua};
 
 pub type PropF<'lua> = rlua::Function<'lua>;
 
+/// Type that represents a Lua table with these fields.
+///
+/// NOTE Not actually UserData, because it has lua functions in it.
+/// It's just the deserialized version of a table.
 pub struct Property<'lua> {
     pub name: String,
     pub cb_new: Option<PropF<'lua>>,
