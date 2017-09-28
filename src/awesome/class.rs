@@ -17,17 +17,20 @@ pub struct Class<'lua> {
 
 #[derive(Clone)]
 pub struct ClassState {
+    // NOTE That this is missing fields from the C version.
+    // They stored in the meta table instead, to not have unsafety.
+    // They are fetchable using getters.
     name: String,
-    // TODO Needed? If we store this like the object surely it's not needed...
-    /// The global Lua key that corresponds to this class' signal list.
-    /// Stored this way so that it's not tied to Lua lifetime.
+    // TODO Move stringly types to metatable only, not have fields and just have setters / getters?
+    // FIXME This __needs__ to happen to ensure gc doesn't collect!
+    // Have test that tests that hypo ^
     signals_global: Option<String>,
-    // TODO Another storage as a key in lua...hmm
     parent: Option<String>,
     allocator: Option<Allocator>,
     collector: Option<Collector>,
     checker: Option<Checker>,
     instances: u32,
+    // TODO^ Down here too?
     /// The global Lua key that corresponds to this class' function.
     /// Stored this way so that it's not tied to Lua lifetime.
     index_miss_handler_global: Option<String>,
@@ -105,6 +108,7 @@ impl <'lua> Class<'lua> {
         class.collector = collector;
         class.checker = checker;
         let table = lua.create_table();
+        // Store in not meta table so we can't index it
         table.set("data", class)?;
         table.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         let meta = lua.create_table();
