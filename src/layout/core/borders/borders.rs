@@ -1,4 +1,3 @@
-use std::iter;
 use std::cmp::{Eq, PartialEq};
 use rustwlc::{Geometry, Size, WlcOutput};
 use rustwlc::render::{calculate_stride};
@@ -53,7 +52,7 @@ impl Renderable for Borders {
         geometry.size.h += title_size;
         let Size { w, h } = geometry.size;
         let stride = calculate_stride(w) as i32;
-        let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
+        let data: Vec<u8> = vec![0; h as usize * stride as usize];
         let buffer = data.into_boxed_slice();
         let surface = ImageSurface::create_for_data(buffer,
                                                     drop_data,
@@ -138,7 +137,7 @@ impl Renderable for Borders {
             return Some(self);
         }
         let stride = calculate_stride(w) as i32;
-        let data: Vec<u8> = iter::repeat(0).take(h as usize * stride as usize).collect();
+        let data: Vec<u8> = vec![0; h as usize * stride as usize];
         let buffer = data.into_boxed_slice();
         let surface = ImageSurface::create_for_data(buffer,
                                                     drop_data,
