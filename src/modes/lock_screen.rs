@@ -1,7 +1,6 @@
 //! Implementations of the default callbacks exposed by wlc.
 //! These functions are the main entry points into Way Cooler from user action.
 //! This is the default mode that Way Cooler is in at initilization
-use std::iter;
 use std::process::{Command};
 use std::path::PathBuf;
 use std::io;
@@ -116,8 +115,7 @@ impl Mode for LockScreen {
                 let resolution = output.get_resolution()
                     .expect("Output had no resolution");
                 // Give them zero-ed out pixels
-                let size = (resolution.w * resolution.h * 4) as usize;
-                *scraped_pixels = iter::repeat(0).take(size).collect();
+                *scraped_pixels = vec![0; resolution.w as usize * resolution.h as usize * 4];
                 sync_scrape();
             }
         }
