@@ -1,4 +1,6 @@
 use std::cmp;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 use petgraph::graph::NodeIndex;
 use rustwlc::{WlcView, Geometry, Point, Size, ResizeEdge};
@@ -880,15 +882,24 @@ impl LayoutTree {
     /// Draws the borders recursively, down from the top to the bottom.
     fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>)
                         -> CommandResult {
+        let mut updated_nodes: HashSet<NodeIndex> = HashSet::from_iter(children.iter().cloned());
+
         while children.len() > 0 {
             let child_ix = children.pop().unwrap();
-            children.extend(self.tree.grounded_children(child_ix));
+
+            for child in self.tree.grounded_children(child_ix) {
+                if !updated_nodes.contains(&child) {
+                    updated_nodes.insert(child);
+                    children.push(child);
+                }
+            }
+
             let parent_ix = self.tree.parent_of(child_ix)
                 .expect("Node had no parent");
             let children = self.tree.children_of(parent_ix);
             let index = children.iter().position(|&node_ix| node_ix == child_ix)
                 .map(|num| (num + 1).to_string());
-            if Some(child_ix) != self.active_container {
+            if !self.tree.on_path(child_ix) && Some(child_ix) != self.active_container {
                 self.set_borders(child_ix, borders::Mode::Inactive)?;
             } else {
                 match self.tree[parent_ix] {
