@@ -53,7 +53,7 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
 ## Planned Features
 
 - Notification support
-- AwesomeWM compatibilty (see [this issue for more info](https://github.com/way-cooler/way-cooler/issues/338)
+- AwesomeWM compatibilty (see [this issue for more info](https://github.com/way-cooler/way-cooler/issues/338))
 - A dedicated status bar
   * The status bar should be swappable, such that a user can implement their own or use a different one.
 - More customization settings
