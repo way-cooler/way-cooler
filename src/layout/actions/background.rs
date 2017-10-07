@@ -32,8 +32,7 @@ impl LayoutTree {
                             MaybeBackground::Complete(_) => true,
                         })
                     },
-                    // TODO Allow hot-reloading like before? Should probably implement that...
-                    _ => {Ok(false)}
+                    _ => Ok(false)
                 }
             },
             _ => Err(TreeError::UuidWrongType(output_id,
@@ -51,7 +50,15 @@ impl LayoutTree {
                         *background = Some(bg.into());
                         Ok(())
                     },
-                    _ => unimplemented!()
+                    Some(MaybeBackground::Complete(complete)) => {
+                        complete.handle.close();
+                        *background = Some(bg.into());
+                        Ok(())
+                    }
+                    _ => {
+                        warn!("Tried to set background while the other was still loading!");
+                        Ok(())
+                    }
                 }
             },
             _ => Err(TreeError::UuidWrongType(output_id,
