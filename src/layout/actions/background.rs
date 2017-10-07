@@ -32,9 +32,8 @@ impl LayoutTree {
                             MaybeBackground::Complete(_) => true,
                         })
                     },
-                    // TODO
-
-                    _ => unimplemented!()
+                    // TODO Allow hot-reloading like before? Should probably implement that...
+                    _ => {Ok(false)}
                 }
             },
             _ => Err(TreeError::UuidWrongType(output_id,
