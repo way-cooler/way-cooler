@@ -25,6 +25,7 @@ struct DesktopShellImpl {
                                      *mut wl_resource),
     set_lock_surface: unsafe extern "C" fn (*mut wl_client,
                                             *mut wl_resource,
+                                            *mut wl_resource,
                                             *mut wl_resource),
     unlock: unsafe extern "C" fn (*mut wl_client,
                                   *mut wl_resource),
@@ -136,6 +137,7 @@ unsafe extern "C" fn desktop_ready(_client: *mut wl_client,
 // TODO Implement
 unsafe extern "C" fn set_lock_surface(_client: *mut wl_client,
                                       _resource: *mut wl_resource,
+                                      _output: *mut wl_resource,
                                       _surface: *mut wl_resource) {}
 unsafe extern "C" fn unlock(_client: *mut wl_client,
                             _resource: *mut wl_resource) {}
