@@ -16,7 +16,7 @@ dependencies = [
  "petgraph 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlua 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustwlc 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustwlc 0.6.2",
  "uuid 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-scanner 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-server 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -410,7 +410,6 @@ dependencies = [
 [[package]]
 name = "rustwlc"
 version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.31 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -607,7 +606,6 @@ dependencies = [
 "checksum rlua 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)" = "351c88c3a68e59c1d37f25f8988b50ff447cd4e14e5aa4604b8d85c417307b5f"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 "checksum rustc_version 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "c5f5376ea5e30ce23c03eb77cbe4962b988deead10910c372b226388b594c084"
-"checksum rustwlc 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1bc415a8f138e6a231c7f9ff696eb2f98ac13d2aeda1a30bc7ec2fe5b36133f1"
 "checksum semver 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)" = "d4f410fedcf71af0345d7607d246e7ad15faaadd49d240ee3b24e5dc21a820ac"
 "checksum serde 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)" = "34b623917345a631dc9608d5194cc206b3fe6c3554cd1c75b937e55e285254af"
 "checksum serde_json 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)" = "ad8bcf487be7d2e15d3d543f04312de991d631cfe1b43ea0ade69e6a8a5b16a1"

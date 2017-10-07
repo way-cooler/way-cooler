@@ -10,7 +10,8 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-rustwlc = { version = "0.6.2", features = ["wlc-wayland"] }
+#rustwlc = { version = "0.6.2", features = ["wlc-wayland"] }
+rustwlc = { version = "0.6.2", features = ["wlc-wayland"], path = "../rust-wlc" }
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"

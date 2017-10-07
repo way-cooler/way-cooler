@@ -9,6 +9,7 @@ use super::super::{LayoutTree, TreeError};
 use super::super::commands::CommandResult;
 use super::super::core::container::{Container, ContainerType, ContainerErr,
                                     Layout, Handle};
+use super::super::core::background::MaybeBackground;
 use super::borders;
 use ::layout::core::borders::Borders;
 use ::render::Renderable;
@@ -44,8 +45,11 @@ impl LayoutTree {
                     match *container {
                         Container::Output { ref mut background, .. } => {
                             // update the background size
-                            if let Some(background) = *background {
-                                background.set_geometry(ResizeEdge::empty(), actual_geometry)
+                            match *background {
+                                Some(MaybeBackground::Complete(background)) => {
+                                    background.handle.set_geometry(ResizeEdge::empty(), actual_geometry)
+                                },
+                                _ => {}
                             }
                         }
                         _ => unreachable!()
