@@ -2,9 +2,6 @@
 //! See https://github.com/swaywm/sway/blob/master/protocols/desktop-shell.xml
 //! for more information about the spec
 
-// TODO remove
-#![allow(unused_variables)]
-
 use self::generated::server::desktop_shell::DesktopShell;
 use rustwlc::wayland::{get_display};
 use rustwlc::handle::{wlc_handle_from_wl_output_resource, WlcOutput};
@@ -116,10 +113,8 @@ unsafe extern "C" fn bind(client: *mut wl_client,
     );
 }
 
-// FIXME background destructor, see extensions.c.
-
 unsafe extern "C" fn set_background(client: *mut wl_client,
-                                    resource: *mut wl_resource,
+                                    _resource: *mut wl_resource,
                                     output_: *mut wl_resource,
                                     surface: *mut wl_resource) {
     let output = wlc_handle_from_wl_output_resource(output_ as *const _);
@@ -127,34 +122,33 @@ unsafe extern "C" fn set_background(client: *mut wl_client,
         return;
     }
     info!("Setting surface {:?} as background for output {}", surface, output);
-    // TODO try_lock?
     if let Ok(mut tree) = lock_tree() {
         tree.add_incomplete_background(IncompleteBackground::new(client), WlcOutput::dummy(output as _))
             .expect("Could not add incomplete background");
     }
 }
 
-unsafe extern "C" fn desktop_ready(client: *mut wl_client,
-                                   resource: *mut wl_resource) {
+unsafe extern "C" fn desktop_ready(_client: *mut wl_client,
+                                   _resource: *mut wl_resource) {
     /* Intentionally left blank */
 }
 
 // TODO Implement
-unsafe extern "C" fn set_lock_surface(client: *mut wl_client,
-                                      resource: *mut wl_resource,
-                                      surface: *mut wl_resource) {}
-unsafe extern "C" fn unlock(client: *mut wl_client,
-                            resource: *mut wl_resource) {}
-unsafe extern "C" fn set_grab_surface(client: *mut wl_client,
-                                      resource: *mut wl_resource,
-                                      surface: *mut wl_resource) {}
-unsafe extern "C" fn set_panel(client: *mut wl_client,
-                               resource: *mut wl_resource,
-                               output_: *mut wl_resource,
-                               surface: *mut wl_resource) {}
-unsafe extern "C" fn set_panel_position(client: *mut wl_client,
-                                        resource:*mut wl_resource,
-                                        position: u32) {}
+unsafe extern "C" fn set_lock_surface(_client: *mut wl_client,
+                                      _resource: *mut wl_resource,
+                                      _surface: *mut wl_resource) {}
+unsafe extern "C" fn unlock(_client: *mut wl_client,
+                            _resource: *mut wl_resource) {}
+unsafe extern "C" fn set_grab_surface(_client: *mut wl_client,
+                                      _resource: *mut wl_resource,
+                                      _surface: *mut wl_resource) {}
+unsafe extern "C" fn set_panel(_client: *mut wl_client,
+                               _resource: *mut wl_resource,
+                               _output_: *mut wl_resource,
+                               _surface: *mut wl_resource) {}
+unsafe extern "C" fn set_panel_position(_client: *mut wl_client,
+                                        _resource:*mut wl_resource,
+                                        _position: u32) {}
 
 /// Sets up Way Cooler to announce the desktop-shell interface.
 pub fn init() {
