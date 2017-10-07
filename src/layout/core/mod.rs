@@ -3,6 +3,7 @@ pub mod container;
 pub mod action;
 pub mod bar;
 pub mod borders;
+pub mod background;
 mod path;
 mod graph_tree;
 
