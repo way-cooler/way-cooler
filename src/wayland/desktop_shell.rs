@@ -133,7 +133,6 @@ unsafe extern "C" fn set_background(client: *mut wl_client,
         tree.add_incomplete_background(IncompleteBackground::new(client), WlcOutput::dummy(output as _))
             .expect("Could not add incomplete background");
     }
-    // TODO How does this work? Like, when does it spawn a WlcView? Is its the clients job? Seems like it *shrugging guy*
 }
 
 unsafe extern "C" fn desktop_ready(client: *mut wl_client,

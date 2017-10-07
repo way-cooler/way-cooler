@@ -105,18 +105,20 @@ impl Mode for Default {
             }
         }
         if let Ok(mut tree) = lock_tree() {
-            let output = view.get_output();
-            if tree.add_background(view, output).expect("Couldn't try to add background") {
-                view.send_to_back();
-                view.set_mask(1);
-                let resolution = output.get_resolution()
-                    .expect("Couldn't get output resolution");
-                let fullscreen = Geometry {
-                    origin: Point { x: 0, y: 0 },
-                    size: resolution
-                };
-                view.set_geometry(ResizeEdge::empty(), fullscreen);
-                return true
+            for output in WlcOutput::list() {
+                if tree.add_background(view, output).expect("Couldn't try to add background") {
+                    view.set_output(output);
+                    view.send_to_back();
+                    view.set_mask(1);
+                    let resolution = output.get_resolution()
+                        .expect("Couldn't get output resolution");
+                    let fullscreen = Geometry {
+                        origin: Point { x: 0, y: 0 },
+                        size: resolution
+                    };
+                    view.set_geometry(ResizeEdge::empty(), fullscreen);
+                    return true
+                }
             }
         }
         if let Ok(mut tree) = lock_tree() {
