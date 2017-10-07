@@ -5,8 +5,10 @@ use std::process::{Command};
 use std::path::PathBuf;
 use std::io;
 use rustwlc::*;
+use rustwlc::wayland::wlc_view_get_wl_client;
 use rustwlc::input::pointer;
 use uuid::Uuid;
+use wayland_sys::server::wl_client;
 
 use super::{Mode, Modes, Default, write_current_mode};
 use super::{EVENT_BLOCKED, EVENT_PASS_THROUGH};
@@ -25,13 +27,20 @@ use nix::libc::pid_t;
 ///
 /// The view is optional, because after spawning it we must find it in the
 /// `view_created` callback.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LockScreen {
-    /// Pid of the lock screen program.
-    pid: pid_t,
-    /// The view that is associated with the lock screen program, if it has been located.
-    view: Option<WlcView>,
-    /// Flag that is set when the view is destroyed, either because the user
+    /// Lists of clients that want to lock the screen.
+    ///
+    /// Multiple clients can attempt to lock a screen.
+    /// The normal mode of operation is that they are the same client,
+    /// but with different connections.
+    ///
+    ///The usize is the client id, and the view is the view it's associated with
+    /// (if it has been spawned yet)
+    ///
+    /// The WlcOutput is the output the view should be associated with.
+    pub clients: Vec<(usize, WlcOutput, Option<WlcView>)>,
+    /// Flag that is set when a view is destroyed, either because the user
     /// closed it OR if the program failed to spawn.
     removed: bool
 }
@@ -42,16 +51,11 @@ impl LockScreen {
     /// The view is set to `None`, because we haven't found it yet in the
     /// `view_created` callback. This should be updated once it is found,
     /// so that we can start locking the screen.
-    pub fn new(pid: pid_t) -> Self {
+    pub fn new(client: *mut wl_client, output: WlcOutput) -> Self {
         LockScreen {
-            pid: pid,
-            view: None,
+            clients: vec![(client as _, output, None)],
             removed: false
         }
-    }
-
-    fn view(&self) -> Option<WlcView> {
-        self.view
     }
 
     /// Adds the view to the `LockScreen` if it's PID matches the stored one.
@@ -61,27 +65,29 @@ impl LockScreen {
     /// If the view's PID matches this PID, then it's automatically focused,
     /// and the geometry of it is set to the size of it's `WlcOutput`'s size.
     fn add_view_if_match(&mut self, view: WlcView) -> bool {
-        if self.view.is_some() {
-            return false
+        let cur_client = unsafe {
+            wlc_view_get_wl_client(view.0 as _) as _
+        };
+        for client in &mut self.clients {
+            if client.0 == cur_client {
+                view.set_output(client.1);
+                client.2 = Some(view);
+                let output = view.get_output();
+                let resolution = output.get_resolution()
+                    .expect("Output was invalid: had no resolution");
+                let geo = Geometry {
+                    origin: Point { x: 0, y: 0 },
+                    size: resolution
+                };
+                view.set_geometry(ResizeEdge::empty(), geo);
+                view.set_state(VIEW_ACTIVATED, true);
+                view.focus();
+                view.set_mask(1);
+                view.bring_to_front();
+                return true
+            }
         }
-        if view.get_pid() == self.pid {
-            let output = view.get_output();
-            let resolution = output.get_resolution()
-                .expect("Output was invalid: had no resolution");
-            let geo = Geometry {
-                origin: Point { x: 0, y: 0 },
-                size: resolution
-            };
-            view.set_geometry(ResizeEdge::empty(), geo);
-            view.set_state(VIEW_ACTIVATED, true);
-            view.focus();
-            view.set_mask(1);
-            view.bring_to_front();
-            self.view = Some(view);
-            true
-        } else {
-            false
-        }
+        false
     }
 
     /// Removes the lockscreen if provided view matches the stored view.
@@ -94,14 +100,27 @@ impl LockScreen {
     /// checked to see if the program is still running.
     /// HOWEVER, this is blocked because this is still a nightly feature.
     /// See https://github.com/rust-lang/rust/issues/38903
-    fn remove_if_match(&mut self, view: WlcView) -> Option<WlcView> {
-        if self.view == Some(view) {
-            self.removed = true;
-            // invalidate this view so we can't do anything to it.
-            self.view.take()
-        } else {
-            None
+    fn remove_if_match(&mut self, cur_view: WlcView) -> Option<WlcView> {
+        for &mut (_, _, ref mut view) in &mut self.clients {
+            if *view == Some(cur_view) {
+                self.removed = true;
+                // invalidate this view so we can't do anything to it.
+                return view.take()
+            }
         }
+        None
+    }
+
+    fn eval_if_lockscreen<F, T>(&mut self, cur_view: WlcView, eval: F) -> T
+        where F: Fn(WlcView) -> T,
+              T: ::std::default::Default
+    {
+        for &(_, _, ref view) in &self.clients {
+            if *view == Some(cur_view) {
+                return eval(view.unwrap())
+            }
+        }
+        T::default()
     }
 }
 
@@ -128,7 +147,6 @@ impl Mode for LockScreen {
         // this will focus and set the size if necessary.
         if self.add_view_if_match(view) {
             trace!("Adding lockscreen");
-            update_mode((*self).into());
             true
         } else {
             false
@@ -141,7 +159,6 @@ impl Mode for LockScreen {
         // View is automatically removed from the internal lock screen struct.
         if self.remove_if_match(view).is_some() {
             trace!("Removing lock screen");
-            update_mode(Default.into());
             // Update the active container in the tree to the active path end.
             if let Ok(mut tree) = try_lock_tree() {
                 tree.reset_focus()
@@ -154,7 +171,9 @@ impl Mode for LockScreen {
     }
 
     fn view_focused(&mut self, current: WlcView, focused: bool) {
-        self.view().map(|v| v.set_state(VIEW_ACTIVATED, focused));
+        self.eval_if_lockscreen(current, |view| {
+            view.set_state(VIEW_ACTIVATED, focused)
+        })
     }
 
     fn view_request_state(&mut self, view: WlcView, state: ViewState, toggle: bool) {
@@ -169,9 +188,12 @@ impl Mode for LockScreen {
         // Do nothing
     }
 
-    fn on_keyboard_key(&mut self, _view: WlcView, _time: u32, mods: KeyboardModifiers,
+    fn on_keyboard_key(&mut self, view: WlcView, _time: u32, mods: KeyboardModifiers,
                             key: u32, state: KeyState) -> bool {
-        self.view().map(WlcView::focus).is_none()
+        self.eval_if_lockscreen(view, |view| {
+            view.focus();
+            true
+        })
     }
 
     fn view_request_geometry(&mut self, view: WlcView, geometry: Geometry) {
@@ -181,28 +203,29 @@ impl Mode for LockScreen {
     fn on_pointer_button(&mut self, view: WlcView, _time: u32,
                             mods: KeyboardModifiers, button: u32,
                                 state: ButtonState, point: Point) -> bool {
-        self.view().map(WlcView::focus).is_none()
+        self.eval_if_lockscreen(view, |view| {
+            view.focus();
+            true
+        })
     }
 
-    fn on_pointer_scroll(&mut self, _view: WlcView, _time: u32,
+    fn on_pointer_scroll(&mut self, view: WlcView, _time: u32,
                             _mods_ptr: KeyboardModifiers, _axis: ScrollAxis,
                             _heights: [f64; 2]) -> bool {
-        self.view().map(WlcView::focus).is_none()
+        self.eval_if_lockscreen(view, |view| {
+            view.focus();
+            true
+        })
     }
 
     fn on_pointer_motion(&mut self, view: WlcView, _time: u32, point: Point) -> bool {
-        if self.view().map(WlcView::focus).is_some() {
+        !self.eval_if_lockscreen(view, |view| {
+            view.focus();
             pointer::set_position(point);
-            EVENT_PASS_THROUGH
-        } else {
-            EVENT_BLOCKED
-        }
+            // false because default is false, but true is the base case here
+            false
+        })
     }
-}
-
-/// Updates the global mode to the this mode.
-fn update_mode(mode: Modes) {
-    *write_current_mode() = mode
 }
 
 
@@ -215,6 +238,7 @@ pub enum LockScreenErr {
     AlreadyLocked
 }
 
+/*
 /// Locks the screen, with the stored path from the registry.
 ///
 /// If it fails to lock the screen, then a warning is raised in
@@ -239,7 +263,9 @@ pub fn spawn_lock_screen() {
         }
     }
 }
+*/
 
+/*
 /// Locks the screen by spawning the program at the given path.
 ///
 /// This modifies the global `LOCK_SCREEN` singleton,
@@ -261,5 +287,21 @@ pub fn lock_screen_with_path(path: PathBuf) -> Result<(), LockScreenErr> {
         .map_err(|io_er| LockScreenErr::IO(io_er))?;
     let id = child.id();
     *mode = Modes::LockScreen(LockScreen::new(id as pid_t));
+    Ok(())
+}
+*/
+
+pub fn lock_screen(client: *mut wl_client, output: WlcOutput) -> Result<(), LockScreenErr> {
+    let mut mode = write_current_mode();
+    {
+        match *mode {
+            Modes::LockScreen(ref mut lock_mode) => {
+                lock_mode.clients.push((client as _, output, None));
+                return Ok(())
+            },
+            _ => {}
+        }
+    }
+    *mode = Modes::LockScreen(LockScreen::new(client, output));
     Ok(())
 }

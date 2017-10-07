@@ -77,9 +77,6 @@ local keys = {
   -- Open terminal
   key({ mod }, "return", util.program.spawn_once("weston-terminal")),
 
-  -- lock screen
-  key({ mod, "Shift" }, "l", "lock_screen"),
-
   -- Lua methods can be bound as well
   key({ mod, "Shift" }, "h", function () print("Hello world!") end),
 
