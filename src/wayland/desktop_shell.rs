@@ -6,7 +6,7 @@
 #![allow(unused_variables)]
 
 use self::generated::server::desktop_shell::DesktopShell;
-use rustwlc::wayland::{get_display, wlc_resource_from_wl_surface_resource};
+use rustwlc::wayland::{get_display};
 use rustwlc::handle::{wlc_handle_from_wl_output_resource, WlcOutput};
 use ::layout::{lock_tree, IncompleteBackground};
 use wayland_server::Resource;
@@ -127,7 +127,6 @@ unsafe extern "C" fn set_background(client: *mut wl_client,
         return;
     }
     info!("Setting surface {:?} as background for output {}", surface, output);
-    let surface = wlc_resource_from_wl_surface_resource(surface as *const _);
     // TODO try_lock?
     if let Ok(mut tree) = lock_tree() {
         tree.add_incomplete_background(IncompleteBackground::new(client), WlcOutput::dummy(output as _))
