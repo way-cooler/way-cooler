@@ -108,7 +108,10 @@ impl LockScreen {
 #[allow(unused)]
 impl Mode for LockScreen {
     fn output_render_post(&mut self, output: WlcOutput) {
-        // Don't allow screen scraping during lock screen
+        Default.output_render_post(output);
+        // TODO Uncomment
+        // we should allow this some other way
+        /*// Don't allow screen scraping during lock screen
         let need_to_fetch = read_screen_scrape_lock();
         if *need_to_fetch {
             if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
@@ -118,7 +121,7 @@ impl Mode for LockScreen {
                 *scraped_pixels = vec![0; resolution.w as usize * resolution.h as usize * 4];
                 sync_scrape();
             }
-        }
+        }*/
     }
 
     fn view_created(&mut self, view: WlcView) -> bool {
