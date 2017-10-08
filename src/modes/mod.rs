@@ -23,7 +23,7 @@ pub mod commands;
 pub use self::mode::Mode;
 pub use self::default::Default;
 pub use self::custom_lua::CustomLua;
-pub use self::lock_screen::{LockScreen, lock_screen};
+pub use self::lock_screen::{LockScreen, lock_screen, unlock_screen};
 
 /// If the event is handled by way-cooler
 pub const EVENT_BLOCKED: bool = true;

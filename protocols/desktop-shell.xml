@@ -18,6 +18,7 @@
     </request>
 
     <request name="set_lock_surface">
+      <arg name="output" type="object" interface="wl_output"/>
       <arg name="surface" type="object" interface="wl_surface"/>
     </request>
 

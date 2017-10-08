@@ -68,8 +68,10 @@ impl LockScreen {
         let cur_client = unsafe {
             wlc_view_get_wl_client(view.0 as _) as _
         };
+        warn!("Checkng view {:#?}", view);
         for client in &mut self.clients {
-            if client.0 == cur_client {
+            if client.0 == cur_client && client.2 == None {
+                error!("Found a match, setting to output {:#?}", client.1);
                 view.set_output(client.1);
                 client.2 = Some(view);
                 let output = view.get_output();
@@ -167,13 +169,17 @@ impl Mode for LockScreen {
                               after removing lock screen");
                     })
             }
+            unlock_screen(self.clients[0].0 as _)
         }
     }
 
     fn view_focused(&mut self, current: WlcView, focused: bool) {
-        self.eval_if_lockscreen(current, |view| {
-            view.set_state(VIEW_ACTIVATED, focused)
-        })
+        for &(_, _, view) in &self.clients {
+            if let Some(view) = view {
+                view.focus();
+                return
+            }
+        }
     }
 
     fn view_request_state(&mut self, view: WlcView, state: ViewState, toggle: bool) {
@@ -190,14 +196,10 @@ impl Mode for LockScreen {
 
     fn on_keyboard_key(&mut self, view: WlcView, _time: u32, mods: KeyboardModifiers,
                             key: u32, state: KeyState) -> bool {
-        self.eval_if_lockscreen(view, |view| {
+        !self.eval_if_lockscreen(view, |view| {
             view.focus();
             true
         })
-    }
-
-    fn view_request_geometry(&mut self, view: WlcView, geometry: Geometry) {
-        // Do nothing
     }
 
     fn on_pointer_button(&mut self, view: WlcView, _time: u32,
@@ -293,9 +295,11 @@ pub fn lock_screen_with_path(path: PathBuf) -> Result<(), LockScreenErr> {
 
 pub fn lock_screen(client: *mut wl_client, output: WlcOutput) -> Result<(), LockScreenErr> {
     let mut mode = write_current_mode();
+    warn!("Locking screen w/ mode {:#?}", mode);
     {
         match *mode {
             Modes::LockScreen(ref mut lock_mode) => {
+                warn!("Found another view");
                 lock_mode.clients.push((client as _, output, None));
                 return Ok(())
             },
@@ -304,4 +308,18 @@ pub fn lock_screen(client: *mut wl_client, output: WlcOutput) -> Result<(), Lock
     }
     *mode = Modes::LockScreen(LockScreen::new(client, output));
     Ok(())
+}
+
+pub fn unlock_screen(client: *mut wl_client) {
+    error!("Unlocking screen");
+    let mut mode = write_current_mode();
+    match *mode {
+        Modes::LockScreen(ref lock_mode) => {
+            for &(_, _, view) in &lock_mode.clients {
+                view.map(WlcView::close);
+            }
+        },
+        _ => {}
+    }
+    *mode = Modes::Default(Default);
 }
