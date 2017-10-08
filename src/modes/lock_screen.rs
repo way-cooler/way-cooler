@@ -254,9 +254,10 @@ pub fn lock_screen(client: *mut wl_client, output: WlcOutput) -> Result<(), Lock
 }
 
 pub fn unlock_screen(client: *mut wl_client) {
-    error!("Unlocking screen");
-    let mut mode = write_current_mode();
-    match *mode {
+    let mut mode = {
+        write_current_mode().clone()
+    };
+    match mode {
         Modes::LockScreen(ref lock_mode) => {
             for &(_, _, view) in &lock_mode.clients {
                 view.map(WlcView::close);
@@ -264,5 +265,5 @@ pub fn unlock_screen(client: *mut wl_client) {
         },
         _ => {}
     }
-    *mode = Modes::Default(Default);
+    *write_current_mode() = Modes::Default(Default);
 }
