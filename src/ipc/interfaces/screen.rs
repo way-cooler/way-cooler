@@ -33,23 +33,31 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath {
                 }).outarg::<String, _>("success")
             )
             .add_m(
-                // TODO Make this take in a:
-                // * Output UUID
-                // * Size (u32, u32) to scrape. For invalid ones, we throw error
                 f.method("Scrape", (), |m| {
                     *write_screen_scrape_lock() = true;
                     // ensure that no other threads can try to grab the pixels.
                     let _lock = read_screen_scrape_lock();
+                    let mut args_iter = m.msg.iter_init();
+                    let output = args_iter.read::<u32>()?;
+                    let output = unsafe { WlcOutput::dummy(output)};
+                    {
+                        let mut scraped_pixels = scraped_pixels_lock().unwrap();
+                        scraped_pixels.1 = Some(output);
+                    }
+                    output.schedule_render();
                     sync_scrape();
                     drop(_lock);
                     *write_screen_scrape_lock() = false;
-                    let scraped_pixels = scraped_pixels_lock()
+                    let mut scraped_pixels = scraped_pixels_lock()
                         .expect("scraped_pixels lock was poisoned!");
-                    let result = scraped_pixels.iter()
+                    let result = scraped_pixels.0.iter()
                         .map(|pixel| MessageItem::Byte(*pixel)).collect();
+                    scraped_pixels.1 = None;
                     Ok(vec![m.msg.method_return()
                             .append((MessageItem::Array(result, "y".into())))])
-                }).outarg::<Array<u8, Vec<u8>>, _>("success")
+                })
+                    .outarg::<Array<u8, Vec<u8>>, _>("success")
+                    .inarg::<u32, _>("output_number")
             )
             .add_m(
                 f.method("Resolution", (), |m| {

@@ -174,12 +174,7 @@ impl Mode for LockScreen {
     }
 
     fn view_focused(&mut self, current: WlcView, focused: bool) {
-        for &(_, _, view) in &self.clients {
-            if let Some(view) = view {
-                view.focus();
-                return
-            }
-        }
+        // Do nothing
     }
 
     fn view_request_state(&mut self, view: WlcView, state: ViewState, toggle: bool) {
