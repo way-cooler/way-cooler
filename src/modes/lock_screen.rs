@@ -169,7 +169,6 @@ impl Mode for LockScreen {
                               after removing lock screen");
                     })
             }
-            unlock_screen(self.clients[0].0 as _)
         }
     }
 
