@@ -235,58 +235,6 @@ pub enum LockScreenErr {
     AlreadyLocked
 }
 
-/*
-/// Locks the screen, with the stored path from the registry.
-///
-/// If it fails to lock the screen, then a warning is raised in
-/// the log and it other wise continues.
-///
-/// If you want to handle the error yourself, please use
-/// `lock_screen_with_path`.
-pub fn spawn_lock_screen() {
-    let lock = registry::clients_read();
-    let client = lock.client(Uuid::nil()).unwrap();
-    let handle = registry::ReadHandle::new(&client);
-    let path = handle.read("programs".into()).ok()
-        .and_then(|programs| programs.get("lock_screen"))
-        .and_then(|lock_screen| lock_screen.as_string());
-    match path {
-        None => warn!("No lock screen program set!"),
-        Some(path) => {
-            let path = path.into();
-            lock_screen_with_path(path).unwrap_or_else(|err| {
-                warn!("Could not lock screen: {:?}", err)
-            })
-        }
-    }
-}
-*/
-
-/*
-/// Locks the screen by spawning the program at the given path.
-///
-/// This modifies the global `LOCK_SCREEN` singleton,
-/// so that it can be used by wlc callbacks.
-///
-/// If the program could not be spawned, an `Err` is returned.
-pub fn lock_screen_with_path(path: PathBuf) -> Result<(), LockScreenErr> {
-    let mut mode = write_current_mode();
-    match *mode {
-        Modes::LockScreen(_) =>
-            return Err(LockScreenErr::AlreadyLocked),
-        _ => {}
-    };
-    // TODO This can fail badly, and we should use child_try_wait.
-    // It's possible the program can fail to spawn a window, which
-    // means we'll be waiting forever.
-    // HOWEVER that's behind a nightly flag, so we must wait.
-    let child = Command::new(path).spawn()
-        .map_err(|io_er| LockScreenErr::IO(io_er))?;
-    let id = child.id();
-    *mode = Modes::LockScreen(LockScreen::new(id as pid_t));
-    Ok(())
-}
-*/
 
 pub fn lock_screen(client: *mut wl_client, output: WlcOutput) -> Result<(), LockScreenErr> {
     let mut mode = write_current_mode();
