@@ -1,25 +1,16 @@
 //! Implementations of the default callbacks exposed by wlc.
 //! These functions are the main entry points into Way Cooler from user action.
 //! This is the default mode that Way Cooler is in at initilization
-use std::process::{Command};
-use std::path::PathBuf;
-use std::io;
 use rustwlc::*;
 use rustwlc::wayland::wlc_view_get_wl_client;
 use rustwlc::input::pointer;
-use uuid::Uuid;
 use wayland_sys::server::wl_client;
 
 use super::{Mode, Modes, Default, write_current_mode};
-use super::{EVENT_BLOCKED, EVENT_PASS_THROUGH};
-use ::render::screen_scrape::{read_screen_scrape_lock, scraped_pixels_lock,
-                              sync_scrape};
 use ::layout::try_lock_tree;
-use ::registry;
 
 use rustwlc::{ResizeEdge, WlcView, Geometry, Point};
 use rustwlc::types::VIEW_ACTIVATED;
-use nix::libc::pid_t;
 
 /// A lock screen program, that has been spawned by Way Cooler.
 ///
@@ -225,17 +216,7 @@ impl Mode for LockScreen {
 }
 
 
-#[derive(Debug)]
-pub enum LockScreenErr {
-    /// IO error while trying to lock screen.
-    /// e.g: Couldn't open lock screen program.
-    IO(io::Error),
-    /// Lock screen was already locked.
-    AlreadyLocked
-}
-
-
-pub fn lock_screen(client: *mut wl_client, output: WlcOutput) -> Result<(), LockScreenErr> {
+pub fn lock_screen(client: *mut wl_client, output: WlcOutput) {
     let mut mode = write_current_mode();
     warn!("Locking screen w/ mode {:#?}", mode);
     {
@@ -243,23 +224,30 @@ pub fn lock_screen(client: *mut wl_client, output: WlcOutput) -> Result<(), Lock
             Modes::LockScreen(ref mut lock_mode) => {
                 warn!("Found another view");
                 lock_mode.clients.push((client as _, output, None));
-                return Ok(())
+                return
             },
             _ => {}
         }
     }
     *mode = Modes::LockScreen(LockScreen::new(client, output));
-    Ok(())
 }
 
-pub fn unlock_screen(client: *mut wl_client) {
-    let mut mode = {
+pub fn unlock_screen(cur_client: *mut wl_client) {
+    let mode = {
         write_current_mode().clone()
     };
     match mode {
         Modes::LockScreen(ref lock_mode) => {
-            for &(_, _, view) in &lock_mode.clients {
+            let mut seen = false;
+            for &(client, _, view) in &lock_mode.clients {
+                if client == cur_client as _ {
+                    seen = true;
+                    break;
+                }
                 view.map(WlcView::close);
+            }
+            if !seen {
+                return
             }
         },
         _ => {}

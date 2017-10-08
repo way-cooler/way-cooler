@@ -6,7 +6,7 @@ use self::generated::server::desktop_shell::DesktopShell;
 use rustwlc::wayland::{get_display};
 use rustwlc::handle::{wlc_handle_from_wl_output_resource, WlcOutput};
 use ::layout::{lock_tree, IncompleteBackground};
-use ::modes::{LockScreen, lock_screen, unlock_screen};
+use ::modes::{lock_screen, unlock_screen};
 use wayland_server::Resource;
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_client, wl_resource};
 use std::os::raw::c_void;
@@ -147,7 +147,6 @@ unsafe extern "C" fn set_lock_surface(client: *mut wl_client,
     info!("Setting surface {:?} as lockscreen for output {}", surface, output);
     let output = WlcOutput::dummy(output as _);
     lock_screen(client, output)
-        .expect("Could not add lockscreen")
 }
 
 unsafe extern "C" fn unlock(client: *mut wl_client,

@@ -15,7 +15,7 @@ use ::layout::MIN_SIZE;
 use ::lua::{self, LuaQuery};
 
 use ::render::screen_scrape::{SCRAPED_PIXELS, read_screen_scrape_lock,
-                              scraped_pixels_lock, sync_scrape};
+                              sync_scrape};
 use ::awesome;
 
 use registry::{self};
