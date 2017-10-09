@@ -38,8 +38,12 @@ pub fn setup(f: &mut DBusFactory) -> DBusObjPath {
                     // ensure that no other threads can try to grab the pixels.
                     let _lock = read_screen_scrape_lock();
                     let mut args_iter = m.msg.iter_init();
-                    let output = args_iter.read::<u32>()?;
-                    let output = unsafe { WlcOutput::dummy(output)};
+                    let output_num = args_iter.read::<u32>()?;
+                    let output = if output_num == 0 {
+                        WlcOutput::focused()
+                    } else {
+                        unsafe { WlcOutput::dummy(output_num) }
+                    };
                     {
                         let mut scraped_pixels = scraped_pixels_lock().unwrap();
                         scraped_pixels.1 = Some(output);
