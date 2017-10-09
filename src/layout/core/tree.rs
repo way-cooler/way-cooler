@@ -216,37 +216,31 @@ impl LayoutTree {
 
     /// Sets the active container to be the given node.
     pub fn set_active_node(&mut self, node_ix: NodeIndex) -> CommandResult {
-        if self.active_container != Some(node_ix) {
-            info!("Active container was {}, is now {}",
-                  self.active_container.map(|node| node.index().to_string())
-                    .unwrap_or("not set".into()),
-                  node_ix.index());
-        }
-        let id = self.tree[node_ix].get_id();
-        if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(id)) {
-            if fullscreen_id != id {
-                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(id, fullscreen_id)))
+        let (container_id, container_type) = {
+            let container = &self.tree[node_ix];
+            (container.get_id(), container.get_type())
+        };
+
+        if let Some(fullscreen_id) = self.in_fullscreen_workspace(container_id)? {
+            if fullscreen_id != container_id {
+                return Err(TreeError::Focus(FocusError::BlockedByFullscreen(container_id, fullscreen_id)))
             }
         }
+
         info!("Active container was {}, is now {}",
-                self.active_container.map(|node| node.index().to_string())
-                .unwrap_or("not set".into()),
+                self.active_container.map_or("not set".into(), |node| node.index().to_string()),
                 node_ix.index());
+
         let old_active = self.active_container;
         self.active_container = Some(node_ix);
-        let c_type; let id;
-        {
-            let container = &self.tree[node_ix];
-            c_type = container.get_type();
-            id = container.get_id();
-        }
-        match c_type {
-            ContainerType::View => try!(self.focus_on(id)),
+
+        match container_type {
+            ContainerType::View => self.focus_on(container_id)?,
             ContainerType::Container => {/* TODO implement this */},
             _ => return Err(
-                TreeError::UuidWrongType(id, vec!(ContainerType::View, ContainerType::Container)))
+                TreeError::UuidWrongType(container_id, vec!(ContainerType::View, ContainerType::Container)))
         }
-        self.tree.set_ancestor_paths_active(node_ix);
+
         if let Some(old_active_ix) = old_active {
             match self.tree[node_ix] {
                 Container::View { handle, .. } => {

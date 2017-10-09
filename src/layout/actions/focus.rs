@@ -25,7 +25,7 @@ impl LayoutTree {
     /// Focuses on the container by the uuid, if it points to a View.
     /// Otherwise, an error is returned.
     pub fn focus_on(&mut self, uuid: Uuid) -> CommandResult {
-        if let Some(fullscreen_id) = try!(self.in_fullscreen_workspace(uuid)) {
+        if let Some(fullscreen_id) = self.in_fullscreen_workspace(uuid)? {
             if fullscreen_id != uuid {
                 return Err(TreeError::Focus(FocusError::BlockedByFullscreen(uuid, fullscreen_id)))
             }
@@ -35,6 +35,7 @@ impl LayoutTree {
         match self.tree[node_ix] {
             Container::View { handle, .. } => {
                 handle.focus();
+                handle.bring_to_front();
                 self.active_container = Some(node_ix);
             },
             _ => return Err(TreeError::Focus(FocusError::NotAView(uuid)))
