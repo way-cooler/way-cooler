@@ -30,7 +30,7 @@ cairo-rs = "0.1.1"
 xcb = "0.8.1"
 
 [dev-dependencies]
-dummy-rustwlc = "0.6.3"
+dummy-rustwlc = "0.6.4"
 
 [build-dependencies]
 wayland-scanner = { version = "0.9.1" }
