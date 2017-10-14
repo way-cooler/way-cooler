@@ -39,8 +39,8 @@ impl LayoutTree {
                     Layout::Tabbed | Layout::Stacked => {
                         for child_ix in self.tree.children_of(parent_ix) {
                             match self.tree[child_ix] {
-                                Container::View { handle, .. } => {
-                                    if child_ix != node_ix {
+                                Container::View { handle, floating, .. } => {
+                                    if child_ix != node_ix && !floating {
                                         handle.send_to_back();
                                     }
                                 },
