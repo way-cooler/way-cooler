@@ -24,7 +24,7 @@ way_cooler.programs = {
 
 -- Registering programs to run at startup
 -- These programs are only ran once util.program.spawn_programs is called.
-util.program.spawn_at_startup("way-cooler-bg")
+util.program.spawn_at_startup("wc-bg")
 
 -- These options are applied to all windows.
 way_cooler.windows = {
