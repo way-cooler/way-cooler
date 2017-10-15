@@ -14,6 +14,7 @@ use super::super::LayoutTree;
 use super::super::ActionErr;
 use super::container::{Container, ContainerType, ContainerErr, Layout, Handle};
 use super::borders::{Borders};
+use super::background::MaybeBackground;
 use ::layout::actions::borders;
 use ::layout::actions::focus::FocusError;
 use ::layout::actions::movement::MovementError;
@@ -483,8 +484,13 @@ impl LayoutTree {
             for output_ix in self.tree.children_of(self.tree.root_ix()) {
                 match self.tree[output_ix] {
                     Container::Output { ref mut background, ref mut bar, .. } => {
-                        if Some(view) == *background {
-                            background.take();
+                        match *background {
+                            Some(MaybeBackground::Complete(bg)) => {
+                                if bg.handle == view {
+                                    background.take();
+                                }
+                            },
+                            _ => {}
                         }
                         let bar_view = bar.as_ref().map(|bar| bar.view());
                         if Some(view) == bar_view {

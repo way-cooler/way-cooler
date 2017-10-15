@@ -1,43 +1,68 @@
 //! A collection of methods that modify the background of the outputs.
-use super::super::{Container, ContainerType, LayoutTree, TreeError};
+use super::super::{Container, ContainerType, LayoutTree, TreeError,
+                   MaybeBackground, IncompleteBackground};
 use super::super::commands::CommandResult;
 
 use uuid::Uuid;
-use rustwlc::{WlcView};
-
-use std::collections::HashSet;
+use wayland_sys::server::wl_client;
+use rustwlc::WlcView;
+use rustwlc::wayland::wlc_view_get_wl_client;
 
 impl LayoutTree {
     /// Attempts to attach the `bg` to the `outputs`.
     ///
     /// If any of them already have a background attached,
-    /// ``
     pub fn attach_background(&mut self, bg: WlcView, output_id: Uuid)
-                             -> CommandResult {
-        // TODO Remove this to remove when the wlc bug is fixed
-        // https://github.com/Cloudef/wlc/issues/221
-        let mut to_remove = HashSet::new();
-        match *try!(self.lookup_mut(output_id)) {
+                             -> Result<bool, TreeError> {
+        match *self.lookup_mut(output_id)? {
             Container::Output { ref mut background, .. } => {
-                if background.is_none() {
-                    *background = Some(bg);
-                } else {
-                    // TODO This can't be used right now, see this bug:
-                    // https://github.com/Cloudef/wlc/issues/221
-                    /*return Err(TreeError::Background(
-                        BackgroundErr::AlreadyAttached(output_id, background.clone().unwrap())))*/
-                    if let Some(view) = background.take() {
-                        to_remove.insert(view);
+                match *background {
+                    None => {
+                        // The background wasn't expecting it
+                        Ok(false)
                     }
-                    *background = Some(bg);
+                    Some(MaybeBackground::Incomplete(incomplete)) => {
+                        let client: *mut wl_client;
+                        unsafe {
+                            client = wlc_view_get_wl_client(bg.0 as _) as _;
+                        }
+                        *background = Some(incomplete.build(client, bg));
+                        Ok(match background.unwrap() {
+                            MaybeBackground::Incomplete(_) => false,
+                            MaybeBackground::Complete(_) => true,
+                        })
+                    },
+                    _ => Ok(false)
                 }
             },
-            _ => return Err(TreeError::UuidWrongType(output_id,
-                                                        vec![ContainerType::Output]))
+            _ => Err(TreeError::UuidWrongType(output_id,
+                                              vec![ContainerType::Output]))
         }
-        for view in to_remove {
-            view.close();
+    }
+
+    pub fn attach_incomplete_background(&mut self,
+                                        bg: IncompleteBackground,
+                                        output_id: Uuid) -> CommandResult {
+        match *self.lookup_mut(output_id)? {
+            Container::Output { ref mut background, .. } => {
+                match *background {
+                    None => {
+                        *background = Some(bg.into());
+                        Ok(())
+                    },
+                    Some(MaybeBackground::Complete(complete)) => {
+                        warn!("Tried to set background while one is still active");
+                        warn!("This operation is not allowed, due to a bug with xwayland");
+                        Ok(())
+                    }
+                    _ => {
+                        warn!("Tried to set background while the other was still loading!");
+                        Ok(())
+                    }
+                }
+            },
+            _ => Err(TreeError::UuidWrongType(output_id,
+                                              vec![ContainerType::Output]))
         }
-        Ok(())
     }
 }

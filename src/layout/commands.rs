@@ -5,7 +5,7 @@ use std::io::Read;
 
 use super::{try_lock_tree, lock_tree, try_lock_action};
 use super::{Action, ActionErr, Bar, Container, ContainerType,
-            Direction, Handle, Layout, TreeError, ResizeErr};
+            Direction, Handle, Layout, TreeError, ResizeErr, IncompleteBackground};
 use super::core::borders::Borders;
 use ::render::Renderable;
 use super::Tree;
@@ -365,7 +365,7 @@ impl Tree {
     /// Binds a view to be the background for the given outputs.
     ///
     /// If there was a previous background, it is removed and deallocated.
-    pub fn add_background(&mut self, view: WlcView, output: WlcOutput) -> CommandResult {
+    pub fn add_background(&mut self, view: WlcView, output: WlcOutput) -> Result<bool, TreeError> {
         let id;
         {
             let output_c = self.0.output_by_handle_mut(output)
@@ -379,6 +379,36 @@ impl Tree {
             };
         }
         self.0.attach_background(view, id)
+    }
+
+
+    /// Adds a background to an output.
+    ///
+    /// NOTE That the background is not ready yet, because to make it ready requires
+    /// triggering the view callback. But, in order to not have it added twice we
+    /// need to check if it's already been added...which isn't possible if the tree is locked.
+    /// So, this will just add the meta data around it, and once it's added in the view callback
+    /// it will add it "for real".
+    /// Yes this is dumb, wlc can be kind of backwards...
+    /// NOTE At the end of this method it calls the special wlc method that
+    /// triggers the view_created callback. The view_callback needs to check that this
+    pub fn add_incomplete_background(&mut self,
+                                     background: IncompleteBackground,
+                                     output: WlcOutput)
+                                     -> CommandResult {
+        let id;
+        {
+            let output_c = self.0.output_by_handle_mut(output)
+                .ok_or(TreeError::OutputNotFound(output))?;
+            id = output_c.get_id();
+            match output_c.get_type() {
+                ContainerType::Output => {},
+                other => {
+                    return Err(TreeError::UuidNotAssociatedWith(other))
+                }
+            };
+        }
+        self.0.attach_incomplete_background(background, id)
     }
 
     /// Adds a Workspace to the tree. Never fails

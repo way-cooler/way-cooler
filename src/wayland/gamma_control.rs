@@ -178,9 +178,9 @@ unsafe extern "C" fn get_gamma_control(client: *mut wl_client,
 /// See https://github.com/vberger/wayland-rs/blob/451ccab330b3d0ec18eaaf72ae17ac35cf432370/wayland-server/src/event_loop.rs#L617
 /// to see where I got this particular bit of magic from.
 unsafe extern "C" fn bind(client: *mut wl_client,
-                              _data: *mut c_void,
-                              version: u32,
-                              id: u32) {
+                          _data: *mut c_void,
+                          version: u32,
+                          id: u32) {
     info!("Binding Gamma Control resource");
     let cur_version = GammaControlManager::supported_version();
     if version > cur_version {
@@ -206,7 +206,6 @@ unsafe extern "C" fn bind(client: *mut wl_client,
         );
     }
     let global_manager_ptr = &mut GAMMA_CONTROL_MANAGER as *mut _ as *mut c_void;
-    //let global_manager_ptr = &mut *manager as *mut _ as *mut c_void;
     ffi_dispatch!(
         WAYLAND_SERVER_HANDLE,
         wl_resource_set_implementation,

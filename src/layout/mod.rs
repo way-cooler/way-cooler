@@ -10,6 +10,8 @@ pub use self::actions::focus::FocusError;
 pub use self::actions::resize::ResizeErr;
 pub use self::core::GraphError;
 
+pub use self::core::background::{Background, IncompleteBackground,
+                                 MaybeBackground};
 pub use self::core::action::{Action, ActionErr};
 pub use self::core::container::{Container, ContainerType, Handle, Layout};
 pub use self::core::tree::{Direction, TreeError};

@@ -1,12 +1,5 @@
 -- Lua configration file for way-cooler. Ran at startup and when restarted.
 
---
--- Background
---
---
--- A background can either be a 6 digit hex value or an image path
-local background = 0x5E4055
-
 -- Programs that Way Cooler can run
 way_cooler.programs = {
   -- Name of the window that will be the bar window.
@@ -24,7 +17,7 @@ way_cooler.programs = {
 
 -- Registering programs to run at startup
 -- These programs are only ran once util.program.spawn_programs is called.
-util.program.spawn_at_startup("way-cooler-bg", "--color " .. background)
+util.program.spawn_at_startup("wc-bg")
 
 -- These options are applied to all windows.
 way_cooler.windows = {

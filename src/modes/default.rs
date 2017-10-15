@@ -104,30 +104,22 @@ impl Mode for Default {
                 }
             }
         }
-        // TODO Remove this hack
-        if view.get_class().as_str() == "Background" {
-            trace!("Setting background: {}", view.get_title());
-            view.send_to_back();
-            view.set_mask(1);
-            let output = view.get_output();
-            let resolution = output.get_resolution()
-                .expect("Couldn't get output resolution");
-            let fullscreen = Geometry {
-                origin: Point { x: 0, y: 0 },
-                size: resolution
-            };
-            view.set_geometry(ResizeEdge::empty(), fullscreen);
-            if let Ok(mut tree) = lock_tree() {
-                let output = WlcOutput::focused();
-                return tree.add_background(view, output).map(|_| true)
-                    .unwrap_or_else(|err| {
-                        warn!("Could not add background due to {:?}", err);
-                        true
-                    })
-            } else {
-                warn!("Could not lock tree to place background");
+        if let Ok(mut tree) = lock_tree() {
+            for output in WlcOutput::list() {
+                if tree.add_background(view, output).expect("Couldn't try to add background") {
+                    view.set_output(output);
+                    view.send_to_back();
+                    view.set_mask(1);
+                    let resolution = output.get_resolution()
+                        .expect("Couldn't get output resolution");
+                    let fullscreen = Geometry {
+                        origin: Point { x: 0, y: 0 },
+                        size: resolution
+                    };
+                    view.set_geometry(ResizeEdge::empty(), fullscreen);
+                    return true
+                }
             }
-            return false
         }
         if let Ok(mut tree) = lock_tree() {
             let result = tree.add_view(view).and_then(|_| {

@@ -12,6 +12,7 @@ use ::layout::commands::CommandResult;
 use super::borders::{Borders, ViewDraw, ContainerDraw};
 use super::tree::TreeError;
 use super::bar::Bar;
+use super::background::MaybeBackground;
 
 pub static MIN_SIZE: Size = Size { w: 80u32, h: 40u32 };
 
@@ -101,7 +102,7 @@ pub enum Container {
         /// Handle to the wlc
         handle: WlcOutput,
         /// Optional background for the output
-        background: Option<WlcView>,
+        background: Option<MaybeBackground>,
         /// Optional bar for the output
         bar: Option<Bar>,
         /// UUID associated with container, client program can use container
