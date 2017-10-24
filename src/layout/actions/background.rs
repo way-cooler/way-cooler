@@ -50,8 +50,8 @@ impl LayoutTree {
                         *background = Some(bg.into());
                         Ok(())
                     },
-                    Some(MaybeBackground::Complete(_)) => {
-                        warn!("Tried to set background while one is still active");
+                    Some(MaybeBackground::Complete(complete)) => {
+                        warn!("Tried to set background while one is still active {:?}", complete);
                         warn!("This operation is not allowed, due to a bug with xwayland");
                         Ok(())
                     }
