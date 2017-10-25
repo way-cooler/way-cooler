@@ -12,7 +12,8 @@ pub type Checker = Rc<Fn(Object) -> bool>;
 
 #[derive(Debug)]
 pub struct Class<'lua> {
-    table: Table<'lua>
+    // TODO FIXME remove
+    pub table: Table<'lua>
 }
 
 #[derive(Clone)]
@@ -45,13 +46,6 @@ impl <'lua> ClassBuilder<'lua> {
         let properties = self.class.table.get::<_, Table>("properties")?;
         let length = properties.len().unwrap_or(0) + 1;
         properties.set(length, prop)?;
-        Ok(self)
-    }
-
-    pub fn save_class(mut self, name: &str)
-                      -> rlua::Result<Self> {
-        self.lua.globals().set(name, self.class.table)?;
-        self.class.table = self.lua.globals().get(name)?;
         Ok(self)
     }
 
