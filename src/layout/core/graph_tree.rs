@@ -229,7 +229,7 @@ impl InnerTree {
         if active {
             self.set_ancestor_paths_active(child_ix);
         } else {
-            let mut weight = self.graph.edge_weight_mut(edge)
+            let weight = self.graph.edge_weight_mut(edge)
                 .expect("Could not get edge weight of parent/child");
             weight.active = 1;
         }
