@@ -45,8 +45,17 @@ fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {
     package.set("cpath", "/usr/lib/lua/5.3/?.so;/usr/lib/lua/5.3/loadall.so;./?.so;/home/timidger/.config/awesome/?.so;/etc/xdg/awesome/?.so;/usr/share/awesome/lib/?.so")?;
     // TODO Real debug, bug in rlua
     let debug = lua.create_table();
-    debug.set("getinfo", lua.create_function(dummy))?;
+    debug.set("getinfo", lua.create_function(dummy_getinfo))?;
     globals.set("debug", debug)
 }
 
-fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
+fn dummy_getinfo<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<rlua::Table<'lua>> {
+    fn gsub<'lua>(_: &'lua Lua, (table, _): (rlua::Table<'lua>, rlua::Value)) -> rlua::Result<rlua::Table<'lua>> {
+        Ok(table)
+    }
+    let table = lua.create_table();
+    let call_table = lua.create_table();
+    call_table.set("gsub", lua.create_function(gsub))?;
+    table.set("source", call_table)?;
+    Ok(table)
+}

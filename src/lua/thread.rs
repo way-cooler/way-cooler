@@ -148,7 +148,8 @@ pub fn init() -> Result<(), rlua::Error> {
                     .map(|_:()| info!("Read init.lua successfully"))
                     .or_else(|err| {
                         match err {
-                            rlua::Error::RuntimeError(err) => {
+                            rlua::Error::RuntimeError(err) |
+                            rlua::Error::CallbackError{traceback: err, .. } => {
                                 error!("{}", err);
                             },
                             err => {

@@ -46,7 +46,7 @@ impl <'lua> ToLua<'lua> for Awesome<'lua> {
 impl UserData for AwesomeState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, Some(Rc::new(Awesome::new)), None, None)?)?
+    property_setup(lua, method_setup(lua, Class::builder(lua, Some(Rc::new(Awesome::new)), None, None)?)?)?
         .save_class("awesome")?
         .build()
 }
@@ -54,7 +54,16 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("register_xproperty".into(), lua.create_function(dummy))
+           .method("register_xproperty".into(), lua.create_function(dummy))?
+           .method("restart".into(), lua.create_function(dummy))?
+           .method("quit".into(), lua.create_function(dummy))
+}
+
+fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+    // TODO Do properly
+    builder.dummy_property("version".into(), "0".to_lua(lua)?)?
+           .dummy_property("themes_path".into(), "/usr/share/awesome/themes".to_lua(lua)?)?
+           .dummy_property("conffile".into(), "".to_lua(lua)?)
 }
 
 impl_objectable!(Awesome, AwesomeState);
