@@ -3,6 +3,7 @@ use rlua::{self, Lua};
 pub mod keygrabber;
 pub mod mousegrabber;
 pub mod awful;
+mod awesome;
 mod button;
 mod signal;
 mod object;
@@ -15,13 +16,12 @@ pub use self::mousegrabber::mousegrabber_handle;
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     set_up_awesome_path(lua)?;
-    let globals = lua.globals();
-    let capi = lua.create_table();
-    capi.set("keygrabber", keygrabber::init(lua)?)?;
-    capi.set("mousegrabber", mousegrabber::init(lua)?)?;
-    capi.set("button", button::init(lua)?.table)?;
-    //awful::init(lua)?;
-    globals.set("capi", capi)
+    awesome::init(lua)?;
+    keygrabber::init(lua)?;
+    mousegrabber::init(lua)?;
+    button::init(lua)?.table;
+    awful::init(lua)?;
+    Ok(())
 }
 
 fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {

@@ -10,12 +10,13 @@ pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const SECRET_CALLBACK: &str = "__callback";
 
 /// Init the methods defined on this interface.
-pub fn init(lua: &Lua) -> rlua::Result<Table> {
+pub fn init(lua: &Lua) -> rlua::Result<()> {
     let keygrabber_table = lua.create_table();
     keygrabber_table.set("run", lua.create_function(run))?;
     keygrabber_table.set("stop", lua.create_function(stop))?;
     keygrabber_table.set("isrunning", lua.create_function(isrunning))?;
-    Ok(keygrabber_table)
+    let globals = lua.globals();
+    globals.set(KEYGRABBER_TABLE, keygrabber_table)
 }
 
 #[allow(deprecated)]

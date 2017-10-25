@@ -49,6 +49,13 @@ impl <'lua> ClassBuilder<'lua> {
         Ok(self)
     }
 
+    pub fn save_class(mut self, name: &str)
+                      -> rlua::Result<Self> {
+        self.lua.globals().set(name, self.class.table)?;
+        self.class.table = self.lua.globals().get(name)?;
+        Ok(self)
+    }
+
     pub fn build(self) -> rlua::Result<Class<'lua>> {
         Ok(self.class)
     }
