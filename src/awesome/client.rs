@@ -1,5 +1,4 @@
 //! TODO Fill in
-
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
@@ -8,55 +7,55 @@ use super::object::{Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
-pub struct AwesomeState {
+pub struct ClientState {
     // TODO Fill in
     dummy: i32
 }
 
-pub struct Awesome<'lua>(Table<'lua>);
+pub struct Client<'lua>(Table<'lua>);
 
-impl Default for AwesomeState {
+impl Default for ClientState {
     fn default() -> Self {
-        AwesomeState {
+        ClientState {
             dummy: 0
         }
     }
 }
 
-impl <'lua> Awesome<'lua> {
+impl <'lua> Client<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
-        // TODO FIXME
         let class = class::button_class(lua)?;
-        Ok(Awesome::allocate(lua, class)?.build())
+        Ok(Client::allocate(lua, class)?.build())
     }
 }
 
-impl Display for AwesomeState {
+impl Display for ClientState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Awesome: {:p}", self)
+        write!(f, "Client: {:p}", self)
     }
 }
 
-impl <'lua> ToLua<'lua> for Awesome<'lua> {
+impl <'lua> ToLua<'lua> for Client<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.0.to_lua(lua)
     }
 }
 
-impl UserData for AwesomeState {}
+impl UserData for ClientState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, Some(Rc::new(Awesome::new)), None, None)?)?
-        .save_class("awesome")?
+    method_setup(lua, Class::builder(lua, Some(Rc::new(Client::new)), None, None)?)?
+        .save_class("client")?
         .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("register_xproperty".into(), lua.create_function(dummy))
+           .method("get".into(), lua.create_function(dummy_table))
 }
 
-impl_objectable!(Awesome, AwesomeState);
+impl_objectable!(Client, ClientState);
 
 fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
+fn dummy_table<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> { Ok((lua.create_table())) }

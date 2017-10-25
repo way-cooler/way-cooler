@@ -8,55 +8,53 @@ use super::object::{Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
-pub struct AwesomeState {
+pub struct TagState {
     // TODO Fill in
     dummy: i32
 }
 
-pub struct Awesome<'lua>(Table<'lua>);
+pub struct Tag<'lua>(Table<'lua>);
 
-impl Default for AwesomeState {
+impl Default for TagState {
     fn default() -> Self {
-        AwesomeState {
+        TagState {
             dummy: 0
         }
     }
 }
 
-impl <'lua> Awesome<'lua> {
+impl <'lua> Tag<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
-        // TODO FIXME
         let class = class::button_class(lua)?;
-        Ok(Awesome::allocate(lua, class)?.build())
+        Ok(Tag::allocate(lua, class)?.build())
     }
 }
 
-impl Display for AwesomeState {
+impl Display for TagState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Awesome: {:p}", self)
+        write!(f, "Tag: {:p}", self)
     }
 }
 
-impl <'lua> ToLua<'lua> for Awesome<'lua> {
+impl <'lua> ToLua<'lua> for Tag<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.0.to_lua(lua)
     }
 }
 
-impl UserData for AwesomeState {}
+impl UserData for TagState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, Some(Rc::new(Awesome::new)), None, None)?)?
-        .save_class("awesome")?
+    method_setup(lua, Class::builder(lua, Some(Rc::new(Tag::new)), None, None)?)?
+        .save_class("tag")?
         .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
-    builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("register_xproperty".into(), lua.create_function(dummy))
+    builder.method("connect_signal".into(), lua.create_function(dummy))
 }
 
-impl_objectable!(Awesome, AwesomeState);
+impl_objectable!(Tag, TagState);
 
 fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
