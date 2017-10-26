@@ -14,7 +14,7 @@ dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "nix 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlua 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rlua 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustwlc 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -382,7 +382,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rlua"
-version = "0.9.2"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.31 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -597,7 +597,7 @@ dependencies = [
 "checksum rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)" = "eb250fd207a4729c976794d03db689c9be1d634ab5a1c9da9492a13d8fecbcdf"
 "checksum regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)" = "4fd4ace6a8cf7860714a2c2280d6c1f7e6a413486c13298bbc86fd3da019402f"
 "checksum regex-syntax 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "f9ec002c35e86791825ed294b50008eea9ddfc8def4420124fbc6b08db834957"
-"checksum rlua 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)" = "351c88c3a68e59c1d37f25f8988b50ff447cd4e14e5aa4604b8d85c417307b5f"
+"checksum rlua 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)" = "b8a94ca12ba4cfe6a470d1808ac542f14affe4ece1afea4c5450c2d865d3e678"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 "checksum rustc_version 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "c5f5376ea5e30ce23c03eb77cbe4962b988deead10910c372b226388b594c084"
 "checksum rustwlc 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6fccd4179611ec448236ee47925f0c986ef6862803e916687f6b1ab016305d08"
