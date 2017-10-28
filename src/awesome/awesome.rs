@@ -56,6 +56,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     builder.method("connect_signal".into(), lua.create_function(dummy))?
            .method("register_xproperty".into(), lua.create_function(dummy))?
            .method("restart".into(), lua.create_function(dummy))?
+           .method("load_image".into(), lua.create_function(dummy))?
            .method("quit".into(), lua.create_function(dummy))
 }
 

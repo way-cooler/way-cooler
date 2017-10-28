@@ -6,9 +6,10 @@ use std::fmt::{self, Display, Formatter};
 use std::rc::Rc;
 use rustwlc::Geometry;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use super::drawable::Drawable;
 
 use super::class::{self, Class, ClassBuilder};
-use super::object::{Object, Objectable};
+use super::object::{Object, Objectable, ObjectBuilder};
 
 #[derive(Clone, Debug)]
 pub struct DrawinState {
@@ -48,7 +49,7 @@ impl <'lua> Drawin<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         // TODO FIXME
         let class = class::button_class(lua)?;
-        Ok(Drawin::allocate(lua, class)?.build())
+        Ok(object_setup(lua, Drawin::allocate(lua, class)?)?.build())
     }
 }
 
@@ -68,6 +69,16 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
-    builder.method("connect_signal".into(), lua.create_function(dummy))
+    builder.method("connect_signal".into(), lua.create_function(dummy))?
+           .method("__call".into(), lua.create_function(dummy_create))
+}
+fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Result<ObjectBuilder<'lua>> {
+    // TODO Do properly
+    let table = lua.create_table();
+    table.set("drawable", rlua::Value::Table(Drawable::new(lua)?.table))?;
+    builder.add_to_meta(table)
 }
 fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
+fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
+    Ok(Drawin::new(lua)?.table)
+}

@@ -11,7 +11,8 @@ use super::property::Property;
 /// All Lua objects can be cast to this.
 #[derive(Clone, Debug)]
 pub struct Object<'lua> {
-    table: Table<'lua>
+    // TODO NO
+    pub table: Table<'lua>
 }
 
 impl <'lua> From<Table<'lua>> for Object<'lua> {
@@ -35,6 +36,7 @@ impl <'lua> ObjectBuilder<'lua> {
             let (key, value) = entry?;
             meta.set(key, value)?;
         }
+        self.object.table.set_metatable(Some(meta));
         Ok(self)
     }
 

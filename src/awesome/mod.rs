@@ -9,6 +9,7 @@ mod screen;
 mod button;
 mod tag;
 mod drawin;
+mod drawable;
 mod mouse;
 mod root;
 mod signal;
@@ -22,6 +23,7 @@ pub use self::mousegrabber::mousegrabber_handle;
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     set_up_awesome_path(lua)?;
+    button::init(lua)?.table;
     awesome::init(lua)?;
     client::init(lua)?;
     screen::init(lua)?;
@@ -30,8 +32,8 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     mouse::init(lua)?;
     tag::init(lua)?;
     drawin::init(lua)?;
+    drawable::init(lua)?;
     mousegrabber::init(lua)?;
-    button::init(lua)?.table;
     awful::init(lua)?;
     Ok(())
 }
@@ -46,16 +48,21 @@ fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {
     // TODO Real debug, bug in rlua
     let debug = lua.create_table();
     debug.set("getinfo", lua.create_function(dummy_getinfo))?;
+    debug.set("traceback", lua.create_function(dummy))?;
     globals.set("debug", debug)
 }
 
+// TODO Remove this and actually load the unsafe debug lib
 fn dummy_getinfo<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<rlua::Table<'lua>> {
-    fn gsub<'lua>(_: &'lua Lua, (table, _): (rlua::Table<'lua>, rlua::Value)) -> rlua::Result<rlua::Table<'lua>> {
-        Ok(table)
+    fn gsub<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<String> {
+        Ok("FIXME Install debug lib!".into())
     }
+
     let table = lua.create_table();
     let call_table = lua.create_table();
     call_table.set("gsub", lua.create_function(gsub))?;
     table.set("source", call_table)?;
     Ok(table)
 }
+
+fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
