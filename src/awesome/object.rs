@@ -93,13 +93,10 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         meta.set("__class", class)?;
         meta.set("signals", lua.create_table())?;
         meta.set("connect_signal",
-                 lua.create_function(connect_signal)
-                 .bind(object_table.clone())?)?;
+                 lua.create_function(connect_signal))?;
         meta.set("disconnect_signal",
-                 lua.create_function(disconnect_signal)
-                 .bind(object_table.clone())?)?;
-        meta.set("emit_signal", lua.create_function(emit_signal)
-                 .bind(object_table.clone())?)?;
+                 lua.create_function(disconnect_signal))?;
+        meta.set("emit_signal", lua.create_function(emit_signal))?;
         meta.set("__index", lua.create_function(default_index))?;
         meta.set("__newindex", lua.create_function(default_newindex))?;
         meta.set("__tostring", lua.create_function(|_, object_table: Table| {
