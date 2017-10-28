@@ -8,57 +8,52 @@ use super::object::{Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
-pub struct AwesomeState {
+pub struct KeyState {
     // TODO Fill in
     dummy: i32
 }
 
-pub struct Awesome<'lua>(Table<'lua>);
+pub struct Key<'lua>(Table<'lua>);
 
-impl Default for AwesomeState {
+impl Default for KeyState {
     fn default() -> Self {
-        AwesomeState {
+        KeyState {
             dummy: 0
         }
     }
 }
 
-impl <'lua> Awesome<'lua> {
+impl <'lua> Key<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         // TODO FIXME
         let class = class::button_class(lua)?;
-        Ok(Awesome::allocate(lua, class)?.build())
+        Ok(Key::allocate(lua, class)?.build())
     }
 }
 
-impl Display for AwesomeState {
+impl Display for KeyState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Awesome: {:p}", self)
+        write!(f, "Key: {:p}", self)
     }
 }
 
-impl <'lua> ToLua<'lua> for Awesome<'lua> {
+impl <'lua> ToLua<'lua> for Key<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.0.to_lua(lua)
     }
 }
 
-impl UserData for AwesomeState {}
+impl UserData for KeyState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, Some(Rc::new(Awesome::new)), None, None)?)?)?
-        .save_class("awesome")?
+    property_setup(lua, method_setup(lua, Class::builder(lua, Some(Rc::new(Key::new)), None, None)?)?)?
+        .save_class("key")?
         .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
-    builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("register_xproperty".into(), lua.create_function(dummy))?
-           .method("xkb_get_group_names".into(), lua.create_function(dummy))?
-           .method("restart".into(), lua.create_function(dummy))?
-           .method("load_image".into(), lua.create_function(dummy))?
-           .method("quit".into(), lua.create_function(dummy))
+    builder.method("__call".into(), lua.create_function(dummy_create))
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
@@ -68,6 +63,9 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
            .dummy_property("conffile".into(), "".to_lua(lua)?)
 }
 
-impl_objectable!(Awesome, AwesomeState);
+impl_objectable!(Key, KeyState);
 
 fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
+fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
+    Ok(Key::new(lua)?.table)
+}

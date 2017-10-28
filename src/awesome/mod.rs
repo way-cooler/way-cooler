@@ -8,6 +8,7 @@ mod client;
 mod screen;
 mod button;
 mod tag;
+mod key;
 mod drawin;
 mod drawable;
 mod mouse;
@@ -25,6 +26,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     set_up_awesome_path(lua)?;
     button::init(lua)?.table;
     awesome::init(lua)?;
+    key::init(lua)?;
     client::init(lua)?;
     screen::init(lua)?;
     keygrabber::init(lua)?;
