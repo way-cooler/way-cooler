@@ -148,9 +148,12 @@ pub fn init() -> Result<(), rlua::Error> {
                     .map(|_:()| info!("Read init.lua successfully"))
                     .or_else(|err| {
                         match err {
-                            rlua::Error::RuntimeError(err) |
-                            rlua::Error::CallbackError{traceback: err, .. } => {
+                            rlua::Error::RuntimeError(ref err) => {
                                 error!("{}", err);
+                            }
+                            rlua::Error::CallbackError{traceback: ref err, ref cause } => {
+                                error!("traceback: {}", err);
+                                error!("cause: {}", *cause)
                             },
                             err => {
                                 error!("init file error: {:?}", err);
