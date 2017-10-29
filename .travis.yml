@@ -15,7 +15,6 @@ cache:
 addons:
   apt:
     packages:
-      - lua-compat53
       - libnih-dbus1
       - libdbus-1-3
       - libcurl4-openssl-dev
@@ -56,10 +55,10 @@ script:
   # check integrity of init file
   - luac -p config/init.lua
   # Make sure no-test builds
-  - cargo check --verbose
+  - cargo check --features builtin-lua --verbose
   # run tests
   # Currently not running tests because linking fails with Lua and DBus
-  - cargo test --verbose
+  - cargo test --features builtin-lua --verbose
   # run tag checks
   - python $TRAVIS_BUILD_DIR/scripts/ci.py travis-check
 

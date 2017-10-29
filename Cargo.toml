@@ -39,6 +39,7 @@ wayland-scanner = { version = "0.9.1" }
 [features]
 static-wlc = ["rustwlc/static-wlc"]
 disable-debug = []
+builtin-lua= ["rlua/builtin-lua"]
 
 [profile.release]
 debug = true
