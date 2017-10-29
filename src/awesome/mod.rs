@@ -22,6 +22,9 @@ pub use self::object::Object;
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 
+use std::env;
+use std::path::PathBuf;
+
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     set_up_awesome_path(lua)?;
     button::init(lua)?.table;
@@ -45,8 +48,20 @@ fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {
     let package: rlua::Table = globals.get("package")?;
     //let paths: String = package.get("path")?;
     // TODO Do this right, I'm too lazy and just scrapped from my awesome env
-    package.set("path", "/usr/share/lua/5.3/?.lua;/usr/share/lua/5.3/?/init.lua;/usr/lib/lua/5.3/?.lua;/usr/lib/lua/5.3/?/init.lua;./?.lua;./?/init.lua;/home/timidger/.config/awesome/?.lua;/home/timidger/.config/awesome/?/init.lua;/etc/xdg/awesome/?.lua;/etc/xdg/awesome/?/init.lua;/usr/share/awesome/lib/?.lua;/usr/share/awesome/lib/?/init.lua")?;
-    package.set("cpath", "/usr/lib/lua/5.3/?.so;/usr/lib/lua/5.3/loadall.so;./?.so;/home/timidger/.config/awesome/?.so;/etc/xdg/awesome/?.so;/usr/share/awesome/lib/?.so")?;
+    let mut path = package.get::<_, String>("path")?;
+    let mut cpath = package.get::<_, String>("cpath")?;
+    let mut xdg_data_path: PathBuf = env::var("XDG_DATA_DIRS").unwrap_or("/usr/share".into()).into();
+    xdg_data_path.push("awesome/lib");
+    path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua",
+                             xdg_data_path.as_os_str().to_string_lossy()));
+    package.set("path", path)?;
+    let mut xdg_config_path: PathBuf = env::var("XDG_CONFIG_DIRS").unwrap_or("/etc/xdg".into()).into();
+    xdg_config_path.push("awesome");
+    cpath.push_str(&format!(";{}/?.so;{}/?.so",
+                            xdg_config_path.into_os_string().to_string_lossy(),
+                            xdg_data_path.into_os_string().to_string_lossy()));
+    package.set("cpath", cpath)?;
+
     // TODO Real debug, bug in rlua
     let debug = lua.create_table();
     debug.set("getinfo", lua.create_function(dummy_getinfo))?;
