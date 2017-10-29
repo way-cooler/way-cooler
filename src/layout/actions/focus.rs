@@ -41,6 +41,18 @@ impl LayoutTree {
             _ => return Err(TreeError::Focus(FocusError::NotAView(uuid)))
         }
         self.tree.set_ancestor_paths_active(node_ix);
+        let workspace_ix = self.tree.ancestor_of_type(node_ix,
+                                                      ContainerType::Workspace)?;
+        for node_ix in self.tree.all_descendants_of(workspace_ix) {
+            match self.tree[node_ix] {
+                Container::View { floating, handle, .. } => {
+                    if floating {
+                        handle.bring_to_front();
+                    }
+                },
+                _ => {}
+            }
+        }
         Ok(())
     }
     /// Focus on the container relative to the active container.
