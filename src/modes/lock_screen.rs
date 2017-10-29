@@ -59,7 +59,6 @@ impl LockScreen {
         let cur_client = unsafe {
             wlc_view_get_wl_client(view.0 as _) as _
         };
-        warn!("Checkng view {:#?}", view);
         for client in &mut self.clients {
             if client.0 == cur_client && client.2 == None {
                 error!("Found a match, setting to output {:#?}", client.1);
@@ -218,11 +217,9 @@ impl Mode for LockScreen {
 
 pub fn lock_screen(client: *mut wl_client, output: WlcOutput) {
     let mut mode = write_current_mode();
-    warn!("Locking screen w/ mode {:#?}", mode);
     {
         match *mode {
             Modes::LockScreen(ref mut lock_mode) => {
-                warn!("Found another view");
                 lock_mode.clients.push((client as _, output, None));
                 return
             },
