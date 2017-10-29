@@ -14,7 +14,7 @@ use ::layout::commands::set_performing_action;
 use ::layout::MIN_SIZE;
 use ::lua::{self, LuaQuery};
 
-use ::render::screen_scrape::{read_screen_scrape_lock, scraped_pixels_lock,
+use ::render::screen_scrape::{SCRAPED_PIXELS, read_screen_scrape_lock,
                               sync_scrape};
 use ::awesome;
 
@@ -65,10 +65,10 @@ impl Mode for Default {
     fn output_render_post(&mut self, output: WlcOutput) {
         let need_to_fetch = read_screen_scrape_lock();
         if *need_to_fetch {
-            if WlcOutput::focused() != output {
-                return
-            }
-            if let Ok(mut scraped_pixels) = scraped_pixels_lock() {
+            if let Ok(mut scraped_pixels) = SCRAPED_PIXELS.try_lock() {
+                if scraped_pixels.1 != Some(output) {
+                    return
+                }
                 let resolution = output.get_resolution()
                     .expect("Output had no resolution");
                 let geo = Geometry {
@@ -76,7 +76,7 @@ impl Mode for Default {
                     size: resolution
                 };
                 let result = read_pixels(wlc_pixel_format::WLC_RGBA8888, geo).1;
-                *scraped_pixels = result;
+                scraped_pixels.0 = result;
                 sync_scrape();
             }
         }

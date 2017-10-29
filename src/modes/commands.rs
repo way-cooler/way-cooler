@@ -1,7 +1,6 @@
 //! Commands to control the modes.
 
 use super::{Modes, Default, CustomLua, write_current_mode};
-pub use super::lock_screen::spawn_lock_screen;
 
 
 /// Sets the mode to the default (don't execute custom Lua code).

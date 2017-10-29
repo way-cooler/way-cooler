@@ -6,6 +6,7 @@ use self::generated::server::desktop_shell::DesktopShell;
 use rustwlc::wayland::{get_display};
 use rustwlc::handle::{wlc_handle_from_wl_output_resource, WlcOutput};
 use ::layout::{lock_tree, IncompleteBackground};
+use ::modes::{lock_screen, unlock_screen};
 use wayland_server::Resource;
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_client, wl_resource};
 use std::os::raw::c_void;
@@ -135,12 +136,23 @@ unsafe extern "C" fn desktop_ready(_client: *mut wl_client,
 }
 
 // TODO Implement
-unsafe extern "C" fn set_lock_surface(_client: *mut wl_client,
+unsafe extern "C" fn set_lock_surface(client: *mut wl_client,
                                       _resource: *mut wl_resource,
-                                      _output: *mut wl_resource,
-                                      _surface: *mut wl_resource) {}
-unsafe extern "C" fn unlock(_client: *mut wl_client,
-                            _resource: *mut wl_resource) {}
+                                      output_: *mut wl_resource,
+                                      surface: *mut wl_resource) {
+    let output = wlc_handle_from_wl_output_resource(output_ as *const _);
+    if output == 0 {
+        return;
+    }
+    info!("Setting surface {:?} as lockscreen for output {}", surface, output);
+    let output = WlcOutput::dummy(output as _);
+    lock_screen(client, output)
+}
+
+unsafe extern "C" fn unlock(client: *mut wl_client,
+                            _resource: *mut wl_resource) {
+    unlock_screen(client)
+}
 unsafe extern "C" fn set_grab_surface(_client: *mut wl_client,
                                       _resource: *mut wl_resource,
                                       _surface: *mut wl_resource) {}

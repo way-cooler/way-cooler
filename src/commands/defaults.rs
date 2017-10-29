@@ -109,10 +109,6 @@ pub fn register_defaults() {
     // Modes
     register("default_mode", mode_cmds::set_default_mode);
     register("custom_mode", mode_cmds::set_custom_mode);
-    // Command that spawns the lock screen and moves to lock screen mode.
-    // Must have one specified in the registry first in order for it to work.
-    register("lock_screen", mode_cmds::spawn_lock_screen);
-
 }
 
 // All of the methods defined should be registered.
