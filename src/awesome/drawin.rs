@@ -69,6 +69,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
+    use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy))?
            .method("__call".into(), lua.create_function(dummy_create))
 }
@@ -78,7 +79,6 @@ fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Res
     table.set("drawable", rlua::Value::Table(Drawable::new(lua)?.table))?;
     builder.add_to_meta(table)
 }
-fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
 fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
     Ok(Drawin::new(lua)?.table)
 }
