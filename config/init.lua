@@ -7,12 +7,6 @@ way_cooler.programs = {
   --
   -- Make sure you set your bar program to spawn at startup!
   x11_bar = "lemonbar",
-
-  -- The path to the lock screen program used by Way Cooler.
-  -- Once this program has been launched by Way Cooler
-  -- via the lock_screen keybinding, the screen is locked and all input goes
-  -- to the lock screen program. Once the program closes, all input is restored.
-  lock_screen = "wc-lock"
 }
 
 -- Registering programs to run at startup
@@ -78,7 +72,7 @@ local keys = {
   key({ mod }, "return", util.program.spawn_once("weston-terminal")),
 
   -- lock screen
-  key({ mod, "Shift" }, "l", "lock_screen"),
+  key({ mod, "Shift" }, "l", util.program.spawn_once("wc-lock")),
 
   -- Lua methods can be bound as well
   key({ mod, "Shift" }, "h", function () print("Hello world!") end),
