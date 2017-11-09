@@ -12,8 +12,7 @@ pub type Checker = Rc<Fn(Object) -> bool>;
 
 #[derive(Debug)]
 pub struct Class<'lua> {
-    // TODO FIXME remove
-    pub table: Table<'lua>
+    table: Table<'lua>
 }
 
 #[derive(Clone)]

@@ -27,7 +27,7 @@ use std::path::PathBuf;
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     set_up_awesome_path(lua)?;
-    button::init(lua)?.table;
+    button::init(lua)?;
     awesome::init(lua)?;
     key::init(lua)?;
     client::init(lua)?;
