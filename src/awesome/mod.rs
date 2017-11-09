@@ -46,8 +46,6 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {
     let globals = lua.globals();
     let package: rlua::Table = globals.get("package")?;
-    //let paths: String = package.get("path")?;
-    // TODO Do this right, I'm too lazy and just scrapped from my awesome env
     let mut path = package.get::<_, String>("path")?;
     let mut cpath = package.get::<_, String>("cpath")?;
     let mut xdg_data_path: PathBuf = env::var("XDG_DATA_DIRS").unwrap_or("/usr/share".into()).into();
