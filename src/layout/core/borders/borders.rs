@@ -59,7 +59,8 @@ impl Renderable for Borders {
                                                     Format::ARgb32,
                                                     w as i32,
                                                     h as i32,
-                                                    stride);
+                                                    stride)
+            .expect("Could not make ImageSurface");
         Some(Borders {
             title: "".into(),
             surface: surface,
@@ -144,7 +145,8 @@ impl Renderable for Borders {
                                                     Format::ARgb32,
                                                     w as i32,
                                                     h as i32,
-                                                    stride);
+                                                    stride)
+            .expect("Could not create ImageSurface");
         self.geometry = geometry;
         self.surface = surface;
         Some(self)
