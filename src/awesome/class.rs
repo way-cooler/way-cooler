@@ -48,6 +48,14 @@ impl <'lua> ClassBuilder<'lua> {
         Ok(self)
     }
 
+    // TODO remove, do right
+    pub fn dummy_property(self, key: String, val: rlua::Value<'lua>) -> rlua::Result<Self> {
+        let meta = self.class.table.get_metatable()
+            .expect("Class had no meta table!");
+        meta.set(key, val)?;
+        Ok(self)
+    }
+
     pub fn save_class(mut self, name: &str)
                       -> rlua::Result<Self> {
         self.lua.globals().set(name, self.class.table)?;

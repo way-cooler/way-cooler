@@ -147,8 +147,8 @@ mod test {
         lua.eval(r#"
 assert(button0.button == 0)
 assert(button1.button == 0)
-button0.connect_signal("test", function(button) button.button = 3 end)
-button0.emit_signal("test")
+button0:connect_signal("test", function(button) button.button = 3 end)
+button0:emit_signal("test")
 assert(button1.button == 0)
 assert(button0.button == 3)
 "#, None).unwrap()
@@ -161,8 +161,8 @@ assert(button0.button == 3)
         lua.eval(r#"
 a_button = button()
 assert(a_button.button == 0)
-a_button.connect_signal("test", function(button) button.button = 2 end)
-a_button.emit_signal("test")
+a_button:connect_signal("test", function(button) button.button = 2 end)
+a_button:emit_signal("test")
 assert(a_button.button == 2)
 "#, None).unwrap()
     }
@@ -187,12 +187,12 @@ assert(a_button.button == 5)
         lua.eval(r#"
 button0 = button()
 assert(button0.button == 0)
-button0.connect_signal("test", function(button) button.button = 3 end)
-button0.emit_signal("test")
+button0:connect_signal("test", function(button) button.button = 3 end)
+button0:emit_signal("test")
 assert(button0.button == 3)
 button0.button = 0
-button0.disconnect_signal("test")
-button0.emit_signal("test")
+button0:disconnect_signal("test")
+button0:emit_signal("test")
 assert(button0.button == 0)
 "#, None).unwrap()
     }
@@ -205,10 +205,10 @@ assert(button0.button == 0)
             .unwrap();
         lua.eval(r#"
  assert(a_button.button == 0)
- a_button.connect_signal("test", function(button, num) button.button = num end)
- a_button.emit_signal("test", 5)
+ a_button:connect_signal("test", function(button, num) button.button = num end)
+ a_button:emit_signal("test", 5)
  assert(a_button.button == 5)
- a_button.emit_signal("test", 0)
+ a_button:emit_signal("test", 0)
  assert(a_button.button == 0)
  "#, None).unwrap()
     }
@@ -285,8 +285,8 @@ assert(a == 5)
         lua.eval::<()>(r#"
 a_button = button()
 hit = false
-a_button.connect_signal("property::modifiers", function(button) hit = true end)
-a_button.emit_signal("property::modifiers")
+a_button:connect_signal("property::modifiers", function(button) hit = true end)
+a_button:emit_signal("property::modifiers")
 assert(hit)
 hit = false
 assert(not hit)
@@ -304,8 +304,8 @@ assert(hit)
         lua.eval::<()>(r#"
 a_button = button()
 hit = false
-a_button.connect_signal("property::button", function(button) hit = true end)
-a_button.emit_signal("property::button")
+a_button:connect_signal("property::button", function(button) hit = true end)
+a_button:emit_signal("property::button")
 assert(hit)
 hit = false
 assert(not hit)

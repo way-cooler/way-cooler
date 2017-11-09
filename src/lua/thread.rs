@@ -147,9 +147,20 @@ pub fn init() -> Result<(), rlua::Error> {
                 lua.exec(init_contents.as_str(), Some("init.lua".into()))
                     .map(|_:()| info!("Read init.lua successfully"))
                     .or_else(|err| {
+                        match err {
+                            rlua::Error::RuntimeError(ref err) => {
+                                error!("{}", err);
+                            }
+                            rlua::Error::CallbackError{traceback: ref err, ref cause } => {
+                                error!("traceback: {}", err);
+                                error!("cause: {}", *cause)
+                            },
+                            err => {
+                                error!("init file error: {:?}", err);
+                            }
+                        }
                         // Keeping this an error, so that it is visible
                         // in release builds.
-                        error!("init file error: {:?}", err);
                         info!("Defaulting to pre-compiled init.lua");
                         lua.exec(init_path::DEFAULT_CONFIG,
                                  Some("init.lua <DEFAULT>".into()))
