@@ -131,10 +131,10 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
                     r *= alpha as u8;
                     g *= alpha as u8;
                     b *= alpha as u8;
-                    cairo_data[cairo_pixels_index] = a;
-                    cairo_data[cairo_pixels_index + 1] = r;
-                    cairo_data[cairo_pixels_index + 2] = g;
-                    cairo_data[cairo_pixels_index + 3] = b;
+                    cairo_data[cairo_pixels_index] = b;
+                    cairo_data[cairo_pixels_index + 1] = g;
+                    cairo_data[cairo_pixels_index + 2] = r;
+                    cairo_data[cairo_pixels_index + 3] = a;
                     pix_pixels_index += 4;
                     cairo_pixels_index += 4;
                 }
