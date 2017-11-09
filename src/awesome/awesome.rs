@@ -90,7 +90,6 @@ fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
 /// Load an image from the given path
 /// Returns either a cairo surface as light user data, nil and an error message
 fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lua>> {
-    // TODO Move to render module
     let pixbuf = Pixbuf::new_from_file(file_path.as_str())
         .map_err(|err| rlua::Error::RuntimeError(format!("{}", err)))?;
     let surface = render::load_surface_from_pixbuf(pixbuf);
