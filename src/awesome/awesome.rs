@@ -62,7 +62,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
            .method("xkb_get_group_names".into(), lua.create_function(xkb_get_group_names))?
            .method("restart".into(), lua.create_function(restart))?
            .method("load_image".into(), lua.create_function(load_image))?
-           .method("quit".into(), lua.create_function(dummy))
+           .method("quit".into(), lua.create_function(quit))
 }
 
 /// Registers a new X property
@@ -99,6 +99,11 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
     let surface_ptr = surface.to_glib_none().0;
     ::std::mem::forget(surface);
     rlua::LightUserData(surface_ptr as _).to_lua(lua)
+}
+
+fn quit<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
+    ::rustwlc::terminate();
+    Ok(())
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
