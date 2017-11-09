@@ -1,5 +1,8 @@
 //! TODO Fill in
 
+use gdk_pixbuf::Pixbuf;
+use glib::translate::ToGlibPtr;
+use cairo::{self, ImageSurface};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
@@ -58,7 +61,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
            .method("register_xproperty".into(), lua.create_function(register_xproperty))?
            .method("xkb_get_group_names".into(), lua.create_function(xkb_get_group_names))?
            .method("restart".into(), lua.create_function(restart))?
-           .method("load_image".into(), lua.create_function(dummy))?
+           .method("load_image".into(), lua.create_function(load_image))?
            .method("quit".into(), lua.create_function(dummy))
 }
 
@@ -82,6 +85,70 @@ fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
         warn!("Could not restart Lua thread {:#?}", err);
     }
     Ok(())
+}
+
+/// Load an image from the given path
+/// Returns either a cairo surface as light user data, nil and an error message
+fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lua>> {
+    // TODO Move to render module
+    let pixbuf = Pixbuf::new_from_file(file_path.as_str())
+        .map_err(|err| rlua::Error::RuntimeError(format!("{}", err)))?;
+    let width = pixbuf.get_width();
+    let height = pixbuf.get_height();
+    let channels = pixbuf.get_n_channels();
+    let pix_stride = pixbuf.get_rowstride() as usize;
+    // NOTE This is safe because we aren't modifying the bytes, but there's no immutable view
+    let pixels = unsafe { pixbuf.get_pixels() };
+    let format = if channels == 3 {cairo::Format::Rgb24} else { cairo::Format::ARgb32};
+    let mut surface = ImageSurface::create(format, width, height)
+        .expect("Could not create image of that size");
+    let cairo_stride = surface.get_stride() as usize;
+    {
+        let mut cairo_data = surface.get_data().unwrap();
+        let mut pix_pixels_index = 0;
+        let mut cairo_pixels_index = 0;
+        for _ in 0..height {
+            let mut pix_pixels_index2 = pix_pixels_index;
+            let mut cairo_pixels_index2 = cairo_pixels_index;
+            for _ in 0..width {
+                if channels == 3 {
+                    let r = pixels[pix_pixels_index2];
+                    let g = pixels[pix_pixels_index2 + 1];
+                    let b = pixels[pix_pixels_index2 + 2];
+                    cairo_data[cairo_pixels_index2] = b;
+                    cairo_data[cairo_pixels_index2 + 1] = g;
+                    cairo_data[cairo_pixels_index2 + 2] = r;
+                    pix_pixels_index2 += 3;
+                    // NOTE Four because of the alpha value we ignore
+                    cairo_pixels_index2 += 4;
+                } else {
+                    // TODO TEST THIS BRANCH
+                    let mut r = pixels[pix_pixels_index];
+                    let mut g = pixels[pix_pixels_index + 1];
+                    let mut b = pixels[pix_pixels_index + 2];
+                    let a = pixels[pix_pixels_index + 3];
+                    let alpha = a as f64 / 255.0;
+                    r *= alpha as u8;
+                    g *= alpha as u8;
+                    b *= alpha as u8;
+                    cairo_data[cairo_pixels_index] = a;
+                    cairo_data[cairo_pixels_index + 1] = r;
+                    cairo_data[cairo_pixels_index + 2] = g;
+                    cairo_data[cairo_pixels_index + 3] = b;
+                    pix_pixels_index += 4;
+                    cairo_pixels_index += 4;
+                }
+            }
+            pix_pixels_index += pix_stride;
+            cairo_pixels_index += cairo_stride;
+        }
+    }
+    surface.get_data().unwrap();
+    // UGH, I wanted to do to_glib_full, but that isn't defined apparently
+    // So now I have to ignore the lifetime completely and just forget about the surface.
+    let surface_ptr = surface.to_glib_none().0;
+    ::std::mem::forget(surface);
+    rlua::LightUserData(surface_ptr as _).to_lua(lua)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
