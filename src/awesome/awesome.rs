@@ -55,11 +55,33 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("register_xproperty".into(), lua.create_function(dummy))?
-           .method("xkb_get_group_names".into(), lua.create_function(dummy))?
-           .method("restart".into(), lua.create_function(dummy))?
+           .method("register_xproperty".into(), lua.create_function(register_xproperty))?
+           .method("xkb_get_group_names".into(), lua.create_function(xkb_get_group_names))?
+           .method("restart".into(), lua.create_function(restart))?
            .method("load_image".into(), lua.create_function(dummy))?
            .method("quit".into(), lua.create_function(dummy))
+}
+
+/// Registers a new X property
+/// This actually does nothing, since this is Wayland.
+fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
+    warn!("register_xproperty not supported");
+    Ok(())
+}
+
+/// Get layout short names
+fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
+    warn!("xkb_get_group_names not supported");
+    Ok(())
+}
+
+/// Restart Awesome by restarting the Lua thread
+fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
+    use lua::{self, LuaQuery};
+    if let Err(err) = lua::send(LuaQuery::Restart) {
+        warn!("Could not restart Lua thread {:#?}", err);
+    }
+    Ok(())
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
