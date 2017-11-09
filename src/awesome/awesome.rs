@@ -143,7 +143,6 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
             cairo_pixels_index += cairo_stride;
         }
     }
-    surface.get_data().unwrap();
     // UGH, I wanted to do to_glib_full, but that isn't defined apparently
     // So now I have to ignore the lifetime completely and just forget about the surface.
     let surface_ptr = surface.to_glib_none().0;
