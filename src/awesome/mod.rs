@@ -62,24 +62,12 @@ fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {
                             xdg_data_path.into_os_string().to_string_lossy()));
     package.set("cpath", cpath)?;
 
-    // NOTE We mock debug here because the actual debug library is super duper unsafe
-    // If we tried to load it ourselves, we cause segfaults which is sad.
-    let debug = lua.create_table();
-    debug.set("getinfo", lua.create_function(dummy_getinfo))?;
-    debug.set("traceback", lua.create_function(dummy))?;
-    globals.set("debug", debug)
-}
-
-fn dummy_getinfo<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<rlua::Table<'lua>> {
-    fn gsub<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<String> {
-        Ok("FIXME Install debug lib!".into())
+    // NOTE The debug library does some powerful reflection that can do crazy things,
+    // which is why it's unsafe to load.
+    unsafe {
+        lua.load_debug();
     }
-
-    let table = lua.create_table();
-    let call_table = lua.create_table();
-    call_table.set("gsub", lua.create_function(gsub))?;
-    table.set("source", call_table)?;
-    Ok(table)
+    Ok(())
 }
 
 pub fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
