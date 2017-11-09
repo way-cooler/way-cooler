@@ -65,6 +65,6 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
 
 impl_objectable!(Key, KeyState);
 
-fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
-    Ok(Key::new(lua)?.table)
+fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Object<'lua>> {
+    Key::new(lua)
 }

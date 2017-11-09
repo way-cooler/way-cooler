@@ -11,8 +11,7 @@ use super::property::Property;
 /// All Lua objects can be cast to this.
 #[derive(Clone, Debug)]
 pub struct Object<'lua> {
-    // TODO NO
-    pub table: Table<'lua>
+    table: Table<'lua>
 }
 
 impl <'lua> From<Table<'lua>> for Object<'lua> {

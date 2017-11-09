@@ -76,9 +76,10 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
 fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Result<ObjectBuilder<'lua>> {
     // TODO Do properly
     let table = lua.create_table();
-    table.set("drawable", rlua::Value::Table(Drawable::new(lua)?.table))?;
+    let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
+    table.set("drawable", drawable_table)?;
     builder.add_to_meta(table)
 }
-fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
-    Ok(Drawin::new(lua)?.table)
+fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Object<'lua>> {
+    Drawin::new(lua)
 }
