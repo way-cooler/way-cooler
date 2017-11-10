@@ -61,6 +61,8 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Fill in rest
     builder.method("connect_signal".into(), lua.create_function(connect_signal))?
+           .method("disconnect_signal".into(), lua.create_function(disconnect_signal))?
+           .method("emit_signal".into(), lua.create_function(emit_signal))?
            .method("register_xproperty".into(), lua.create_function(register_xproperty))?
            .method("xkb_get_group_names".into(), lua.create_function(xkb_get_group_names))?
            .method("restart".into(), lua.create_function(restart))?
@@ -74,6 +76,21 @@ fn connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function<'l
     let fake_object = lua.create_table();
     fake_object.set("signals", global_signals)?;
     signal::connect_signal(lua, fake_object.into(), name, &[func])
+}
+
+fn disconnect_signal<'lua>(lua: &'lua Lua, name: String) -> rlua::Result<()> {
+    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
+    let fake_object = lua.create_table();
+    fake_object.set("signals", global_signals)?;
+    signal::disconnect_signal(lua, fake_object.into(), name)
+}
+
+fn emit_signal<'lua>(lua: &'lua Lua, (name, args): (String, Value))
+                     -> rlua::Result<()> {
+    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
+    let fake_object = lua.create_table();
+    fake_object.set("signals", global_signals)?;
+    signal::emit_signal(lua, fake_object.into(), name, args)
 }
 
 /// Registers a new X property
