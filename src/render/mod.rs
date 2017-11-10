@@ -53,8 +53,8 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
                     cairo_data[cairo_pixels_index + 1] = g;
                     cairo_data[cairo_pixels_index + 2] = r;
                     cairo_data[cairo_pixels_index + 3] = a;
-                    pix_pixels_index += 4;
-                    cairo_pixels_index += 4;
+                    pix_pixels_index2 += 4;
+                    cairo_pixels_index2 += 4;
                 }
             }
             pix_pixels_index += pix_stride;
