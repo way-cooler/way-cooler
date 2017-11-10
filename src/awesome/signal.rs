@@ -4,7 +4,7 @@
 //! Signals are stored with the object in its metatable,
 //! the methods defined here are just to make it easier to use.
 
-use rlua::{self, Lua, ToLuaMulti, Table, Value, Function};
+use rlua::{self, Lua, ToLuaMulti, Value, Function};
 use super::Object;
 
 /// Connects functions to a signal. Creates a new entry in the table if it
@@ -12,7 +12,7 @@ use super::Object;
 pub fn connect_signal(lua: &Lua, obj: Object, name: String, funcs: &[Function])
                       -> rlua::Result<()>{
     let signals = obj.signals()?;
-    if let Ok(table) = signals.get::<_, Table>(name.as_str()) {
+    if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.as_str()) {
         let mut length = table.len()? + 1;
         for func in funcs {
             table.set(length, func.clone())?;
@@ -45,7 +45,7 @@ pub fn emit_signal<'lua, A>(_: &'lua Lua,
     let signals = obj.signals()?;
     trace!("Checking signal {}", name);
     let obj_table = obj.table();
-    if let Ok(table) = signals.get::<_, Table>(name) {
+    if let Ok(Value::Table(table)) = signals.get::<_, Value>(name) {
         for entry in table.pairs::<Value, Function>() {
             if let Ok((_, func)) = entry {
                 trace!("Found func for signal");

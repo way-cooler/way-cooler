@@ -9,6 +9,7 @@ use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::object::{Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
+use super::{GLOBAL_SIGNALS, signal};
 
 #[derive(Clone, Debug)]
 pub struct AwesomeState {
@@ -17,6 +18,9 @@ pub struct AwesomeState {
 }
 
 pub struct Awesome<'lua>(Table<'lua>);
+
+// TODO Not an object, remove this! It's a global
+impl_objectable!(Awesome, AwesomeState);
 
 impl Default for AwesomeState {
     fn default() -> Self {
@@ -55,14 +59,21 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
-    // TODO Do properly
-    use super::dummy;
-    builder.method("connect_signal".into(), lua.create_function(dummy))?
+    // TODO Fill in rest
+    builder.method("connect_signal".into(), lua.create_function(connect_signal))?
            .method("register_xproperty".into(), lua.create_function(register_xproperty))?
            .method("xkb_get_group_names".into(), lua.create_function(xkb_get_group_names))?
            .method("restart".into(), lua.create_function(restart))?
            .method("load_image".into(), lua.create_function(load_image))?
            .method("quit".into(), lua.create_function(quit))
+}
+
+fn connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function<'lua>))
+                        -> rlua::Result<()> {
+    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
+    let fake_object = lua.create_table();
+    fake_object.set("signals", global_signals)?;
+    signal::connect_signal(lua, fake_object.into(), name, &[func])
 }
 
 /// Registers a new X property
@@ -111,5 +122,3 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
            .dummy_property("themes_path".into(), "/usr/share/awesome/themes".to_lua(lua)?)?
            .dummy_property("conffile".into(), "".to_lua(lua)?)
 }
-
-impl_objectable!(Awesome, AwesomeState);
