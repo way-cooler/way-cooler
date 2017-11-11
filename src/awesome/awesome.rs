@@ -65,6 +65,8 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("connect_signal", lua.create_function(connect_signal))?;
     awesome_table.set("disconnect_signal", lua.create_function(disconnect_signal))?;
     awesome_table.set("emit_signal", lua.create_function(emit_signal))?;
+    awesome_table.set("xkb_set_layout_group", lua.create_function(xkb_set_layout_group))?;
+    awesome_table.set("xkb_get_layout_group", lua.create_function(xkb_get_layout_group))?;
     awesome_table.set("set_preferred_icon_size", lua.create_function(set_preferred_icon_size))?;
     awesome_table.set("register_xproperty", lua.create_function(register_xproperty))?;
     awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names))?;
@@ -184,5 +186,15 @@ fn set_xproperty(_: &Lua, _: Value) -> rlua::Result<()> {
 
 fn get_xproperty(_: &Lua, _: Value) -> rlua::Result<()> {
     warn!("get_xproperty not supported");
+    Ok(())
+}
+
+fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
+    warn!("xkb_set_layout_group not supported; Wait until wlroots");
+    Ok(())
+}
+
+fn xkb_get_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
+    warn!("xkb_get_layout_group not supported; Wait until wlroots");
     Ok(())
 }
