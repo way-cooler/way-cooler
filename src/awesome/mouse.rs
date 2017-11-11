@@ -3,7 +3,7 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua};
-use super::signal;
+use rustwlc::{Point, input};
 
 #[derive(Clone, Debug)]
 pub struct MouseState {
@@ -42,7 +42,7 @@ fn state_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 
 fn meta_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
     let meta_table = lua.create_table();
-    mouse_table.set("__tostring", lua.create_function(|_, val: Table| {
+    meta_table.set("__tostring", lua.create_function(|_, val: Table| {
         Ok(format!("{}", val.get::<_, MouseState>("__data")?))
     }))?;
     mouse_table.set_metatable(Some(meta_table));
@@ -50,5 +50,30 @@ fn meta_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 }
 
 fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
-    mouse_table.set("connect_signal", lua.create_function(signal::global_connect_signal))
+    mouse_table.set("coords", lua.create_function(coords))?;
+    Ok(())
+}
+
+
+fn coords<'lua>(lua: &'lua Lua, (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
+                -> rlua::Result<Table<'lua>> {
+    match coords {
+        rlua::Value::Table(coords) => {
+            let (x, y) = (coords.get("x")?, coords.get("y")?);
+            // TODO The ignore_enter is supposed to not send a send event to the client
+            // That's not possible, at least until wlroots is complete.
+            input::pointer::set_position(Point { x, y });
+            Ok(coords)
+        },
+        _ => {
+            // get the coords
+            let coords = lua.create_table();
+            let Point { x, y } = input::pointer::get_position();
+            coords.set("x", x)?;
+            coords.set("y", y)?;
+            // TODO It expects a table of what buttons were pressed.
+            coords.set("buttons", lua.create_table())?;
+            Ok(coords)
+        }
+    }
 }
