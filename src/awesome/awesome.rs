@@ -68,6 +68,8 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("set_preferred_icon_size", lua.create_function(set_preferred_icon_size))?;
     awesome_table.set("register_xproperty", lua.create_function(register_xproperty))?;
     awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names))?;
+    awesome_table.set("set_xproperty", lua.create_function(set_xproperty))?;
+    awesome_table.set("get_xproperty", lua.create_function(get_xproperty))?;
     awesome_table.set("restart", lua.create_function(restart))?;
     awesome_table.set("load_image", lua.create_function(load_image))?;
     awesome_table.set("sync", lua.create_function(sync))?;
@@ -173,3 +175,14 @@ fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
 
 /// No need to sync in Wayland
 fn sync(_: &Lua, _: ()) -> rlua::Result<()> { Ok(()) }
+
+
+fn set_xproperty(_: &Lua, _: Value) -> rlua::Result<()> {
+    warn!("set_xproperty not supported");
+    Ok(())
+}
+
+fn get_xproperty(_: &Lua, _: Value) -> rlua::Result<()> {
+    warn!("get_xproperty not supported");
+    Ok(())
+}
