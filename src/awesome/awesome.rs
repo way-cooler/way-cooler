@@ -53,6 +53,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names))?;
     awesome_table.set("restart", lua.create_function(restart))?;
     awesome_table.set("load_image", lua.create_function(load_image))?;
+    awesome_table.set("sync", lua.create_function(sync))?;
     awesome_table.set("exec", lua.create_function(exec))?;
     awesome_table.set("kill", lua.create_function(kill))?;
     awesome_table.set("quit", lua.create_function(quit))
@@ -145,3 +146,6 @@ fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
     ::rustwlc::terminate();
     Ok(())
 }
+
+/// No need to sync in Wayland
+fn sync(_, &Lua, _: ()) -> rlua::Result<()> { Ok(()) }
