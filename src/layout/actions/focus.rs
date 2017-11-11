@@ -53,6 +53,12 @@ impl LayoutTree {
                 _ => {}
             }
         }
+        if let Container::View { handle, floating, ..} = self.tree[node_ix] {
+            if floating {
+                handle.bring_to_front();
+            }
+            handle.focus();
+        }
         Ok(())
     }
     /// Focus on the container relative to the active container.
