@@ -1,5 +1,5 @@
 //! Awesome compatibilty modules
-use rlua::{self, Lua};
+use rlua::{self, Lua, Table};
 pub mod keygrabber;
 pub mod mousegrabber;
 pub mod awful;
@@ -22,11 +22,14 @@ pub use self::object::Object;
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 
+pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
+
 use std::env;
 use std::path::PathBuf;
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
-    set_up_awesome_path(lua)?;
+    setup_awesome_path(lua)?;
+    setup_global_signals(lua)?;
     button::init(lua)?;
     awesome::init(lua)?;
     key::init(lua)?;
@@ -43,11 +46,9 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     Ok(())
 }
 
-fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {
+fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
     let globals = lua.globals();
-    let package: rlua::Table = globals.get("package")?;
-    //let paths: String = package.get("path")?;
-    // TODO Do this right, I'm too lazy and just scrapped from my awesome env
+    let package: Table = globals.get("package")?;
     let mut path = package.get::<_, String>("path")?;
     let mut cpath = package.get::<_, String>("cpath")?;
     let mut xdg_data_path: PathBuf = env::var("XDG_DATA_DIRS").unwrap_or("/usr/share".into()).into();
@@ -68,6 +69,14 @@ fn set_up_awesome_path(lua: &Lua) -> rlua::Result<()> {
         lua.load_debug();
     }
     Ok(())
+}
+
+/// Set up global signals value
+///
+/// We need to store this in Lua, because this make it safer to use.
+fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
+    let globals = lua.globals();
+    globals.set::<_, Table>(GLOBAL_SIGNALS, lua.create_table())
 }
 
 pub fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }

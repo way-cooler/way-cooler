@@ -20,6 +20,8 @@ extern crate petgraph;
 extern crate uuid;
 extern crate dbus;
 extern crate cairo;
+extern crate gdk_pixbuf;
+extern crate glib;
 #[macro_use]
 extern crate wayland_sys;
 extern crate wayland_server;

@@ -26,7 +26,9 @@ uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
 wayland-sys = { version = "0.9.1", features = ["client", "dlopen"] }
 wayland-server = { version = "0.9.1" }
 getopts = "0.2"
-cairo-rs = "0.1.1"
+cairo-rs = "0.2.*"
+gdk-pixbuf = "0.2.*"
+glib = "0.3.*"
 xcb = "0.8.1"
 
 [dev-dependencies]
