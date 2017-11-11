@@ -5,6 +5,9 @@ use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua};
 use rustwlc::{Point, input};
 
+const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
+const NEWINDEX_MISS_FUNCTION: &'static str = "__newindex_miss_function";
+
 #[derive(Clone, Debug)]
 pub struct MouseState {
     // TODO Fill in
@@ -51,6 +54,8 @@ fn meta_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 
 fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
     mouse_table.set("coords", lua.create_function(coords))?;
+    mouse_table.set("set_index_miss_handler", lua.create_function(set_index_miss))?;
+    mouse_table.set("set_newindex_miss_handler", lua.create_function(set_newindex_miss))?;
     Ok(())
 }
 
@@ -76,4 +81,12 @@ fn coords<'lua>(lua: &'lua Lua, (coords, _ignore_enter): (rlua::Value<'lua>, rlu
             Ok(coords)
         }
     }
+}
+
+fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
+    lua.globals().get::<_, Table>("button")?.set(INDEX_MISS_FUNCTION, func)
+}
+
+fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
+    lua.globals().get::<_, Table>("button")?.set(NEWINDEX_MISS_FUNCTION, func)
 }
