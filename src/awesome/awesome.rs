@@ -16,14 +16,13 @@ use super::{GLOBAL_SIGNALS, signal};
 // just store it in Lua (hence the UserData trait)
 #[derive(Clone, Debug)]
 pub struct AwesomeState {
-    // TODO Fill in
-    dummy: i32
+    preferred_icon_size: u32
 }
 
 impl Default for AwesomeState {
     fn default() -> Self {
         AwesomeState {
-            dummy: 0
+            preferred_icon_size: 0
         }
     }
 }
@@ -38,10 +37,15 @@ impl UserData for AwesomeState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let awesome_table = lua.create_table();
+    state_setup(lua, &awesome_table)?;
     method_setup(lua, &awesome_table)?;
     property_setup(lua, &awesome_table)?;
     let globals = lua.globals();
     globals.set("awesome", awesome_table)
+}
+
+fn state_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
+    awesome_table.set("__data", AwesomeState::default().to_lua(lua)?)
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
@@ -49,6 +53,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("connect_signal", lua.create_function(connect_signal))?;
     awesome_table.set("disconnect_signal", lua.create_function(disconnect_signal))?;
     awesome_table.set("emit_signal", lua.create_function(emit_signal))?;
+    awesome_table.set("set_preferred_icon_size", lua.create_function(set_preferred_icon_size))?;
     awesome_table.set("register_xproperty", lua.create_function(register_xproperty))?;
     awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names))?;
     awesome_table.set("restart", lua.create_function(restart))?;
@@ -142,10 +147,17 @@ fn kill(_: &Lua, (pid, sig): (libc::pid_t, libc::c_int)) -> rlua::Result<bool> {
     Ok(nix::sys::signal::kill(pid, sig).is_ok())
 }
 
+fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
+    let mut awesome_state: AwesomeState = lua.globals().get::<_, Table>("awesome")?.get("__data")?;
+    awesome_state.preferred_icon_size = val;
+    lua.globals().get::<_, Table>("awesome")?.set("__data", awesome_state.to_lua(lua)?)
+
+}
+
 fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
     ::rustwlc::terminate();
     Ok(())
 }
 
 /// No need to sync in Wayland
-fn sync(_, &Lua, _: ()) -> rlua::Result<()> { Ok(()) }
+fn sync(_: &Lua, _: ()) -> rlua::Result<()> { Ok(()) }
