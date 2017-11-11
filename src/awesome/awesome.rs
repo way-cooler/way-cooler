@@ -65,6 +65,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("connect_signal", lua.create_function(connect_signal))?;
     awesome_table.set("disconnect_signal", lua.create_function(disconnect_signal))?;
     awesome_table.set("emit_signal", lua.create_function(emit_signal))?;
+    awesome_table.set("xrdb_get_value", lua.create_function(xrdb_get_value))?;
     awesome_table.set("xkb_set_layout_group", lua.create_function(xkb_set_layout_group))?;
     awesome_table.set("xkb_get_layout_group", lua.create_function(xkb_get_layout_group))?;
     awesome_table.set("set_preferred_icon_size", lua.create_function(set_preferred_icon_size))?;
@@ -196,5 +197,10 @@ fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
 
 fn xkb_get_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
     warn!("xkb_get_layout_group not supported; Wait until wlroots");
+    Ok(())
+}
+
+fn xrdb_get_value(_: &Lua, _: Value) -> rlua::Result<()> {
+    warn!("xrdb_get_value not supported");
     Ok(())
 }
