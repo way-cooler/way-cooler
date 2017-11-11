@@ -1,5 +1,6 @@
 //! TODO Fill in
 
+use nix::{self, libc};
 use render;
 use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
@@ -53,6 +54,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("restart", lua.create_function(restart))?;
     awesome_table.set("load_image", lua.create_function(load_image))?;
     awesome_table.set("exec", lua.create_function(exec))?;
+    awesome_table.set("kill", lua.create_function(kill))?;
     awesome_table.set("quit", lua.create_function(quit))
 }
 
@@ -130,6 +132,13 @@ fn exec(_: &Lua, command: String) -> rlua::Result<()> {
             .expect("Could not spawn command")
     }).expect("Unable to spawn thread");
     Ok(())
+}
+
+/// Kills a PID with the given signal
+///
+/// Returns false if it could not send the signal to that process
+fn kill(_: &Lua, (pid, sig): (libc::pid_t, libc::c_int)) -> rlua::Result<bool> {
+    Ok(nix::sys::signal::kill(pid, sig).is_ok())
 }
 
 fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
