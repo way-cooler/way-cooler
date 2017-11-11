@@ -4,8 +4,8 @@
 //! Signals are stored with the object in its metatable,
 //! the methods defined here are just to make it easier to use.
 
-use rlua::{self, Lua, ToLuaMulti, Value, Function};
-use super::Object;
+use rlua::{self, Lua, Table, ToLuaMulti, Value, Function};
+use super::{GLOBAL_SIGNALS, Object};
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
@@ -55,4 +55,31 @@ pub fn emit_signal<'lua, A>(_: &'lua Lua,
         }
     }
     Ok(())
+}
+
+
+/// Connect the function to the named signal in the global signal list.
+pub fn global_connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function<'lua>))
+                        -> rlua::Result<()> {
+    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
+    let fake_object = lua.create_table();
+    fake_object.set("signals", global_signals)?;
+    connect_signal(lua, fake_object.into(), name, &[func])
+}
+
+/// Disconnect the function from the named signal in the global signal list.
+pub fn global_disconnect_signal<'lua>(lua: &'lua Lua, name: String) -> rlua::Result<()> {
+    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
+    let fake_object = lua.create_table();
+    fake_object.set("signals", global_signals)?;
+    disconnect_signal(lua, fake_object.into(), name)
+}
+
+/// Emit the signal with the given name from the global signal list.
+pub fn global_emit_signal<'lua>(lua: &'lua Lua, (name, args): (String, Value))
+                     -> rlua::Result<()> {
+    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
+    let fake_object = lua.create_table();
+    fake_object.set("signals", global_signals)?;
+    emit_signal(lua, fake_object.into(), name, args)
 }
