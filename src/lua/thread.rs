@@ -330,7 +330,11 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
             let code = format!("__key_map['{}']()", press_ix);
             match lua.exec::<()>(&code, Some(&format!("{}", press))) {
                 Err(error) => {
-                    warn!("Error handling {}: {:?}", &press, error);
+                    if let rlua::Error::RuntimeError(ref err) = error {
+                        warn!("Error handling {}:\n {}", press, err);
+                    } else {
+                        warn!("Error handling {}: {:?}", press, error);
+                    }
                     thread_send(request.reply, LuaResponse::Error(error));
                 }
                 Ok(_) => {

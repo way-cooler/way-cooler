@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::{GLOBAL_SIGNALS, signal};
+use super::signal;
 
 #[derive(Clone, Debug)]
 pub struct AwesomeState {
@@ -59,9 +59,9 @@ fn meta_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
 
 fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
     // TODO Fill in rest
-    awesome_table.set("connect_signal", lua.create_function(connect_signal))?;
-    awesome_table.set("disconnect_signal", lua.create_function(disconnect_signal))?;
-    awesome_table.set("emit_signal", lua.create_function(emit_signal))?;
+    awesome_table.set("connect_signal", lua.create_function(signal::global_connect_signal))?;
+    awesome_table.set("disconnect_signal", lua.create_function(signal::global_disconnect_signal))?;
+    awesome_table.set("emit_signal", lua.create_function(signal::global_emit_signal))?;
     awesome_table.set("xrdb_get_value", lua.create_function(xrdb_get_value))?;
     awesome_table.set("xkb_set_layout_group", lua.create_function(xkb_set_layout_group))?;
     awesome_table.set("xkb_get_layout_group", lua.create_function(xkb_get_layout_group))?;
@@ -83,29 +83,6 @@ fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Re
     awesome_table.set("version", "0".to_lua(lua)?)?;
     awesome_table.set("themes_path", "/usr/share/awesome/themes".to_lua(lua)?)?;
     awesome_table.set("conffile", "".to_lua(lua)?)
-}
-
-fn connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function<'lua>))
-                        -> rlua::Result<()> {
-    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table();
-    fake_object.set("signals", global_signals)?;
-    signal::connect_signal(lua, fake_object.into(), name, &[func])
-}
-
-fn disconnect_signal<'lua>(lua: &'lua Lua, name: String) -> rlua::Result<()> {
-    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table();
-    fake_object.set("signals", global_signals)?;
-    signal::disconnect_signal(lua, fake_object.into(), name)
-}
-
-fn emit_signal<'lua>(lua: &'lua Lua, (name, args): (String, Value))
-                     -> rlua::Result<()> {
-    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table();
-    fake_object.set("signals", global_signals)?;
-    signal::emit_signal(lua, fake_object.into(), name, args)
 }
 
 /// Registers a new X property
