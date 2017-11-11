@@ -38,6 +38,7 @@ impl UserData for AwesomeState {}
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let awesome_table = lua.create_table();
     state_setup(lua, &awesome_table)?;
+    meta_setup(lua, &awesome_table)?;
     method_setup(lua, &awesome_table)?;
     property_setup(lua, &awesome_table)?;
     let globals = lua.globals();
@@ -46,6 +47,17 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 
 fn state_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
     awesome_table.set("__data", AwesomeState::default().to_lua(lua)?)
+}
+
+fn meta_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
+    let meta_table = awesome_table.get_metatable().unwrap_or_else(|| {
+        let table = lua.create_table();
+        awesome_table.set_metatable(Some(table.clone()));
+        table
+    });
+    meta_table.set("__tostring", lua.create_function(|_, val: Table| {
+        Ok(format!("{}", val.get::<_, AwesomeState>("__data")?))
+    }))
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
