@@ -4,6 +4,8 @@ use render;
 use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
 use std::fmt::{self, Display, Formatter};
+use std::process::{Command, Stdio};
+use std::thread;
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::{GLOBAL_SIGNALS, signal};
@@ -50,6 +52,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names))?;
     awesome_table.set("restart", lua.create_function(restart))?;
     awesome_table.set("load_image", lua.create_function(load_image))?;
+    awesome_table.set("exec", lua.create_function(exec))?;
     awesome_table.set("quit", lua.create_function(quit))
 }
 
@@ -118,7 +121,18 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
     rlua::LightUserData(surface_ptr as _).to_lua(lua)
 }
 
-fn quit<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
+fn exec(_: &Lua, command: String) -> rlua::Result<()> {
+    trace!("exec: \"{}\"", command);
+    thread::Builder::new().name(command.clone()).spawn(|| {
+        Command::new(command)
+            .stdout(Stdio::null())
+            .spawn()
+            .expect("Could not spawn command")
+    }).expect("Unable to spawn thread");
+    Ok(())
+}
+
+fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
     ::rustwlc::terminate();
     Ok(())
 }
