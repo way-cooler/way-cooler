@@ -11,9 +11,6 @@ use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::{GLOBAL_SIGNALS, signal};
 
-// TODO This isn't used yet, but it will be eventually.
-// It'll all be "global" values though, so we'll probably
-// just store it in Lua (hence the UserData trait)
 #[derive(Clone, Debug)]
 pub struct AwesomeState {
     preferred_icon_size: u32
