@@ -5,22 +5,17 @@ use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::object::{Object, Objectable};
-use super::class::{self, Class, ClassBuilder};
 use super::{GLOBAL_SIGNALS, signal};
 
+// TODO This isn't used yet, but it will be eventually.
+// It'll all be "global" values though, so we'll probably
+// just store it in Lua (hence the UserData trait)
 #[derive(Clone, Debug)]
 pub struct AwesomeState {
     // TODO Fill in
     dummy: i32
 }
-
-pub struct Awesome<'lua>(Table<'lua>);
-
-// TODO Not an object, remove this! It's a global
-impl_objectable!(Awesome, AwesomeState);
 
 impl Default for AwesomeState {
     fn default() -> Self {
@@ -30,44 +25,39 @@ impl Default for AwesomeState {
     }
 }
 
-impl <'lua> Awesome<'lua> {
-    fn new(lua: &Lua) -> rlua::Result<Object> {
-        // TODO FIXME
-        let class = class::button_class(lua)?;
-        Ok(Awesome::allocate(lua, class)?.build())
-    }
-}
-
 impl Display for AwesomeState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "Awesome: {:p}", self)
     }
 }
 
-impl <'lua> ToLua<'lua> for Awesome<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
 impl UserData for AwesomeState {}
 
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, Some(Rc::new(Awesome::new)), None, None)?)?)?
-        .save_class("awesome")?
-        .build()
+pub fn init(lua: &Lua) -> rlua::Result<()> {
+    let awesome_table = lua.create_table();
+    method_setup(lua, &awesome_table)?;
+    property_setup(lua, &awesome_table)?;
+    let globals = lua.globals();
+    globals.set("awesome", awesome_table)
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
     // TODO Fill in rest
-    builder.method("connect_signal".into(), lua.create_function(connect_signal))?
-           .method("disconnect_signal".into(), lua.create_function(disconnect_signal))?
-           .method("emit_signal".into(), lua.create_function(emit_signal))?
-           .method("register_xproperty".into(), lua.create_function(register_xproperty))?
-           .method("xkb_get_group_names".into(), lua.create_function(xkb_get_group_names))?
-           .method("restart".into(), lua.create_function(restart))?
-           .method("load_image".into(), lua.create_function(load_image))?
-           .method("quit".into(), lua.create_function(quit))
+    awesome_table.set("connect_signal", lua.create_function(connect_signal))?;
+    awesome_table.set("disconnect_signal", lua.create_function(disconnect_signal))?;
+    awesome_table.set("emit_signal", lua.create_function(emit_signal))?;
+    awesome_table.set("register_xproperty", lua.create_function(register_xproperty))?;
+    awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names))?;
+    awesome_table.set("restart", lua.create_function(restart))?;
+    awesome_table.set("load_image", lua.create_function(load_image))?;
+    awesome_table.set("quit", lua.create_function(quit))
+}
+
+fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
+    // TODO Do properly
+    awesome_table.set("version", "0".to_lua(lua)?)?;
+    awesome_table.set("themes_path", "/usr/share/awesome/themes".to_lua(lua)?)?;
+    awesome_table.set("conffile", "".to_lua(lua)?)
 }
 
 fn connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function<'lua>))
@@ -131,11 +121,4 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
 fn quit<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     ::rustwlc::terminate();
     Ok(())
-}
-
-fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
-    // TODO Do properly
-    builder.dummy_property("version".into(), "0".to_lua(lua)?)?
-           .dummy_property("themes_path".into(), "/usr/share/awesome/themes".to_lua(lua)?)?
-           .dummy_property("conffile".into(), "".to_lua(lua)?)
 }
