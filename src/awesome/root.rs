@@ -26,7 +26,7 @@ impl Default for RootState {
 impl <'lua> Root<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         // TODO FIXME
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "root")?;
         Ok(Root::allocate(lua, class)?.build())
     }
 }

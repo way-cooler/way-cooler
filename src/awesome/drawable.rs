@@ -25,7 +25,7 @@ impl Default for DrawableState {
 
 impl <'lua> Drawable<'lua> {
     pub fn new(lua: &Lua) -> rlua::Result<Object> {
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "drawable")?;
         Ok(Drawable::allocate(lua, class)?.build())
     }
 }

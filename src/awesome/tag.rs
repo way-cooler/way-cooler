@@ -25,7 +25,7 @@ impl Default for TagState {
 
 impl <'lua> Tag<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "tag")?;
         Ok(Tag::allocate(lua, class)?.build())
     }
 }

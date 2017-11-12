@@ -25,7 +25,7 @@ impl Default for ScreenState {
 
 impl <'lua> Screen<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "screen")?;
         Ok(Screen::allocate(lua, class)?.build())
     }
 }

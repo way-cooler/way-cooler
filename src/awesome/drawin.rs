@@ -48,7 +48,7 @@ impl Display for DrawinState {
 impl <'lua> Drawin<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         // TODO FIXME
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "drawin")?;
         Ok(object_setup(lua, Drawin::allocate(lua, class)?)?.build())
     }
 }

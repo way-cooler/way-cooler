@@ -116,6 +116,13 @@ impl <'lua> Class<'lua> {
         })
     }
 
+    pub fn allocate(&self, lua: &'lua Lua) -> rlua::Result<Object<'lua>> {
+        let class = self.table.get::<_, ClassState>("data")?;
+        class.allocator
+            .ok_or_else(|| rlua::Error::RuntimeError("Allocator not available".into()))
+            .and_then(|allocator| allocator(lua))
+    }
+
     #[allow(dead_code)]
     pub fn properties(&self) -> rlua::Result<Table<'lua>> {
         self.table.get("properties")
@@ -164,8 +171,8 @@ fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (Table, Function
     Ok(())
 }
 
-pub fn button_class(lua: &Lua) -> rlua::Result<Class> {
-    let table = lua.globals().get::<_, Table>("button")
+pub fn class_setup<'lua>(lua: &'lua Lua, name: &str) -> rlua::Result<Class<'lua>> {
+    let table = lua.globals().get::<_, Table>(name)
         .expect("Button class was not set! Did you call button::init?");
     assert!(table.get::<_, AnyUserData>("data")?.is::<ClassState>(),
             "This table was not a class!");

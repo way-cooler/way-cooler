@@ -37,7 +37,7 @@ impl UserData for ButtonState {}
 
 impl <'lua> Button<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "button")?;
         Ok(Button::allocate(lua, class)?.build())
     }
 

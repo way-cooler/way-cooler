@@ -24,7 +24,7 @@ impl Default for ClientState {
 
 impl <'lua> Client<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "client")?;
         Ok(Client::allocate(lua, class)?.build())
     }
 }
