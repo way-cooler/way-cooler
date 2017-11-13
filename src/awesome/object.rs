@@ -80,6 +80,10 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         self.get_table().get::<_, Table>("data")?.get::<_, S>("data")
     }
 
+    fn set_state(&self, data: S) -> rlua::Result<()> {
+        self.get_table().get::<_, Table>("data")?.set("data", data)
+    }
+
     /// Gets the internal table for the concrete object.
     /// Used internally by cast, though there's nothing wrong with it being
     /// used outside of internal object use.
