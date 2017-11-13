@@ -1,24 +1,35 @@
 //! TODO Fill in
 
+use cairo::{Format, ImageSurface};
+use glib::translate::ToGlibPtr;
+use rustwlc::Geometry;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
 use super::object::{Object, Objectable};
-use super::class::{self, Class, ClassBuilder};
+use super::class::{self, Class};
+use super::property::Property;
 
 #[derive(Clone, Debug)]
 pub struct DrawableState {
-    // TODO Fill in
-    dummy: i32
+    // TODO Pixmap?
+    pub surface: Option<ImageSurface>,
+    geo: Geometry,
+    refreshed: bool,
+    // TODO Refresh callback
 }
 
 pub struct Drawable<'lua>(Table<'lua>);
 
+impl_objectable!(Drawable, DrawableState);
+
 impl Default for DrawableState {
     fn default() -> Self {
         DrawableState {
-            dummy: 0
+            surface: None,
+            geo: Geometry::zero(),
+            refreshed: false
         }
     }
 }
@@ -27,6 +38,45 @@ impl <'lua> Drawable<'lua> {
     pub fn new(lua: &Lua) -> rlua::Result<Object> {
         let class = class::class_setup(lua, "drawable")?;
         Ok(Drawable::allocate(lua, class)?.build())
+    }
+
+    pub fn get_geometry(&self) -> rlua::Result<Geometry> {
+        let drawable = self.state()?;
+        Ok(drawable.geo)
+    }
+
+    pub fn get_surface(&self) -> rlua::Result<Value<'lua>> {
+        let drawable = self.state()?;
+        Ok(match drawable.surface {
+            None => Value::Nil,
+            Some(ref surface) => {
+                let stash = surface.to_glib_none();
+                let ptr = stash.0 as _;
+                // So that it lives _forever_ heheheh.
+                ::std::mem::forget(stash);
+                Value::LightUserData(LightUserData(ptr))
+            }
+        })
+    }
+
+    /// Sets the geometry, and allocates a new surface.
+    pub fn set_geometry(&mut self, geometry: Geometry) -> rlua::Result<()> {
+        use rlua::Error::RuntimeError;
+        let mut drawable = self.state()?;
+        let size_changed = drawable.geo != geometry;
+        drawable.geo = geometry;
+        if size_changed {
+            drawable.surface = None;
+            let size = geometry.size;
+            if size.w > 0 && size.h > 0 {
+                drawable.surface = Some(ImageSurface::create(Format::ARgb32,
+                                                        size.w as i32,
+                                                        size.h as i32)
+                    .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?);
+                // TODO emity property::surface
+            }
+        }
+        self.set_state(drawable)
     }
 }
 
@@ -45,20 +95,32 @@ impl <'lua> ToLua<'lua> for Drawable<'lua> {
 impl UserData for DrawableState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, Some(Rc::new(Drawable::new)), None, None)?)?
+    Class::builder(lua, Some(Rc::new(Drawable::new)), None, None)?
+        .method("geometry".into(), lua.create_function(geometry))?
+        .property(Property::new("surface".into(),
+                                None,
+                                Some(lua.create_function(get_surface)),
+                                None))?
         .save_class("drawable")?
         .build()
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
-    // TODO Do properly
-    use super::dummy;
-    builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("__call".into(), lua.create_function(dummy_create))
+
+fn get_surface<'lua>(_: &'lua Lua, table: Table<'lua>) -> rlua::Result<Value<'lua>> {
+    let drawable = Drawable::cast(table.clone().into())?;
+    drawable.get_surface()
 }
 
-impl_objectable!(Drawable, DrawableState);
-
-fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
-    Ok(lua.create_table())
+fn geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
+    use rustwlc::{Point, Size};
+    let drawable = Drawable::cast(table.into())?;
+    let geometry = drawable.get_geometry()?;
+    let Point { x, y } = geometry.origin;
+    let Size { w, h } = geometry.size;
+    let table = lua.create_table();
+    table.set("x", x)?;
+    table.set("y", y)?;
+    table.set("width", w)?;
+    table.set("height", h)?;
+    Ok(table)
 }
