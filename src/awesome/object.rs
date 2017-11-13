@@ -60,7 +60,7 @@ impl <'lua> ObjectBuilder<'lua> {
 /// canonical form using this trait.
 pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
-        let data = obj.table.get::<_, AnyUserData>("data")?;
+        let data = obj.table.get::<_, Table>("data")?.get::<_, AnyUserData>("data")?;
         if data.is::<S>() {
             Ok(Self::_wrap(obj.table))
         } else {
@@ -77,7 +77,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn _wrap(table: Table<'lua>) -> T;
 
     fn state(&self) -> rlua::Result<S> {
-        self.get_table().get::<_, S>("data")
+        self.get_table().get::<_, Table>("data")?.get::<_, S>("data")
     }
 
     /// Gets the internal table for the concrete object.
@@ -88,8 +88,14 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn allocate(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>>
     {
         let object = S::default();
+        // TODO FIXME
+        // we put a wrapper table here,
+        // but in awesome they use lua_setuservalue.
+        // I don't think this is equivilent...it just forces things to "work"
+        let wrapper_table = lua.create_table();
+        wrapper_table.set("data", object)?;
         let object_table = lua.create_table();
-        object_table.set("data", object)?;
+        object_table.set("data", wrapper_table)?;
         let meta = lua.create_table();
         meta.set("__class", class)?;
         meta.set("signals", lua.create_table())?;
@@ -101,7 +107,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         meta.set("__index", lua.create_function(default_index))?;
         meta.set("__newindex", lua.create_function(default_newindex))?;
         meta.set("__tostring", lua.create_function(|_, object_table: Table| {
-            Ok(format!("{}", object_table.get::<_, S>("data")?))
+            Ok(format!("{}", object_table.get::<_, Table>("data")?.get::<_, S>("data")?))
         }))?;
         object_table.set_metatable(Some(meta));
         let object = Object { table: object_table };

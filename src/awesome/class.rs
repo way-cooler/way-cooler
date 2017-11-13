@@ -116,13 +116,6 @@ impl <'lua> Class<'lua> {
         })
     }
 
-    pub fn allocate(&self, lua: &'lua Lua) -> rlua::Result<Object<'lua>> {
-        let class = self.table.get::<_, ClassState>("data")?;
-        class.allocator
-            .ok_or_else(|| rlua::Error::RuntimeError("Allocator not available".into()))
-            .and_then(|allocator| allocator(lua))
-    }
-
     #[allow(dead_code)]
     pub fn properties(&self) -> rlua::Result<Table<'lua>> {
         self.table.get("properties")
