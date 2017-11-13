@@ -116,6 +116,7 @@ impl <'lua> Class<'lua> {
         })
     }
 
+
     #[allow(dead_code)]
     pub fn properties(&self) -> rlua::Result<Table<'lua>> {
         self.table.get("properties")

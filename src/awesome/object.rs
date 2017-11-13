@@ -39,6 +39,15 @@ impl <'lua> ObjectBuilder<'lua> {
         Ok(self)
     }
 
+    pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
+        let meta = self.object.table.get_metatable()
+            .expect("Object had no meta table!");
+        let properties = meta.get::<_, Table>("properties")?;
+        let length = properties.len().unwrap_or(0) + 1;
+        properties.set(length, prop)?;
+        Ok(self)
+    }
+
     #[allow(dead_code)]
     pub fn add_to_signals(self, name: String, func: rlua::Function)
                           -> rlua::Result<Self> {
@@ -102,6 +111,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         object_table.set("data", wrapper_table)?;
         let meta = lua.create_table();
         meta.set("__class", class)?;
+        meta.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         meta.set("signals", lua.create_table())?;
         meta.set("connect_signal",
                  lua.create_function(connect_signal))?;
