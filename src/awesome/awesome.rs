@@ -93,9 +93,11 @@ fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
 }
 
 /// Get layout short names
-fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
+fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<String> {
     warn!("xkb_get_group_names not supported");
-    Ok(())
+    warn!("Returning dummy data so I can move forward");
+    warn!("Replace me before release!");
+    Ok("pc+us+inet(evdev)".into())
 }
 
 /// Restart Awesome by restarting the Lua thread
@@ -169,9 +171,11 @@ fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
     Ok(())
 }
 
-fn xkb_get_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
+fn xkb_get_layout_group(_: &Lua, _: ()) -> rlua::Result<i32> {
     warn!("xkb_get_layout_group not supported; Wait until wlroots");
-    Ok(())
+    warn!("Returning dummy data so I can move forward");
+    warn!("Replace me before release!");
+    Ok(0)
 }
 
 fn xrdb_get_value(lua: &Lua, (_resource_class, resource_name): (String, String))
