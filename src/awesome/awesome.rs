@@ -94,10 +94,33 @@ fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
 
 /// Get layout short names
 fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<String> {
+    use std::process::{Stdio, Command};
+    // TODO FIXME wow this is _really_ _really_ dumb.
+    // like really dumb
+    // but not sure how else to do this to communicate to xwayland...
     warn!("xkb_get_group_names not supported");
-    warn!("Returning dummy data so I can move forward");
-    warn!("Replace me before release!");
-    Ok("pc+us+inet(evdev)".into())
+    warn!("Doing a bad hack now");
+    warn!("Fix me before release!");
+    // This should be a function, not a whole freaking command!
+    Ok(Command::new("/usr/bin/setxkbmap").arg("-v").arg("-query")
+        .stdout(Stdio::piped())
+        .spawn()
+        .map(|child| {
+            child.wait_with_output().ok().and_then(|output| {
+                let stdout = String::from_utf8(output.stdout)
+                    .expect("Output was not utf8");
+                for line in stdout.lines() {
+                    if line.contains("symbols:") {
+                        let last = line.split(" ").last().unwrap();
+                        return Some(last.trim().into())
+                    }
+                }
+                None
+            })
+        }).unwrap_or_else(|err| {
+            warn!("err: {:#?}", err);
+            Some("pc+us+inet(evdev)".into())
+        }).unwrap())
 }
 
 /// Restart Awesome by restarting the Lua thread
