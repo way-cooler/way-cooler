@@ -29,7 +29,7 @@ getopts = "0.2"
 cairo-rs = "0.2.*"
 gdk-pixbuf = "0.2.*"
 glib = "0.3.*"
-xcb = "0.8.1"
+xcb = { version = "0.8.1", features = ["xkb"] }
 
 [dev-dependencies]
 dummy-rustwlc = "0.7.0"

@@ -94,7 +94,29 @@ fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
 
 /// Get layout short names
 fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<String> {
-    use std::process::{Stdio, Command};
+    use xcb::{xkb, Connection};
+    use std::os::unix::io::AsRawFd;
+    // TODO Init somewhere else
+    let con = Connection::connect(None/*Some("wayland-0")*/).unwrap().0;
+    // Tell xcb we are using the xkb extension
+    {
+        let cookie = xkb::use_extension(&con, 1, 0);
+
+        match cookie.get_reply() {
+            Ok(r) => {
+                if !r.supported() {
+                    panic!("xkb-1.0 is not supported");
+                }
+            },
+            Err(_) => {
+                panic!("could not get xkb extension supported version");
+            }
+        };
+    }
+    let id = xkb::ID_USE_CORE_KBD as _;
+    let names_cookie = xkb::get_names_unchecked(&con, id, xkb::NAME_DETAIL_SYMBOLS);
+    let names_r = names_cookie.get_reply().unwrap();
+    /*use std::process::{Stdio, Command};
     // TODO FIXME wow this is _really_ _really_ dumb.
     // like really dumb
     // but not sure how else to do this to communicate to xwayland...
@@ -121,6 +143,8 @@ fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<String> {
             warn!("err: {:#?}", err);
             Some("pc+us+inet(evdev)".into())
         }).unwrap())
+        */
+    Ok("pc+us+inet(evdev)".into())
 }
 
 /// Restart Awesome by restarting the Lua thread
