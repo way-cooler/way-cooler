@@ -2,18 +2,21 @@ use std::ops::{Deref, DerefMut};
 use rustwlc::Geometry;
 use super::super::borders::Borders;
 use ::render::{BaseDraw, Drawable, DrawErr};
+use super::super::container::Layout;
 
 /// Draws the borders around the container.
 /// The only borders that are drawn are for the title bars, as the individual
 /// edge borders are handled by the child views.
 pub struct ContainerDraw {
     base: BaseDraw<Borders>,
+    layout: Layout,
 }
 
 impl ContainerDraw {
-    pub fn new(base: BaseDraw<Borders>) -> Self {
+    pub fn new(base: BaseDraw<Borders>, layout: Layout) -> Self {
         ContainerDraw {
-            base
+            base,
+            layout,
         }
     }
 
@@ -24,7 +27,6 @@ impl ContainerDraw {
         let title_size = Borders::title_bar_size() as f64;
         let title_color = self.base.inner().title_background_color();
         let title_font_color = self.base.inner().title_font_color();
-        let title: String = self.inner().title().into();
         if x < 0.0 {
             w += x;
         }
@@ -33,21 +35,63 @@ impl ContainerDraw {
         x = gap / 2.0;
         w -= gap;
 
-        // Draw background of title bar
-        self.base.set_source_rgb(1.0, 0.0, 0.0);
-        self.base.set_color_source(title_color);
-        self.base.rectangle(x, 0.0, w, title_size);
-        self.base = try!(self.base.check_cairo());
-        self.base.fill();
-        self.base = try!(self.base.check_cairo());
+        // TODO: This shouldn't be clone for performance reasons, but self
+        // needs to not be borrowed later with all the paint operations, and
+        // I didn't know how to work around that.
+        let children = self.base.inner().children.clone();
 
-        // Draw title text
-        self.base.move_to(title_x, title_y);
-        self.base = try!(self.base.check_cairo());
-        self.base.set_color_source(title_font_color);
-        self.base = try!(self.base.check_cairo());
-        self.base.show_text(title.as_str());
-        self.base = try!(self.base.check_cairo());
+        if self.layout == Layout::Tabbed && children.is_some() {
+            let children = children.unwrap();
+
+            let tab_width = w / children.titles.len() as f64;
+
+            for (i, title) in children.titles.iter().enumerate() {
+                let active = children.index == i;
+
+                let title_color = if active { title_color }
+                    else { Borders::default_title_color() };
+
+                let title_font_color = if active { title_font_color }
+                    else { Borders::default_title_font_color() };
+
+                let x = x + tab_width*i as f64;
+                let title_x = title_x + tab_width*i as f64;
+
+                // Draw background of title bar
+                self.base.set_source_rgb(1.0, 0.0, 0.0);
+                self.base.set_color_source(title_color);
+                self.base.rectangle(x, 0.0, tab_width, title_size);
+                self.base = try!(self.base.check_cairo());
+                self.base.fill();
+                self.base = try!(self.base.check_cairo());
+
+                // Draw title text
+                self.base.move_to(title_x, title_y);
+                self.base = try!(self.base.check_cairo());
+                self.base.set_color_source(title_font_color);
+                self.base = try!(self.base.check_cairo());
+                self.base.show_text(title.as_str());
+                self.base = try!(self.base.check_cairo());
+            }
+        } else {
+            let title: String = self.inner().title().into();
+
+            // Draw background of title bar
+            self.base.set_source_rgb(1.0, 0.0, 0.0);
+            self.base.set_color_source(title_color);
+            self.base.rectangle(x, 0.0, w, title_size);
+            self.base = try!(self.base.check_cairo());
+            self.base.fill();
+            self.base = try!(self.base.check_cairo());
+
+            // Draw title text
+            self.base.move_to(title_x, title_y);
+            self.base = try!(self.base.check_cairo());
+            self.base.set_color_source(title_font_color);
+            self.base = try!(self.base.check_cairo());
+            self.base.show_text(title.as_str());
+            self.base = try!(self.base.check_cairo());
+        }
         Ok(self)
     }
 }

@@ -632,8 +632,10 @@ impl Container {
                             return Ok(())
                         }
                     }
-                    *borders = ContainerDraw::new(borders_.enable_cairo().unwrap())
-                        .draw(geometry).ok();
+                    *borders = ContainerDraw::new(
+                            borders_.enable_cairo().unwrap(),
+                            layout
+                        ).draw(geometry).ok();
                 }
                 Ok(())
             },

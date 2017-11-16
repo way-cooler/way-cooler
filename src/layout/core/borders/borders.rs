@@ -7,6 +7,14 @@ use uuid::Uuid;
 use ::registry;
 use ::render::{Color, Renderable};
 
+/// Data of the container's children, necessary to draw Tabbed and Stacked layouts
+#[derive(Clone, Debug)]
+pub struct Children {
+    pub titles: Vec<String>,
+    /// Index of the currently selected children
+    pub index: usize,
+}
+
 /// The borders of a container.
 ///
 /// This type just deals with rendering,
@@ -16,6 +24,8 @@ pub struct Borders {
     pub title: String,
     /// The surface that contains the bytes we give to wlc to draw.
     surface: ImageSurface,
+    /// Children titles to be used tabbed/stacked layouts
+    pub children: Option<Children>,
     /// The geometry where the buffer is written.
     ///
     /// Should correspond with the geometry of the container.
@@ -68,7 +78,8 @@ impl Renderable for Borders {
             output: output,
             color: None,
             title_color: None,
-            title_font_color: None
+            title_font_color: None,
+            children: None,
         })
     }
 
@@ -344,6 +355,13 @@ impl Borders {
 
     pub fn set_title(&mut self, title: String) {
         self.title = title;
+    }
+
+    pub fn set_children(&mut self, titles: Vec<String>, index: usize) {
+        self.children = Some(Children{
+            titles: titles,
+            index: index
+        });
     }
 }
 

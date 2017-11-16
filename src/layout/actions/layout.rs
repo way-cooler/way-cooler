@@ -901,8 +901,26 @@ impl LayoutTree {
             let parent_ix = self.tree.parent_of(child_ix)
                 .expect("Node had no parent");
             let children = self.tree.children_of(parent_ix);
-            let index = children.iter().position(|&node_ix| node_ix == child_ix)
-                .map(|num| (num + 1).to_string());
+            let index = children.iter().position(|&node_ix| node_ix == child_ix);
+            let index_str = index.map(|num| (num + 1).to_string());
+
+            // I can't do it inside the match ahead because it borrows
+            // self.tree, and I need self.tree to get the children's titles
+            let titles = children.iter().map(|&node_ix| {
+                match self.tree[node_ix] {
+                    Container::Container { ref mut borders, .. } =>
+                        borders.as_ref().map( |b| b.title() )
+                            .unwrap_or("").into(),
+                    Container::View { ref mut borders, .. } =>
+                        borders.as_ref().map( |b| b.title() )
+                            .unwrap_or("").into(),
+                    ref child => {
+                        error!("Container child is {:#?}", child);
+                        panic!("Container childr is not a Container nor a View")
+                    }
+                }
+            }).collect();
+
             if !self.tree.on_path(child_ix) && Some(child_ix) != self.active_container {
                 self.set_borders(child_ix, borders::Mode::Inactive)?;
             } else {
@@ -910,9 +928,14 @@ impl LayoutTree {
                     Container::Container { layout, ref mut borders, .. } => {
                         if layout == Layout::Tabbed || layout == Layout::Stacked {
                             borders.as_mut().map(|b| {
+
+                                b.set_children(titles, index.unwrap());
+
+                                // Still necesary to draw the title when this
+                                // container is inside another tabbed/stacked
                                 b.set_title(format!("{:?} ({}/{})",
                                                     layout,
-                                                    index.unwrap_or("?".into()),
+                                                    index_str.unwrap_or("?".into()),
                                                     children.len()
                                 ));
                             });
