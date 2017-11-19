@@ -4,7 +4,7 @@ use std::{ptr, mem};
 use xcb::{xkb, ffi, Connection};
 use nix::{self, libc};
 use render;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
 use std::fmt::{self, Display, Formatter};
@@ -105,8 +105,34 @@ fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Re
 
 /// Registers a new X property
 /// This actually does nothing, since this is Wayland.
-fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
-    warn!("register_xproperty not supported");
+fn register_xproperty<'lua>(lua: &'lua Lua, (name, v_type): (String, String)) -> rlua::Result<()> {
+    use xcb::ffi::xproto;
+    let name = CString::new(name).unwrap();
+    let v_type = CString::new(v_type).unwrap();
+    let args = [ CStr::from_bytes_with_nul(b"string\0").unwrap(),
+                 CStr::from_bytes_with_nul(b"number\0").unwrap(),
+                 CStr::from_bytes_with_nul(b"boolean\0").unwrap() ];
+    // TODO Use this to store the xproperty
+    let _arg = match args.iter().position(|&arg_type| *arg_type == *v_type) {
+        None => return Ok(()),
+        Some(index) => &args[index]
+    };
+    unsafe {
+        let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
+        let con = Connection::from_raw_conn(xcb_con as _);
+        let raw_con = con.get_raw_conn();
+        mem::forget(con);
+        let atom_c = xproto::xcb_intern_atom_unchecked(raw_con,
+                                                       false as u8,
+                                                       name.to_bytes().len() as u16,
+                                                       name.as_ptr());
+        let atom_r = xproto::xcb_intern_atom_reply(raw_con, atom_c, ptr::null_mut());
+        if atom_r.is_null() {
+            return Ok(())
+        }
+        // TODO Store xproperty somewhere so that we can use it in window
+        // e.g see window.c use of it in awesome
+    }
     Ok(())
 }
 
