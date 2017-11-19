@@ -1,5 +1,6 @@
 //! TODO Fill in
 
+use std::{ptr, mem};
 use xcb::{xkb, ffi, Connection};
 use nix::{self, libc};
 use render;
@@ -111,19 +112,33 @@ fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
 
 /// Get layout short names
 fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
-    use std::{ptr, mem};
     let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
     // FIXME
     // hmm surely we can do this safely
     unsafe {
         let con = Connection::from_raw_conn(xcb_con as _);
+        let raw_con = con.get_raw_conn();
         let id = xkb::ID_USE_CORE_KBD as _;
-        let names_cookie = xkb::get_names_unchecked(&con, id, xkb::NAME_DETAIL_SYMBOLS);
-        let names_r = names_cookie.get_reply().unwrap();
-        if names_r.ptr.is_null() {
-            warn!("Failed to get xkb symbols name");
-            return Ok(Value::Nil)
-        }
+        // The structure here looks weird because we need to ensure Connection
+        // isn't cleaned up even in the event of an error...
+        let names_r = {
+            let names_cookie = xkb::get_names_unchecked(&con, id, xkb::NAME_DETAIL_SYMBOLS);
+            names_cookie.get_reply()
+        };
+        mem::forget(con);
+        let names_r = match names_r {
+            Ok(names_r) => {
+                if names_r.ptr.is_null() {
+                    warn!("Failed to get xkb symbols name");
+                    return Ok(Value::Nil)
+                }
+                names_r
+            },
+            Err(err) => {
+                warn!("Failed to get xkb symbols name {:?}", err);
+                return Ok(Value::Nil)
+            }
+        };
         let buffer = ffi::xkb::xcb_xkb_get_names_value_list(names_r.ptr);
         if buffer.is_null() {
             warn!("Returned buffer was NULL");
@@ -138,8 +153,8 @@ fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>>
         xcb_xkb_get_names_value_list_unpack(buffer, (*names_r_ptr).nTypes, (*names_r_ptr).indicators, (*names_r_ptr).virtualMods,
                                             (*names_r_ptr).groupNames, (*names_r_ptr).nKeys, (*names_r_ptr).nKeyAliases,
                                             (*names_r_ptr).nRadioGroups, (*names_r_ptr).which, &mut names_list);
-        let atom_name_c = ffi::xproto::xcb_get_atom_name_unchecked(con.get_raw_conn(), names_list.symbolsName);
-        let atom_name_r = ffi::xproto::xcb_get_atom_name_reply(con.get_raw_conn(), atom_name_c, ptr::null_mut());
+        let atom_name_c = ffi::xproto::xcb_get_atom_name_unchecked(raw_con, names_list.symbolsName);
+        let atom_name_r = ffi::xproto::xcb_get_atom_name_reply(raw_con, atom_name_c, ptr::null_mut());
         if atom_name_r.is_null() {
             warn!("Failed to get atom symbols name");
             return Ok(Value::Nil)
