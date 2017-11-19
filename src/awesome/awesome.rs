@@ -235,11 +235,21 @@ fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
     Ok(())
 }
 
-fn xkb_get_layout_group(_: &Lua, _: ()) -> rlua::Result<i32> {
-    warn!("xkb_get_layout_group not supported; Wait until wlroots");
-    warn!("Returning dummy data so I can move forward");
-    warn!("Replace me before release!");
-    Ok(0)
+fn xkb_get_layout_group<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
+    use xcb::ffi::xkb;
+    unsafe {
+        let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
+        let con = Connection::from_raw_conn(xcb_con as _);
+        mem::forget(xcb_con);
+        let raw_con = con.get_raw_conn();
+        let state_c = xkb::xcb_xkb_get_state_unchecked(raw_con, xkb::XCB_XKB_ID_USE_CORE_KBD as _);
+        let state_r = xkb::xcb_xkb_get_state_reply(raw_con, state_c, ptr::null_mut());
+        if state_r.is_null() {
+            warn!("State reply was NULL");
+            return Ok(Value::Nil);
+        }
+        (*state_r).group.to_lua(lua)
+    }
 }
 
 fn xrdb_get_value(lua: &Lua, (_resource_class, resource_name): (String, String))
