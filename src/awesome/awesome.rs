@@ -1,5 +1,7 @@
 //! TODO Fill in
 
+use xcb::{xkb, ffi, xproto, Connection};
+use std::os::unix::io::AsRawFd;
 use nix::{self, libc};
 use render;
 use gdk_pixbuf::Pixbuf;
@@ -10,6 +12,21 @@ use std::thread;
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::signal;
+
+// TODO this isn't defined in the xcb crate, even though it should be.
+// A patch should be open adding this to its generation scheme
+extern "C" {
+    fn xcb_xkb_get_names_value_list_unpack(buffer: *mut libc::c_void,
+                                           nTypes: u8,
+                                           indicators: u32,
+                                           virtualMods: u16,
+                                           groupNames: u8,
+                                           nKeys: u8,
+                                           nKeyAliases: u8,
+                                           nRadioGroups: u8,
+                                           which: u32,
+                                           aux: *mut ffi::xkb::xcb_xkb_get_names_value_list_t) -> libc::c_int;
+}
 
 #[derive(Clone, Debug)]
 pub struct AwesomeState {
@@ -94,8 +111,6 @@ fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
 
 /// Get layout short names
 fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<String> {
-    use xcb::{xkb, Connection};
-    use std::os::unix::io::AsRawFd;
     // TODO Init somewhere else
     let con = Connection::connect(None/*Some("wayland-0")*/).unwrap().0;
     // Tell xcb we are using the xkb extension
@@ -116,35 +131,22 @@ fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<String> {
     let id = xkb::ID_USE_CORE_KBD as _;
     let names_cookie = xkb::get_names_unchecked(&con, id, xkb::NAME_DETAIL_SYMBOLS);
     let names_r = names_cookie.get_reply().unwrap();
-    /*use std::process::{Stdio, Command};
-    // TODO FIXME wow this is _really_ _really_ dumb.
-    // like really dumb
-    // but not sure how else to do this to communicate to xwayland...
-    warn!("xkb_get_group_names not supported");
-    warn!("Doing a bad hack now");
-    warn!("Fix me before release!");
-    // This should be a function, not a whole freaking command!
-    Ok(Command::new("/usr/bin/setxkbmap").arg("-v").arg("-query")
-        .stdout(Stdio::piped())
-        .spawn()
-        .map(|child| {
-            child.wait_with_output().ok().and_then(|output| {
-                let stdout = String::from_utf8(output.stdout)
-                    .expect("Output was not utf8");
-                for line in stdout.lines() {
-                    if line.contains("symbols:") {
-                        let last = line.split(" ").last().unwrap();
-                        return Some(last.trim().into())
-                    }
-                }
-                None
-            })
-        }).unwrap_or_else(|err| {
-            warn!("err: {:#?}", err);
-            Some("pc+us+inet(evdev)".into())
-        }).unwrap())
-        */
-    Ok("pc+us+inet(evdev)".into())
+    // FIXME
+    // hmm surely we can do this safely
+    let name = unsafe {
+        let buffer = ffi::xkb::xcb_xkb_get_names_value_list(names_r.ptr);
+        let mut names_list: ffi::xkb::xcb_xkb_get_names_value_list_t = ::std::mem::uninitialized();
+        let names_r_ptr = names_r.ptr;
+        xcb_xkb_get_names_value_list_unpack(buffer, (*names_r_ptr).nTypes, (*names_r_ptr).indicators, (*names_r_ptr).virtualMods,
+                                            (*names_r_ptr).groupNames, (*names_r_ptr).nKeys, (*names_r_ptr).nKeyAliases,
+                                            (*names_r_ptr).nRadioGroups, (*names_r_ptr).which, &mut names_list);
+        let atom_name_c = ffi::xproto::xcb_get_atom_name_unchecked(con.get_raw_conn(), names_list.symbolsName);
+        let atom_name_r = ffi::xproto::xcb_get_atom_name_reply(con.get_raw_conn(), atom_name_c, ::std::ptr::null_mut());
+        let name_c = ffi::xproto::xcb_get_atom_name_name(atom_name_r);
+        ::std::ffi::CStr::from_ptr(name_c).to_string_lossy().into_owned()
+    };
+    error!("name: {}", name);
+    return Ok(name)
 }
 
 /// Restart Awesome by restarting the Lua thread
