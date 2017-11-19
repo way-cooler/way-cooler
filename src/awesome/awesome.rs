@@ -118,10 +118,7 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name, v_type): (String, String)) ->
         Some(index) => &args[index]
     };
     unsafe {
-        let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
-        let con = Connection::from_raw_conn(xcb_con as _);
-        let raw_con = con.get_raw_conn();
-        mem::forget(con);
+        let raw_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
         let atom_c = xproto::xcb_intern_atom_unchecked(raw_con,
                                                        false as u8,
                                                        name.to_bytes().len() as u16,
@@ -264,10 +261,7 @@ fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
 fn xkb_get_layout_group<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
     use xcb::ffi::xkb;
     unsafe {
-        let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
-        let con = Connection::from_raw_conn(xcb_con as _);
-        mem::forget(xcb_con);
-        let raw_con = con.get_raw_conn();
+        let raw_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
         let state_c = xkb::xcb_xkb_get_state_unchecked(raw_con, xkb::XCB_XKB_ID_USE_CORE_KBD as _);
         let state_r = xkb::xcb_xkb_get_state_reply(raw_con, state_c, ptr::null_mut());
         if state_r.is_null() {

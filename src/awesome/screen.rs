@@ -69,14 +69,14 @@ fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Res
                                    Some(lua.create_function(set_visible))))
 }
 
-fn screen_new<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<()> {
+fn screen_new<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     unimplemented!()
 }
 
-fn get_visible<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<()> {
+fn get_visible<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     unimplemented!()
 }
 
-fn set_visible<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<()> {
+fn set_visible<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     unimplemented!()
 }
