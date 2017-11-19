@@ -39,15 +39,6 @@ impl <'lua> ObjectBuilder<'lua> {
         Ok(self)
     }
 
-    pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
-        let meta = self.object.table.get_metatable()
-            .expect("Object had no meta table!");
-        let properties = meta.get::<_, Table>("properties")?;
-        let length = properties.len().unwrap_or(0) + 1;
-        properties.set(length, prop)?;
-        Ok(self)
-    }
-
     #[allow(dead_code)]
     pub fn add_to_signals(self, name: String, func: rlua::Function)
                           -> rlua::Result<Self> {
