@@ -28,6 +28,9 @@ if awesome.startup_errors then
                      title = "Oops, there were errors during startup!",
                      text = awesome.startup_errors })
 end
+naughty.notify({ preset = naughty.config.presets.critical,
+                 title = "Oops, there were errors during startup!",
+                 text = awesome.startup_errors })
 
 -- Handle runtime errors after startup
 do

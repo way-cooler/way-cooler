@@ -1,11 +1,11 @@
 //! TODO Fill in
 
-use rustwlc::{Geometry, WlcOutput};
+use rustwlc::{Geometry, Point, Size, WlcOutput};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::object::{Object, Objectable, ObjectBuilder};
+use super::object::{Object, Objectable};
 use super::property::Property;
 use super::class::{self, Class, ClassBuilder};
 
@@ -80,7 +80,7 @@ impl Default for ScreenState {
 impl <'lua> Screen<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         let class = class::class_setup(lua, "screen")?;
-        Ok(object_setup(lua, Screen::allocate(lua, class)?)?.build())
+        Ok(Screen::allocate(lua, class)?.build())
     }
 
     fn init_screens(&mut self, outputs: Vec<Output>) -> rlua::Result<()> {
@@ -88,10 +88,23 @@ impl <'lua> Screen<'lua> {
         state.outputs = outputs;
         self.set_state(state)
     }
+
+    fn get_workarea(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
+        let state = self.state()?;
+        let Point { x, y } = state.workarea.origin;
+        let Size { w, h } = state.workarea.size;
+        // TODO I do this a lot, put it somewhere
+        let table = lua.create_table();
+        table.set("x", x)?;
+        table.set("y", y)?;
+        table.set("width", w)?;
+        table.set("height", h)?;
+        Ok(table)
+    }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    let res = method_setup(lua, Class::builder(lua, Some(Rc::new(Screen::new)), None, None)?)?
+    let res = property_setup(lua, method_setup(lua, Class::builder(lua, Some(Rc::new(Screen::new)), None, None)?)?)?
         .save_class("screen")?
         .build()?;
     let mut screens: Vec<Screen> = vec![];
@@ -113,13 +126,17 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
            .method("__call".into(), lua.create_function(dummy))
 }
 
-fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Result<ObjectBuilder<'lua>> {
+fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     builder
-           .property(Property::new("screen".into(),
-                                   // TODO Implement
-                                   Some(lua.create_function(screen_new)),
-                                   Some(lua.create_function(get_visible)),
-                                   Some(lua.create_function(set_visible))))
+        .property(Property::new("workarea".into(),
+                                None,
+                                Some(lua.create_function(get_workarea)),
+                                None))?
+        .property(Property::new("screen".into(),
+                                // TODO Implement
+                                Some(lua.create_function(screen_new)),
+                                Some(lua.create_function(get_visible)),
+                                Some(lua.create_function(set_visible))))
 }
 
 fn screen_new<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
@@ -132,6 +149,11 @@ fn get_visible<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
 
 fn set_visible<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     unimplemented!()
+}
+
+fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
+    let screen = Screen::cast(table.into())?;
+    screen.get_workarea(lua)
 }
 
 fn index<'lua>(lua: &'lua Lua,
@@ -177,5 +199,5 @@ fn index<'lua>(lua: &'lua Lua,
     }
     // TODO checkudata
     let meta = obj_table.get_metatable().unwrap();
-    meta.get(index)
+    meta.get(index.clone()).or_else(|_| super::object::default_index(lua, (obj_table, index)))
 }

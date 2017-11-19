@@ -88,7 +88,7 @@ impl <'lua> ToLua<'lua> for Drawin<'lua> {
 impl_objectable!(Drawin, DrawinState);
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, Some(Rc::new(Drawin::new)), None, None)?)?
+    property_setup(lua, method_setup(lua, Class::builder(lua, Some(Rc::new(Drawin::new)), None, None)?)?)?
         .save_class("drawin")?
         .build()
 }
@@ -99,16 +99,21 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     builder.method("connect_signal".into(), lua.create_function(dummy))?
            .method("__call".into(), lua.create_function(|lua, _: Value| Drawin::new(lua)))
 }
+
+fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+    builder
+        .property(Property::new("visible".into(),
+                                Some(lua.create_function(set_visible)),
+                                Some(lua.create_function(get_visible)),
+                                Some(lua.create_function(set_visible))))
+}
+
 fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Result<ObjectBuilder<'lua>> {
     // TODO Do properly
     let table = lua.create_table();
     let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
     table.set("drawable", drawable_table)?;
-    builder.add_to_meta(table)?
-            .property(Property::new("visible".into(),
-                                    Some(lua.create_function(set_visible)),
-                                    Some(lua.create_function(get_visible)),
-                                    Some(lua.create_function(set_visible))))
+    builder.add_to_meta(table)
 }
 
 fn set_visible<'lua>(_: &'lua Lua, (table, visible): (Table<'lua>, bool))
