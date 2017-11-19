@@ -61,19 +61,9 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
 }
 
 fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Result<ObjectBuilder<'lua>> {
-    // TODO FIXME ughhhhhh
-
-
-    //// TODO Make sure I'm doing this right...
-    //let screen_table = Screen::new(lua)?.to_lua(lua)?;
-    //table.set("screen", screen_table)?;
-    //meta_table.set("__tostring", lua.create_function(|_, val: Table| {
-    //    Ok(format!("{}", val.get::<_, ScreenState>("__data")?))
-    //}))?;
-    //table.set("screen", screen_table)?;
-    builder//.add_to_meta(table)?
+    builder
            .property(Property::new("screen".into(),
-                                   // TODO
+                                   // TODO Implement
                                    Some(lua.create_function(screen_new)),
                                    Some(lua.create_function(get_visible)),
                                    Some(lua.create_function(set_visible))))
