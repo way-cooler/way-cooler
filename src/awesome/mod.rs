@@ -22,6 +22,7 @@ mod signal;
 mod object;
 mod class;
 mod property;
+mod xproperty;
 
 pub use self::object::Object;
 pub use self::keygrabber::keygrabber_handle;

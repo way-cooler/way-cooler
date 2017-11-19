@@ -1,7 +1,8 @@
 //! TODO Fill in
 
 use std::{ptr, mem};
-use xcb::{xkb, ffi, Connection};
+use xcb::{xkb, Connection};
+use xcb::ffi::{self, xproto};
 use nix::{self, libc};
 use render;
 use std::ffi::{CStr, CString};
@@ -13,6 +14,11 @@ use std::thread;
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
 use super::{XCB_CONNECTION_HANDLE, signal};
+use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
+
+// TODO FIXME
+// Often we are getting some raw pointers from the xcb replies
+// we need to free them because the memory management for them is manual.
 
 // TODO this isn't defined in the xcb crate, even though it should be.
 // A patch should be open adding this to its generation scheme
@@ -105,18 +111,10 @@ fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Re
 
 /// Registers a new X property
 /// This actually does nothing, since this is Wayland.
-fn register_xproperty<'lua>(lua: &'lua Lua, (name, v_type): (String, String)) -> rlua::Result<()> {
-    use xcb::ffi::xproto;
-    let name = CString::new(name).unwrap();
-    let v_type = CString::new(v_type).unwrap();
-    let args = [ CStr::from_bytes_with_nul(b"string\0").unwrap(),
-                 CStr::from_bytes_with_nul(b"number\0").unwrap(),
-                 CStr::from_bytes_with_nul(b"boolean\0").unwrap() ];
-    // TODO Use this to store the xproperty
-    let _arg = match args.iter().position(|&arg_type| *arg_type == *v_type) {
-        None => return Ok(()),
-        Some(index) => &args[index]
-    };
+fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String)) -> rlua::Result<()> {
+    let name = CString::new(name_rust.clone()).unwrap();
+    let arg_type = XPropertyType::from_string(v_type.clone())
+        .ok_or(rlua::Error::RuntimeError(format!("{} not a valid xproperty", v_type)))?;
     unsafe {
         let raw_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
         let atom_c = xproto::xcb_intern_atom_unchecked(raw_con,
@@ -127,8 +125,18 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name, v_type): (String, String)) ->
         if atom_r.is_null() {
             return Ok(())
         }
-        // TODO Store xproperty somewhere so that we can use it in window
-        // e.g see window.c use of it in awesome
+        let new_property = XProperty::new(name_rust.clone(), arg_type, (*atom_r).atom);
+        let mut properties = PROPERTIES.lock()
+            .expect("Could not lock properties list");
+        if let Some(found) = properties.iter().find(|&property| property == &new_property) {
+            if found.type_ != new_property.type_ {
+                return Err(rlua::Error::RuntimeError(
+                    format!("property '{}' already registered with different type",
+                            name_rust)));
+            }
+            return Ok(())
+        }
+        properties.push(new_property);
     }
     Ok(())
 }
