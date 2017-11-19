@@ -1,39 +1,47 @@
 //! TODO Fill in
 
-use rustwlc::Geometry;
+use rustwlc::{Geometry, WlcOutput};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use std::sync::Mutex;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::object::{Object, Objectable, ObjectBuilder};
 use super::property::Property;
 use super::class::{self, Class, ClassBuilder};
 
-lazy_static! {
-    pub static ref SCREENS: Mutex<Vec<ScreenState>> = Mutex::new(vec![]);
-}
+pub const SCREENS_HANDLE: &'static str = "__screens";
 
 #[derive(Clone, Debug)]
 pub struct Output {
     pub name: String,
-    mm_width: u32,
-    mm_height: u32,
+    pub mm_width: u32,
+    pub mm_height: u32,
     // TODO The XID array?
+}
+
+impl From<WlcOutput> for Output {
+    fn from(output: WlcOutput) -> Output {
+        let resolution = output.get_resolution().unwrap();
+        Output {
+            name: output.get_name(),
+            mm_width: resolution.w,
+            mm_height: resolution.h
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct ScreenState {
     // Is this screen still valid and may be used
-    valid: bool,
+    pub valid: bool,
     // Screen geometry
-    geometry: Geometry,
+    pub geometry: Geometry,
     // Screen workarea
-    workarea: Geometry,
+    pub workarea: Geometry,
     // The screen outputs information
-    outputs: Vec<Output>,
+    pub outputs: Vec<Output>,
     // Some XID indetifying this screen
-    xid: u32
+    pub xid: u32
 }
 
 unsafe impl Send for ScreenState {}
@@ -74,12 +82,27 @@ impl <'lua> Screen<'lua> {
         let class = class::class_setup(lua, "screen")?;
         Ok(object_setup(lua, Screen::allocate(lua, class)?)?.build())
     }
+
+    fn init_screens(&mut self, outputs: Vec<Output>) -> rlua::Result<()> {
+        let mut state = self.state()?;
+        state.outputs = outputs;
+        self.set_state(state)
+    }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, Some(Rc::new(Screen::new)), None, None)?)?
+    let res = method_setup(lua, Class::builder(lua, Some(Rc::new(Screen::new)), None, None)?)?
         .save_class("screen")?
-        .build()
+        .build()?;
+    let mut screens: Vec<Screen> = vec![];
+    for output in WlcOutput::list() {
+        let mut screen = Screen::cast(Screen::new(lua)?)?;
+        screen.init_screens(vec![output.into()])?;
+        // TODO Move to Screen impl like the others
+        screens.push(screen);
+    }
+    lua.globals().set(SCREENS_HANDLE, screens.to_lua(lua)?)?;
+    Ok(res)
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
@@ -114,20 +137,23 @@ fn set_visible<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
 fn index<'lua>(lua: &'lua Lua,
                (obj_table, index): (Table<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
-    let screens = SCREENS.lock().expect("Could not lock global SCREENS");
+    let screens: Vec<Screen> = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?
+        .into_iter().map(|t| Screen::cast(t.into()).unwrap())
+        .collect();
     match index {
         Value::String(ref string) => {
             let string = string.to_str()?;
             if string == "primary" {
                 // TODO Emit primary changed signal
                 if screens.len() > 0 {
-                    return screens[0].clone().to_lua(lua)
+                    return screens[0].get_table().clone().to_lua(lua)
                 }
             }
             for screen in screens.iter() {
-                for output in &screen.outputs {
+                let screen_state = screen.state()?;
+                for output in &screen_state.outputs {
                     if output.name.as_str() == string {
-                        return screen.clone().to_lua(lua)
+                        return screen.get_table().clone().to_lua(lua)
                     }
                 }
             }
@@ -138,8 +164,15 @@ fn index<'lua>(lua: &'lua Lua,
                     format!("invalid screen number: {} (of {} existing)",
                             screen_index, screens.len())))
             }
-            return screens[screen_index as usize].clone().to_lua(lua)
-        }
+            return screens[screen_index as usize].get_table().clone().to_lua(lua).clone()
+        },
+        Value::Table(ref table) =>{
+            // If this is a screen, just return it
+            if let Ok(screen) = Screen::cast(table.clone().into()) {
+                return screen.to_lua(lua)
+            }
+        },
+        // TODO This checke user data like in luaA_toudata in awesome
         _ => {}
     }
     // TODO checkudata
