@@ -146,7 +146,7 @@ fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>>
         }
         let names_r_ptr = names_r.ptr;
         if names_r_ptr.is_null() {
-            warn!("Name reply pointer was null");
+            warn!("Name reply pointer was NULL");
             return Ok(Value::Nil)
         }
         let mut names_list: ffi::xkb::xcb_xkb_get_names_value_list_t = mem::uninitialized();
