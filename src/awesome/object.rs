@@ -27,7 +27,6 @@ pub struct ObjectBuilder<'lua>{
 }
 
 impl <'lua> ObjectBuilder<'lua> {
-    #[allow(dead_code)]
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
         let meta = self.object.table.get_metatable()
             .expect("Object had no meta table");
