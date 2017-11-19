@@ -1,17 +1,17 @@
 //! TODO Fill in
 
-use xcb::{xkb, ffi, xproto, Connection};
-use std::os::unix::io::AsRawFd;
+use xcb::{xkb, ffi, Connection};
 use nix::{self, libc};
 use render;
+use std::ffi::CStr;
 use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
 use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::signal;
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
+use super::{XCB_CONNECTION_HANDLE, signal};
 
 // TODO this isn't defined in the xcb crate, even though it should be.
 // A patch should be open adding this to its generation scheme
@@ -110,43 +110,43 @@ fn register_xproperty<'lua>(_: &'lua Lua, _: Value<'lua>) -> rlua::Result<()> {
 }
 
 /// Get layout short names
-fn xkb_get_group_names<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<String> {
-    // TODO Init somewhere else
-    let con = Connection::connect(None/*Some("wayland-0")*/).unwrap().0;
-    // Tell xcb we are using the xkb extension
-    {
-        let cookie = xkb::use_extension(&con, 1, 0);
-
-        match cookie.get_reply() {
-            Ok(r) => {
-                if !r.supported() {
-                    panic!("xkb-1.0 is not supported");
-                }
-            },
-            Err(_) => {
-                panic!("could not get xkb extension supported version");
-            }
-        };
-    }
-    let id = xkb::ID_USE_CORE_KBD as _;
-    let names_cookie = xkb::get_names_unchecked(&con, id, xkb::NAME_DETAIL_SYMBOLS);
-    let names_r = names_cookie.get_reply().unwrap();
+fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
+    use std::{ptr, mem};
+    let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
     // FIXME
     // hmm surely we can do this safely
-    let name = unsafe {
+    unsafe {
+        let con = Connection::from_raw_conn(xcb_con as _);
+        let id = xkb::ID_USE_CORE_KBD as _;
+        let names_cookie = xkb::get_names_unchecked(&con, id, xkb::NAME_DETAIL_SYMBOLS);
+        let names_r = names_cookie.get_reply().unwrap();
+        if names_r.ptr.is_null() {
+            warn!("Failed to get xkb symbols name");
+            return Ok(Value::Nil)
+        }
         let buffer = ffi::xkb::xcb_xkb_get_names_value_list(names_r.ptr);
-        let mut names_list: ffi::xkb::xcb_xkb_get_names_value_list_t = ::std::mem::uninitialized();
+        if buffer.is_null() {
+            warn!("Returned buffer was NULL");
+            return Ok(Value::Nil)
+        }
         let names_r_ptr = names_r.ptr;
+        if names_r_ptr.is_null() {
+            warn!("Name reply pointer was null");
+            return Ok(Value::Nil)
+        }
+        let mut names_list: ffi::xkb::xcb_xkb_get_names_value_list_t = mem::uninitialized();
         xcb_xkb_get_names_value_list_unpack(buffer, (*names_r_ptr).nTypes, (*names_r_ptr).indicators, (*names_r_ptr).virtualMods,
                                             (*names_r_ptr).groupNames, (*names_r_ptr).nKeys, (*names_r_ptr).nKeyAliases,
                                             (*names_r_ptr).nRadioGroups, (*names_r_ptr).which, &mut names_list);
         let atom_name_c = ffi::xproto::xcb_get_atom_name_unchecked(con.get_raw_conn(), names_list.symbolsName);
-        let atom_name_r = ffi::xproto::xcb_get_atom_name_reply(con.get_raw_conn(), atom_name_c, ::std::ptr::null_mut());
+        let atom_name_r = ffi::xproto::xcb_get_atom_name_reply(con.get_raw_conn(), atom_name_c, ptr::null_mut());
+        if atom_name_r.is_null() {
+            warn!("Failed to get atom symbols name");
+            return Ok(Value::Nil)
+        }
         let name_c = ffi::xproto::xcb_get_atom_name_name(atom_name_r);
-        ::std::ffi::CStr::from_ptr(name_c).to_string_lossy().into_owned()
-    };
-    error!("name: {}", name);
-    return Ok(name)
+        CStr::from_ptr(name_c).to_string_lossy().into_owned().to_lua(lua)
+    }
 }
 
 /// Restart Awesome by restarting the Lua thread

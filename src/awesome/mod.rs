@@ -1,5 +1,10 @@
 //! Awesome compatibilty modules
-use rlua::{self, Lua, Table};
+use xcb::{xkb, Connection};
+
+use rlua::{self, Lua, Table, LightUserData};
+
+use std::mem;
+
 pub mod keygrabber;
 pub mod mousegrabber;
 pub mod awful;
@@ -23,6 +28,7 @@ pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
+pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 
 use std::env;
 use std::path::PathBuf;
@@ -30,6 +36,7 @@ use std::path::PathBuf;
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     setup_awesome_path(lua)?;
     setup_global_signals(lua)?;
+    setup_xcb_connection(lua)?;
     button::init(lua)?;
     awesome::init(lua)?;
     key::init(lua)?;
@@ -77,6 +84,28 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
 fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
     let globals = lua.globals();
     globals.set::<_, Table>(GLOBAL_SIGNALS, lua.create_table())
+}
+
+/// Sets up the xcb connection and stores it in Lua (for us to access it later)
+fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
+    let con = Connection::connect(None).unwrap_or_else(|err| {
+        error!("xcb: Could not connect to xwayland instance. Is it running?");
+        panic!("{:?}", err);
+    }).0;
+    // Tell xcb we are using the xkb extension
+    match xkb::use_extension(&con, 1, 0).get_reply() {
+        Ok(r) => {
+            if !r.supported() {
+                panic!("xkb-1.0 is not supported");
+            }
+        },
+        Err(err) => {
+            panic!("Could not get xkb extension supported version {:?}", err);
+        }
+    }
+    lua.globals().set(XCB_CONNECTION_HANDLE, LightUserData(con.get_raw_conn() as _))?;
+    mem::forget(con);
+    Ok(())
 }
 
 pub fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }
