@@ -265,8 +265,6 @@ fn main() {
     callbacks::init();
     commands::init();
     registry::init();
-    lua::init()
-        .expect("Could not initialize lua thread!");
     ipc::init();
 
     info!("Running wlc...");
