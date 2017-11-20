@@ -27,6 +27,7 @@ wayland-sys = { version = "0.12.1", features = ["client", "dlopen"] }
 wayland-server = { version = "0.12.1" }
 getopts = "0.2"
 cairo-rs = "0.2.*"
+cairo-sys-rs = "0.4.*"
 gdk-pixbuf = "0.2.*"
 glib = "0.3.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
