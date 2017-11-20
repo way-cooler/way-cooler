@@ -11,7 +11,7 @@ use super::class::{self, Class, ClassBuilder};
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Output {
     pub name: String,
     pub mm_width: u32,
@@ -30,7 +30,7 @@ impl From<WlcOutput> for Output {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScreenState {
     // Is this screen still valid and may be used
     pub valid: bool,
@@ -123,7 +123,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy))?
            .method("__index".into(), lua.create_function(index))?
-           .method("__call".into(), lua.create_function(dummy))
+           .method("__call".into(), lua.create_function(iterate_over_screens))
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
@@ -156,6 +156,39 @@ fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<
     screen.get_workarea(lua)
 }
 
+/// Ok this requires some explanation...
+/// Lua gives us the previous value in the loop, with the first one being nil
+/// since there was nothing there before.
+///
+/// To ensure we loop over everything, we take the index of that value in our list,
+/// increment it by 1 (starting at 0 if it's the start) and then once it falls outside
+/// the bounds it will stop by returning nil.
+fn iterate_over_screens<'lua>(lua: &'lua Lua,
+                              (_, _, prev): (Value<'lua>, Value<'lua>, Value<'lua>))
+                              -> rlua::Result<Value<'lua>> {
+    let screens: Vec<Screen> = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?
+        .into_iter().map(|t| Screen::cast(t.into()).unwrap())
+        .collect();
+    let index = match prev {
+        Value::Nil => 0,
+        Value::Table(ref table) => {
+            if let Ok(screen) = Screen::cast(table.clone().into()) {
+                screens.iter().position(|t| t.state().unwrap() == screen.state().unwrap())
+                    .unwrap_or(screens.len()) + 1
+            } else {
+                panic!("Unexpected non-screen table in loop");
+            }
+        }
+        _ => panic!("Unexpected non-screen or nil value in screens loop")
+    };
+    if index < screens.len() {
+        screens[index].get_table().to_lua(lua)
+    } else {
+        Ok(Value::Nil)
+    }
+
+}
+
 fn index<'lua>(lua: &'lua Lua,
                (obj_table, index): (Table<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
@@ -180,6 +213,7 @@ fn index<'lua>(lua: &'lua Lua,
                 }
             }
         },
+        // TODO Might need to do Number instead
         Value::Integer(screen_index) => {
             if screen_index < 1 || screen_index as usize > screens.len() {
                 return Err(rlua::Error::RuntimeError(
@@ -188,7 +222,7 @@ fn index<'lua>(lua: &'lua Lua,
             }
             return screens[screen_index as usize].get_table().clone().to_lua(lua).clone()
         },
-        Value::Table(ref table) =>{
+        Value::Table(ref table) => {
             // If this is a screen, just return it
             if let Ok(screen) = Screen::cast(table.clone().into()) {
                 return screen.to_lua(lua)
