@@ -423,8 +423,13 @@ impl LayoutTree {
                 // NOTE Do _NOT_ use set_layout,
                 // the normalization causes the issue described in #344
                 match self.tree[parent_ix] {
-                    Container::Container { ref mut layout , ..} => {
-                        *layout = new_layout
+                    Container::Container { ref mut layout , ref mut borders, ..} => {
+                        *layout = new_layout;
+                        // This needs to be done manually because
+                        // apparently set_layout cannot be used.
+                        if let Some(ref mut _b) = borders.as_mut() {
+                            _b.layout = Some(new_layout);
+                        }
                     },
                     _ => unreachable!()
                 }
@@ -598,8 +603,13 @@ impl LayoutTree {
 
     pub fn set_layout(&mut self, node_ix: NodeIndex, new_layout: Layout) {
         match self.tree[node_ix] {
-            Container::Container { ref mut layout, .. } => {
+            Container::Container { ref mut layout , ref mut borders, .. } => {
                 *layout = new_layout;
+                // This needs to be done manually because
+                // for some reason set_layout cannot be used.
+                if let Some(ref mut _b) = borders.as_mut() {
+                    _b.layout = Some(new_layout);
+                }
             },
             ref container => {
                 warn!("Can not set layout on non-container {:#?}", container);
@@ -821,22 +831,35 @@ impl LayoutTree {
     fn update_container_geo_for_borders(&mut self, node_ix: NodeIndex,
                                         mut geometry: Geometry)
                                         -> Result<Geometry, TreeError> {
+        // Stacked containers need bigger title bars.
+        // This has to be done before borrowing self.tree to use the container
+        let child_count = self.tree.children_of(node_ix).len();
+
         let container = &mut self.tree[node_ix];
 
         match *container {
-            Container::Container { ref mut apparent_geometry,
+            Container::Container { layout,
+                                   ref mut apparent_geometry,
                                    geometry: ref mut actual_geometry,
                                    ref borders, .. } => {
                 *actual_geometry = geometry;
                 if borders.is_some() {
+                    let title_count = match layout {
+                        Layout::Stacked =>
+                            // I don't understand why I have to use this
+                            // instead of just child_count, but seems to work...
+                            (2*child_count-1) as u32,
+                        _ => 1
+                    };
                     let gap = Borders::gap_size();
                     let thickness = Borders::thickness() + gap;
                     let edge_thickness = thickness / 2;
                     let title_size = Borders::title_bar_size();
+                    let real_title_size = (title_size / 2) * title_count;
                     geometry.origin.y += edge_thickness as i32;
-                    geometry.origin.y += (title_size / 2) as i32;
+                    geometry.origin.y += real_title_size as i32;
                     geometry.size.h = geometry.size.h.saturating_sub(edge_thickness);
-                    geometry.size.h = geometry.size.h.saturating_sub(title_size / 2);
+                    geometry.size.h = geometry.size.h.saturating_sub(real_title_size);
                 }
                 *apparent_geometry = geometry;
             },

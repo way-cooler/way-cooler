@@ -6,6 +6,7 @@ use cairo::{ImageSurface, Format};
 use uuid::Uuid;
 use ::registry;
 use ::render::{Color, Renderable};
+use super::super::container::Layout;
 
 /// Data of the container's children, necessary to draw Tabbed and Stacked layouts
 #[derive(Clone, Debug)]
@@ -26,6 +27,8 @@ pub struct Borders {
     surface: ImageSurface,
     /// Children titles to be used tabbed/stacked layouts
     pub children: Option<Children>,
+    /// Layout of the container, only used if the border is from a container
+    pub layout: Option<Layout>,
     /// The geometry where the buffer is written.
     ///
     /// Should correspond with the geometry of the container.
@@ -74,12 +77,13 @@ impl Renderable for Borders {
         Some(Borders {
             title: "".into(),
             surface: surface,
+            children: None,
+            layout: None,
             geometry: geometry,
             output: output,
             color: None,
             title_color: None,
             title_font_color: None,
-            children: None,
         })
     }
 
@@ -107,7 +111,16 @@ impl Renderable for Borders {
     fn reallocate_buffer(mut self, mut geometry: Geometry) -> Option<Self>{
         // Add the thickness to the geometry.
         let thickness = Borders::thickness();
-        let title_size = Borders::title_bar_size();
+
+        let title_count = match (self.layout, &self.children) {
+            (Some(Layout::Stacked), &Some(ref children)) =>
+                // I don't understand why I have to use this
+                // instead of just child_count, but seems to work...
+                2 * children.titles.len() as u32 - 1,
+            _ => 1
+        };
+        let title_size = Borders::title_bar_size() * title_count;
+
         if thickness == 0 {
             return None;
         }
