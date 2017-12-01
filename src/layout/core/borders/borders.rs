@@ -112,8 +112,8 @@ impl Renderable for Borders {
         // Add the thickness to the geometry.
         let thickness = Borders::thickness();
 
-        let title_count = match (self.layout, &self.children) {
-            (Some(Layout::Stacked), &Some(ref children)) =>
+        let title_count = match (self.layout, self.children.as_ref()) {
+            (Some(Layout::Stacked), Some(children)) =>
                 // I don't understand why I have to use this
                 // instead of just child_count, but seems to work...
                 2 * children.titles.len() as u32 - 1,
@@ -371,6 +371,7 @@ impl Borders {
     }
 
     pub fn set_children(&mut self, titles: Vec<String>, index: usize) {
+        assert!(index < titles.len());
         self.children = Some(Children{
             titles: titles,
             index: index

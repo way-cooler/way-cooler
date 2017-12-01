@@ -931,10 +931,8 @@ impl LayoutTree {
             // self.tree, and I need self.tree to get the children's titles
             let titles = children.iter().map(|&node_ix| {
                 match self.tree[node_ix] {
-                    Container::Container { ref mut borders, .. } =>
-                        borders.as_ref().map( |b| b.title() )
-                            .unwrap_or("").into(),
-                    Container::View { ref mut borders, .. } =>
+                    Container::Container { ref mut borders, .. } |
+                    Container::View { ref mut borders, .. } => 
                         borders.as_ref().map( |b| b.title() )
                             .unwrap_or("").into(),
                     ref child => {
@@ -952,13 +950,13 @@ impl LayoutTree {
                         if layout == Layout::Tabbed || layout == Layout::Stacked {
                             borders.as_mut().map(|b| {
 
-                                b.set_children(titles, index.unwrap());
+                                b.set_children(titles, index.expect("The node index was not a child"));
 
                                 // Still necesary to draw the title when this
                                 // container is inside another tabbed/stacked
                                 b.set_title(format!("{:?} ({}/{})",
                                                     layout,
-                                                    index_str.unwrap_or("?".into()),
+                                                    index_str.unwrap_or_else(|| "?".into()),
                                                     children.len()
                                 ));
                             });

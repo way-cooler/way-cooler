@@ -33,18 +33,28 @@ impl ContainerDraw {
         x = gap / 2.0;
         w -= gap;
 
-        // TODO: This shouldn't be clone for performance reasons, but self
-        // needs to not be borrowed later with all the paint operations, and
-        // I didn't know how to work around that.
-        let children = self.base.inner().children.clone();
-        let layout = self.base.inner().layout;
+        // Children data necessary for tabbed and stacked containers
+        let child_data = self.base.inner().children.as_ref().map(
+            |children| (children.titles.len(), children.index)
+        );
 
-        match (layout, children) {
-            (Some(Layout::Tabbed), Some(children)) => {
-                let tab_width = w / children.titles.len() as f64;
+        // For some reason, when changing a container to be tabbed or stacked,
+        // the borders are drawn when the layout is set but the children are
+        // not, so the layout being Tabbed/Stacked doesn't guarantee having
+        // the children information.
+        match (self.base.inner().layout, child_data) {
+            (Some(Layout::Tabbed), Some((child_count, active_index))) => {
 
-                for (i, title) in children.titles.iter().enumerate() {
-                    let active = children.index == i;
+                let tab_width = w / child_count as f64;
+
+                // Iterate over the indices to not borrow self
+                for i in 0..child_count {
+                    let active = i == active_index;
+
+                    let title = match self.base.inner().children.as_ref() {
+                        Some(children) => children.titles[i].clone(),
+                        None => unreachable!()
+                    };
 
                     let title_color = if active { title_color }
                         else { Borders::default_title_color() };
@@ -72,9 +82,16 @@ impl ContainerDraw {
                     self.base = try!(self.base.check_cairo());
                 }
             }
-            (Some(Layout::Stacked), Some(children)) => {
-                for (i, title) in children.titles.iter().enumerate() {
-                    let active = children.index == i;
+            (Some(Layout::Stacked), Some((child_count, active_index))) => {
+
+                // Iterate over the indices to not borrow self
+                for i in 0..child_count {
+                    let active = i == active_index;
+
+                    let title = match self.base.inner().children.as_ref() {
+                        Some(children) => children.titles[i].clone(),
+                        None => unreachable!()
+                    };
 
                     let title_color = if active { title_color }
                         else { Borders::default_title_color() };
