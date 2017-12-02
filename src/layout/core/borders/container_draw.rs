@@ -51,11 +51,6 @@ impl ContainerDraw {
                 for i in 0..child_count {
                     let active = i == active_index;
 
-                    let title = match self.base.inner().children.as_ref() {
-                        Some(children) => children.titles[i].clone(),
-                        None => unreachable!()
-                    };
-
                     let title_color = if active { title_color }
                         else { Borders::default_title_color() };
 
@@ -78,7 +73,12 @@ impl ContainerDraw {
                     self.base = try!(self.base.check_cairo());
                     self.base.set_color_source(title_font_color);
                     self.base = try!(self.base.check_cairo());
-                    self.base.show_text(title.as_str());
+                    self.base.show_text(
+                        match self.base.inner().children.as_ref() {
+                            Some(children) => children.titles[i].as_str(),
+                            None => unreachable!()
+                        }
+                    );
                     self.base = try!(self.base.check_cairo());
                 }
             }
@@ -87,11 +87,6 @@ impl ContainerDraw {
                 // Iterate over the indices to not borrow self
                 for i in 0..child_count {
                     let active = i == active_index;
-
-                    let title = match self.base.inner().children.as_ref() {
-                        Some(children) => children.titles[i].clone(),
-                        None => unreachable!()
-                    };
 
                     let title_color = if active { title_color }
                         else { Borders::default_title_color() };
@@ -115,13 +110,16 @@ impl ContainerDraw {
                     self.base = try!(self.base.check_cairo());
                     self.base.set_color_source(title_font_color);
                     self.base = try!(self.base.check_cairo());
-                    self.base.show_text(title.as_str());
+                    self.base.show_text(
+                        match self.base.inner().children.as_ref() {
+                            Some(children) => children.titles[i].as_str(),
+                            None => unreachable!()
+                        }
+                    );
                     self.base = try!(self.base.check_cairo());
                 }
             }
             _ => {
-                let title: String = self.inner().title().into();
-
                 // Draw background of title bar
                 self.base.set_source_rgb(1.0, 0.0, 0.0);
                 self.base.set_color_source(title_color);
@@ -135,7 +133,7 @@ impl ContainerDraw {
                 self.base = try!(self.base.check_cairo());
                 self.base.set_color_source(title_font_color);
                 self.base = try!(self.base.check_cairo());
-                self.base.show_text(title.as_str());
+                self.base.show_text(self.inner().title());
                 self.base = try!(self.base.check_cairo());
             }
         }
