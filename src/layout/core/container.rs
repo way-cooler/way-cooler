@@ -352,6 +352,7 @@ impl Container {
                 *layout = new_layout;
                 if let Some(ref mut borders) = borders.as_mut() {
                     borders.title = format!("{:?} container", new_layout);
+                    borders.layout = Some(new_layout);
                 }
                 Ok(())
             },
@@ -632,8 +633,9 @@ impl Container {
                             return Ok(())
                         }
                     }
-                    *borders = ContainerDraw::new(borders_.enable_cairo().unwrap())
-                        .draw(geometry).ok();
+                    *borders = ContainerDraw::new(
+                            borders_.enable_cairo().unwrap(),
+                        ).draw(geometry).ok();
                 }
                 Ok(())
             },
