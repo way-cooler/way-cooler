@@ -162,6 +162,8 @@ pub fn init() -> Result<(), rlua::Error> {
                         // Keeping this an error, so that it is visible
                         // in release builds.
                         info!("Defaulting to pre-compiled init.lua");
+                        *lua = rlua::Lua::new();
+                        rust_interop::register_libraries(&mut lua)?;
                         lua.exec(init_path::DEFAULT_CONFIG,
                                  Some("init.lua <DEFAULT>".into()))
                         })
