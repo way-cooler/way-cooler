@@ -291,7 +291,8 @@ impl LayoutTree {
     /// This will change the active container, but **not** the active path,
     /// it will remain pointing at the previous parent container.
     pub fn float_container(&mut self, id: Uuid) -> CommandResult {
-        let node_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
+        let node_ix = self.tree.lookup_id(id)
+            .ok_or(TreeError::NodeNotFound(id))?;
         if self.tree.is_root_container(node_ix) {
             return Err(TreeError::InvalidOperationOnRootContainer(id))
         }
@@ -299,8 +300,8 @@ impl LayoutTree {
             warn!("Trying to float an already floating container");
             return Err(TreeError::Layout(LayoutErr::AlreadyFloating(id)));
         }
-        let output_ix = try!(self.tree.ancestor_of_type(node_ix, ContainerType::Output)
-                             .map_err(|err| TreeError::PetGraph(err)));
+        let output_ix = self.tree.ancestor_of_type(node_ix, ContainerType::Output)
+                             .map_err(|err| TreeError::PetGraph(err))?;
         let output_size = match self.tree[output_ix] {
             Container::Output { handle, .. } => {
                 handle.get_resolution().expect("Output had no resolution")
@@ -309,9 +310,10 @@ impl LayoutTree {
         };
         {
             let container = &mut self.tree[node_ix];
-            try!(container.set_floating(true)
-                .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
-                                                                ContainerType::Container))));
+            container.set_floating(true)
+                .map_err(|_|
+                         TreeError::UuidWrongType(id, vec!(ContainerType::View,
+                                                           ContainerType::Container)))?;
             let new_geometry = Geometry {
                     size: Size {
                         h: output_size.h / 2,
@@ -333,15 +335,24 @@ impl LayoutTree {
             container.draw_borders()?;
         }
         let root_ix = self.tree.root_ix();
-        let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
-                             .map_err(|_| TreeError::NoActiveContainer));
+        let root_c_ix = self.tree.follow_path_until(root_ix, ContainerType::Container)
+                             .map_err(|_| TreeError::NoActiveContainer)?;
         let parent_ix = self.tree.parent_of(node_ix)
             .expect("View had no parent node!");
-        try!(self.tree.move_into(node_ix, root_c_ix)
-             .map_err(|err| TreeError::PetGraph(err)));
+        self.tree.move_into(node_ix, root_c_ix)
+             .map_err(|err| TreeError::PetGraph(err))?;
+        let floating_ix = self.tree.lookup_id(id)
+            .ok_or(TreeError::NodeNotFound(id))?;
+        match self.tree[floating_ix] {
+            Container::View { ref mut borders, .. } => {
+                // NOTE Always draw the title for floating containers
+                borders.as_mut().map(|b| b.draw_title = true);
+            },
+            _ => {}
+        }
         self.tree.set_ancestor_paths_active(node_ix);
         if self.tree.can_remove_empty_parent(parent_ix) {
-            try!(self.remove_view_or_container(parent_ix));
+            self.remove_view_or_container(parent_ix)?;
         }
         let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
         self.layout(parent_ix);
@@ -349,7 +360,8 @@ impl LayoutTree {
     }
 
     pub fn ground_container(&mut self, id: Uuid) -> CommandResult {
-        let floating_ix = try!(self.tree.lookup_id(id).ok_or(TreeError::NodeNotFound(id)));
+        let floating_ix = self.tree.lookup_id(id)
+            .ok_or(TreeError::NodeNotFound(id))?;
         if !self.tree[floating_ix].floating() {
             warn!("Trying to ground an already grounded container");
             return Err(TreeError::Layout(LayoutErr::AlreadyGrounded(id)));
@@ -358,21 +370,35 @@ impl LayoutTree {
         let mut node_ix = self.tree.follow_path(root_ix);
         // If view, need to make it a sibling
         if self.tree[node_ix].get_type() == ContainerType::View {
-            node_ix = try!(self.tree.parent_of(node_ix)
-                           .map_err(|err| TreeError::PetGraph(err)));
+            node_ix = self.tree.parent_of(node_ix)
+                           .map_err(|err| TreeError::PetGraph(err))?;
         }
         {
             let container = &mut self.tree[floating_ix];
-            try!(container.set_floating(false)
+            container.set_floating(false)
                  .map_err(|_| TreeError::UuidWrongType(id, vec!(ContainerType::View,
-                                                                ContainerType::Container))));
+                                                                ContainerType::Container)))?;
         }
-        try!(self.tree.move_into(floating_ix, node_ix)
-             .map_err(|err| TreeError::PetGraph(err)));
+        self.tree.move_into(floating_ix, node_ix)
+             .map_err(|err| TreeError::PetGraph(err))?;
+
+        // NOTE The grounded_ix != floating_ix because it moved
+        let grounded_ix = self.tree.lookup_id(id)
+            .ok_or(TreeError::NodeNotFound(id))?;
+        let draw_title = match self.tree[node_ix].get_layout()? {
+            Layout::Tabbed | Layout::Stacked => false,
+            Layout::Horizontal | Layout::Vertical => true
+        };
+        match self.tree[grounded_ix] {
+            Container::View { ref mut borders, .. } => {
+                borders.as_mut().map(|b| b.draw_title = draw_title);
+            },
+            _ => {}
+        }
         self.normalize_container(node_ix).ok();
         let root_ix = self.tree.root_ix();
-        let root_c_ix = try!(self.tree.follow_path_until(root_ix, ContainerType::Container)
-                             .map_err(|_| TreeError::NoActiveContainer));
+        let root_c_ix = self.tree.follow_path_until(root_ix, ContainerType::Container)
+                             .map_err(|_| TreeError::NoActiveContainer)?;
         let parent_ix = self.tree.parent_of(root_c_ix).unwrap();
         self.layout(parent_ix);
         Ok(())
