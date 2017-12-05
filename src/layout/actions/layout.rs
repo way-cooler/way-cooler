@@ -511,6 +511,17 @@ impl LayoutTree {
             node_ix = self.tree.parent_of(node_ix)
                 .expect("View had no parent");
         }
+        // Remove the title if tabbed or stacked
+        if new_layout == Layout::Tabbed || new_layout == Layout::Stacked {
+            for child_ix in self.tree.grounded_children(node_ix) {
+                match self.tree[child_ix] {
+                    Container::View { ref mut borders, .. } => {
+                        borders.as_mut().map(|b| b.draw_title = false);
+                    },
+                    _ => {}
+                }
+            }
+        }
         self.tree[node_ix].set_layout(new_layout)
             .map_err(TreeError::Container)?;
         self.validate();
@@ -540,6 +551,19 @@ impl LayoutTree {
                 Layout::Horizontal => Layout::Vertical,
                 _ => Layout::Horizontal
             };
+            match new_layout {
+                Layout::Horizontal | Layout::Vertical => {
+                    for child_ix in self.tree.grounded_children(node_ix) {
+                        match self.tree[child_ix] {
+                            Container::View { ref mut borders, .. } => {
+                                borders.as_mut().map(|b| b.draw_title = true);
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                Layout::Tabbed | Layout::Stacked => {}
+            }
             self.set_layout(node_ix, new_layout)
         }
         self.validate();
@@ -846,7 +870,7 @@ impl LayoutTree {
                                    geometry: ref mut actual_geometry,
                                    ref borders, .. } => {
                 *actual_geometry = geometry;
-                if borders.is_some() {
+                if let Some(borders) = borders.as_ref() {
                     let title_count = match layout {
                         Layout::Stacked =>
                             // I don't understand why I have to use this
@@ -857,7 +881,7 @@ impl LayoutTree {
                     let gap = Borders::gap_size();
                     let thickness = Borders::thickness() + gap;
                     let edge_thickness = thickness / 2;
-                    let title_size = Borders::title_bar_size();
+                    let title_size = borders.title_bar_size();
                     let real_title_size = (title_size / 2) * title_count;
                     geometry.origin.y += edge_thickness as i32;
                     geometry.origin.y += real_title_size as i32;
@@ -883,20 +907,22 @@ impl LayoutTree {
         let mut geometry = container.get_geometry()
             .expect("Container had no geometry");
         match *container {
-            Container::View { handle, .. } => {
+            Container::View { handle, ref borders, .. } => {
                 let thickness = Borders::thickness();
                 if thickness == 0 {
                     return Ok(())
                 }
-                let edge_thickness = (thickness / 2) as i32;
-                let title_size = Borders::title_bar_size();
-                geometry.origin.x += edge_thickness;
-                geometry.origin.y += edge_thickness;
-                geometry.origin.y += title_size as i32;
-                geometry.size.w = geometry.size.w.saturating_sub(thickness);
-                geometry.size.h = geometry.size.h.saturating_sub(thickness);
-                geometry.size.h = geometry.size.h.saturating_sub(title_size);
-                handle.set_geometry(ResizeEdge::empty(), geometry);
+                if let Some(borders) = borders.as_ref() {
+                    let edge_thickness = (thickness / 2) as i32;
+                    let title_size = borders.title_bar_size();
+                    geometry.origin.x += edge_thickness;
+                    geometry.origin.y += edge_thickness;
+                    geometry.origin.y += title_size as i32;
+                    geometry.size.w = geometry.size.w.saturating_sub(thickness);
+                    geometry.size.h = geometry.size.h.saturating_sub(thickness);
+                    geometry.size.h = geometry.size.h.saturating_sub(title_size);
+                    handle.set_geometry(ResizeEdge::empty(), geometry);
+                }
             },
             ref container => {
                 error!("Attempted to add borders to non-view");

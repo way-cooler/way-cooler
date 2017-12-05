@@ -22,7 +22,7 @@ impl ContainerDraw {
                       mut x: f64,
                       mut w: f64,) -> Result<Self, DrawErr<Borders>> {
         let gap = Borders::gap_size() as f64;
-        let title_size = Borders::title_bar_size() as f64;
+        let title_size = self.base.inner().title_bar_size() as f64;
         let title_color = self.base.inner().title_background_color();
         let title_font_color = self.base.inner().title_font_color();
         if x < 0.0 {
@@ -156,7 +156,7 @@ impl Drawable<Borders> for ContainerDraw {
             _ => 1
         };
 
-        let title_size = Borders::title_bar_size() * title_count;
+        let title_size = self.base.inner().title_bar_size() * title_count;
         let edge_thickness = thickness / 2;
 
         border_g.origin.x -= edge_thickness as i32;
