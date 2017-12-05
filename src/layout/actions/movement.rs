@@ -30,12 +30,29 @@ impl From<ContainerErr> for MovementError {
 impl LayoutTree {
     /// Will attempt to move the container at the UUID in the given direction.
     pub fn move_container(&mut self, uuid: Uuid, direction: Direction) -> CommandResult {
-        let node_ix = try!(self.tree.lookup_id(uuid).ok_or(TreeError::NodeNotFound(uuid)));
-        let old_parent_ix = try!(self.tree.parent_of(node_ix).map_err(|err| TreeError::PetGraph(err)));
-        try!(self.move_recurse(node_ix, None, direction));
+        let node_ix = self.tree.lookup_id(uuid)
+            .ok_or(TreeError::NodeNotFound(uuid))?;
+        let old_parent_ix = self.tree.parent_of(node_ix)
+            .map_err(|err| TreeError::PetGraph(err))?;
+        let new_parent_ix = self.move_recurse(node_ix, None, direction)?;
         if self.tree.can_remove_empty_parent(old_parent_ix) {
-            try!(self.remove_container(old_parent_ix));
+            self.remove_container(old_parent_ix)?;
         }
+        // NOTE refresh node_ix because it probably moved.
+        let node_ix = self.tree.lookup_id(uuid)
+            .ok_or(TreeError::NodeNotFound(uuid))?;
+        let draw_title = match self.tree[new_parent_ix].get_layout()? {
+            Layout::Tabbed | Layout::Stacked => false,
+            Layout::Horizontal | Layout::Vertical => true
+        };
+        match self.tree[node_ix] {
+            Container::View { ref mut borders, .. } => {
+                borders.as_mut().map(|b| b.draw_title = draw_title);
+            },
+            _ => {}
+        }
+        self.layout(new_parent_ix);
+        self.tree[node_ix].draw_borders()?;
         self.validate();
         Ok(())
     }
