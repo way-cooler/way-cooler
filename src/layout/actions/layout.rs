@@ -901,7 +901,7 @@ impl LayoutTree {
                         Layout::Stacked =>
                             // I don't understand why I have to use this
                             // instead of just child_count, but seems to work...
-                            (2 * child_count.saturating_sub(1)) as u32,
+                            (2 * child_count).saturating_sub(1) as u32,
                         _ => 1
                     };
                     let gap = Borders::gap_size();

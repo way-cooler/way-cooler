@@ -152,7 +152,7 @@ impl Drawable<Borders> for ContainerDraw {
             (Some(Layout::Stacked), &Some(ref children)) =>
                 // I don't understand why I have to use this
                 // instead of just child_count, but seems to work...
-                2 * children.titles.len().saturating_sub(1) as u32,
+                (2 * children.titles.len()).saturating_sub(1) as u32,
             _ => 1
         };
 
