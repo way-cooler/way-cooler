@@ -929,18 +929,22 @@ impl LayoutTree {
 
             // I can't do it inside the match ahead because it borrows
             // self.tree, and I need self.tree to get the children's titles
-            let titles = children.iter().map(|&node_ix| {
-                match self.tree[node_ix] {
-                    Container::Container { ref mut borders, .. } |
-                    Container::View { ref mut borders, .. } => 
-                        borders.as_ref().map( |b| b.title() )
+            let titles = children.iter()
+                .filter(|&&node_ix| {
+                    !self.tree[node_ix].floating()
+                })
+                .map(|&node_ix| {
+                    match self.tree[node_ix] {
+                        Container::Container { ref borders, .. } |
+                        Container::View { ref borders, .. } =>
+                            borders.as_ref().map( |b| b.title() )
                             .unwrap_or("").into(),
-                    ref child => {
-                        error!("Container child is {:#?}", child);
-                        panic!("Container childr is not a Container nor a View")
+                        ref child => {
+                            error!("Container child is {:#?}", child);
+                            panic!("Container childr is not a Container nor a View")
+                        }
                     }
-                }
-            }).collect();
+                }).collect();
 
             if !self.tree.on_path(child_ix) && Some(child_ix) != self.active_container {
                 self.set_borders(child_ix, borders::Mode::Inactive)?;
