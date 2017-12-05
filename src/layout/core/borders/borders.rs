@@ -119,7 +119,7 @@ impl Renderable for Borders {
             (Some(Layout::Stacked), Some(children)) =>
                 // I don't understand why I have to use this
                 // instead of just child_count, but seems to work...
-                2 * children.titles.len() as u32 - 1,
+                2 * children.titles.len().saturating_sub(1) as u32,
             _ => 1
         };
         let title_size = self.title_bar_size() * title_count;
