@@ -19,6 +19,7 @@ way_cooler.windows = {
     size = 0, -- The width of gaps between windows in pixels
   },
   borders = { -- Options for borders
+    root_borders = false, -- Display borders in root containers by default
     size = 20, -- The width of the borders between windows in pixels
     inactive_color = 0x386890, -- Color of the borders for inactive containers
     active_color = 0x57beb9 -- Color of active container borders

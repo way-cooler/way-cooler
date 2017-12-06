@@ -4,7 +4,6 @@ use uuid::Uuid;
 use super::super::{LayoutTree, TreeError, FocusError};
 use ::layout::core::container::{Container, ContainerType, Layout, Handle};
 use ::layout::core::borders::Borders;
-use ::render::Renderable;
 use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
@@ -43,7 +42,7 @@ impl LayoutTree {
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let borders = Borders::new(geometry, output_handle);
+        let borders = Borders::make_root_borders(geometry, output_handle);
         let container = Container::new_container(geometry,
                                                  output_handle,
                                                  borders);

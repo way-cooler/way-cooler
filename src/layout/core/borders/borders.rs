@@ -254,6 +254,25 @@ impl Borders {
             .map(|num| (num as u32).into())
     }
 
+    /// Construct root borders, if the option is enabled.
+    pub fn make_root_borders(geo: Geometry, output: WlcOutput)
+                             -> Option<Borders> {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        let root_borders_on = handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
+            .and_then(|borders| borders.as_object()
+                      .and_then(|borders| borders.get("root_borders"))
+                      .and_then(|active| active.as_boolean())
+            ).unwrap_or(true);
+        if root_borders_on {
+            Borders::new(geo, output)
+        } else {
+            None
+        }
+    }
+
     /// Fetches the default title background color from the registry.
     ///
     /// If the value is unset, black borders are returned.
