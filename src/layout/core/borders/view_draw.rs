@@ -141,6 +141,10 @@ impl ViewDraw {
                          mut h: f64,
                          border_geometry: Geometry,
                          output_res: Size) -> Result<Self, DrawErr<Borders>> {
+        // Don't draw the top bar when we are in tabbed/stacked
+        if !self.base.inner().draw_title {
+            return Ok(self)
+        }
         let title_size = self.base.inner().title_bar_size() as f64;
         // yay clamping
         if x < 0.0 {

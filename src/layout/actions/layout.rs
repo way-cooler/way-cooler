@@ -940,13 +940,18 @@ impl LayoutTree {
                 }
                 if let Some(borders) = borders.as_ref() {
                     let edge_thickness = (thickness / 2) as i32;
-                    let title_size = borders.title_bar_size();
                     geometry.origin.x += edge_thickness;
-                    geometry.origin.y += edge_thickness;
-                    geometry.origin.y += title_size as i32;
+                    if borders.draw_title {
+                        let title_size = borders.title_bar_size();
+                        geometry.origin.y += edge_thickness;
+                        geometry.origin.y += title_size as i32;
+                        geometry.size.h = geometry.size.h.saturating_sub(thickness);
+                        geometry.size.h = geometry.size.h.saturating_sub(title_size);
+                    } else {
+                        // Gotta always subtract the size of the bottom border
+                        geometry.size.h = geometry.size.h.saturating_sub(thickness / 2);
+                    }
                     geometry.size.w = geometry.size.w.saturating_sub(thickness);
-                    geometry.size.h = geometry.size.h.saturating_sub(thickness);
-                    geometry.size.h = geometry.size.h.saturating_sub(title_size);
                     handle.set_geometry(ResizeEdge::empty(), geometry);
                 }
             },
