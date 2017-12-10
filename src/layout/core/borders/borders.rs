@@ -13,7 +13,7 @@ use super::super::container::Layout;
 pub struct Children {
     pub titles: Vec<String>,
     /// Index of the currently selected children
-    pub index: usize,
+    pub index: Option<usize>,
 }
 
 /// The borders of a container.
@@ -370,8 +370,7 @@ impl Borders {
         self.title = title;
     }
 
-    pub fn set_children(&mut self, titles: Vec<String>, index: usize) {
-        assert!(index < titles.len());
+    pub fn set_children(&mut self, titles: Vec<String>, index: Option<usize>) {
         self.children = Some(Children{
             titles: titles,
             index: index

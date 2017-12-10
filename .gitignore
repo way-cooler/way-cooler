@@ -15,3 +15,6 @@
 
 # Intellij IDE
 .idea
+
+# vscode IDE
+.vscode/
