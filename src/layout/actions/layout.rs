@@ -907,7 +907,7 @@ impl LayoutTree {
     }
 
     /// Draws the borders recursively, down from the top to the bottom.
-    fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>)
+    pub fn draw_borders_rec(&mut self, mut children: Vec<NodeIndex>)
                         -> CommandResult {
         let mut updated_nodes: HashSet<NodeIndex> = HashSet::from_iter(children.iter().cloned());
 
