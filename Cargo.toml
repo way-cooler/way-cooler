@@ -23,8 +23,8 @@ rustc-serialize = "0.3"
 json_macro = "0.1"
 nix = "0.6"
 uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
-wayland-sys = { version = "0.9.1", features = ["client", "dlopen"] }
-wayland-server = { version = "0.9.1" }
+wayland-sys = { version = "0.12.1", features = ["client", "dlopen"] }
+wayland-server = { version = "0.12.1" }
 getopts = "0.2"
 cairo-rs = "0.2.*"
 gdk-pixbuf = "0.2.*"
@@ -35,7 +35,7 @@ xcb = "0.8.1"
 dummy-rustwlc = "0.6.5"
 
 [build-dependencies]
-wayland-scanner = { version = "0.9.1" }
+wayland-scanner = { version = "0.12.1" }
 
 
 [features]
