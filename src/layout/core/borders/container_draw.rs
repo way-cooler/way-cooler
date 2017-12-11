@@ -49,7 +49,7 @@ impl ContainerDraw {
 
                 // Iterate over the indices to not borrow self
                 for i in 0..child_count {
-                    let active = i == active_index;
+                    let active = Some(i) == active_index;
 
                     let title_color = if active { title_color }
                         else { Borders::default_title_color() };
@@ -86,7 +86,7 @@ impl ContainerDraw {
 
                 // Iterate over the indices to not borrow self
                 for i in 0..child_count {
-                    let active = i == active_index;
+                    let active = Some(i) == active_index;
 
                     let title_color = if active { title_color }
                         else { Borders::default_title_color() };

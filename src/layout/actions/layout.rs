@@ -923,21 +923,19 @@ impl LayoutTree {
 
             let parent_ix = self.tree.parent_of(child_ix)
                 .expect("Node had no parent");
-            let children = self.tree.children_of(parent_ix);
-            let index = children.iter().position(|&node_ix| node_ix == child_ix);
+            let grounded_children = self.tree.grounded_children(parent_ix);
+
+            let index = grounded_children.iter().position(|&node_ix| node_ix == child_ix);
             let index_str = index.map(|num| (num + 1).to_string());
 
             // I can't do it inside the match ahead because it borrows
             // self.tree, and I need self.tree to get the children's titles
-            let titles = children.iter()
-                .filter(|&&node_ix| {
-                    !self.tree[node_ix].floating()
-                })
+            let titles = grounded_children.iter()
                 .map(|&node_ix| {
                     match self.tree[node_ix] {
                         Container::Container { ref borders, .. } |
                         Container::View { ref borders, .. } =>
-                            borders.as_ref().map( |b| b.title() )
+                            borders.as_ref().map(|b| b.title())
                             .unwrap_or("").into(),
                         ref child => {
                             error!("Container child is {:#?}", child);
@@ -954,7 +952,7 @@ impl LayoutTree {
                         if layout == Layout::Tabbed || layout == Layout::Stacked {
                             borders.as_mut().map(|b| {
 
-                                b.set_children(titles, index.expect("The node index was not a child"));
+                                b.set_children(titles, index);
 
                                 // Still necesary to draw the title when this
                                 // container is inside another tabbed/stacked
