@@ -45,8 +45,7 @@ mod generated {
 
     pub mod server {
         #[doc(hidden)]
-        pub use wayland_server::{Resource, Handler,
-                                 Client, Liveness,
+        pub use wayland_server::{Resource, Client, Liveness, Implementable,
                                  EventLoopHandle, EventResult};
         #[doc(hidden)]
         pub use wayland_server::protocol::{wl_output};

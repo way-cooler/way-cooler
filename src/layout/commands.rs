@@ -549,9 +549,15 @@ impl Tree {
     pub fn update_title(&mut self, view: WlcView) -> CommandResult {
         let id = try!(self.lookup_handle(view.into())
                       .map_err(|_|TreeError::ViewNotFound(view)));
-        let container = try!(self.0.lookup_mut(id));
-        container.set_name(Container::get_title(view));
-        container.draw_borders()?;
+        {
+            let container = try!(self.0.lookup_mut(id));
+            container.set_name(Container::get_title(view));
+            container.draw_borders()?;
+        }
+        // Update the parent container using draw_borders_rec
+        let node_ix = self.0.tree.lookup_id(id)
+            .ok_or(TreeError::ViewNotFound(view))?;
+        self.0.draw_borders_rec(vec![node_ix])?;
         Ok(())
     }
 
