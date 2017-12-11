@@ -945,7 +945,11 @@ impl LayoutTree {
                 }).collect();
 
             if !self.tree.on_path(child_ix) && Some(child_ix) != self.active_container {
-                self.set_borders(child_ix, borders::Mode::Inactive)?;
+                let is_not_child = self.active_container.is_none() ||
+                    !self.tree.is_child_of(child_ix, self.active_container.unwrap())?;
+                if is_not_child {
+                    self.set_borders(child_ix, borders::Mode::Inactive)?;
+                }
             } else {
                 match self.tree[parent_ix] {
                     Container::Container { layout, ref mut borders, .. } => {

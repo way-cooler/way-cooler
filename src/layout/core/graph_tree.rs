@@ -570,8 +570,30 @@ impl InnerTree {
                 error!("{:?}", self);
                 panic!("parent_of: node has multiple parents!")
             }
-	}
+	      }
         result
+    }
+
+    pub fn is_child_of(&self, child_ix: NodeIndex, target_ix: NodeIndex)
+                       -> Result<bool, GraphError> {
+        let target_handle = match self[target_ix] {
+            Container::View { handle, .. } => Some(handle),
+            _ => None
+        };
+        let mut cur_ix = child_ix;
+        while cur_ix != target_ix {
+            cur_ix = self.parent_of(cur_ix)?;
+            match self.graph[cur_ix] {
+                Container::View { handle, .. } => {
+                    if Some(handle) == target_handle {
+                        return Ok(true)
+                    }
+                },
+                Container::Container { .. } => {},
+                _ => return Ok(false)
+            }
+        }
+        return Ok(true)
     }
 
     /// Collects all children of a node, sorted by weight.
