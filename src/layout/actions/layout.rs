@@ -409,10 +409,13 @@ impl LayoutTree {
     }
 
     /// Changes the layout of the active container to the given layout.
-    /// If the active container is a view, a new container is added with the given
-    /// layout type.
+    /// If the active container is a non-floating view,
+    /// a new container is added with the given layout type.
     pub fn toggle_active_layout(&mut self, new_layout: Layout) -> CommandResult {
         if let Some(active_ix) = self.active_container {
+            if self.tree[active_ix].floating() {
+                return Err(TreeError::ContainerWasFloating(active_ix))
+            }
             let parent_ix = self.tree.parent_of(active_ix)
                 .expect("Active container had no parent");
             if self.tree.is_root_container(active_ix) {
