@@ -1023,7 +1023,7 @@ impl LayoutTree {
                                 b.set_title(format!("{:?} ({}/{})",
                                                     layout,
                                                     index_str.unwrap_or_else(|| "?".into()),
-                                                    children.len()
+                                                    grounded_children.len()
                                 ));
                             });
                         }
