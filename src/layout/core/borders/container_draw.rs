@@ -29,7 +29,14 @@ impl ContainerDraw {
             w += x;
         }
         let title_x = Borders::thickness() as f64 + gap / 2.0;
-        let title_y = title_size - 5.0;
+        let mut border_diff = Borders::thickness().saturating_sub(title_size as u32);
+        if border_diff == 0 {
+            border_diff = (title_size as u32).saturating_sub(Borders::thickness());
+        }
+        if border_diff < 5 {
+            border_diff = 5
+        }
+        let title_y = title_size - border_diff as f64;
         x = gap / 2.0;
         w -= gap;
 
