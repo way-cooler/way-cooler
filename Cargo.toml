@@ -10,7 +10,7 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-rustwlc = { version = "0.7.0", features = ["wlc-wayland"], git = "https://github.com/Idleless/rust-wlc" }
+rustwlc = { version = "0.7.0", features = ["wlc-wayland"] }
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
@@ -32,7 +32,7 @@ glib = "0.3.*"
 xcb = "0.8.1"
 
 [dev-dependencies]
-dummy-rustwlc = "0.6.5"
+dummy-rustwlc = "0.7.0"
 
 [build-dependencies]
 wayland-scanner = { version = "0.12.1" }
