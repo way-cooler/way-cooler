@@ -22,14 +22,21 @@ impl ContainerDraw {
                       mut x: f64,
                       mut w: f64,) -> Result<Self, DrawErr<Borders>> {
         let gap = Borders::gap_size() as f64;
-        let title_size = Borders::title_bar_size() as f64;
+        let title_size = self.base.inner().title_bar_size() as f64;
         let title_color = self.base.inner().title_background_color();
         let title_font_color = self.base.inner().title_font_color();
         if x < 0.0 {
             w += x;
         }
         let title_x = Borders::thickness() as f64 + gap / 2.0;
-        let title_y = title_size - 5.0;
+        let mut border_diff = Borders::thickness().saturating_sub(title_size as u32);
+        if border_diff == 0 {
+            border_diff = (title_size as u32).saturating_sub(Borders::thickness());
+        }
+        if border_diff < 5 {
+            border_diff = 5
+        }
+        let title_y = title_size - border_diff as f64;
         x = gap / 2.0;
         w -= gap;
 
@@ -152,11 +159,11 @@ impl Drawable<Borders> for ContainerDraw {
             (Some(Layout::Stacked), &Some(ref children)) =>
                 // I don't understand why I have to use this
                 // instead of just child_count, but seems to work...
-                2 * children.titles.len() as u32 - 1,
+                (2 * children.titles.len()).saturating_sub(1) as u32,
             _ => 1
         };
 
-        let title_size = Borders::title_bar_size() * title_count;
+        let title_size = self.base.inner().title_bar_size() * title_count;
         let edge_thickness = thickness / 2;
 
         border_g.origin.x -= edge_thickness as i32;

@@ -46,13 +46,15 @@ pub struct Borders {
     /// The specific color the font for the title bar should be colored.
     ///
     /// If unspecified, the default is used.
-    title_font_color: Option<Color>
+    title_font_color: Option<Color>,
+    /// Specifies if we should draw the title or not
+    pub draw_title: bool
 }
 
 impl Renderable for Borders {
     fn new(mut geometry: Geometry, output: WlcOutput) -> Option<Self> {
         let thickness = Borders::thickness();
-        let title_size = Borders::title_bar_size();
+        let title_size = Borders::fetch_title_bar_size();
         if thickness == 0 {
             return None
         }
@@ -84,6 +86,7 @@ impl Renderable for Borders {
             color: None,
             title_color: None,
             title_font_color: None,
+            draw_title: true
         })
     }
 
@@ -116,10 +119,10 @@ impl Renderable for Borders {
             (Some(Layout::Stacked), Some(children)) =>
                 // I don't understand why I have to use this
                 // instead of just child_count, but seems to work...
-                2 * children.titles.len() as u32 - 1,
+                (2 * children.titles.len()).saturating_sub(1) as u32,
             _ => 1
         };
-        let title_size = Borders::title_bar_size() * title_count;
+        let title_size = self.title_bar_size() * title_count;
 
         if thickness == 0 {
             return None;
@@ -211,8 +214,21 @@ impl Borders {
 
     /// Gets the size of the title bar.
     ///
+    /// If the view doesn't want to display it, returns 0.
+    ///
     /// Defaults to 0 if not set.
-    pub fn title_bar_size() -> u32 {
+    pub fn title_bar_size(&self) -> u32 {
+        if !self.draw_title {
+            0
+        } else {
+            Borders::fetch_title_bar_size()
+        }
+    }
+
+    /// Gets the size of the title bar.
+    ///
+    /// Defaults to 0 if not set.
+    fn fetch_title_bar_size() -> u32 {
         let lock = registry::clients_read();
         let client = lock.client(Uuid::nil()).unwrap();
         let handle = registry::ReadHandle::new(&client);
@@ -252,6 +268,25 @@ impl Borders {
                       .and_then(|borders| borders.get("active_color"))
                       .and_then(|gaps| gaps.as_f64()))
             .map(|num| (num as u32).into())
+    }
+
+    /// Construct root borders, if the option is enabled.
+    pub fn make_root_borders(geo: Geometry, output: WlcOutput)
+                             -> Option<Borders> {
+        let lock = registry::clients_read();
+        let client = lock.client(Uuid::nil()).unwrap();
+        let handle = registry::ReadHandle::new(&client);
+        let root_borders_on = handle.read("windows".into()).ok()
+            .and_then(|windows| windows.get("borders".into()))
+            .and_then(|borders| borders.as_object()
+                      .and_then(|borders| borders.get("root_borders"))
+                      .and_then(|active| active.as_boolean())
+            ).unwrap_or(true);
+        if root_borders_on {
+            Borders::new(geo, output)
+        } else {
+            None
+        }
     }
 
     /// Fetches the default title background color from the registry.

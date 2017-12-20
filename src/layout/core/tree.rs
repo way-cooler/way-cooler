@@ -353,12 +353,17 @@ impl LayoutTree {
                 active_ix = try!(self.tree.parent_of(active_ix)
                                  .map_err(|err| TreeError::PetGraph(err)));
             }
+            let draw_title = match self.tree[active_ix].get_layout()? {
+                Layout::Tabbed | Layout::Stacked => false,
+                Layout::Horizontal | Layout::Vertical => true
+            };
             let geometry = view.get_geometry()
                 .expect("View had no geometry");
             let output = view.get_output();
             let borders = Borders::new(geometry, output)
                 .map(|mut b| {
                     b.title = Container::get_title(view);
+                    b.draw_title = draw_title;
                     b
                 });
             let view_ix = self.tree.add_child(active_ix,

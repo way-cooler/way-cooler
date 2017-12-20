@@ -4,7 +4,6 @@ use uuid::Uuid;
 use super::super::{LayoutTree, TreeError, FocusError};
 use ::layout::core::container::{Container, ContainerType, Layout, Handle};
 use ::layout::core::borders::Borders;
-use ::render::Renderable;
 use ::debug_enabled;
 
 // TODO This module needs to be updated like the other modules...
@@ -43,7 +42,7 @@ impl LayoutTree {
 
         trace!("Adding workspace {:?}", worksp);
         let worksp_ix = self.tree.add_child(output_ix, worksp, false);
-        let borders = Borders::new(geometry, output_handle);
+        let borders = Borders::make_root_borders(geometry, output_handle);
         let container = Container::new_container(geometry,
                                                  output_handle,
                                                  borders);
@@ -278,6 +277,20 @@ impl LayoutTree {
             info!("Moving container {:?} to workspace {}",
                 self.get_active_container(), name);
             self.tree.move_node(active_ix, next_work_root_ix);
+            let new_parent_ix = self.tree.parent_of(active_ix)
+                .expect("Couldn't get parent of moved container");
+            let layout = self.tree[new_parent_ix].get_layout()
+                .expect("Couldn't get layout of new parent");
+            let draw_title = match layout {
+                Layout::Tabbed | Layout::Stacked => false,
+                Layout::Horizontal | Layout::Vertical => true
+            };
+            match self.tree[active_ix] {
+                Container::View { ref mut borders, .. } => {
+                    borders.as_mut().map(|b| b.draw_title = draw_title);
+                },
+                _ => {}
+            }
 
             // If different outputs, show it on the new output.
             let cur_output_ix = self.tree.parent_of(curr_work_ix)
