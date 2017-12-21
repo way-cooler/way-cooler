@@ -56,6 +56,7 @@ use rustwlc::types::LogType;
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 const DRIVER_MOD_PATH: &'static str = "/proc/modules";
+const DEVICE_MOD_PATH: &'static str = "/sys/firmware/devicetree/base/model";
 
 /// Callback to route wlc logs into env_logger
 fn log_handler(level: LogType, message: &str) {
@@ -141,6 +142,59 @@ fn detect_proprietary() {
     }
 }
 
+/// Checks the loaded modules to ensure vc4 is loaded if we are running on a raspi.
+fn detect_raspi() {
+    use std::fmt::Debug;
+    /// Prints a debug line from the given info.
+    /// This should be used to "fail open" so that we keep trying but at least
+    /// warn the user that what we are about to do probably won't work.
+    fn fail_open<T: Debug>(path: &str, err: T) {
+        warn!("Could not read file \"{}\" because {:#?}",
+              path, err)
+    }
+    let raspi = match File::open(Path::new(DEVICE_MOD_PATH)) {
+        Ok(f) => {
+            let reader = BufReader::new(&f);
+            let mut raspi = false;
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    if line.contains("Raspberry Pi") {
+                        raspi = true;
+                        break;
+                    }
+                }
+            }
+            raspi
+        },
+        Err(_) => {
+            return;
+        }
+    };
+    let vc4 = match File::open(Path::new(DRIVER_MOD_PATH)) {
+        Ok(f) => {
+            let reader = BufReader::new(&f);
+            let mut vc4 = false;
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    if line.contains("vc4") {
+                        vc4 = true;
+                        break;
+                    }
+                }
+            }
+            vc4
+        },
+        Err(err) => {
+            fail_open(DRIVER_MOD_PATH, err);
+            return;
+        }
+    };
+    if !vc4 && raspi {
+        error!("You are running on a Raspberry Pi, but the vc4 module is not loaded!");
+        error!("Set 'dtoverlay=vc4-kms-v3d' in /boot/config.txt and reboot!");
+    }
+}
+
 #[inline(always)]
 /// Determines if we should build with debug symbols.
 pub fn debug_enabled() -> bool {
@@ -201,6 +255,7 @@ fn main() {
     init_logs();
     log_environment();
     detect_proprietary();
+    detect_raspi();
     ensure_good_env();
     // This prepares wlc, doesn't run main loop until run_wlc is called
     let run_wlc = rustwlc::init()
