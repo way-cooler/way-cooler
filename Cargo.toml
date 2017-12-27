@@ -33,7 +33,7 @@ glib = "0.3.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 
 [dev-dependencies]
-dummy-rustwlc = "0.7.0"
+dummy-rustwlc = "0.7.1"
 
 [build-dependencies]
 wayland-scanner = { version = "0.12.1" }

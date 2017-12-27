@@ -104,7 +104,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "dummy-rustwlc"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -528,7 +528,7 @@ dependencies = [
  "cairo-sys-rs 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dbus 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dbus-macros 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "dummy-rustwlc 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dummy-rustwlc 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk-pixbuf 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -641,7 +641,7 @@ dependencies = [
 "checksum dlib 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "148bce4ce1c36c4509f29cb54e62c2bd265551a9b00b38070fad551a851866ec"
 "checksum dlib 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "95518d8f88d556e62c9b3014629f21bdad97a9fdfee85c68a185e3980af29e7c"
 "checksum dtoa 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "09c3753c3db574d215cba4ea76018483895d7bff25a31b49ba45db21c48e50ab"
-"checksum dummy-rustwlc 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "11d0ac3e7dfc1574cf8abf1f07af533b11fab4d0f4fd5b86d4f8ed0856fbdc84"
+"checksum dummy-rustwlc 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0dff1c82c8a98a5a3c0e1fb92e7c3090d7bbb1bb44266e420b9034ee58b42cb0"
 "checksum env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
 "checksum fixedbitset 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "85cb8fec437468d86dc7c83ca7cfc933341d561873275f22dd5eedefa63a6478"
 "checksum fuchsia-zircon 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "bd510087c325af53ba24f3be8f1c081b0982319adcb8b03cad764512923ccc19"
