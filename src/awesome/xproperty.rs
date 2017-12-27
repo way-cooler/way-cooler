@@ -41,8 +41,3 @@ impl XProperty {
         }
     }
 }
-
-
-// TODO I don't think this is actually safe
-unsafe impl Send for XProperty {}
-unsafe impl Sync for XProperty {}

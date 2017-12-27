@@ -44,9 +44,6 @@ pub struct ScreenState {
     pub xid: u32
 }
 
-unsafe impl Send for ScreenState {}
-unsafe impl Sync for ScreenState {}
-
 pub struct Screen<'lua>(Table<'lua>);
 
 impl_objectable!(Screen, ScreenState);

@@ -110,9 +110,8 @@ fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Re
 }
 
 /// Registers a new X property
-/// This actually does nothing, since this is Wayland.
 fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String)) -> rlua::Result<()> {
-    let name = CString::new(name_rust.clone()).unwrap();
+    let name = CString::new(name_rust.clone()).expect("XProperty was not CString");
     let arg_type = XPropertyType::from_string(v_type.clone())
         .ok_or(rlua::Error::RuntimeError(format!("{} not a valid xproperty", v_type)))?;
     unsafe {
@@ -144,8 +143,6 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String
 /// Get layout short names
 fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
     let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
-    // FIXME
-    // hmm surely we can do this safely
     unsafe {
         let con = Connection::from_raw_conn(xcb_con as _);
         let raw_con = con.get_raw_conn();
