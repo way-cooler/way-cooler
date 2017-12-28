@@ -89,10 +89,14 @@ fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
 
 /// Sets up the xcb connection and stores it in Lua (for us to access it later)
 fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
-    let con = Connection::connect(None).unwrap_or_else(|err| {
-        error!("xcb: Could not connect to xwayland instance. Is it running?");
-        panic!("{:?}", err);
-    }).0;
+    let con = match Connection::connect(None) {
+        Err(err) => {
+            error!("xcb: Could not connect to xwayland instance. Is it running?");
+            error!("{:?}", err);
+            return Ok(())
+        },
+        Ok(con) => con.0
+    };
     // Tell xcb we are using the xkb extension
     match xkb::use_extension(&con, 1, 0).get_reply() {
         Ok(r) => {
