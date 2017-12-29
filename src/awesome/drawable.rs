@@ -13,11 +13,10 @@ use super::property::Property;
 
 #[derive(Clone, Debug)]
 pub struct DrawableState {
-    // TODO Pixmap?
     pub surface: Option<ImageSurface>,
     geo: Geometry,
+    // TODO Use this to determine whether we draw this or not
     refreshed: bool,
-    // TODO Refresh callback
 }
 
 pub struct Drawable<'lua>(Table<'lua>);
@@ -29,7 +28,7 @@ impl Default for DrawableState {
         DrawableState {
             surface: None,
             geo: Geometry::zero(),
-            refreshed: false
+            refreshed: true
         }
     }
 }
