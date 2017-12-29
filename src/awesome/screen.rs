@@ -128,23 +128,10 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
         .property(Property::new("workarea".into(),
                                 None,
                                 Some(lua.create_function(get_workarea)),
-                                None))?
-        .property(Property::new("screen".into(),
-                                // TODO Implement
-                                Some(lua.create_function(screen_new)),
-                                Some(lua.create_function(get_visible)),
-                                Some(lua.create_function(set_visible))))
+                                None))
 }
 
 fn screen_new<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
-    unimplemented!()
-}
-
-fn get_visible<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
-    unimplemented!()
-}
-
-fn set_visible<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     unimplemented!()
 }
 
