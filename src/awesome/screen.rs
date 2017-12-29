@@ -131,10 +131,6 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
                                 None))
 }
 
-fn screen_new<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
-    unimplemented!()
-}
-
 fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
     let screen = Screen::cast(table.into())?;
     screen.get_workarea(lua)
