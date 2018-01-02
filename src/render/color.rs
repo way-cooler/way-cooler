@@ -13,13 +13,14 @@ pub struct Color {
 
 
 impl Color {
-    /// Makes a new solid color, with no transparency.
-    pub fn solid_color(red: u8, green: u8, blue: u8) -> Self {
+
+    // Makes a new color with an alphachannel
+    pub fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Color {
         Color {
             red: red,
             green: green,
             blue: blue,
-            alpha: 255
+            alpha: alpha
         }
     }
 
@@ -32,9 +33,10 @@ impl Color {
 
 impl From<u32> for Color {
     fn from(val: u32) -> Self {
-        let blue = ((val & 0xff0000) >> 16) as u8;
-        let green = ((val & 0x00ff00) >> 8) as u8;
-        let red = (val & 0x0000ff) as u8;
-        Color::solid_color(red, green, blue)
+        let blue  =  (val & 0x000000ff) as u8;
+        let green = ((val & 0x0000ff00) >> 8) as u8;
+        let red   = ((val & 0x00ff0000) >> 16) as u8;
+        let alpha = ((val & 0xff000000) >> 24) as u8;
+        Color::rgba(red, green, blue, (255 - alpha))
     }
 }
