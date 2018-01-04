@@ -28,7 +28,7 @@ impl Default for DrawableState {
         DrawableState {
             surface: None,
             geo: Geometry::zero(),
-            refreshed: true
+            refreshed: false
         }
     }
 }
@@ -70,6 +70,7 @@ impl <'lua> Drawable<'lua> {
         drawable.geo = geometry;
         if size_changed {
             drawable.surface = None;
+            drawable.refreshed = false;
             let size = geometry.size;
             if size.w > 0 && size.h > 0 {
                 drawable.surface = Some(ImageSurface::create(Format::ARgb32,
