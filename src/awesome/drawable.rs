@@ -36,7 +36,11 @@ impl Default for DrawableState {
 impl <'lua> Drawable<'lua> {
     pub fn new(lua: &Lua) -> rlua::Result<Object> {
         let class = class::class_setup(lua, "drawable")?;
-        Ok(Drawable::allocate(lua, class)?.build())
+        let builder = Drawable::allocate(lua, class)?;
+        // TODO Do properly
+        let table = lua.create_table();
+        table.set("geometry", lua.create_function(geometry))?;
+        Ok(builder.add_to_meta(table)?.build())
     }
 
     pub fn get_geometry(&self) -> rlua::Result<Geometry> {
