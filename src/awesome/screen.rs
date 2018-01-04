@@ -86,6 +86,19 @@ impl <'lua> Screen<'lua> {
         self.set_state(state)
     }
 
+    fn get_geometry(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
+        let state = self.state()?;
+        let Point { x, y } = state.geometry.origin;
+        let Size { w, h } = state.geometry.size;
+        // TODO I do this a lot, put it somewhere
+        let table = lua.create_table();
+        table.set("x", x)?;
+        table.set("y", y)?;
+        table.set("width", w)?;
+        table.set("height", h)?;
+        Ok(table)
+    }
+
     fn get_workarea(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
         let Point { x, y } = state.workarea.origin;
@@ -128,10 +141,19 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     builder
+        .property(Property::new("geometry".into(),
+                                None,
+                                Some(lua.create_function(get_geometry)),
+                                None))?
         .property(Property::new("workarea".into(),
                                 None,
                                 Some(lua.create_function(get_workarea)),
                                 None))
+}
+
+fn get_geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
+    let screen = Screen::cast(table.into())?;
+    screen.get_geometry(lua)
 }
 
 fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {

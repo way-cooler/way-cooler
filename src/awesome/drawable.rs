@@ -28,7 +28,7 @@ impl Default for DrawableState {
         DrawableState {
             surface: None,
             geo: Geometry::zero(),
-            refreshed: true
+            refreshed: false
         }
     }
 }
@@ -36,7 +36,12 @@ impl Default for DrawableState {
 impl <'lua> Drawable<'lua> {
     pub fn new(lua: &Lua) -> rlua::Result<Object> {
         let class = class::class_setup(lua, "drawable")?;
-        Ok(Drawable::allocate(lua, class)?.build())
+        let builder = Drawable::allocate(lua, class)?;
+        // TODO Do properly
+        let table = lua.create_table();
+        table.set("geometry", lua.create_function(geometry))?;
+        table.set("refresh", lua.create_function(refresh))?;
+        Ok(builder.add_to_meta(table)?.build())
     }
 
     pub fn get_geometry(&self) -> rlua::Result<Geometry> {
@@ -66,6 +71,7 @@ impl <'lua> Drawable<'lua> {
         drawable.geo = geometry;
         if size_changed {
             drawable.surface = None;
+            drawable.refreshed = false;
             let size = geometry.size;
             if size.w > 0 && size.h > 0 {
                 drawable.surface = Some(ImageSurface::create(Format::ARgb32,
@@ -75,6 +81,13 @@ impl <'lua> Drawable<'lua> {
                 // TODO emity property::surface
             }
         }
+        self.set_state(drawable)
+    }
+
+    /// Signals that the drawable's surface was updated.
+    pub fn refresh(&mut self) -> rlua::Result<()> {
+        let mut drawable = self.state()?;
+        drawable.refreshed = true;
         self.set_state(drawable)
     }
 }
@@ -122,4 +135,8 @@ fn geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua
     table.set("width", w)?;
     table.set("height", h)?;
     Ok(table)
+}
+
+fn refresh<'lua>(_: &'lua Lua, table: Table<'lua>) -> rlua::Result<()> {
+    Drawable::cast(table.into())?.refresh()
 }
