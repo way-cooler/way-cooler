@@ -40,6 +40,7 @@ impl <'lua> Drawable<'lua> {
         // TODO Do properly
         let table = lua.create_table();
         table.set("geometry", lua.create_function(geometry))?;
+        table.set("refresh", lua.create_function(refresh))?;
         Ok(builder.add_to_meta(table)?.build())
     }
 
@@ -80,6 +81,13 @@ impl <'lua> Drawable<'lua> {
                 // TODO emity property::surface
             }
         }
+        self.set_state(drawable)
+    }
+
+    /// Signals that the drawable's surface was updated.
+    pub fn refresh(&mut self) -> rlua::Result<()> {
+        let mut drawable = self.state()?;
+        drawable.refreshed = true;
         self.set_state(drawable)
     }
 }
@@ -127,4 +135,8 @@ fn geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua
     table.set("width", w)?;
     table.set("height", h)?;
     Ok(table)
+}
+
+fn refresh<'lua>(_: &'lua Lua, table: Table<'lua>) -> rlua::Result<()> {
+    Drawable::cast(table.into())?.refresh()
 }
