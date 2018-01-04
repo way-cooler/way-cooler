@@ -20,6 +20,7 @@ extern crate petgraph;
 extern crate uuid;
 extern crate dbus;
 extern crate cairo;
+extern crate cairo_sys;
 extern crate gdk_pixbuf;
 extern crate glib;
 #[macro_use]
@@ -265,8 +266,6 @@ fn main() {
     callbacks::init();
     commands::init();
     registry::init();
-    lua::init()
-        .expect("Could not initialize lua thread!");
     ipc::init();
 
     info!("Running wlc...");

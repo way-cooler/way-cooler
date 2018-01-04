@@ -1,9 +1,10 @@
 //! TODO Fill in
 
+use cairo_sys::cairo_pattern_t;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
 use super::object::{Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
@@ -26,7 +27,7 @@ impl Default for RootState {
 impl <'lua> Root<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         // TODO FIXME
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "root")?;
         Ok(Root::allocate(lua, class)?.build())
     }
 }
@@ -56,6 +57,8 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy))?
            .method("buttons".into(), lua.create_function(dummy))?
+           .method("wallpaper".into(), lua.create_function(wallpaper))?
+           .method("tags".into(), lua.create_function(tags))?
            .method("keys".into(), lua.create_function(dummy))?
            .method("size".into(), lua.create_function(dummy_double))?
            .method("size_mm".into(), lua.create_function(dummy_double))?
@@ -65,3 +68,26 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
 impl_objectable!(Root, RootState);
 
 fn dummy_double<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<(i32, i32)> { Ok((0, 0)) }
+
+/// Gets the wallpaper as a cairo surface or set it as a cairo pattern
+fn wallpaper<'lua>(lua: &'lua Lua, pattern: Option<LightUserData>) -> rlua::Result<Value<'lua>> {
+    // TODO FIXME Implement for realz
+    if let Some(pattern) = pattern {
+        // TODO Wrap before giving it to set_wallpaper
+        let pattern = pattern.0 as *mut cairo_pattern_t;
+        return set_wallpaper(lua, pattern)?.to_lua(lua)
+    }
+    // TODO Look it up in global conf (e.g probably super secret lua value)
+    return Ok(Value::Nil)
+}
+
+fn set_wallpaper<'lua>(_: &'lua Lua, _pattern: *mut cairo_pattern_t) -> rlua::Result<bool> {
+    warn!("Fake setting the wallpaper");
+    Ok(true)
+}
+
+fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
+    let table = lua.create_table();
+    // TODO FIXME Get tags
+    Ok(table)
+}

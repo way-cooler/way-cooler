@@ -6,6 +6,7 @@ pub type PropF<'lua> = rlua::Function<'lua>;
 ///
 /// NOTE Not actually UserData, because it has lua functions in it.
 /// It's just the deserialized version of a table.
+#[derive(Debug)]
 pub struct Property<'lua> {
     pub name: String,
     pub cb_new: Option<PropF<'lua>>,

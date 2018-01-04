@@ -26,7 +26,7 @@ impl Default for KeyState {
 impl <'lua> Key<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         // TODO FIXME
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "key")?;
         Ok(Key::allocate(lua, class)?.build())
     }
 }

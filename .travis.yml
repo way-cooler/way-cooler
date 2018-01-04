@@ -24,6 +24,7 @@ addons:
       - lua5.2
       - libdbus-glib-1-2
       - liblua5.2-dev
+      - libxcb-xkb-dev
       - dbus
 
 notifications:

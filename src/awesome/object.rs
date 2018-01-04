@@ -27,7 +27,6 @@ pub struct ObjectBuilder<'lua>{
 }
 
 impl <'lua> ObjectBuilder<'lua> {
-    #[allow(dead_code)]
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
         let meta = self.object.table.get_metatable()
             .expect("Object had no meta table");
@@ -60,7 +59,7 @@ impl <'lua> ObjectBuilder<'lua> {
 /// canonical form using this trait.
 pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
-        let data = obj.table.get::<_, AnyUserData>("data")?;
+        let data = obj.table.get::<_, AnyUserData>("userdata")?;
         if data.is::<S>() {
             Ok(Self::_wrap(obj.table))
         } else {
@@ -77,7 +76,11 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn _wrap(table: Table<'lua>) -> T;
 
     fn state(&self) -> rlua::Result<S> {
-        self.get_table().get::<_, S>("data")
+        self.get_table().get::<_, S>("userdata")
+    }
+
+    fn set_state(&self, data: S) -> rlua::Result<()> {
+        self.get_table().set("userdata", data)
     }
 
     /// Gets the internal table for the concrete object.
@@ -87,11 +90,29 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
 
     fn allocate(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>>
     {
+        // This is the format of the lua objects in Way Cooler:
+        /*
+        -- This is the weird wrapper table, binding the user data and the object table together
+        {
+            -- Actual user data object, e.g the Rust object
+            userdata = <user_data_here>,
+            -- This is the object data table, e.g the thing that in Awesome
+            -- is linked to the user data with lua_setuservalue
+            data = {},
+            -- That metatable that is allocated in the new macro for objects.
+            -- It can access both the userdata and the lua data fields
+            __metatable = {}
+        }
+        */
         let object = S::default();
-        let object_table = lua.create_table();
-        object_table.set("data", object)?;
+        // TODO Increment the instance count
+        let wrapper_table = lua.create_table();
+        wrapper_table.set("userdata", object)?;
+        let data_table = lua.create_table();
+        wrapper_table.set("data", data_table)?;
         let meta = lua.create_table();
         meta.set("__class", class)?;
+        meta.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         meta.set("signals", lua.create_table())?;
         meta.set("connect_signal",
                  lua.create_function(connect_signal))?;
@@ -100,11 +121,12 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         meta.set("emit_signal", lua.create_function(emit_signal))?;
         meta.set("__index", lua.create_function(default_index))?;
         meta.set("__newindex", lua.create_function(default_newindex))?;
-        meta.set("__tostring", lua.create_function(|_, object_table: Table| {
-            Ok(format!("{}", object_table.get::<_, S>("data")?))
+        meta.set("__tostring", lua.create_function(|_, wrapper_table: Table| {
+            Ok(format!("{}", wrapper_table.get::<_, S>("userdata")?))
         }))?;
-        object_table.set_metatable(Some(meta));
-        let object = Object { table: object_table };
+        wrapper_table.set_metatable(Some(meta));
+        // TODO Emit new signal event
+        let object = Object { table: wrapper_table };
         Ok(ObjectBuilder { object, lua })
     }
 }
@@ -127,9 +149,13 @@ impl <'lua> Object<'lua> {
               O: Objectable<'lua, T, S>
     {
         let table = obj.get_table();
-        let has_data = table.contains_key("data")
-            .expect("Could not get data field of object table");
-        assert_eq!(has_data, true);
+        assert!(table.contains_key("userdata")
+                .expect("Could not get userdata field of object wrapper table"),
+                "Table did not have special \"userdata\" field");
+        assert!(table.contains_key("data")
+                .expect("Could not get data field of object wrapper table"),
+                "Table did not have special \"data\" field"
+        );
         Object { table }
     }
 
@@ -174,7 +200,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                 }))
         },
         "data" => {
-            obj_table.get("data")
+            obj_table.to_lua(lua)
         },
         index => {
             // Try see if there is a property of the class with the name

@@ -209,6 +209,8 @@ pub fn init() -> Result<(), rlua::Error> {
 pub fn on_compositor_ready() {
     info!("Running lua on_init()");
     // Call the special init hook function that we read from the init file
+    ::lua::init()
+        .expect("Could not initialize lua thread!");
     send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned())).err()
         .map(|error| warn!("Lua init callback returned an error: {:?}", error));
 }

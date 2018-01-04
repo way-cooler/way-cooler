@@ -57,7 +57,7 @@ fn call_keygrabber(lua: &Lua,
                    -> rlua::Result<()> {
     let globals = lua.globals();
     let lua_callback = globals
-        .get::<_, Table>(KEYGRABBER_TABLE).expect("keygrabber table not defined")
+        .get::<_, Table>(KEYGRABBER_TABLE)?
         .get::<_, Function>(SECRET_CALLBACK)?;
     lua_callback.call((mods, key, event))
 }
