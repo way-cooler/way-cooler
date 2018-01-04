@@ -153,6 +153,7 @@ fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Res
     let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
     table.set("drawable", drawable_table)?;
     table.set("geometry", lua.create_function(drawin_geometry))?;
+    table.set("struts", lua.create_function(drawin_struts))?;
     builder.add_to_meta(table)
 }
 
@@ -257,4 +258,15 @@ fn set_height<'lua>(_: &'lua Lua, (drawin, height): (Table<'lua>, LuaInteger)) -
         drawin.resize(geo)?;
     }
     Ok(())
+}
+
+fn drawin_struts<'lua>(lua: &'lua Lua, _drawin: Table<'lua>) -> rlua::Result<Table<'lua>> {
+    // TODO: Implement this properly. Struts means this drawin reserves some space on the screen
+    // that it is visible on, shrinking the workarea in the specified directions.
+    let res = lua.create_table();
+    res.set("left", 0)?;
+    res.set("right", 0)?;
+    res.set("top", 0)?;
+    res.set("bottom", 0)?;
+    Ok(res)
 }
