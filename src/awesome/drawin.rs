@@ -169,18 +169,24 @@ fn get_visible<'lua>(_: &'lua Lua, table: Table<'lua>) -> rlua::Result<bool> {
     // TODO signal
 }
 
-fn drawin_geometry<'lua>(lua: &'lua Lua, (drawin, geometry): (Table<'lua>, Table<'lua>)) -> rlua::Result<Table<'lua>> {
+fn drawin_geometry<'lua>(lua: &'lua Lua, (drawin, geometry): (Table<'lua>, Value<'lua>)) -> rlua::Result<Table<'lua>> {
     let mut drawin = Drawin::cast(drawin.into())?;
-    let w = geometry.get::<_, i32>("width")?;
-    let h = geometry.get::<_, i32>("height")?;
-    let x = geometry.get::<_, i32>("x")?;
-    let y = geometry.get::<_, i32>("y")?;
-    if x > 0 && y > 0 {
-        let geo = Geometry {
-            origin: Point { x, y },
-            size: Size { w: w as u32, h: h as u32 }
-        };
-        drawin.resize(geo)?;
+    match geometry {
+        rlua::Value::Table(geometry) => {
+            let w = geometry.get::<_, i32>("width")?;
+            let h = geometry.get::<_, i32>("height")?;
+            let x = geometry.get::<_, i32>("x")?;
+            let y = geometry.get::<_, i32>("y")?;
+            if x > 0 && y > 0 {
+                let geo = Geometry {
+                    origin: Point { x, y },
+                    size: Size { w: w as u32, h: h as u32 }
+                };
+                drawin.resize(geo)?;
+            }
+        },
+        rlua::Value::Nil => {},
+        _ => return Err(rlua::Error::RuntimeError("Invalid argument".to_owned()))
     }
     let new_geo = drawin.get_geometry()?;
     let Size { w, h } = new_geo.size;
