@@ -37,7 +37,7 @@ impl UserData for ButtonState {}
 
 impl <'lua> Button<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
-        let class = class::button_class(lua)?;
+        let class = class::class_setup(lua, "button")?;
         Ok(Button::allocate(lua, class)?.build())
     }
 
@@ -49,7 +49,7 @@ impl <'lua> Button<'lua> {
     pub fn set_button(&self, new_val: xcb_button_t) -> rlua::Result<()> {
         let mut button = self.state()?;
         button.button = new_val;
-        self.0.set("data", button)?;
+        self.set_state(button)?;
         Ok(())
     }
 
@@ -62,7 +62,7 @@ impl <'lua> Button<'lua> {
         use ::lua::mods_to_rust;
         let mut button = self.state()?;
         button.modifiers = mods_to_rust(mods)?;
-        self.0.set("data", button)?;
+        self.set_state(button)?;
         Ok(())
     }
 }
