@@ -2,8 +2,6 @@
 
 use std::convert::From;
 
-const WLC_BUG_INVERT_RED_BLUE: bool = true;
-
 /// Color to draw to the screen, including the alpha channel.
 /// NOTE: At this point, the parsed colors return the colors red and blue switched.
 /// This is due to a bug in WLC, causing the colors to be switched when drawing.
@@ -21,24 +19,15 @@ impl Color {
 
     /// Creates a new color with an alphachannel
     pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
-	if WLC_BUG_INVERT_RED_BLUE {
-            // There is a bug in wlc, causing red and blue to be inverted:
-            // https://github.com/Cloudef/wlc/issues/142
-            // We can work around it, by just switching red with blue, until the issue is resolved.
-            // When the bug is fixed, this code path can be deleted and the tests must be adjusted.
-            Color {
-                red:   b,
-                green: g,
-                blue:  r,
-                alpha: a
-            }
-        } else {
-            Color {
-                red:   r,
-                green: g,
-                blue:  b,
-                alpha: a
-            }
+        // There is a bug in wlc, causing red and blue to be inverted:
+        // https://github.com/Cloudef/wlc/issues/142
+        // We can work around it, by just switching red with blue, until the issue is resolved.
+        // When the bug is fixed, this code path can be deleted and the tests must be adjusted.
+        Color {
+            red:   b,
+            green: g,
+            blue:  r,
+            alpha: a
         }
     }
 
@@ -75,16 +64,12 @@ impl Color {
     /// Parses an ARGB String into a Color
     fn parse_argb(s: &str) -> Option<Color> {
         if s.len() == 8 {
-            let (str_a, str_color) = s.split_at(2);
-            let alpha = Color::parse_color(str_a);
-            let color = Color::parse_rgb(str_color);
-            if WLC_BUG_INVERT_RED_BLUE {
-		// Due to the bug, the colors are already inverted, so in the returned color
-                // red is blue and blue is red.
-                alpha.and_then(|a| color.map(|rgb| Color::rgba(rgb.blue, rgb.green, rgb.red, a)))
-            } else {
-                alpha.and_then(|a| color.map(|rgb| Color::rgba(rgb.red, rgb.green, rgb.blue, a)))
-            }
+            let (str_a, str_rgb) = s.split_at(2);
+            // Due to the bug, the colors are already inverted, so in the returned color
+            // red is blue and blue is red.
+            let alpha  = Color::parse_color(str_a)?;
+            let colors = Color::parse_rgb(str_rgb);
+            colors.map(|rgb| Color::rgba(rgb.blue, rgb.green, rgb.red, alpha))
         } else {
             None
         }
@@ -95,10 +80,10 @@ impl Color {
         if s.len() == 6 {
             let (s_red, s_rest)   = s.split_at(2);
             let (s_green, s_blue) = s_rest.split_at(2);
-            let red   = Color::parse_color(s_red);
-            let green = Color::parse_color(s_green);
+            let red   = Color::parse_color(s_red)?;
+            let green = Color::parse_color(s_green)?;
             let blue  = Color::parse_color(s_blue);
-            red.and_then(|r| green.and_then(|g| blue.map(|b| Color::rgba(r, g, b, 255))))
+            blue.map(|b| Color::rgba(red, green, b, 255))
         } else {
             None
         }
@@ -107,9 +92,9 @@ impl Color {
     /// Parses exactly one single color value from a String (eg "AA", "RR", "GG" or "BB")
     fn parse_color(s: &str) -> Option<u8> {
         let mut chars = s.chars().take(2);
-	let digit1 = chars.next().and_then(Color::hex_to_u8);
-	let digit2 = chars.next().and_then(Color::hex_to_u8);
-        digit1.and_then(|i1| digit2.map(|i2| (i1 << 4) | i2))
+        let digit1 = chars.next().and_then(Color::hex_to_u8)?;
+        let digit2 = chars.next().and_then(Color::hex_to_u8);
+        digit2.map(|i2| (digit1 << 4) | i2)
     }
 
     /// Converts a hex char into a u8
@@ -128,6 +113,7 @@ impl From<u32> for Color {
     }
 }
 
+#[cfg(test)]
 mod test {
 
     use ::render::Color;
@@ -135,24 +121,25 @@ mod test {
     #[test]
     fn test_from_u32() {
         let hex_red   = 0xFF0000;
-	let hex_green = 0x00FF00;
+        let hex_green = 0x00FF00;
         let hex_blue  = 0x0000FF;
-	let r: Color = hex_red.into();
-	let g: Color = hex_green.into();
-	let b: Color = hex_blue.into();
-	// test red values
-	assert_eq!(0x00, r.red);
-	assert_eq!(0x00, r.green);
-	assert_eq!(0xFF, r.blue);
-	// test green values
-	assert_eq!(0x00, g.red);
-	assert_eq!(0xFF, g.green);
-	assert_eq!(0x00, g.blue);
-	// test blue values
-	assert_eq!(0xFF, b.red);
-	assert_eq!(0x00, b.green);
-	assert_eq!(0x00, b.blue);
+        let r: Color = hex_red.into();
+        let g: Color = hex_green.into();
+        let b: Color = hex_blue.into();
+        // test red values
+        assert_eq!(0x00, r.red);
+        assert_eq!(0x00, r.green);
+        assert_eq!(0xFF, r.blue);
+        // test green values
+        assert_eq!(0x00, g.red);
+        assert_eq!(0xFF, g.green);
+        assert_eq!(0x00, g.blue);
+        // test blue values
+        assert_eq!(0xFF, b.red);
+        assert_eq!(0x00, b.green);
+        assert_eq!(0x00, b.blue);
     }
+
     #[test]
     fn parse_color() {
         // test all numbers, uppercase and lowercase letters
