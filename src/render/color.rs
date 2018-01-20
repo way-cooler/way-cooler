@@ -3,8 +3,12 @@
 use std::convert::From;
 use std::str::Chars;
 
+const WLC_BUG_INVERT_RED_BLUE: bool = true;
 
 /// Color to draw to the screen, including the alpha channel.
+/// NOTE: At this point, the parsed colors return the colors red and blue switched.
+/// This is due to a bug in WLC, causing the colors to be switched when drawing.
+/// Example: "00FF0000" will draw as red (correct), but the Color structure will contain 0 for `red` and 255 for `blue`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Color {
     red: u8,
@@ -18,11 +22,24 @@ impl Color {
 
     /// Creates a new color with an alphachannel
     pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
-        Color {
-            red: r,
-            green: g,
-            blue: b,
-            alpha: a
+	if WLC_BUG_INVERT_RED_BLUE {
+            // There is a bug in wlc, causing red and blue to be inverted:
+            // https://github.com/Cloudef/wlc/issues/142
+            // We can work around it, by just switching red with blue, until the issue is resolved.
+            // When the bug is fixed, this code path can be deleted and the tests must be adjusted.
+            Color {
+                red:   b,
+                green: g,
+                blue:  r,
+                alpha: a
+            }
+        } else {
+            Color {
+                red:   r,
+                green: g,
+                blue:  b,
+                alpha: a
+            }
         }
     }
 
@@ -46,7 +63,7 @@ impl Color {
         } else if s.starts_with("0x") {
             Color::parse(s[2..].to_string())
         } else if s.len() == 8 {
-            Color::parse_rgba(s)
+            Color::parse_argb(s)
         } else if s.len() == 6 {
             Color::parse_rgb(s)
         } else {
@@ -55,12 +72,18 @@ impl Color {
     }
 
     /// Parses an ARGB String into a Color
-    fn parse_rgba(s: String) -> Option<Color> {
+    fn parse_argb(s: String) -> Option<Color> {
         if s.len() == 8 {
             let mut chars = s.chars();
-            Color::parse_color(&mut chars)
-                .and_then(|a| Color::parse_rgb(chars.as_str().to_string())
-                    .map(|rgb| Color::rgba(rgb.red, rgb.green, rgb.blue, a)))
+            let alpha = Color::parse_color(&mut chars);
+            let color = Color::parse_rgb(chars.as_str().to_string());
+            if WLC_BUG_INVERT_RED_BLUE {
+		// Due to the bug, the colors are already inverted, so in the returned color
+                // red is blue and blue is red.
+                alpha.and_then(|a| color.map(|rgb| Color::rgba(rgb.blue, rgb.green, rgb.red, a)))
+            } else {
+                alpha.and_then(|a| color.map(|rgb| Color::rgba(rgb.red, rgb.green, rgb.blue, a)))
+            }
         } else {
             None
         }
@@ -70,10 +93,10 @@ impl Color {
     fn parse_rgb(s: String) -> Option<Color> {
         if s.len() == 6 {
             let mut chars = s.chars();
-            Color::parse_color(&mut chars)
-                .and_then(|r| Color::parse_color(&mut chars)
-                    .and_then(|g| Color::parse_color(&mut chars)
-                        .map(|b| Color::rgba(r, g, b, 255))))
+            let red   = Color::parse_color(&mut chars);
+            let green = Color::parse_color(&mut chars);
+            let blue  = Color::parse_color(&mut chars);
+            red.and_then(|r| green.and_then(|g| blue.map(|b| Color::rgba(r, g, b, 255))))
         } else {
             None
         }
@@ -81,41 +104,28 @@ impl Color {
 
     /// Parses exactly one single color value from a String (eg "AA", "RR", "GG" or "BB")
     fn parse_color(chars: &mut Chars) -> Option<u8> {
-        chars.next().and_then(Color::hex_to_num)
-            .and_then(|i1| chars.next()
-                .and_then(Color::hex_to_num).map(|i2| (i1 << 4) | i2))
+        let mut next_two_chars = chars.take(2);
+        let digit1 = Color::parse_next_char(next_two_chars.next());
+        let digit2 = Color::parse_next_char(next_two_chars.next());
+        digit1.and_then(|i1| digit2.map(|i2| (i1 << 4) | i2))
     }
 
-    /// Converts a hex char into a number
-    fn hex_to_num(c: char) -> Option<u8>{
-        match c {
-            '0' => Some(0),
-            '1' => Some(1),
-            '2' => Some(2),
-            '3' => Some(3),
-            '4' => Some(4),
-            '5' => Some(5),
-            '6' => Some(6),
-            '7' => Some(7),
-            '8' => Some(8),
-            '9' => Some(9),
-            'a' | 'A' => Some(10),
-            'b' | 'B' => Some(11),
-            'c' | 'C' => Some(12),
-            'd' | 'D' => Some(13),
-            'e' | 'E' => Some(14),
-            'f' | 'F' => Some(15),
-             _   => None
-         }
+    fn parse_next_char(c: Option<char>) -> Option<u8> {
+        c.and_then(Color::hex_to_u8)
+    }
+
+    /// Converts a hex char into a u8
+    fn hex_to_u8(c: char) -> Option<u8> {
+        c.to_digit(16).map(|x| (x as u8))
     }
 
 }
 
 impl From<u32> for Color {
     fn from(val: u32) -> Self {
-        let blue = ((val & 0xff0000) >> 16) as u8;
-        let green = ((val & 0x00ff00) >> 8) as u8;
-        let red = (val & 0x0000ff) as u8;
+        let red   = ((val & 0xff0000) >> 16) as u8;
+        let green = ((val & 0x00ff00) >> 8)  as u8;
+        let blue  =  (val & 0x0000ff)        as u8;
         Color::rgba(red, green, blue, 255)
     }
 }
@@ -125,29 +135,7 @@ mod test {
     use ::render::Color;
 
     #[test]
-    fn test_old_logic_failure() {
-        let hex_red   = 0xFF0000;
-	let hex_green = 0x00FF00;
-        let hex_blue  = 0x0000FF;
-	let r: Color = hex_red.into();
-	let g: Color = hex_green.into();
-	let b: Color = hex_blue.into();
-	// test red values
-	assert_eq!(0xFF, r.red);
-	assert_eq!(0x00, r.green);
-	assert_eq!(0x00, r.blue);
-	// test green values
-	assert_eq!(0x00, g.red);
-	assert_eq!(0xFF, g.green);
-	assert_eq!(0x00, g.blue);
-	// test blue values
-	assert_eq!(0x00, b.red);
-	assert_eq!(0x00, b.green);
-	assert_eq!(0xFF, b.blue);
-    }
-
-    #[test]
-    fn test_old_logic_working() {
+    fn test_from_u32() {
         let hex_red   = 0xFF0000;
 	let hex_green = 0x00FF00;
         let hex_blue  = 0x0000FF;
@@ -217,9 +205,9 @@ mod test {
         assert_eq!(0,   rgb_black.blue);
         assert_eq!(255, rgb_black.alpha);
         let rgb_red   = Color::parse_rgb("ff0000".to_string()).unwrap();
-        assert_eq!(255, rgb_red.red);
+        assert_eq!(0,   rgb_red.red);
         assert_eq!(0,   rgb_red.green);
-        assert_eq!(0,   rgb_red.blue);
+        assert_eq!(255, rgb_red.blue);
         assert_eq!(255, rgb_red.alpha);
         let rgb_green = Color::parse_rgb("00ff00".to_string()).unwrap();
         assert_eq!(0,   rgb_green.red);
@@ -227,9 +215,9 @@ mod test {
         assert_eq!(0,   rgb_green.blue);
         assert_eq!(255, rgb_green.alpha);
         let rgb_blue  = Color::parse_rgb("0000ff".to_string()).unwrap();
-        assert_eq!(0,   rgb_blue.red);
+        assert_eq!(255, rgb_blue.red);
         assert_eq!(0,   rgb_blue.green);
-        assert_eq!(255, rgb_blue.blue);
+        assert_eq!(0,   rgb_blue.blue);
         assert_eq!(255, rgb_blue.alpha);
         let rgb_white = Color::parse_rgb("ffffff".to_string()).unwrap();
         assert_eq!(255, rgb_white.red);
@@ -249,45 +237,45 @@ mod test {
     }
 
     #[test]
-    fn parse_rgba() {
+    fn parse_argb() {
         // test some valid color values
-        let rgb_transparent = Color::parse_rgba("00000000".to_string()).unwrap();
+        let rgb_transparent = Color::parse_argb("00000000".to_string()).unwrap();
         assert_eq!(0,   rgb_transparent.red);
         assert_eq!(0,   rgb_transparent.green);
         assert_eq!(0,   rgb_transparent.blue);
         assert_eq!(0,   rgb_transparent.alpha);
-        let rgb_red   = Color::parse_rgba("40ff0000".to_string()).unwrap();
-        assert_eq!(255, rgb_red.red);
+        let rgb_red   = Color::parse_argb("40ff0000".to_string()).unwrap();
+        assert_eq!(0,   rgb_red.red);
         assert_eq!(0,   rgb_red.green);
-        assert_eq!(0,   rgb_red.blue);
-        assert_eq!(64, rgb_red.alpha);
-        let rgb_green = Color::parse_rgba("8000ff00".to_string()).unwrap();
+        assert_eq!(255, rgb_red.blue);
+        assert_eq!(64,  rgb_red.alpha);
+        let rgb_green = Color::parse_argb("8000ff00".to_string()).unwrap();
         assert_eq!(0,   rgb_green.red);
         assert_eq!(255, rgb_green.green);
         assert_eq!(0,   rgb_green.blue);
         assert_eq!(128, rgb_green.alpha);
-        let rgb_blue  = Color::parse_rgba("c00000ff".to_string()).unwrap();
-        assert_eq!(0,   rgb_blue.red);
+        let rgb_blue  = Color::parse_argb("c00000ff".to_string()).unwrap();
+        assert_eq!(255, rgb_blue.red);
         assert_eq!(0,   rgb_blue.green);
-        assert_eq!(255, rgb_blue.blue);
+        assert_eq!(0,   rgb_blue.blue);
         assert_eq!(192, rgb_blue.alpha);
-        let rgb_white = Color::parse_rgba("ffffffff".to_string()).unwrap();
+        let rgb_white = Color::parse_argb("ffffffff".to_string()).unwrap();
         assert_eq!(255, rgb_white.red);
         assert_eq!(255, rgb_white.green);
         assert_eq!(255, rgb_white.blue);
         assert_eq!(255, rgb_white.alpha);
         // test some invalid formats
-        assert_eq!(false, Color::parse_rgba("".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("0".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("00".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("000".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("0000".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("00000".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("000000".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("0000000".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("xxxxxxxx".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("000000000".to_string()).is_some());
-        assert_eq!(false, Color::parse_rgba("0000000000".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("0".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("00".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("000".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("0000".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("00000".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("000000".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("0000000".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("xxxxxxxx".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("000000000".to_string()).is_some());
+        assert_eq!(false, Color::parse_argb("0000000000".to_string()).is_some());
     }
 
     #[test]
@@ -303,9 +291,9 @@ mod test {
         assert_eq!(true, Color::parse("00000000".to_string()).is_some());
         // Actual colors
         let red = Color::parse("0xFFFF0000".to_string()).unwrap();
-        assert_eq!(255, red.red);
+        assert_eq!(0,   red.red);
         assert_eq!(0,   red.green);
-        assert_eq!(0,   red.blue);
+        assert_eq!(255, red.blue);
         assert_eq!(255, red.alpha);
         let green = Color::parse("0xFF00FF00".to_string()).unwrap();
         assert_eq!(0,   green.red);
@@ -313,9 +301,9 @@ mod test {
         assert_eq!(0,   green.blue);
         assert_eq!(255, green.alpha);
         let blue = Color::parse("0xFF0000FF".to_string()).unwrap();
-        assert_eq!(0,   blue.red);
+        assert_eq!(255, blue.red);
         assert_eq!(0,   blue.green);
-        assert_eq!(255, blue.blue);
+        assert_eq!(0,   blue.blue);
         assert_eq!(255, blue.alpha);
         // wrong formats
         assert_eq!(false, Color::parse("".to_string()).is_some());
