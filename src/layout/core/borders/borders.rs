@@ -253,7 +253,7 @@ impl Borders {
             .and_then(|borders| borders.as_object()
                       .and_then(|borders| borders.get("inactive_color"))
                       .and_then(|gaps| gaps.as_string()))
-            .and_then(|s| Color::parse(s.to_string()))
+            .and_then(|s| Color::parse(s))
             .unwrap_or(0u32.into())
     }
 
@@ -267,7 +267,7 @@ impl Borders {
             .and_then(|borders| borders.as_object()
                       .and_then(|borders| borders.get("active_color"))
                       .and_then(|gaps| gaps.as_string()))
-            .and_then(|s| Color::parse(s.to_string()))
+            .and_then(|s| Color::parse(s))
     }
 
     /// Construct root borders, if the option is enabled.
@@ -301,7 +301,7 @@ impl Borders {
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("background_color"))
                       .and_then(|color| color.as_string()))
-            .and_then(|s| Color::parse(s.to_string()))
+            .and_then(|s| Color::parse(s))
             .unwrap_or(0u32.into())
     }
 
@@ -315,7 +315,7 @@ impl Borders {
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("active_background_color"))
                       .and_then(|color| color.as_string()))
-            .and_then(|s| Color::parse(s.to_string()))
+            .and_then(|s| Color::parse(s))
     }
 
     /// Fetches the default title font color from the registry.
@@ -330,7 +330,7 @@ impl Borders {
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("font_color"))
                       .and_then(|color| color.as_string()))
-            .and_then(|s| Color::parse(s.to_string()))
+            .and_then(|s| Color::parse(s))
             .unwrap_or(0xffffff.into())
     }
 
@@ -344,7 +344,7 @@ impl Borders {
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("active_font_color"))
                       .and_then(|color| color.as_string()))
-            .and_then(|s| Color::parse(s.to_string()))
+            .and_then(|s| Color::parse(s))
     }
 
     /// Gets the color for these borders.
