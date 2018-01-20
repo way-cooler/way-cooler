@@ -21,15 +21,15 @@ way_cooler.windows = {
   borders = { -- Options for borders
     root_borders = false, -- Display borders in root containers by default
     size = 20, -- The width of the borders between windows in pixels
-    inactive_color = 0x386890, -- Color of the borders for inactive containers
-    active_color = 0x57beb9 -- Color of active container borders
+    inactive_color = "386890", -- Color of the borders for inactive containers
+    active_color = "57beb9" -- Color of active container borders
   },
   title_bar = { -- Options for title bar above windows
     size = 20, -- Size of the title bar
-    background_color = 0x386690, -- Color of inactive title bar
-    active_background_color = 0x57beb9, -- Color of active title bar
-    font_color = 0x0, -- Color of the font for an inactive title bar
-    active_font_color = 0xffffff -- Color of font for active title bar
+    background_color = "386690", -- Color of inactive title bar
+    active_background_color = "57beb9", -- Color of active title bar
+    font_color = "000000", -- Color of the font for an inactive title bar
+    active_font_color = "ffffff" -- Color of font for active title bar
   }
 }
 

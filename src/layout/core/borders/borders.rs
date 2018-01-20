@@ -252,9 +252,9 @@ impl Borders {
             .and_then(|windows| windows.get("borders".into()))
             .and_then(|borders| borders.as_object()
                       .and_then(|borders| borders.get("inactive_color"))
-                      .and_then(|gaps| gaps.as_f64()))
-            .map(|num| num as u32)
-            .unwrap_or(0u32).into()
+                      .and_then(|gaps| gaps.as_string()))
+            .and_then(|s| Color::parse(s))
+            .unwrap_or(0u32.into())
     }
 
     /// Gets the active border color, if one is set.
@@ -266,8 +266,8 @@ impl Borders {
             .and_then(|windows| windows.get("borders".into()))
             .and_then(|borders| borders.as_object()
                       .and_then(|borders| borders.get("active_color"))
-                      .and_then(|gaps| gaps.as_f64()))
-            .map(|num| (num as u32).into())
+                      .and_then(|gaps| gaps.as_string()))
+            .and_then(|s| Color::parse(s))
     }
 
     /// Construct root borders, if the option is enabled.
@@ -300,9 +300,9 @@ impl Borders {
             .and_then(|windows| windows.get("title_bar"))
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("background_color"))
-                      .and_then(|color| color.as_f64()))
-            .map(|num| num as u32)
-            .unwrap_or(0u32).into()
+                      .and_then(|color| color.as_string()))
+            .and_then(|s| Color::parse(s))
+            .unwrap_or(0u32.into())
     }
 
     /// Gets the active border color, if one is set
@@ -314,8 +314,8 @@ impl Borders {
             .and_then(|windows| windows.get("title_bar"))
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("active_background_color"))
-                      .and_then(|color| color.as_f64()))
-            .map(|num| (num as u32).into())
+                      .and_then(|color| color.as_string()))
+            .and_then(|s| Color::parse(s))
     }
 
     /// Fetches the default title font color from the registry.
@@ -329,9 +329,9 @@ impl Borders {
             .and_then(|windows| windows.get("title_bar"))
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("font_color"))
-                      .and_then(|color| color.as_f64()))
-            .map(|num| num as u32)
-            .unwrap_or(0xffffff).into()
+                      .and_then(|color| color.as_string()))
+            .and_then(|s| Color::parse(s))
+            .unwrap_or(0xffffff.into())
     }
 
     /// Gets the active title border font, if one is set
@@ -343,8 +343,8 @@ impl Borders {
             .and_then(|windows| windows.get("title_bar"))
             .and_then(|title_bar| title_bar.as_object()
                       .and_then(|title_bar| title_bar.get("active_font_color"))
-                      .and_then(|color| color.as_f64()))
-            .map(|num| (num as u32).into())
+                      .and_then(|color| color.as_string()))
+            .and_then(|s| Color::parse(s))
     }
 
     /// Gets the color for these borders.
