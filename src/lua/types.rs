@@ -22,9 +22,9 @@ pub enum LuaQuery {
     /// Execute a file
     ExecFile(String),
     /// Execute some Rust using the Lua context.
-    ExecRust(fn(&mut rlua::Lua) -> rlua::Value<'static>),
+    ExecRust(fn(&rlua::Lua) -> rlua::Value<'static>),
     /// Execute some Rust using the Lua context.
-    ExecWithLua(Box<FnMut(&mut rlua::Lua) -> rlua::Result<()>>),
+    ExecWithLua(Box<FnMut(&rlua::Lua) -> rlua::Result<()>>),
 
     /// Handle the key press for the given key.
     HandleKey(KeyPress),

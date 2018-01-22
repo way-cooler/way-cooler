@@ -18,7 +18,7 @@ use super::thread::{update_registry_value};
 /// We've `include!`d the code which initializes from the Lua side.
 
 /// Register all the Rust functions for the lua libraries
-pub fn register_libraries(lua: &mut rlua::Lua) -> LuaResult<()> {
+pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
     trace!("Registering Rust libraries...");
     {
         let rust_table = lua.create_table();

@@ -6,9 +6,9 @@ use std::collections::btree_map::BTreeMap;
 use std::thread;
 use std::fs::{File};
 use std::path::Path;
-use std::fmt::{Debug, Formatter};
-use std::fmt::Result as FmtResult;
-use std::sync::{Mutex, RwLock};
+use std::fmt::{Debug, Formatter, Result as FmtResult};
+use std::cell::RefCell;
+use std::sync::RwLock;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::io::Read;
 
@@ -30,14 +30,11 @@ use registry::{self};
 
 use ::layout::{lock_tree, ContainerType};
 
-struct LuaWrapper(rlua::Lua);
-
-unsafe impl Send for LuaWrapper{}
+thread_local! {
+    static LUA: RefCell<rlua::Lua> = RefCell::new(rlua::Lua::new());
+}
 
 lazy_static! {
-    // XXX: The Mutex is not actually needed. The Lua state will be thread-local to the Lua thread.
-    static ref LUA: Mutex<LuaWrapper> = Mutex::new(LuaWrapper(rlua::Lua::new()));
-
     /// Sends requests to the Lua thread
     /// Whether the Lua thread is currently running
     static ref RUNNING: RwLock<bool> = RwLock::new(false);
@@ -97,7 +94,7 @@ pub fn update_registry_value(category: String) {
 // Reexported in lua/mod.rs
 /// Run a closure with the Lua state. The closure will execute in the Lua thread.
 pub fn run_with_lua<F>(func: F) -> rlua::Result<()>
-    where F: 'static + FnMut(&mut rlua::Lua) -> rlua::Result<()>
+    where F: 'static + FnMut(&rlua::Lua) -> rlua::Result<()>
 {
     // TODO: Uhm, error handling?
     match send(LuaQuery::ExecWithLua(Box::new(func))).unwrap().recv().unwrap() {
@@ -132,9 +129,10 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
             },
             Ok(m) => m
         };
-        let mut lua = LUA.lock().expect("LUA was poisoned!");
-        trace!("Handling a request");
-        handle_message(message, &mut lua.0);
+        LUA.with(|lua| {
+            trace!("Handling a request");
+            handle_message(message, &*lua.borrow());
+        });
         Continue(false)
     });
     Ok(response_rx)
@@ -143,7 +141,7 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 /// Initialize the Lua thread.
 pub fn init() -> Result<(), rlua::Error> {
     {
-        rust_interop::register_libraries(&mut LUA.lock().expect("LUA was poisoned!").0)?;
+        LUA.with(|lua| rust_interop::register_libraries(&*lua.borrow()))?;
     }
     info!("Starting Lua thread...");
     *RUNNING.write().expect(ERR_LOCK_RUNNING) = true;
@@ -180,64 +178,65 @@ pub fn on_compositor_ready() {
 
 fn lua_init() {
     info!("Initializing lua...");
-    let mut lua = LUA.lock().expect("LUA was poisoned!");
-    let mut lua = &mut lua.0;
-    info!("Loading way-cooler libraries...");
+    LUA.with(|lua| {
+        let mut lua = lua.borrow_mut();
+        info!("Loading way-cooler libraries...");
 
-    let (use_config, maybe_init_file) = init_path::get_config();
-    if use_config {
-        match maybe_init_file {
-            Ok((init_dir, mut init_file)) => {
-                if init_dir.components().next().is_some() {
-                    // Add the config directory to the package path.
-                    let globals = lua.globals();
-                    let package: rlua::Table = globals.get("package")
-                        .expect("package not defined in Lua");
-                    let paths: String = package.get("path")
-                        .expect("package.path not defined in Lua");
-                    package.set("path", paths + ";" + init_dir.join("?.lua").to_str()
-                                .expect("init_dir not a valid UTF-8 string"))
-                        .expect("Failed to set package.path");
+        let (use_config, maybe_init_file) = init_path::get_config();
+        if use_config {
+            match maybe_init_file {
+                Ok((init_dir, mut init_file)) => {
+                    if init_dir.components().next().is_some() {
+                        // Add the config directory to the package path.
+                        let globals = lua.globals();
+                        let package: rlua::Table = globals.get("package")
+                            .expect("package not defined in Lua");
+                        let paths: String = package.get("path")
+                            .expect("package.path not defined in Lua");
+                        package.set("path", paths + ";" + init_dir.join("?.lua").to_str()
+                                    .expect("init_dir not a valid UTF-8 string"))
+                            .expect("Failed to set package.path");
+                    }
+                    let mut init_contents = String::new();
+                    init_file.read_to_string(&mut init_contents)
+                        .expect("Could not read contents");
+                    lua.exec(init_contents.as_str(), Some("init.lua".into()))
+                        .map(|_:()| info!("Read init.lua successfully"))
+                        .or_else(|err| {
+                            match err {
+                                rlua::Error::RuntimeError(ref err) => {
+                                    error!("{}", err);
+                                }
+                                rlua::Error::CallbackError{traceback: ref err, ref cause } => {
+                                    error!("traceback: {}", err);
+                                    error!("cause: {}", *cause)
+                                },
+                                err => {
+                                    error!("init file error: {:?}", err);
+                                }
+                            }
+                            // Keeping this an error, so that it is visible
+                            // in release builds.
+                            info!("Defaulting to pre-compiled init.lua");
+                            *lua = rlua::Lua::new();
+                            rust_interop::register_libraries(&mut lua)?;
+                            lua.exec(init_path::DEFAULT_CONFIG,
+                                    Some("init.lua <DEFAULT>".into()))
+                            })
+                        .expect("Unable to load pre-compiled init file");
                 }
-                let mut init_contents = String::new();
-                init_file.read_to_string(&mut init_contents)
-                    .expect("Could not read contents");
-                lua.exec(init_contents.as_str(), Some("init.lua".into()))
-                    .map(|_:()| info!("Read init.lua successfully"))
-                    .or_else(|err| {
-                        match err {
-                            rlua::Error::RuntimeError(ref err) => {
-                                error!("{}", err);
-                            }
-                            rlua::Error::CallbackError{traceback: ref err, ref cause } => {
-                                error!("traceback: {}", err);
-                                error!("cause: {}", *cause)
-                            },
-                            err => {
-                                error!("init file error: {:?}", err);
-                            }
-                        }
-                        // Keeping this an error, so that it is visible
-                        // in release builds.
-                        info!("Defaulting to pre-compiled init.lua");
-                        *lua = rlua::Lua::new();
-                        rust_interop::register_libraries(&mut lua)?;
-                        lua.exec(init_path::DEFAULT_CONFIG,
-                                 Some("init.lua <DEFAULT>".into()))
-                        })
-                    .expect("Unable to load pre-compiled init file");
-            }
-            Err(_) => {
-                warn!("Defaulting to pre-compiled init.lua");
-                let _: () = lua.exec(init_path::DEFAULT_CONFIG,
-                                     Some("init.lua <DEFAULT>".into()))
-                    .expect("Unable to load pre-compiled init file");
+                Err(_) => {
+                    warn!("Defaulting to pre-compiled init.lua");
+                    let _: () = lua.exec(init_path::DEFAULT_CONFIG,
+                                        Some("init.lua <DEFAULT>".into()))
+                        .expect("Unable to load pre-compiled init file");
+                }
             }
         }
-    }
-    else {
-        info!("Skipping config search");
-    }
+        else {
+            info!("Skipping config search");
+        }
+    })
 
 }
 
@@ -252,7 +251,7 @@ fn main_loop() {
 }
 
 /// Handle each LuaQuery option sent to the thread
-fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
+fn handle_message(request: LuaMessage, lua: &rlua::Lua) -> bool {
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
