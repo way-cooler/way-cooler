@@ -1,7 +1,5 @@
 //! Code for the internal Lua thread which handles all Lua requests.
 
-extern crate glib;
-
 use std::collections::btree_map::BTreeMap;
 use std::thread;
 use std::fs::{File};
