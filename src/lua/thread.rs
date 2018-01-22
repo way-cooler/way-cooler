@@ -138,9 +138,6 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 
 /// Initialize the Lua thread.
 pub fn init() -> Result<(), rlua::Error> {
-    {
-        LUA.with(|lua| rust_interop::register_libraries(&*lua.borrow()))?;
-    }
     info!("Starting Lua thread...");
     RUNNING.store(true, Ordering::Relaxed);
     let _lua_handle = thread::Builder::new()
@@ -243,6 +240,8 @@ fn lua_init() {
 /// * Initialise the Lua state
 /// * Run a GMainLoop
 fn main_loop() {
+    LUA.with(|lua| rust_interop::register_libraries(&*lua.borrow()))
+        .expect("Could not register lua libraries");
     lua_init();
     MainLoop::new(None, false).run();
     RUNNING.store(false, Ordering::Relaxed);
