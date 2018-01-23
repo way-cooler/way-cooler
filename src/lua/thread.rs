@@ -139,7 +139,7 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 }
 
 /// Initialize the Lua thread.
-pub fn init() -> Result<(), rlua::Error> {
+fn init() {
     info!("Starting Lua thread...");
     RUNNING.store(true, Ordering::Relaxed);
     let _lua_handle = thread::Builder::new()
@@ -161,14 +161,12 @@ pub fn init() -> Result<(), rlua::Error> {
                 .expect("Could not focus on the focused id");
         }
     }
-    Ok(())
 }
 
 pub fn on_compositor_ready() {
     info!("Running lua on_init()");
     // Call the special init hook function that we read from the init file
-    ::lua::init()
-        .expect("Could not initialize lua thread!");
+    init();
     send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned())).err()
         .map(|error| warn!("Lua init callback returned an error: {:?}", error));
 }
@@ -279,7 +277,7 @@ fn handle_message(request: LuaMessage, lua: &rlua::Lua) -> bool {
             let _new_handle = thread::Builder::new()
                 .name("Lua re-init".to_string())
                 .spawn(move || {
-                    init().expect("Could not init");
+                    init();
                     keys::init();
                 });
 
