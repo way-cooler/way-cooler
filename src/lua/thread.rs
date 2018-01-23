@@ -78,17 +78,12 @@ pub fn running() -> bool {
 pub enum LuaSendError {
     /// The thread was not initialized yet, crashed, was shut down, or rebooted.
     ThreadClosed,
-    /// The sender had an issue, most likey because the thread panicked.
-    /// Following the `Sender` API, the original value sent is returned.
-    Sender(LuaQuery)
 }
 
 impl Into<rlua::Error> for LuaSendError {
     fn into(self) -> rlua::Error {
         rlua::Error::RuntimeError(match self {
-            LuaSendError::ThreadClosed => "Lua thread is not running".into(),
-            LuaSendError::Sender(query) =>
-                format!("Could not send query to Lua thread: {:?}", query)
+            LuaSendError::ThreadClosed => "Lua thread is not running".into()
         })
     }
 }
@@ -115,6 +110,19 @@ pub fn run_with_lua<F>(func: F) -> rlua::Result<()>
     }
 }
 
+fn idle_add_once<F>(func: F)
+    where F: Send + 'static + FnOnce() -> ()
+{
+    let cell = RefCell::new(Some(func));
+    idle_add(move || {
+        match cell.borrow_mut().take() {
+            Some(f) => f(),
+            None => { panic!("The impossible happened"); }
+        };
+        Continue(false)
+    });
+}
+
 // Reexported in lua/mod.rs:11
 /// Attemps to send a LuaQuery to the Lua thread.
 pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
@@ -124,27 +132,11 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     // Create a response channel
     let (response_tx, response_rx) = channel();
     let message = LuaMessage { reply: response_tx, query: query };
-    // No idea how to give the query to the thread without this
-    let (useless_tx, useless_rx) = channel();
-    useless_tx.send(message).map_err(|e| {
-        LuaSendError::Sender(e.0.query)
-    })?;
-    idle_add(move || {
-        let message = match useless_rx.recv() {
-            Err(e) => {
-                error!("Lua thread: unable to receive message: {}", e);
-                error!("Lua thread: now panicking!");
-                RUNNING.store(false, Ordering::Relaxed);
-
-                panic!("Lua thread: lost contact with host, exiting!");
-            },
-            Ok(m) => m
-        };
+    idle_add_once(move || {
         LUA.with(|lua| {
             trace!("Handling a request");
             handle_message(message, &*lua.borrow());
         });
-        Continue(false)
     });
     Ok(response_rx)
 }
