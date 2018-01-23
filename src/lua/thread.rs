@@ -5,7 +5,7 @@ use std::thread;
 use std::fs::{File};
 use std::path::Path;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::RwLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -113,12 +113,9 @@ pub fn run_with_lua<F>(func: F) -> rlua::Result<()>
 fn idle_add_once<F>(func: F)
     where F: Send + 'static + FnOnce() -> ()
 {
-    let cell = RefCell::new(Some(func));
+    let mut cell = Cell::new(Some(func));
     idle_add(move || {
-        match cell.borrow_mut().take() {
-            Some(f) => f(),
-            None => { panic!("The impossible happened"); }
-        };
+        (&mut cell).get_mut().take().unwrap()();
         Continue(false)
     });
 }
