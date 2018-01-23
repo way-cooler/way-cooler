@@ -31,6 +31,7 @@ use ::layout::{lock_tree, ContainerType};
 
 thread_local! {
     static LUA: RefCell<rlua::Lua> = RefCell::new(rlua::Lua::new());
+    static MAIN_LOOP: RefCell<MainLoop> = RefCell::new(MainLoop::new(None, false));
 }
 
 lazy_static! {
@@ -132,7 +133,9 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     idle_add_once(move || {
         LUA.with(|lua| {
             trace!("Handling a request");
-            handle_message(message, &*lua.borrow());
+            if !handle_message(message, &*lua.borrow()) {
+                MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
+            }
         });
     });
     Ok(response_rx)
@@ -243,7 +246,7 @@ fn main_loop() {
     LUA.with(|lua| rust_interop::register_libraries(&*lua.borrow()))
         .expect("Could not register lua libraries");
     lua_init();
-    MainLoop::new(None, false).run();
+    MAIN_LOOP.with(|main_loop| main_loop.borrow().run());
     RUNNING.store(false, Ordering::Relaxed);
 }
 
