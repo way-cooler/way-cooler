@@ -83,6 +83,16 @@ pub enum LuaSendError {
     Sender(LuaQuery)
 }
 
+impl Into<rlua::Error> for LuaSendError {
+    fn into(self) -> rlua::Error {
+        rlua::Error::RuntimeError(match self {
+            LuaSendError::ThreadClosed => "Lua thread is not running".into(),
+            LuaSendError::Sender(query) =>
+                format!("Could not send query to Lua thread: {:?}", query)
+        })
+    }
+}
+
 /// Appends this combination of category and key to the registry queue.
 pub fn update_registry_value(category: String) {
     let mut queue = REGISTRY_QUEUE.write().expect(ERR_LOCK_QUEUE);
@@ -94,8 +104,11 @@ pub fn update_registry_value(category: String) {
 pub fn run_with_lua<F>(func: F) -> rlua::Result<()>
     where F: 'static + FnMut(&rlua::Lua) -> rlua::Result<()>
 {
-    // TODO: Uhm, error handling?
-    match send(LuaQuery::ExecWithLua(Box::new(func))).unwrap().recv().unwrap() {
+    let send_result = send(LuaQuery::ExecWithLua(Box::new(func))).map_err(|err|err.into())?
+        .recv().map_err(|err| {
+            rlua::Error::RuntimeError(format!("Could not receive from mspc: {:?}", err))
+        })?;
+    match send_result {
         LuaResponse::Error(err) => Err(err),
         LuaResponse::Pong => Ok(()),
         _ => Err(rlua::Error::CoroutineInactive)
