@@ -142,7 +142,7 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 }
 
 /// Initialize the Lua thread.
-fn init() {
+pub fn init() {
     info!("Starting Lua thread...");
     RUNNING.store(true, Ordering::Relaxed);
     let _lua_handle = thread::Builder::new()

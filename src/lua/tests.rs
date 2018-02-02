@@ -19,7 +19,7 @@ fn wait_for_thread() {
 
 #[test]
 fn activate_thread() {
-    super::init().unwrap();
+    super::init();
 }
 
 #[test]
@@ -188,7 +188,7 @@ fn test_rust_exec() {
     }
 }
 
-fn rust_lua_fn(lua: &mut Lua) -> rlua::Value<'static> {
+fn rust_lua_fn(lua: &Lua) -> rlua::Value<'static> {
     {
         let globals = lua.globals();
         let foo = lua.create_table();
