@@ -133,7 +133,7 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     idle_add_once(move || {
         LUA.with(|lua| {
             trace!("Handling a request");
-            if !handle_message(message, &*lua.borrow()) {
+            if !handle_message(message, &mut *lua.borrow_mut()) {
                 MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
             }
         });
@@ -177,7 +177,11 @@ pub fn on_compositor_ready() {
 fn lua_init() {
     info!("Initializing lua...");
     LUA.with(|lua| {
-        let mut lua = lua.borrow_mut();
+        load_config(&mut *lua.borrow_mut());
+    });
+}
+
+fn load_config(mut lua: &mut rlua::Lua) {
         info!("Loading way-cooler libraries...");
 
         let (use_config, maybe_init_file) = init_path::get_config();
@@ -234,8 +238,6 @@ fn lua_init() {
         else {
             info!("Skipping config search");
         }
-    })
-
 }
 
 /// Main loop of the Lua thread:
@@ -251,7 +253,7 @@ fn main_loop() {
 }
 
 /// Handle each LuaQuery option sent to the thread
-fn handle_message(request: LuaMessage, lua: &rlua::Lua) -> bool {
+fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
@@ -273,19 +275,17 @@ fn handle_message(request: LuaMessage, lua: &rlua::Lua) -> bool {
                 warn!("Lua restart callback returned an error: {:?}", error);
                 warn!("However, Lua will be restarted");
             }
-            RUNNING.store(false, Ordering::Relaxed);
             thread_send(request.reply, LuaResponse::Pong);
 
-            // The only real way to restart
-            let _new_handle = thread::Builder::new()
-                .name("Lua re-init".to_string())
-                .spawn(move || {
-                    init();
-                    keys::init();
-                });
-
             info!("Lua thread restarting");
-            return false
+            *lua = rlua::Lua::new();
+            rust_interop::register_libraries(lua)
+                .expect("Could not register libraries");
+            send(LuaQuery::UpdateRegistryFromCache)
+                .expect("Could not update registry from cache");
+            load_config(lua);
+            keys::init();
+            return true;
         },
         LuaQuery::Execute(code) => {
             trace!("Received request to execute {}", code);
