@@ -24,6 +24,7 @@ use super::types::*;
 use super::rust_interop;
 use super::init_path;
 use super::super::keys;
+use awesome::signal;
 
 use registry::{self};
 
@@ -111,6 +112,12 @@ pub fn run_with_lua<F>(func: F) -> rlua::Result<()>
     }
 }
 
+fn emit_refresh(lua: &rlua::Lua) {
+    // FIXME: Log errors, but ignore them otherwise, just like awesome does. This should be done in
+    // emit_signal(), not here.
+    let _ = signal::global_emit_signal(lua, ("refresh".to_owned(), rlua::Value::Nil));
+}
+
 fn idle_add_once<F>(func: F)
     where F: Send + 'static + FnOnce() -> ()
 {
@@ -133,9 +140,11 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     idle_add_once(move || {
         LUA.with(|lua| {
             trace!("Handling a request");
-            if !handle_message(message, &mut *lua.borrow_mut()) {
+            let lua = &mut *lua.borrow_mut();
+            if !handle_message(message, lua) {
                 MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
             }
+            emit_refresh(lua);
         });
     });
     Ok(response_rx)
@@ -238,6 +247,7 @@ fn load_config(mut lua: &mut rlua::Lua) {
         else {
             info!("Skipping config search");
         }
+        emit_refresh(lua);
 }
 
 /// Main loop of the Lua thread:
