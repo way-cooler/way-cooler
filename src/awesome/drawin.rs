@@ -3,7 +3,6 @@
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
-use std::rc::Rc;
 use rustwlc::{Geometry, Point, Size};
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use rlua::prelude::LuaInteger;
@@ -48,9 +47,11 @@ impl Display for DrawinState {
 }
 
 impl <'lua> Drawin<'lua> {
-    fn new(lua: &Lua) -> rlua::Result<Object> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
         let class = class::class_setup(lua, "drawin")?;
-        Ok(object_setup(lua, Drawin::allocate(lua, class)?)?.build())
+        Ok(object_setup(lua, Drawin::allocate(lua, class)?)?
+           .handle_constructor_argument(args)?
+           .build())
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
@@ -110,7 +111,7 @@ impl <'lua> ToLua<'lua> for Drawin<'lua> {
 impl_objectable!(Drawin, DrawinState);
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", Some(Rc::new(Drawin::new)), None, None)?)?)?
+    property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None, None, None)?)?)?
         .save_class("drawin")?
         .build()
 }
@@ -120,7 +121,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy))?
             // TODO This should be adding properties, e.g like luaA_class_new
-           .method("__call".into(), lua.create_function(|lua, _: Value| Drawin::new(lua)))
+           .method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Drawin::new(lua, args)))
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {

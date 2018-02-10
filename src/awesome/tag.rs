@@ -2,7 +2,6 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::object::{Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
@@ -24,9 +23,11 @@ impl Default for TagState {
 }
 
 impl <'lua> Tag<'lua> {
-    fn new(lua: &Lua) -> rlua::Result<Object> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
         let class = class::class_setup(lua, "tag")?;
-        Ok(Tag::allocate(lua, class)?.build())
+        Ok(Tag::allocate(lua, class)?
+           .handle_constructor_argument(args)?
+           .build())
     }
 }
 
@@ -45,7 +46,7 @@ impl <'lua> ToLua<'lua> for Tag<'lua> {
 impl UserData for TagState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, "tag", Some(Rc::new(Tag::new)), None, None)?)?
+    method_setup(lua, Class::builder(lua, "tag", None, None, None)?)?
         .save_class("tag")?
         .build()
 }
@@ -54,7 +55,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("__call".into(), lua.create_function(|lua, _: Value| Tag::new(lua)))
+           .method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Tag::new(lua, args)))
 }
 
 impl_objectable!(Tag, TagState);
