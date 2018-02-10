@@ -39,9 +39,9 @@ pub fn mods_to_rust(mods_table: Table) -> rlua::Result<KeyMod> {
     for modifier in mods_table.pairs::<Value, String>() {
         match &*modifier?.1 {
             "Shift" => mods.insert(MOD_SHIFT),
-            "Caps" => mods.insert(MOD_CAPS),
-            "Control" => mods.insert(MOD_CTRL),
-            "Alt" => mods.insert(MOD_ALT),
+            "Caps"|"Lock" => mods.insert(MOD_CAPS),
+            "Control"|"Ctrl" => mods.insert(MOD_CTRL),
+            "Alt"|"Mod1" => mods.insert(MOD_ALT),
             "Mod2" => mods.insert(MOD_MOD2),
             "Mod3" => mods.insert(MOD_MOD3),
             "Mod4" => mods.insert(MOD_MOD4),
