@@ -113,9 +113,9 @@ pub fn run_with_lua<F>(func: F) -> rlua::Result<()>
 }
 
 fn emit_refresh(lua: &rlua::Lua) {
-    // FIXME: Log errors, but ignore them otherwise, just like awesome does. This should be done in
-    // emit_signal(), not here.
-    let _ = signal::global_emit_signal(lua, ("refresh".to_owned(), rlua::Value::Nil));
+    if let Err(err) = signal::global_emit_signal(lua, ("refresh".to_owned(), rlua::Value::Nil)) {
+        error!("Internal error while emitting 'refresh' signal: {}", err);
+    }
 }
 
 fn idle_add_once<F>(func: F)
