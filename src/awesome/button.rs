@@ -141,9 +141,9 @@ mod test {
     fn button_object_test() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("button0", Button::new(&lua).unwrap())
+        lua.globals().set("button0", Button::new(&lua, lua.create_table()).unwrap())
             .unwrap();
-        lua.globals().set("button1", Button::new(&lua).unwrap())
+        lua.globals().set("button1", Button::new(&lua, lua.create_table()).unwrap())
             .unwrap();
         lua.eval(r#"
 assert(button0.button == 0)
@@ -160,7 +160,7 @@ assert(button0.button == 3)
         let lua = Lua::new();
         button::init(&lua).unwrap();
         lua.eval(r#"
-a_button = button()
+a_button = button{}
 assert(a_button.button == 0)
 a_button:connect_signal("test", function(button) button.button = 2 end)
 a_button:emit_signal("test")
@@ -174,7 +174,7 @@ assert(a_button.button == 2)
         let button_class = button::init(&lua).unwrap();
         assert_eq!(button_class.properties().unwrap().len().unwrap(), 2);
         lua.eval(r#"
-a_button = button()
+a_button = button{}
 assert(a_button.button == 0)
 a_button.button = 5
 assert(a_button.button == 5)
@@ -186,7 +186,7 @@ assert(a_button.button == 5)
         let lua = Lua::new();
         button::init(&lua).unwrap();
         lua.eval(r#"
-button0 = button()
+button0 = button{}
 assert(button0.button == 0)
 button0:connect_signal("test", function(button) button.button = 3 end)
 button0:emit_signal("test")
@@ -202,7 +202,7 @@ assert(button0.button == 0)
     fn button_emit_signal_multiple_args() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", Button::new(&lua).unwrap())
+        lua.globals().set("a_button", Button::new(&lua, lua.create_table()).unwrap())
             .unwrap();
         lua.eval(r#"
  assert(a_button.button == 0)
@@ -221,7 +221,7 @@ assert(button0.button == 0)
         use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", Button::new(&lua).unwrap())
+        lua.globals().set("a_button", Button::new(&lua, lua.create_table()).unwrap())
             .unwrap();
         let button = Button::cast(lua.globals().get::<_, Table>("a_button")
                                   .unwrap().into()).unwrap();
@@ -239,7 +239,7 @@ a_button.modifiers = { "Caps" }
         use self::object::Objectable;
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", Button::new(&lua).unwrap())
+        lua.globals().set("a_button", Button::new(&lua, lua.create_table()).unwrap())
             .unwrap();
         let button = Button::cast(lua.globals().get::<_, Table>("a_button")
                                   .unwrap().into()).unwrap();
@@ -256,7 +256,7 @@ a_button.modifiers = { "Caps", "Mod2" }
     fn button_index_property() {
         let lua = Lua::new();
         button::init(&lua).unwrap();
-        lua.globals().set("a_button", Button::new(&lua).unwrap())
+        lua.globals().set("a_button", Button::new(&lua, lua.create_table()).unwrap())
             .unwrap();
         lua.eval::<()>(r#"
 hit = false
@@ -273,7 +273,7 @@ assert(hit)
 assert(a == 5)
 a = nil
 hit = false
-a = button().aoeu
+a = button{}.aoeu
 assert(hit)
 assert(a == 5)
 "#, None).unwrap()
@@ -284,7 +284,7 @@ assert(a == 5)
         let lua = Lua::new();
         button::init(&lua).unwrap();
         lua.eval::<()>(r#"
-a_button = button()
+a_button = button{}
 hit = false
 a_button:connect_signal("property::modifiers", function(button) hit = true end)
 a_button:emit_signal("property::modifiers")
@@ -303,7 +303,7 @@ assert(hit)
         let lua = Lua::new();
         button::init(&lua).unwrap();
         lua.eval::<()>(r#"
-a_button = button()
+a_button = button{}
 hit = false
 a_button:connect_signal("property::button", function(button) hit = true end)
 a_button:emit_signal("property::button")
@@ -320,7 +320,7 @@ assert(hit)
         let lua = Lua::new();
         button::init(&lua).unwrap();
         lua.eval::<()>(r#"
-a_button = button()
+a_button = button{}
 assert(a_button.valid)
 getmetatable(a_button).__class = nil
 assert(not a_button.valid)
