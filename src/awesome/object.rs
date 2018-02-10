@@ -45,6 +45,34 @@ impl <'lua> ObjectBuilder<'lua> {
         Ok(self)
     }
 
+    pub fn handle_constructor_argument(self, args: Table) -> rlua::Result<Self> {
+        let meta = self.object.table.get_metatable()
+            .expect("Object had no meta table");
+        let class = meta.get::<_, Table>("__class")?;
+        let props = class.get::<_, Vec<Property>>("properties")?;
+
+        // Handle all table entries that correspond to known properties,
+        // silently ignore all other keys
+        for pair in args.pairs() {
+            let (key, value): (Value, Value) = pair?;
+            if let rlua::Value::String(key) = key {
+                if let Ok(key) = key.to_str() {
+                    // Find the property
+                    for prop in props.iter() {
+                        if prop.name == key {
+                            // Property exists and has a cb_new callback
+                            if let Some(ref new) = prop.cb_new {
+                                let _: () = new.bind(self.object.table.clone())?.call(value)?;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(self)
+    }
+
     pub fn build(self) -> Object<'lua> {
         self.object
     }

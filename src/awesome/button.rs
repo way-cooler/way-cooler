@@ -1,6 +1,5 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::object::{Object, Objectable};
 use super::signal;
@@ -36,9 +35,11 @@ impl Default for ButtonState {
 impl UserData for ButtonState {}
 
 impl <'lua> Button<'lua> {
-    fn new(lua: &Lua) -> rlua::Result<Object> {
+    fn new(lua: &'lua Lua, args: rlua::Table) -> rlua::Result<Object<'lua>> {
         let class = class::class_setup(lua, "button")?;
-        Ok(Button::allocate(lua, class)?.build())
+        Ok(Button::allocate(lua, class)?
+           .handle_constructor_argument(args)?
+           .build())
     }
 
     pub fn button(&self) -> rlua::Result<Value<'lua>> {
@@ -77,9 +78,9 @@ impl_objectable!(Button, ButtonState);
 
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    Class::builder(lua, "button", Some(Rc::new(Button::new)), None, None)?
+    Class::builder(lua, "button", None, None, None)?
         .method("__call".into(),
-                lua.create_function(|lua, _: rlua::Value| Button::new(lua)))?
+                lua.create_function(|lua, (_, args): (rlua::Value, rlua::Table)| Button::new(lua, args)))?
         .property(Property::new("button".into(),
                                 Some(lua.create_function(set_button)),
                                 Some(lua.create_function(get_button)),

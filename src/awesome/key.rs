@@ -2,7 +2,6 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::object::{Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
@@ -24,10 +23,12 @@ impl Default for KeyState {
 }
 
 impl <'lua> Key<'lua> {
-    fn new(lua: &Lua) -> rlua::Result<Object> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
         // TODO FIXME
         let class = class::class_setup(lua, "key")?;
-        Ok(Key::allocate(lua, class)?.build())
+        Ok(Key::allocate(lua, class)?
+           .handle_constructor_argument(args)?
+           .build())
     }
 }
 
@@ -46,14 +47,14 @@ impl <'lua> ToLua<'lua> for Key<'lua> {
 impl UserData for KeyState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, "key", Some(Rc::new(Key::new)), None, None)?)?)?
+    property_setup(lua, method_setup(lua, Class::builder(lua, "key", None, None, None)?)?)?
         .save_class("key")?
         .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
-    builder.method("__call".into(), lua.create_function(dummy_create))
+    builder.method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Key::new(lua, args)))
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
@@ -64,7 +65,3 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
 }
 
 impl_objectable!(Key, KeyState);
-
-fn dummy_create<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Object<'lua>> {
-    Key::new(lua)
-}
