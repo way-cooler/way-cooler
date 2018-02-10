@@ -41,16 +41,21 @@ pub fn emit_signal<'lua, A>(_: &'lua Lua,
                             args: A)
                             -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone
-    {
+{
     let signals = obj.signals()?;
     trace!("Checking signal {}", name);
     let obj_table = obj.table();
-    if let Ok(Value::Table(table)) = signals.get::<_, Value>(name) {
+    if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.clone()) {
         for entry in table.pairs::<Value, Function>() {
             if let Ok((_, func)) = entry {
                 trace!("Found func for signal");
-                func.bind(obj_table.clone())?
-                    .call(args.clone())?
+                match func.bind(obj_table.clone())?
+                    .call(args.clone()) {
+                    Ok(()) => {},
+                    Err(e) => {
+                        error!("Error while emitting signal {}: {}", name, e);
+                    }
+                };
             }
         }
     }
