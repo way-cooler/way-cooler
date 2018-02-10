@@ -225,7 +225,7 @@ fn index<'lua>(lua: &'lua Lua,
                     format!("invalid screen number: {} (of {} existing)",
                             screen_index, screens.len())))
             }
-            return screens[screen_index as usize].get_table().clone().to_lua(lua).clone()
+            return screens[(screen_index - 1) as usize].get_table().clone().to_lua(lua).clone()
         },
         Value::Table(ref table) => {
             // If this is a screen, just return it
