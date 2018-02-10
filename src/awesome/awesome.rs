@@ -277,11 +277,8 @@ fn xkb_get_layout_group<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>
     }
 }
 
-fn xrdb_get_value(lua: &Lua, (_resource_class, resource_name): (String, String))
+fn xrdb_get_value(_lua: &Lua, (_resource_class, _resource_name): (String, String))
                   -> rlua::Result<Value> {
-    if &resource_name == "Xft.dpi" {
-        return Ok("1".to_lua(lua)?)
-    }
     warn!("xrdb_get_value not supported");
     Ok(Value::Nil)
 }
