@@ -288,6 +288,9 @@ fn send_to_lua<Q: Into<String>>(msg: Q) {
         Ok(_) => {},
         Err(LuaSendError::ThreadClosed) => {
             warn!("Thread closed, could not execute {:?}", msg)
+        },
+        Err(LuaSendError::Sender(err)) => {
+            warn!("Error while executing {:?}: {:?}", msg, err)
         }
     }
 }
