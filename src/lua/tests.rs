@@ -1,21 +1,9 @@
 //! Lua thread test.
 //! Spawns a lua thread!
 
-use std::time::Duration;
-use std::thread;
 use rlua::{self, Lua};
 
 use super::*;
-
-fn wait_for_thread() {
-    for _ in 0..20 {
-        if !running() {
-            thread::sleep(Duration::from_millis(200));
-        }
-        else { return; }
-    }
-    panic!("Thread didn't run!");
-}
 
 #[test]
 fn activate_thread() {
@@ -24,8 +12,6 @@ fn activate_thread() {
 
 #[test]
 fn thread_exec_okay() {
-    wait_for_thread();
-
     let hello_receiver = send(LuaQuery::Execute(
         "hello = 'hello world'".to_string()))
         .expect("Unable to send hello world");
@@ -51,8 +37,6 @@ fn thread_exec_okay() {
 
 #[test]
 fn thread_exec_err() {
-    wait_for_thread();
-
     let assert_receiver = send(LuaQuery::Execute(
         "assert(true == false, 'Logic works')".to_string()))
         .expect("send assertion error");
@@ -93,8 +77,6 @@ fn thread_exec_err() {
 
 #[test]
 fn thread_exec_file_ok() {
-    wait_for_thread();
-
     let file_receiver = send(LuaQuery::ExecFile(
         "lib/test/lua-exec-file.lua".to_string())).unwrap();
     let file_result = file_receiver.recv().unwrap();
@@ -125,8 +107,6 @@ fn thread_exec_file_ok() {
 
 #[test]
 fn thread_exec_file_err() {
-    wait_for_thread();
-
     let run_receiver = send(LuaQuery::ExecFile(
         "lib/test/lua-bad-assert.lua".to_string()))
         .expect("Unable to request lua-bad-assert.lua");
@@ -166,7 +146,6 @@ fn thread_exec_file_err() {
 
 #[test]
 fn test_rust_exec() {
-    wait_for_thread();
     let rust_receiver = send(LuaQuery::ExecRust(rust_lua_fn))
         .expect("Unable to request rust func exec");
     let rust_result = rust_receiver.recv()
