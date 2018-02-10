@@ -177,7 +177,7 @@ fn drawin_geometry<'lua>(lua: &'lua Lua, (drawin, geometry): (Table<'lua>, Optio
         let h = geometry.get::<_, i32>("height")?;
         let x = geometry.get::<_, i32>("x")?;
         let y = geometry.get::<_, i32>("y")?;
-        if x > 0 && y > 0 {
+        if w > 0 && h > 0 {
             let geo = Geometry {
                 origin: Point { x, y },
                 size: Size { w: w as u32, h: h as u32 }
