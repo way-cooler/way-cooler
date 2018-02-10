@@ -80,9 +80,12 @@ impl <'lua> Screen<'lua> {
         Ok(Screen::allocate(lua, class)?.build())
     }
 
-    fn init_screens(&mut self, outputs: Vec<Output>) -> rlua::Result<()> {
+    fn init_screens(&mut self, output: WlcOutput, outputs: Vec<Output>) -> rlua::Result<()> {
         let mut state = self.state()?;
+        let resolution = output.get_resolution().unwrap();
         state.outputs = outputs;
+        state.geometry.size = resolution;
+        state.workarea.size = resolution;
         self.set_state(state)
     }
 
@@ -120,7 +123,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
     let mut screens: Vec<Screen> = vec![];
     for output in WlcOutput::list() {
         let mut screen = Screen::cast(Screen::new(lua)?)?;
-        screen.init_screens(vec![output.into()])?;
+        screen.init_screens(output, vec![output.into()])?;
         // TODO Move to Screen impl like the others
         screens.push(screen);
     }
