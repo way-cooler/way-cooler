@@ -3,7 +3,7 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use super::object;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod, AnyUserData};
 use rustwlc::input;
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
@@ -115,7 +115,7 @@ fn index<'lua>(lua: &'lua Lua,
                 .position(|&output| output == WlcOutput::focused())
                 // NOTE Best to just lie because no one handles nil screens properly
                 .unwrap_or(0);
-            let screens = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?;
+            let screens = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?;
             if index < screens.len() {
                 return screens[index].clone().to_lua(lua)
             }
