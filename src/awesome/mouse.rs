@@ -31,7 +31,7 @@ impl Display for MouseState {
 impl UserData for MouseState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
-    let mouse_table = lua.create_table();
+    let mouse_table = lua.create_table()?;
     state_setup(lua, &mouse_table)?;
     meta_setup(lua, &mouse_table)?;
     method_setup(lua, &mouse_table)?;
@@ -44,19 +44,19 @@ fn state_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 }
 
 fn meta_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
-    let meta_table = lua.create_table();
+    let meta_table = lua.create_table()?;
     meta_table.set("__tostring", lua.create_function(|_, val: Table| {
         Ok(format!("{}", val.get::<_, MouseState>("__data")?))
-    }))?;
-    meta_table.set("__index", lua.create_function(index))?;
+    })?)?;
+    meta_table.set("__index", lua.create_function(index)?)?;
     mouse_table.set_metatable(Some(meta_table));
     Ok(())
 }
 
 fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
-    mouse_table.set("coords", lua.create_function(coords))?;
-    mouse_table.set("set_index_miss_handler", lua.create_function(set_index_miss))?;
-    mouse_table.set("set_newindex_miss_handler", lua.create_function(set_newindex_miss))?;
+    mouse_table.set("coords", lua.create_function(coords)?)?;
+    mouse_table.set("set_index_miss_handler", lua.create_function(set_index_miss)?)?;
+    mouse_table.set("set_newindex_miss_handler", lua.create_function(set_newindex_miss)?)?;
     Ok(())
 }
 
@@ -73,12 +73,12 @@ fn coords<'lua>(lua: &'lua Lua, (coords, _ignore_enter): (rlua::Value<'lua>, rlu
         },
         _ => {
             // get the coords
-            let coords = lua.create_table();
+            let coords = lua.create_table()?;
             let (x, y) = input::pointer::get_position_v2();
             coords.set("x", x as i32)?;
             coords.set("y", y as i32)?;
             // TODO It expects a table of what buttons were pressed.
-            coords.set("buttons", lua.create_table())?;
+            coords.set("buttons", lua.create_table()?)?;
             Ok(coords)
         }
     }

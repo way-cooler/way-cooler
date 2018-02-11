@@ -88,7 +88,7 @@ impl <'lua> ObjectBuilder<'lua> {
 pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
         let data = obj.table.get::<_, AnyUserData>("userdata")?;
-        if data.is::<S>() {
+        if data.is::<S>()? {
             Ok(Self::_wrap(obj.table))
         } else {
             use rlua::Error::RuntimeError;
@@ -134,24 +134,24 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         */
         let object = S::default();
         // TODO Increment the instance count
-        let wrapper_table = lua.create_table();
+        let wrapper_table = lua.create_table()?;
         wrapper_table.set("userdata", object)?;
-        let data_table = lua.create_table();
+        let data_table = lua.create_table()?;
         wrapper_table.set("data", data_table)?;
-        let meta = lua.create_table();
+        let meta = lua.create_table()?;
         meta.set("__class", class)?;
         meta.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
-        meta.set("signals", lua.create_table())?;
+        meta.set("signals", lua.create_table()?)?;
         meta.set("connect_signal",
-                 lua.create_function(connect_signal))?;
+                 lua.create_function(connect_signal)?)?;
         meta.set("disconnect_signal",
-                 lua.create_function(disconnect_signal))?;
-        meta.set("emit_signal", lua.create_function(emit_signal))?;
-        meta.set("__index", lua.create_function(default_index))?;
-        meta.set("__newindex", lua.create_function(default_newindex))?;
+                 lua.create_function(disconnect_signal)?)?;
+        meta.set("emit_signal", lua.create_function(emit_signal)?)?;
+        meta.set("__index", lua.create_function(default_index)?)?;
+        meta.set("__newindex", lua.create_function(default_newindex)?)?;
         meta.set("__tostring", lua.create_function(|_, wrapper_table: Table| {
             Ok(format!("{}", wrapper_table.get::<_, S>("userdata")?))
-        }))?;
+        })?)?;
         wrapper_table.set_metatable(Some(meta));
         // TODO Emit new signal event
         let object = Object { table: wrapper_table };

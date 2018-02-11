@@ -11,7 +11,7 @@ pub fn json_to_lua<'lua>(lua: &'lua rlua::Lua, json: Json)
                          -> Result<rlua::Value<'lua>, rlua::Error> {
     use rlua::Value;
     match json {
-        Json::String(val)  => Ok(Value::String(lua.create_string(&val))),
+        Json::String(val)  => Ok(Value::String(lua.create_string(&val)?)),
         Json::Boolean(val) => Ok(Value::Boolean(val)),
         Json::F64(val)     => Ok(Value::Number(val)),
         Json::I64(val)     => Ok(Value::Number(val as f64)),

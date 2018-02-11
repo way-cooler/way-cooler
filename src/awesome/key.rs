@@ -54,7 +54,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
-    builder.method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Key::new(lua, args)))
+    builder.method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Key::new(lua, args))?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {

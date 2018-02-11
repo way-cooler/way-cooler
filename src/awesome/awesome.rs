@@ -57,7 +57,7 @@ impl Display for AwesomeState {
 impl UserData for AwesomeState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
-    let awesome_table = lua.create_table();
+    let awesome_table = lua.create_table()?;
     state_setup(lua, &awesome_table)?;
     meta_setup(lua, &awesome_table)?;
     method_setup(lua, &awesome_table)?;
@@ -71,35 +71,35 @@ fn state_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
 }
 
 fn meta_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
-    let meta_table = awesome_table.get_metatable().unwrap_or_else(|| {
-        let table = lua.create_table();
+    let meta_table = awesome_table.get_metatable().map_or_else(|| {
+        let table = lua.create_table()?;
         awesome_table.set_metatable(Some(table.clone()));
-        table
-    });
+        Ok(table)
+    }, |v| Ok(v))?;
     meta_table.set("__tostring", lua.create_function(|_, val: Table| {
         Ok(format!("{}", val.get::<_, AwesomeState>("__data")?))
-    }))
+    })?)
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
     // TODO Fill in rest
-    awesome_table.set("connect_signal", lua.create_function(signal::global_connect_signal))?;
-    awesome_table.set("disconnect_signal", lua.create_function(signal::global_disconnect_signal))?;
-    awesome_table.set("emit_signal", lua.create_function(signal::global_emit_signal))?;
-    awesome_table.set("xrdb_get_value", lua.create_function(xrdb_get_value))?;
-    awesome_table.set("xkb_set_layout_group", lua.create_function(xkb_set_layout_group))?;
-    awesome_table.set("xkb_get_layout_group", lua.create_function(xkb_get_layout_group))?;
-    awesome_table.set("set_preferred_icon_size", lua.create_function(set_preferred_icon_size))?;
-    awesome_table.set("register_xproperty", lua.create_function(register_xproperty))?;
-    awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names))?;
-    awesome_table.set("set_xproperty", lua.create_function(set_xproperty))?;
-    awesome_table.set("get_xproperty", lua.create_function(get_xproperty))?;
-    awesome_table.set("restart", lua.create_function(restart))?;
-    awesome_table.set("load_image", lua.create_function(load_image))?;
-    awesome_table.set("sync", lua.create_function(sync))?;
-    awesome_table.set("exec", lua.create_function(exec))?;
-    awesome_table.set("kill", lua.create_function(kill))?;
-    awesome_table.set("quit", lua.create_function(quit))
+    awesome_table.set("connect_signal", lua.create_function(signal::global_connect_signal)?)?;
+    awesome_table.set("disconnect_signal", lua.create_function(signal::global_disconnect_signal)?)?;
+    awesome_table.set("emit_signal", lua.create_function(signal::global_emit_signal)?)?;
+    awesome_table.set("xrdb_get_value", lua.create_function(xrdb_get_value)?)?;
+    awesome_table.set("xkb_set_layout_group", lua.create_function(xkb_set_layout_group)?)?;
+    awesome_table.set("xkb_get_layout_group", lua.create_function(xkb_get_layout_group)?)?;
+    awesome_table.set("set_preferred_icon_size", lua.create_function(set_preferred_icon_size)?)?;
+    awesome_table.set("register_xproperty", lua.create_function(register_xproperty)?)?;
+    awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names)?)?;
+    awesome_table.set("set_xproperty", lua.create_function(set_xproperty)?)?;
+    awesome_table.set("get_xproperty", lua.create_function(get_xproperty)?)?;
+    awesome_table.set("restart", lua.create_function(restart)?)?;
+    awesome_table.set("load_image", lua.create_function(load_image)?)?;
+    awesome_table.set("sync", lua.create_function(sync)?)?;
+    awesome_table.set("exec", lua.create_function(exec)?)?;
+    awesome_table.set("kill", lua.create_function(kill)?)?;
+    awesome_table.set("quit", lua.create_function(quit)?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {

@@ -12,13 +12,13 @@ const SECRET_CALLBACK: &str = "__callback";
 
 /// Init the methods defined on this interface.
 pub fn init(lua: &Lua) -> rlua::Result<()> {
-    let keygrabber_table = lua.create_table();
-    let meta = lua.create_table();
-    meta.set("__index", lua.create_function(index))?;
-    meta.set("__newindex", lua.create_function(new_index))?;
-    keygrabber_table.set("run", lua.create_function(run))?;
-    keygrabber_table.set("stop", lua.create_function(stop))?;
-    keygrabber_table.set("isrunning", lua.create_function(isrunning))?;
+    let keygrabber_table = lua.create_table()?;
+    let meta = lua.create_table()?;
+    meta.set("__index", lua.create_function(index)?)?;
+    meta.set("__newindex", lua.create_function(new_index)?)?;
+    keygrabber_table.set("run", lua.create_function(run)?)?;
+    keygrabber_table.set("stop", lua.create_function(stop)?)?;
+    keygrabber_table.set("isrunning", lua.create_function(isrunning)?)?;
     keygrabber_table.set_metatable(Some(meta));
     let globals = lua.globals();
     globals.set(KEYGRABBER_TABLE, keygrabber_table)
@@ -85,14 +85,14 @@ fn isrunning(lua: &Lua, _: ()) -> rlua::Result<bool> {
 
 fn index(lua: &Lua, args: Value) -> rlua::Result<()> {
     let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table();
+    let fake_object = lua.create_table()?;
     fake_object.set("signals", global_signals)?;
     signal::emit_signal(lua, fake_object.into(), "debug::index::miss".into(), args)
 }
 
 fn new_index(lua: &Lua, args: Value) -> rlua::Result<()> {
     let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table();
+    let fake_object = lua.create_table()?;
     fake_object.set("signals", global_signals)?;
     signal::emit_signal(lua, fake_object.into(), "debug::newindex::miss".into(), args)
 }

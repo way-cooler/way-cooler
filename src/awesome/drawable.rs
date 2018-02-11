@@ -38,9 +38,9 @@ impl <'lua> Drawable<'lua> {
         let class = class::class_setup(lua, "drawable")?;
         let builder = Drawable::allocate(lua, class)?;
         // TODO Do properly
-        let table = lua.create_table();
-        table.set("geometry", lua.create_function(geometry))?;
-        table.set("refresh", lua.create_function(refresh))?;
+        let table = lua.create_table()?;
+        table.set("geometry", lua.create_function(geometry)?)?;
+        table.set("refresh", lua.create_function(refresh)?)?;
         Ok(builder.add_to_meta(table)?.build())
     }
 
@@ -108,10 +108,10 @@ impl UserData for DrawableState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     Class::builder(lua, "drawable", Some(Rc::new(Drawable::new)), None, None)?
-        .method("geometry".into(), lua.create_function(geometry))?
+        .method("geometry".into(), lua.create_function(geometry)?)?
         .property(Property::new("surface".into(),
                                 None,
-                                Some(lua.create_function(get_surface)),
+                                Some(lua.create_function(get_surface)?),
                                 None))?
         .save_class("drawable")?
         .build()
@@ -129,7 +129,7 @@ fn geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua
     let geometry = drawable.get_geometry()?;
     let Point { x, y } = geometry.origin;
     let Size { w, h } = geometry.size;
-    let table = lua.create_table();
+    let table = lua.create_table()?;
     table.set("x", x)?;
     table.set("y", y)?;
     table.set("width", w)?;

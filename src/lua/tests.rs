@@ -170,7 +170,7 @@ fn test_rust_exec() {
 fn rust_lua_fn(lua: &Lua) -> rlua::Value<'static> {
     {
         let globals = lua.globals();
-        let foo = lua.create_table();
+        let foo = lua.create_table().unwrap();
         foo.set("bar", 12.0).unwrap();
         globals.set::<String, rlua::Table>("foo".into(), foo).unwrap();
     }

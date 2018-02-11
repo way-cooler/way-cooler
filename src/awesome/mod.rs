@@ -71,11 +71,6 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
                             xdg_data_path.into_os_string().to_string_lossy()));
     package.set("cpath", cpath)?;
 
-    // NOTE The debug library does some powerful reflection that can do crazy things,
-    // which is why it's unsafe to load.
-    unsafe {
-        lua.load_debug();
-    }
     Ok(())
 }
 
@@ -84,7 +79,7 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
 /// We need to store this in Lua, because this make it safer to use.
 fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
     let globals = lua.globals();
-    globals.set::<_, Table>(GLOBAL_SIGNALS, lua.create_table())
+    globals.set::<_, Table>(GLOBAL_SIGNALS, lua.create_table()?)
 }
 
 /// Sets up the xcb connection and stores it in Lua (for us to access it later)
