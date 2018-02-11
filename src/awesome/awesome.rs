@@ -71,11 +71,11 @@ fn state_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
 }
 
 fn meta_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
-    let meta_table = awesome_table.get_metatable().unwrap_or_else(|| {
-        let table = lua.create_table();
+    let meta_table = awesome_table.get_metatable().map_or_else(|| {
+        let table = lua.create_table()?;
         awesome_table.set_metatable(Some(table.clone()));
-        table
-    });
+        Ok(table)
+    }, |v| Ok(v))?;
     meta_table.set("__tostring", lua.create_function(|_, val: Table| {
         Ok(format!("{}", val.get::<_, AwesomeState>("__data")?))
     })?)

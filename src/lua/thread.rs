@@ -383,16 +383,22 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
                 let globals = lua.globals();
                 let registry_cache: rlua::Table = globals.get("__registry_cache")
                     .expect("__registry_cache wasn't defined");
-                let category_str = lua.create_string(category.as_str());
-                if let Ok(mut category_table) = registry_cache.get::<rlua::String, rlua::Table>(category_str) {
-                    let cat_table = match handle.write(category.clone()) {
-                        Ok(cat) => cat,
-                        Err(err) => {
-                            warn!("Could not lock {}: {:?}", category, err);
-                            break;
+                match lua.create_string(category.as_str()) {
+                    Ok(category_str) => {
+                        if let Ok(mut category_table) = registry_cache.get::<rlua::String, rlua::Table>(category_str) {
+                            let cat_table = match handle.write(category.clone()) {
+                                Ok(cat) => cat,
+                                Err(err) => {
+                                    warn!("Could not lock {}: {:?}", category, err);
+                                    break;
+                                }
+                            };
+                            update_values(&mut category_table, cat_table);
                         }
-                    };
-                    update_values(&mut category_table, cat_table);
+                    },
+                    Err(e) => {
+                        warn!("Failed to create a Lua string: {}", e);
+                    }
                 }
                 drop(registry_cache)
             }
