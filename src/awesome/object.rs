@@ -183,7 +183,6 @@ pub fn default_index<'lua>(lua: &'lua Lua,
     let obj_table = obj.table()?;
     let meta = obj_table.get_metatable()
         .expect("Object had no metatable");
-    warn!("Here");
     if meta.get::<_, Table>("__class").is_ok() {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
@@ -209,7 +208,6 @@ pub fn default_index<'lua>(lua: &'lua Lua,
             obj_table.to_lua(lua)
         },
         index => {
-            warn!("Here2");
             // Try see if there is a property of the class with the name
             if let Ok(class) = meta.get::<_, Table>("__class") {
                 let props = class.get::<_, Vec<Property>>("properties")?;
@@ -223,10 +221,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                 }
                 match class.get::<_, Function>("__index_miss_handler") {
                     Ok(function) => {
-                        error!("Calling {:?} w/ obj {:?} and arg {:?}",
-                               function, obj, index
-                        );
-                        return function.bind(obj)?.call(index)
+                        return function.bind(obj_table)?.call(index)
                     },
                     Err(_) => {}
                 }
