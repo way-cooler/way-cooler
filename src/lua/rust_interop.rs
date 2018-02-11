@@ -21,28 +21,28 @@ use super::thread::{update_registry_value};
 pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
     trace!("Registering Rust libraries...");
     {
-        let rust_table = lua.create_table();
+        let rust_table = lua.create_table()?;
         rust_table.set("init_workspaces",
-                       lua.create_function(init_workspaces))?;
+                       lua.create_function(init_workspaces)?)?;
         rust_table.set("register_lua_key",
-                       lua.create_function(register_lua_key))?;
+                       lua.create_function(register_lua_key)?)?;
         rust_table.set("unregister_lua_key",
-                       lua.create_function(unregister_lua_key))?;
+                       lua.create_function(unregister_lua_key)?)?;
         rust_table.set("register_command_key",
-                       lua.create_function(register_command_key))?;
+                       lua.create_function(register_command_key)?)?;
         rust_table.set("register_mouse_modifier",
-                       lua.create_function(register_mouse_modifier))?;
+                       lua.create_function(register_mouse_modifier)?)?;
         rust_table.set("keypress_index",
-                       lua.create_function(keypress_index))?;
+                       lua.create_function(keypress_index)?)?;
         rust_table.set("ipc_run",
-                       lua.create_function(ipc_run))?;
+                       lua.create_function(ipc_run)?)?;
         rust_table.set("ipc_get",
-                       lua.create_function(ipc_get))?;
+                       lua.create_function(ipc_get)?)?;
         rust_table.set("ipc_set",
-                       lua.create_function(ipc_set))?;
+                       lua.create_function(ipc_set)?)?;
         let globals = lua.globals();
         globals.set("__rust", rust_table)?;
-        globals.set("type", lua.create_function(type_override))?;
+        globals.set("type", lua.create_function(type_override)?)?;
     }
     trace!("Executing Lua init...");
     let init_code = include_str!("../../lib/lua/lua_init.lua");

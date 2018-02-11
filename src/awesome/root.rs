@@ -56,14 +56,14 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     use super::dummy;
-    builder.method("connect_signal".into(), lua.create_function(dummy))?
-           .method("buttons".into(), lua.create_function(dummy))?
-           .method("wallpaper".into(), lua.create_function(wallpaper))?
-           .method("tags".into(), lua.create_function(tags))?
-           .method("keys".into(), lua.create_function(dummy))?
-           .method("size".into(), lua.create_function(dummy_double))?
-           .method("size_mm".into(), lua.create_function(dummy_double))?
-           .method("cursor".into(), lua.create_function(dummy))
+    builder.method("connect_signal".into(), lua.create_function(dummy)?)?
+           .method("buttons".into(), lua.create_function(dummy)?)?
+           .method("wallpaper".into(), lua.create_function(wallpaper)?)?
+           .method("tags".into(), lua.create_function(tags)?)?
+           .method("keys".into(), lua.create_function(dummy)?)?
+           .method("size".into(), lua.create_function(dummy_double)?)?
+           .method("size_mm".into(), lua.create_function(dummy_double)?)?
+           .method("cursor".into(), lua.create_function(dummy)?)
 }
 
 impl_objectable!(Root, RootState);
@@ -88,7 +88,7 @@ fn set_wallpaper<'lua>(_: &'lua Lua, _pattern: *mut cairo_pattern_t) -> rlua::Re
 }
 
 fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
-    let table = lua.create_table();
+    let table = lua.create_table()?;
     // TODO FIXME Get tags
     Ok(table)
 }

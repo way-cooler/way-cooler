@@ -16,9 +16,9 @@ pub struct Property<'lua> {
 
 impl <'lua> ToLua<'lua> for Property<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        let table = lua.create_table();
+        let table = lua.create_table()?;
         table.set("name", self.name)?;
-        let metatable = lua.create_table();
+        let metatable = lua.create_table()?;
         metatable.set("__call", self.cb_new
                   .map(Value::Function)
                   .unwrap_or(Value::Nil))?;

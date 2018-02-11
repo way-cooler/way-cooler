@@ -99,17 +99,17 @@ impl <'lua> Class<'lua> {
         class.allocator = allocator;
         class.collector = collector;
         class.checker = checker;
-        let table = lua.create_table();
+        let table = lua.create_table()?;
         // Store in not meta table so we can't index it
         table.set("data", class)?;
         table.set("name", name)?;
         table.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
-        let meta = lua.create_table();
-        meta.set("signals", lua.create_table())?;
+        let meta = lua.create_table()?;
+        meta.set("signals", lua.create_table()?)?;
         meta.set("set_index_miss_handler",
-                 lua.create_function(set_index_miss_handler).bind(table.clone())?)?;
+                 lua.create_function(set_index_miss_handler)?.bind(table.clone())?)?;
         meta.set("set_newindex_miss_handler",
-                 lua.create_function(set_newindex_miss_handler).bind(table.clone())?)?;
+                 lua.create_function(set_newindex_miss_handler)?.bind(table.clone())?)?;
         meta.set("__index", meta.clone())?;
         table.set_metatable(Some(meta));
         Ok(ClassBuilder{
@@ -130,7 +130,7 @@ impl <'lua> Class<'lua> {
         match self.table.get::<_, Value>("parent")? {
             Value::Table(table) => {
                 let data = table.get::<_, AnyUserData>("data")?;
-                if !data.is::<ClassState>() {
+                if !data.is::<ClassState>()? {
                     Ok(None)
                 } else {
                     Ok(Some(table.into()))
@@ -170,7 +170,7 @@ fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (Table, Function
 pub fn class_setup<'lua>(lua: &'lua Lua, name: &str) -> rlua::Result<Class<'lua>> {
     let table = lua.globals().get::<_, Table>(name)
         .expect("Class was not set! Did you call init?");
-    assert!(table.get::<_, AnyUserData>("data")?.is::<ClassState>(),
+    assert!(table.get::<_, AnyUserData>("data")?.is::<ClassState>()?,
             "This table was not a class!");
     Ok(Class { table })
 }

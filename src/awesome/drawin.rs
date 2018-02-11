@@ -119,42 +119,42 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     use super::dummy;
-    builder.method("connect_signal".into(), lua.create_function(dummy))?
+    builder.method("connect_signal".into(), lua.create_function(dummy)?)?
             // TODO This should be adding properties, e.g like luaA_class_new
-           .method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Drawin::new(lua, args)))
+           .method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Drawin::new(lua, args))?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     builder
         .property(Property::new("x".into(),
-                                Some(lua.create_function(set_x)),
-                                Some(lua.create_function(get_x)),
-                                Some(lua.create_function(set_x))))?
+                                Some(lua.create_function(set_x)?),
+                                Some(lua.create_function(get_x)?),
+                                Some(lua.create_function(set_x)?)))?
         .property(Property::new("y".into(),
-                                Some(lua.create_function(set_y)),
-                                Some(lua.create_function(get_y)),
-                                Some(lua.create_function(set_y))))?
+                                Some(lua.create_function(set_y)?),
+                                Some(lua.create_function(get_y)?),
+                                Some(lua.create_function(set_y)?)))?
         .property(Property::new("width".into(),
-                                Some(lua.create_function(set_width)),
-                                Some(lua.create_function(get_width)),
-                                Some(lua.create_function(set_width))))?
+                                Some(lua.create_function(set_width)?),
+                                Some(lua.create_function(get_width)?),
+                                Some(lua.create_function(set_width)?)))?
         .property(Property::new("height".into(),
-                                Some(lua.create_function(set_height)),
-                                Some(lua.create_function(get_height)),
-                                Some(lua.create_function(set_height))))?
+                                Some(lua.create_function(set_height)?),
+                                Some(lua.create_function(get_height)?),
+                                Some(lua.create_function(set_height)?)))?
         .property(Property::new("visible".into(),
-                                Some(lua.create_function(set_visible)),
-                                Some(lua.create_function(get_visible)),
-                                Some(lua.create_function(set_visible))))
+                                Some(lua.create_function(set_visible)?),
+                                Some(lua.create_function(get_visible)?),
+                                Some(lua.create_function(set_visible)?)))
 }
 
 fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Result<ObjectBuilder<'lua>> {
     // TODO Do properly
-    let table = lua.create_table();
+    let table = lua.create_table()?;
     let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
     table.set("drawable", drawable_table)?;
-    table.set("geometry", lua.create_function(drawin_geometry))?;
-    table.set("struts", lua.create_function(drawin_struts))?;
+    table.set("geometry", lua.create_function(drawin_geometry)?)?;
+    table.set("struts", lua.create_function(drawin_struts)?)?;
     builder.add_to_meta(table)
 }
 
@@ -189,7 +189,7 @@ fn drawin_geometry<'lua>(lua: &'lua Lua, (drawin, geometry): (Table<'lua>, Optio
     let new_geo = drawin.get_geometry()?;
     let Size { w, h } = new_geo.size;
     let Point { x, y } = new_geo.origin;
-    let res = lua.create_table();
+    let res = lua.create_table()?;
     res.set("x", x)?;
     res.set("y", y)?;
     res.set("height", h)?;
@@ -260,7 +260,7 @@ fn set_height<'lua>(_: &'lua Lua, (drawin, height): (Table<'lua>, LuaInteger)) -
 fn drawin_struts<'lua>(lua: &'lua Lua, _drawin: Table<'lua>) -> rlua::Result<Table<'lua>> {
     // TODO: Implement this properly. Struts means this drawin reserves some space on the screen
     // that it is visible on, shrinking the workarea in the specified directions.
-    let res = lua.create_table();
+    let res = lua.create_table()?;
     res.set("left", 0)?;
     res.set("right", 0)?;
     res.set("top", 0)?;

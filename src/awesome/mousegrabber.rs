@@ -11,10 +11,10 @@ const SECRET_CURSOR: &str = "__cursor";
 
 /// Init the methods defined on this interface
 pub fn init(lua: &Lua) -> rlua::Result<()> {
-    let mousegrabber_table = lua.create_table();
-    mousegrabber_table.set("run", lua.create_function(run))?;
-    mousegrabber_table.set("stop", lua.create_function(stop))?;
-    mousegrabber_table.set("isrunning", lua.create_function(isrunning))?;
+    let mousegrabber_table = lua.create_table()?;
+    mousegrabber_table.set("run", lua.create_function(run)?)?;
+    mousegrabber_table.set("stop", lua.create_function(stop)?)?;
+    mousegrabber_table.set("isrunning", lua.create_function(isrunning)?)?;
     let globals = lua.globals();
     globals.set(MOUSEGRABBER_TABLE, mousegrabber_table)
 }
@@ -39,7 +39,7 @@ fn call_mousegrabber(lua: &Lua,
         Ok(function) => function,
         _ => return Ok(())
     };
-    let res_table = lua.create_table();
+    let res_table = lua.create_table()?;
     res_table.set("x", x)?;
     res_table.set("y", y)?;
     res_table.set("buttons", button_events)?;
