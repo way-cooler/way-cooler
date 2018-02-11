@@ -87,7 +87,6 @@ impl <'lua> ObjectBuilder<'lua> {
 /// canonical form using this trait.
 pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
-        //let data = obj.table()?.get::<_, AnyUserData>("userdata")?;
         if obj.object.is::<S>()? {
             Ok(Self::_wrap(obj))
         } else {
@@ -112,37 +111,27 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         Ok(())
     }
 
-    /// Gets the internal table for the concrete object.
-    /// Used internally by cast, though there's nothing wrong with it being
-    /// used outside of internal object use.
-    //fn get_table(&self) -> Table<'lua>;
 
+    /// Gets the internal state for the concrete object.
+    /// Used internally `state`, though there's nothing wrong with it being
+    /// used outside of internal object use.
     fn get_object(&self) -> rlua::Result<S>;
+
+    /// Gets a mutable reference to the internal state for the concrete object.
+    /// Used internally `set_state`, though there's nothing wrong with it being
+    /// used outside of internal object use.
     fn get_object_mut(&mut self) -> rlua::Result<::std::cell::RefMut<S>>;
 
+    /// Lua objects in Way Cooler are just how they are in Awesome:
+    /// * We expose the user data directly.
+    /// * State for the object is stored using set_user_value in a "wrapper" table.
+    /// * The wrapper table has a data field which hosts the data.
+    /// * Class methods/attributes are on the meta table of the wrapper table.
     fn allocate(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>>
     {
-        // This is the format of the lua objects in Way Cooler:
-        /*
-        -- This is the weird wrapper table, binding the user data and the object table together
-        {
-            -- Actual user data object, e.g the Rust object
-            userdata = <user_data_here>,
-            -- This is the object data table, e.g the thing that in Awesome
-            -- is linked to the user data with lua_setuservalue
-            data = {},
-            -- That metatable that is allocated in the new macro for objects.
-            -- It can access both the userdata and the lua data fields
-            __metatable = {}
-        }
-        */
-        let object = match S::default().to_lua(lua)? {
-            rlua::Value::UserData(data) => data,
-            _ => unreachable!()
-        };
+        let object = lua.create_userdata(S::default())?;
         // TODO Increment the instance count
         let wrapper_table = lua.create_table()?;
-        //wrapper_table.set("userdata", object)?;
         let data_table = lua.create_table()?;
         wrapper_table.set("data", data_table)?;
         let meta = lua.create_table()?;
@@ -175,8 +164,6 @@ impl <'lua> ToLua<'lua> for Object<'lua> {
 impl <'lua> Object<'lua> {
     pub fn signals(&self) -> rlua::Result<rlua::Table<'lua>> {
         self.table()?.get::<_, Table>("signals")
-        //let obj: Object<'lua> = self.object.clone().into();
-        //obj.table()?.get::<_, Table>("signals")
     }
 
     pub fn table(&self) -> rlua::Result<Table<'lua>> {
