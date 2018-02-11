@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods, MetaMethod};
-use super::object::{Object, Objectable};
+use super::object::{self, Object, Objectable};
 use super::signal;
 use super::property::Property;
 use super::class::{self, Class};
@@ -34,8 +34,8 @@ impl Default for ButtonState {
 
 impl UserData for ButtonState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, super::object::default_index);
-        methods.add_meta_function(MetaMethod::NewIndex, super::object::default_newindex)
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex)
     }
 }
 
