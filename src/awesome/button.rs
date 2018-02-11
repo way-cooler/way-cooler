@@ -107,7 +107,7 @@ fn set_button<'lua>(lua: &'lua Lua, (obj, val): (AnyUserData<'lua>, Value<'lua>)
         Integer(num) => button.set_button(num as _)?,
         _ => button.set_button(xcb_button_t::default())?
     }
-    signal::emit_signal(lua,
+    signal::emit_object_signal(lua,
                         obj.into(),
                         "property::button".into(),
                         val)?;
@@ -123,7 +123,7 @@ fn set_modifiers<'lua>(lua: &'lua Lua, (obj, modifiers): (AnyUserData<'lua>, Tab
                        -> rlua::Result<Value<'lua>> {
     let mut button = Button::cast(obj.clone().into())?;
     button.set_modifiers(modifiers.clone())?;
-    signal::emit_signal(lua,
+    signal::emit_object_signal(lua,
                         obj.into(),
                         "property::modifiers".into(),
                         modifiers)?;

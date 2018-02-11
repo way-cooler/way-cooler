@@ -296,5 +296,5 @@ fn disconnect_signal(lua: &Lua, (obj, signal): (AnyUserData, String))
 
 fn emit_signal(lua: &Lua, (obj, signal, args): (AnyUserData, String, Value))
                -> rlua::Result<()> {
-    signal::emit_signal(lua, obj.into(), signal, args)
+    signal::emit_object_signal(lua, obj.into(), signal, args)
 }

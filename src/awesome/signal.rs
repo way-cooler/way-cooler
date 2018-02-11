@@ -4,7 +4,7 @@
 //! Signals are stored with the object in its metatable,
 //! the methods defined here are just to make it easier to use.
 
-use rlua::{self, Lua, Table, ToLuaMulti, Value, Function};
+use rlua::{self, Lua, Table, ToLuaMulti, Value, Function, ToLua};
 use super::{GLOBAL_SIGNALS, Object};
 
 /// Connects functions to a signal. Creates a new entry in the table if it
@@ -46,34 +46,20 @@ fn disconnect_signals(_: &Lua, signals: Table, name: String) -> rlua::Result<()>
 }
 
 /// Evaluate the functions associated with a signal.
-pub fn emit_signal<'lua, A>(lua: &'lua Lua,
-                            obj: Object<'lua>,
-                            name: String,
-                            args: A)
-                            -> rlua::Result<()>
+pub fn emit_object_signal<'lua, A>(lua: &'lua Lua,
+                                   obj: Object<'lua>,
+                                   name: String,
+                                   args: A)
+                                   -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone
 {
     let signals = obj.signals()?;
-    trace!("Checking signal {}", name);
-    if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.clone()) {
-        for entry in table.pairs::<Value, Function>() {
-            if let Ok((_, func)) = entry {
-                trace!("Found func for signal");
-                match func.bind(obj.clone())?
-                .call(args.clone()) {
-                    Ok(()) => {},
-                    Err(e) => {
-                        error!("Error while emitting signal {}: {}", name, e);
-                    }
-                };
-            }
-        }
-    }
-    Ok(())
+    let mut args = args.to_lua_multi(lua)?;
+    args.push_front(obj.to_lua(lua)?);
+    emit_signals(lua, signals, name, args)
 }
 
 fn emit_signals<'lua, A>(_: &'lua Lua,
-                         obj_table: Table<'lua>,
                          signals: Table<'lua>,
                          name: String,
                          args: A)
@@ -85,8 +71,7 @@ fn emit_signals<'lua, A>(_: &'lua Lua,
         for entry in table.pairs::<Value, Function>() {
             if let Ok((_, func)) = entry {
                 trace!("Found func for signal");
-                match func.bind(obj_table.clone())?
-                .call(args.clone()) {
+                match func.call(args.clone()) {
                     Ok(()) => {},
                     Err(e) => {
                         error!("Error while emitting signal {}: {}", name, e);
@@ -116,6 +101,5 @@ pub fn global_disconnect_signal<'lua>(lua: &'lua Lua, name: String) -> rlua::Res
 pub fn global_emit_signal<'lua>(lua: &'lua Lua, (name, args): (String, Value))
                      -> rlua::Result<()> {
     let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    // TODO Should this jut be a new empty table?
-    emit_signals(lua, lua.create_table()?, global_signals, name, args)
+    emit_signals(lua, global_signals, name, args)
 }
