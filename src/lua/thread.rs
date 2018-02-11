@@ -88,9 +88,6 @@ impl Default for ChannelToLua {
 /// to sending a message to the Lua thread.
 #[derive(Debug)]
 pub enum LuaSendError {
-    /// The thread was not initialized yet, crashed, was shut down, or rebooted.
-    #[allow(dead_code)] // TODO: This is a temporary
-    ThreadClosed,
     /// The sender had an issue, most likely because the Lua thread panicked.
     /// Following the `Sender` API, the original value sent is returned.
     Sender(LuaQuery)
@@ -99,7 +96,6 @@ pub enum LuaSendError {
 impl Into<rlua::Error> for LuaSendError {
     fn into(self) -> rlua::Error {
         rlua::Error::RuntimeError(match self {
-            LuaSendError::ThreadClosed => "Lua thread is not running".into(),
             LuaSendError::Sender(query) =>
                 format!("Could not send query to Lua thread: {:?}", query)
         })
