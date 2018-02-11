@@ -7,7 +7,6 @@ use std::path::Path;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 use std::cell::{Cell, RefCell};
 use std::sync::RwLock;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::io::Read;
 
@@ -38,10 +37,6 @@ thread_local! {
 }
 
 lazy_static! {
-    /// Sends requests to the Lua thread
-    /// Whether the Lua thread is currently running
-    static ref RUNNING: AtomicBool = AtomicBool::new(false);
-
     /// Requests to update the registry state from Lua
     static ref REGISTRY_QUEUE: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
@@ -70,17 +65,12 @@ impl Debug for LuaMessage {
 }
 
 // Reexported in lua/mod.rs:11
-/// Whether the Lua thread is currently available.
-pub fn running() -> bool {
-    RUNNING.load(Ordering::Relaxed)
-}
-
-// Reexported in lua/mod.rs:11
 /// Errors which may arise from attempting
 /// to sending a message to the Lua thread.
 #[derive(Debug)]
 pub enum LuaSendError {
     /// The thread was not initialized yet, crashed, was shut down, or rebooted.
+    #[allow(dead_code)] // TODO: This is a temporary
     ThreadClosed,
 }
 
@@ -133,9 +123,6 @@ fn idle_add_once<F>(func: F)
 // Reexported in lua/mod.rs:11
 /// Attemps to send a LuaQuery to the Lua thread.
 pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
-    if !running() {
-        return Err(LuaSendError::ThreadClosed);
-    }
     // Create a response channel
     let (response_tx, response_rx) = channel();
     let message = LuaMessage { reply: response_tx, query: query };
@@ -155,7 +142,6 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 /// Initialize the Lua thread.
 pub fn init() {
     info!("Starting Lua thread...");
-    RUNNING.store(true, Ordering::Relaxed);
     let _lua_handle = thread::Builder::new()
         .name("Lua thread".to_string())
         .spawn(|| main_loop());
@@ -261,7 +247,6 @@ fn main_loop() {
         .expect("Could not register lua libraries");
     lua_init();
     MAIN_LOOP.with(|main_loop| main_loop.borrow().run());
-    RUNNING.store(false, Ordering::Relaxed);
 }
 
 /// Handle each LuaQuery option sent to the thread
@@ -274,7 +259,6 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
                 warn!("Lua termination callback returned an error: {:?}", error);
                 warn!("However, termination will continue");
             }
-            RUNNING.store(false, Ordering::Relaxed);
             thread_send(request.reply, LuaResponse::Pong);
 
             info!("Lua thread terminating!");
