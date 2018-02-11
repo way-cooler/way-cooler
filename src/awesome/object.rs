@@ -154,11 +154,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
         meta.set("disconnect_signal",
                  lua.create_function(disconnect_signal)?)?;
         meta.set("emit_signal", lua.create_function(emit_signal)?)?;
-        // TODO Remove these index functions? They are defined on the user data now I think
-        // But maybe this is a fallback option still?
-        meta.set("__index", lua.create_function(table_default_index)?)?;
-        // NOTE TODO Very sure that I don't need this, but why I need above?
-        //meta.set("__newindex", lua.create_function(default_newindex)?)?;
+        meta.set("__index", meta.clone())?;
         meta.set("__tostring", lua.create_function(|_, data: AnyUserData| {
             Ok(format!("{}", data.borrow::<S>()?.clone()))
         })?)?;
@@ -187,57 +183,6 @@ impl <'lua> Object<'lua> {
         self.object.get_user_value::<Table<'lua>>()
     }
 }
-
-pub fn table_default_index<'lua>(lua: &'lua Lua,
-                         (obj_table, index): (Table<'lua>, Value<'lua>))
-                         -> rlua::Result<Value<'lua>> {
-    // Look up in metatable first
-    let meta = obj_table.get_metatable()
-        .expect("Object had no metatable");
-    if meta.get::<_, Table>("__class").is_ok() {
-        if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
-            match val {
-                Value::Nil => {},
-                val => return Ok(val)
-            }
-        }
-    }
-    let index = String::from_lua(index, lua)?;
-    match index.as_str() {
-        "valid" => {
-            // TODO What do?
-            unimplemented!()
-        },
-        "data" => {
-            obj_table.to_lua(lua)
-        },
-        index => {
-            // Try see if there is a property of the class with the name
-            if let Ok(class) = meta.get::<_, Table>("__class") {
-                let props = class.get::<_, Vec<Property>>("properties")?;
-                for prop in props {
-                    if prop.name.as_str() == index {
-                        // Property exists and has an index callback
-                        if let Some(index) = prop.cb_index {
-                            // TODO what do?
-                            unimplemented!()
-                           // return index.call(obj)
-                        }
-                    }
-                }
-                match class.get::<_, Function>("__index_miss_handler") {
-                    Ok(function) => {
-                        return function.bind(obj_table)?.call(index)
-                    },
-                    Err(_) => {}
-                }
-            }
-            // TODO property miss handler if index doesn't exst
-            Ok(rlua::Value::Nil)
-        }
-    }
-}
-
 
 /// Default indexing of an Awesome object.
 ///
