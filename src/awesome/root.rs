@@ -14,7 +14,7 @@ pub struct RootState {
     dummy: i32
 }
 
-pub struct Root<'lua>(Table<'lua>);
+pub struct Root<'lua>(Object<'lua>);
 
 impl Default for RootState {
     fn default() -> Self {

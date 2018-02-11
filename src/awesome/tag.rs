@@ -12,7 +12,7 @@ pub struct TagState {
     dummy: i32
 }
 
-pub struct Tag<'lua>(Table<'lua>);
+pub struct Tag<'lua>(Object<'lua>);
 
 impl Default for TagState {
     fn default() -> Self {

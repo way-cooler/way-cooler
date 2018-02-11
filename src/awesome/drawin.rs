@@ -24,7 +24,7 @@ pub struct DrawinState {
 }
 
 #[derive(Clone, Debug)]
-pub struct Drawin<'lua>(Table<'lua>);
+pub struct Drawin<'lua>(Object<'lua>);
 
 impl UserData for DrawinState {}
 

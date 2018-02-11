@@ -19,7 +19,7 @@ pub struct DrawableState {
     refreshed: bool,
 }
 
-pub struct Drawable<'lua>(Table<'lua>);
+pub struct Drawable<'lua>(Object<'lua>);
 
 impl_objectable!(Drawable, DrawableState);
 

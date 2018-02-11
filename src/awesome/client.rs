@@ -12,7 +12,7 @@ pub struct ClientState {
     dummy: i32
 }
 
-pub struct Client<'lua>(Table<'lua>);
+pub struct Client<'lua>(Object<'lua>);
 
 impl Default for ClientState {
     fn default() -> Self {

@@ -12,7 +12,7 @@ pub struct KeyState {
     dummy: i32
 }
 
-pub struct Key<'lua>(Table<'lua>);
+pub struct Key<'lua>(Object<'lua>);
 
 impl Default for KeyState {
     fn default() -> Self {
