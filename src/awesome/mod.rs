@@ -10,7 +10,7 @@ pub mod mousegrabber;
 //pub mod awful;
 //mod awesome;
 //mod client;
-//mod screen;
+mod screen;
 mod button;
 //mod tag;
 //mod key;
@@ -42,7 +42,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     //awesome::init(lua)?;
     //key::init(lua)?;
     //client::init(lua)?;
-    //screen::init(lua)?;
+    screen::init(lua)?;
     keygrabber::init(lua)?;
     //root::init(lua)?;
     //mouse::init(lua)?;

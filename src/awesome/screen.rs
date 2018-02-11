@@ -4,8 +4,9 @@ use rustwlc::{Geometry, Point, Size, WlcOutput};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData};
-use super::object::{Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods,
+           MetaMethod};
+use super::object::{self, Object, Objectable};
 use super::property::Property;
 use super::class::{self, Class, ClassBuilder};
 
@@ -30,6 +31,9 @@ impl From<WlcOutput> for Output {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Screen<'lua>(Object<'lua>);
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScreenState {
     // Is this screen still valid and may be used
@@ -43,8 +47,6 @@ pub struct ScreenState {
     // Some XID indetifying this screen
     pub xid: u32
 }
-
-pub struct Screen<'lua>(Table<'lua>);
 
 impl_objectable!(Screen, ScreenState);
 
@@ -60,8 +62,6 @@ impl <'lua> ToLua<'lua> for Screen<'lua> {
     }
 }
 
-impl UserData for ScreenState {}
-
 impl Default for ScreenState {
     fn default() -> Self {
         ScreenState {
@@ -71,6 +71,13 @@ impl Default for ScreenState {
             outputs: vec![],
             xid: 0
         }
+    }
+}
+
+impl UserData for ScreenState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
     }
 }
 
@@ -93,7 +100,6 @@ impl <'lua> Screen<'lua> {
         let state = self.state()?;
         let Point { x, y } = state.geometry.origin;
         let Size { w, h } = state.geometry.size;
-        // TODO I do this a lot, put it somewhere
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;
@@ -106,7 +112,6 @@ impl <'lua> Screen<'lua> {
         let state = self.state()?;
         let Point { x, y } = state.workarea.origin;
         let Size { w, h } = state.workarea.size;
-        // TODO I do this a lot, put it somewhere
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;
@@ -117,7 +122,8 @@ impl <'lua> Screen<'lua> {
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    let res = property_setup(lua, method_setup(lua, Class::builder(lua, "screen", Some(Rc::new(Screen::new)), None, None)?)?)?
+    let builder = Class::builder(lua, "screen", Some(Rc::new(Screen::new)), None, None)?;
+    let res = property_setup(lua, method_setup(lua, builder)?)?
         .save_class("screen")?
         .build()?;
     let mut screens: Vec<Screen> = vec![];
@@ -131,7 +137,8 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
     Ok(res)
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>)
+                      -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
@@ -139,7 +146,8 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
            .method("__call".into(), lua.create_function(iterate_over_screens)?)
 }
 
-fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>)
+                        -> rlua::Result<ClassBuilder<'lua>> {
     builder
         .property(Property::new("geometry".into(),
                                 None,
@@ -187,7 +195,7 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
         _ => panic!("Unexpected non-screen or nil value in screens loop")
     };
     if index < screens.len() {
-        screens[index].get_table().to_lua(lua)
+        screens[index].clone().to_lua(lua)
     } else {
         Ok(Value::Nil)
     }
@@ -207,14 +215,14 @@ fn index<'lua>(lua: &'lua Lua,
             if string == "primary" {
                 // TODO Emit primary changed signal
                 if screens.len() > 0 {
-                    return screens[0].get_table().clone().to_lua(lua)
+                    return screens[0].clone().to_lua(lua)
                 }
             }
             for screen in screens.iter() {
                 let screen_state = screen.state()?;
                 for output in &screen_state.outputs {
                     if output.name.as_str() == string {
-                        return screen.get_table().clone().to_lua(lua)
+                        return screen.clone().to_lua(lua)
                     }
                 }
             }
@@ -226,7 +234,7 @@ fn index<'lua>(lua: &'lua Lua,
                     format!("invalid screen number: {} (of {} existing)",
                             screen_index, screens.len())))
             }
-            return screens[(screen_index - 1) as usize].get_table().clone().to_lua(lua).clone()
+            return screens[(screen_index - 1) as usize].clone().to_lua(lua)
         },
         Value::UserData(ref obj) => {
             // If this is a screen, just return it
