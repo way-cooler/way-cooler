@@ -6,8 +6,8 @@ use rustwlc::Geometry;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, AnyUserData};
-use super::object::{Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, AnyUserData, UserDataMethods, MetaMethod};
+use super::object::{self, Object, Objectable};
 use super::class::{self, Class};
 use super::property::Property;
 
@@ -104,7 +104,12 @@ impl <'lua> ToLua<'lua> for Drawable<'lua> {
     }
 }
 
-impl UserData for DrawableState {}
+impl UserData for DrawableState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     Class::builder(lua, "drawable", Some(Rc::new(Drawable::new)), None, None)?

@@ -12,7 +12,8 @@ use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods, MetaMethod};
+use super::object;
 use super::{XCB_CONNECTION_HANDLE, signal};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 
@@ -54,7 +55,12 @@ impl Display for AwesomeState {
     }
 }
 
-impl UserData for AwesomeState {}
+impl UserData for AwesomeState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let awesome_table = lua.create_table()?;

@@ -2,8 +2,8 @@
 
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Lua, ToLua, Table, UserData, AnyUserData, Value, Function};
-use super::object::Object;
+use rlua::{self, Lua, ToLua, Table, UserData, AnyUserData, Value, Function, UserDataMethods, MetaMethod};
+use super::object::{self, Object};
 use super::property::Property;
 
 pub type Allocator = Rc<Fn(&Lua) -> rlua::Result<Object>>;
@@ -86,7 +86,12 @@ impl Default for ClassState {
     }
 }
 
-impl UserData for ClassState {}
+impl UserData for ClassState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 impl <'lua> Class<'lua> {
     pub fn builder(lua: &'lua Lua,

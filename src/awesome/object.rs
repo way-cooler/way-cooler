@@ -62,7 +62,7 @@ impl <'lua> ObjectBuilder<'lua> {
                         if prop.name == key {
                             // Property exists and has a cb_new callback
                             if let Some(ref new) = prop.cb_new {
-                                let _: () = new.bind(self.object.table()?.clone())?.call(value)?;
+                                let _: () = new.bind(self.object.clone())?.call(value)?;
                                 break;
                             }
                         }
@@ -183,6 +183,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
     let obj_table = obj.table()?;
     let meta = obj_table.get_metatable()
         .expect("Object had no metatable");
+    warn!("Here");
     if meta.get::<_, Table>("__class").is_ok() {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
@@ -208,6 +209,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
             obj_table.to_lua(lua)
         },
         index => {
+            warn!("Here2");
             // Try see if there is a property of the class with the name
             if let Ok(class) = meta.get::<_, Table>("__class") {
                 let props = class.get::<_, Vec<Property>>("properties")?;
@@ -221,7 +223,10 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                 }
                 match class.get::<_, Function>("__index_miss_handler") {
                     Ok(function) => {
-                        return function.bind(obj_table)?.call(index)
+                        error!("Calling {:?} w/ obj {:?} and arg {:?}",
+                               function, obj, index
+                        );
+                        return function.bind(obj)?.call(index)
                     },
                     Err(_) => {}
                 }
@@ -262,7 +267,7 @@ pub fn default_newindex<'lua>(_: &'lua Lua,
         }
         match class.get::<_, Function>("__newindex_miss_handler") {
             Ok(function) => {
-                return function.bind(obj_table)?.call((index, val))
+                return function.bind(obj)?.call((index, val))
             },
             Err(_) => {}
         }

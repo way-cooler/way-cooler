@@ -2,7 +2,8 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use super::object;
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod};
 use rustwlc::input;
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
@@ -28,7 +29,12 @@ impl Display for MouseState {
     }
 }
 
-impl UserData for MouseState {}
+impl UserData for MouseState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let mouse_table = lua.create_table()?;

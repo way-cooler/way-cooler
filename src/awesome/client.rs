@@ -2,8 +2,8 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::object::{Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod};
+use super::object::{self, Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
@@ -41,7 +41,12 @@ impl <'lua> ToLua<'lua> for Client<'lua> {
     }
 }
 
-impl UserData for ClientState {}
+impl UserData for ClientState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     method_setup(lua, Class::builder(lua, "client", Some(Rc::new(Client::new)), None, None)?)?

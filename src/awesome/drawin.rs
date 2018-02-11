@@ -4,13 +4,13 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 use rustwlc::{Geometry, Point, Size};
-use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods, MetaMethod};
 use rlua::prelude::LuaInteger;
 use super::drawable::Drawable;
 use super::property::Property;
 
 use super::class::{self, Class, ClassBuilder};
-use super::object::{Object, Objectable, ObjectBuilder};
+use super::object::{self, Object, Objectable, ObjectBuilder};
 
 #[derive(Clone, Debug)]
 pub struct DrawinState {
@@ -26,7 +26,12 @@ pub struct DrawinState {
 #[derive(Clone, Debug)]
 pub struct Drawin<'lua>(Object<'lua>);
 
-impl UserData for DrawinState {}
+impl UserData for DrawinState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 impl Default for DrawinState {
     fn default() -> Self {
