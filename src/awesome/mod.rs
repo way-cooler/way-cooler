@@ -7,8 +7,8 @@ use std::mem;
 
 pub mod keygrabber;
 pub mod mousegrabber;
-//pub mod awful;
-//mod awesome;
+pub mod awful;
+mod awesome;
 //mod client;
 mod screen;
 mod button;
@@ -39,7 +39,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     setup_global_signals(lua)?;
     setup_xcb_connection(lua)?;
     button::init(lua)?;
-    //awesome::init(lua)?;
+    awesome::init(lua)?;
     //key::init(lua)?;
     //client::init(lua)?;
     screen::init(lua)?;
@@ -50,7 +50,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     //drawin::init(lua)?;
     //drawable::init(lua)?;
     mousegrabber::init(lua)?;
-    //awful::init(lua)?;
+    awful::init(lua)?;
     Ok(())
 }
 
