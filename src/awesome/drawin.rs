@@ -95,10 +95,11 @@ impl <'lua> Drawin<'lua> {
             state.geometry.size.h = old_geometry.size.h
         }
         state.geometry_dirty = true;
-        self.update_drawing()?;
         // TODO emit signals
         // TODO update screen workareas like in awesome? Might not be necessary
-        self.set_state(state)
+        // TODO Currently have to call set_state() before update_drawing; change that
+        self.set_state(state)?;
+        self.update_drawing()
     }
 }
 
