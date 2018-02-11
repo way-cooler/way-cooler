@@ -94,6 +94,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names)?)?;
     awesome_table.set("set_xproperty", lua.create_function(set_xproperty)?)?;
     awesome_table.set("get_xproperty", lua.create_function(get_xproperty)?)?;
+    awesome_table.set("systray", lua.create_function(systray)?)?;
     awesome_table.set("restart", lua.create_function(restart)?)?;
     awesome_table.set("load_image", lua.create_function(load_image)?)?;
     awesome_table.set("sync", lua.create_function(sync)?)?;
@@ -190,6 +191,11 @@ fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>>
         let name_c = ffi::xproto::xcb_get_atom_name_name(atom_name_r);
         CStr::from_ptr(name_c).to_string_lossy().into_owned().to_lua(lua)
     }
+}
+
+/// Query & set information about the systray
+fn systray<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<(u32, Value)> {
+    Ok((0, Value::Nil))
 }
 
 /// Restart Awesome by restarting the Lua thread
