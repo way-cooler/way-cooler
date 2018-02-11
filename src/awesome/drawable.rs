@@ -6,7 +6,7 @@ use rustwlc::Geometry;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, AnyUserData};
 use super::object::{Object, Objectable};
 use super::class::{self, Class};
 use super::property::Property;
@@ -118,14 +118,14 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 }
 
 
-fn get_surface<'lua>(_: &'lua Lua, table: Table<'lua>) -> rlua::Result<Value<'lua>> {
-    let drawable = Drawable::cast(table.clone().into())?;
+fn get_surface<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
+    let drawable = Drawable::cast(obj.into())?;
     drawable.get_surface()
 }
 
-fn geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
+fn geometry<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
     use rustwlc::{Point, Size};
-    let drawable = Drawable::cast(table.into())?;
+    let drawable = Drawable::cast(obj.into())?;
     let geometry = drawable.get_geometry()?;
     let Point { x, y } = geometry.origin;
     let Size { w, h } = geometry.size;
@@ -137,6 +137,6 @@ fn geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua
     Ok(table)
 }
 
-fn refresh<'lua>(_: &'lua Lua, table: Table<'lua>) -> rlua::Result<()> {
-    Drawable::cast(table.into())?.refresh()
+fn refresh<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<()> {
+    Drawable::cast(obj.into())?.refresh()
 }

@@ -14,8 +14,8 @@ mod screen;
 mod button;
 mod tag;
 mod key;
-//mod drawin;
-//mod drawable;
+mod drawin;
+mod drawable;
 mod mouse;
 mod root;
 pub mod signal;
@@ -47,8 +47,8 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     root::init(lua)?;
     mouse::init(lua)?;
     tag::init(lua)?;
-    //drawin::init(lua)?;
-    //drawable::init(lua)?;
+    drawin::init(lua)?;
+    drawable::init(lua)?;
     mousegrabber::init(lua)?;
     awful::init(lua)?;
     Ok(())
