@@ -71,11 +71,6 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
                             xdg_data_path.into_os_string().to_string_lossy()));
     package.set("cpath", cpath)?;
 
-    // NOTE The debug library does some powerful reflection that can do crazy things,
-    // which is why it's unsafe to load.
-    unsafe {
-        lua.load_debug();
-    }
     Ok(())
 }
 

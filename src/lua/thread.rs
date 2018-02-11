@@ -31,7 +31,9 @@ use registry::{self};
 use ::layout::{lock_tree, ContainerType};
 
 thread_local! {
-    static LUA: RefCell<rlua::Lua> = RefCell::new(rlua::Lua::new());
+    // NOTE The debug library does some powerful reflection that can do crazy things,
+    // which is why it's unsafe to load.
+    static LUA: RefCell<rlua::Lua> = RefCell::new(unsafe { rlua::Lua::new_with_debug() });
     static MAIN_LOOP: RefCell<MainLoop> = RefCell::new(MainLoop::new(None, false));
 }
 
@@ -229,7 +231,7 @@ fn load_config(mut lua: &mut rlua::Lua) {
                             // Keeping this an error, so that it is visible
                             // in release builds.
                             info!("Defaulting to pre-compiled init.lua");
-                            *lua = rlua::Lua::new();
+                            unsafe { *lua = rlua::Lua::new_with_debug(); }
                             rust_interop::register_libraries(&mut lua)?;
                             lua.exec(init_path::DEFAULT_CONFIG,
                                     Some("init.lua <DEFAULT>".into()))
@@ -288,7 +290,7 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
             thread_send(request.reply, LuaResponse::Pong);
 
             info!("Lua thread restarting");
-            *lua = rlua::Lua::new();
+            unsafe { *lua = rlua::Lua::new_with_debug(); }
             rust_interop::register_libraries(lua)
                 .expect("Could not register libraries");
             send(LuaQuery::UpdateRegistryFromCache)
