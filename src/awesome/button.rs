@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods, MetaMethod};
 use super::object::{Object, Objectable};
 use super::signal;
 use super::property::Property;
@@ -15,7 +15,7 @@ pub struct ButtonState {
 }
 
 #[derive(Clone, Debug)]
-pub struct Button<'lua>(Table<'lua>);
+pub struct Button<'lua>(Object<'lua>);
 
 impl Display for ButtonState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -32,7 +32,12 @@ impl Default for ButtonState {
     }
 }
 
-impl UserData for ButtonState {}
+impl UserData for ButtonState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, super::object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, super::object::default_newindex)
+    }
+}
 
 impl <'lua> Button<'lua> {
     fn new(lua: &'lua Lua, args: rlua::Table) -> rlua::Result<Object<'lua>> {
@@ -47,7 +52,7 @@ impl <'lua> Button<'lua> {
         Ok(Value::Integer(button.button as _))
     }
 
-    pub fn set_button(&self, new_val: xcb_button_t) -> rlua::Result<()> {
+    pub fn set_button(&mut self, new_val: xcb_button_t) -> rlua::Result<()> {
         let mut button = self.state()?;
         button.button = new_val;
         self.set_state(button)?;
@@ -59,7 +64,7 @@ impl <'lua> Button<'lua> {
         Ok(button.modifiers)
     }
 
-    pub fn set_modifiers(&self, mods: Table<'lua>) -> rlua::Result<()> {
+    pub fn set_modifiers(&mut self, mods: Table<'lua>) -> rlua::Result<()> {
         use ::lua::mods_to_rust;
         let mut button = self.state()?;
         button.modifiers = mods_to_rust(mods)?;
@@ -93,47 +98,47 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .build()
 }
 
-fn set_button<'lua>(lua: &'lua Lua, (table, val): (Table, Value))
+fn set_button<'lua>(lua: &'lua Lua, (obj, val): (AnyUserData<'lua>, Value<'lua>))
                     -> rlua::Result<Value<'lua>> {
     use rlua::Value::*;
-    let button = Button::cast(table.clone().into())?;
+    let mut button = Button::cast(obj.clone().into())?;
     match val {
         Number(num) => button.set_button(num as _)?,
         Integer(num) => button.set_button(num as _)?,
         _ => button.set_button(xcb_button_t::default())?
     }
     signal::emit_signal(lua,
-                        table.into(),
+                        obj.into(),
                         "property::button".into(),
                         val)?;
     Ok(Value::Nil)
 }
 
-fn get_button<'lua>(_: &'lua Lua, table: Table<'lua>)
+fn get_button<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>)
                     -> rlua::Result<Value<'lua>> {
-    Button::cast(table.into())?.button()
+    Button::cast(obj.into())?.button()
 }
 
-fn set_modifiers<'lua>(lua: &'lua Lua, (table, modifiers): (Table, Table))
+fn set_modifiers<'lua>(lua: &'lua Lua, (obj, modifiers): (AnyUserData<'lua>, Table<'lua>))
                        -> rlua::Result<Value<'lua>> {
-    let button = Button::cast(table.clone().into())?;
+    let mut button = Button::cast(obj.clone().into())?;
     button.set_modifiers(modifiers.clone())?;
     signal::emit_signal(lua,
-                        table.into(),
+                        obj.into(),
                         "property::modifiers".into(),
                         modifiers)?;
     Ok(Value::Nil)
 }
 
-fn get_modifiers<'lua>(lua: &'lua Lua, table: Table<'lua>)
+fn get_modifiers<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>)
                     -> rlua::Result<Value<'lua>> {
     use ::lua::mods_to_lua;
-    mods_to_lua(lua, Button::cast(table.into())?.modifiers()?).map(Value::Table)
+    mods_to_lua(lua, Button::cast(obj.into())?.modifiers()?).map(Value::Table)
 }
 
 #[cfg(test)]
 mod test {
-    use rlua::{Table, Lua};
+    use rlua::{AnyUserData, Lua};
     use super::super::button::{self, Button};
     use super::super::object;
 
@@ -223,7 +228,7 @@ assert(button0.button == 0)
         button::init(&lua).unwrap();
         lua.globals().set("a_button", Button::new(&lua, lua.create_table().unwrap()).unwrap())
             .unwrap();
-        let button = Button::cast(lua.globals().get::<_, Table>("a_button")
+        let button = Button::cast(lua.globals().get::<_, AnyUserData>("a_button")
                                   .unwrap().into()).unwrap();
         assert_eq!(button.modifiers().unwrap(), KeyMod::empty());
         lua.eval::<()>(r#"
@@ -241,7 +246,7 @@ a_button.modifiers = { "Caps" }
         button::init(&lua).unwrap();
         lua.globals().set("a_button", Button::new(&lua, lua.create_table().unwrap()).unwrap())
             .unwrap();
-        let button = Button::cast(lua.globals().get::<_, Table>("a_button")
+        let button = Button::cast(lua.globals().get::<_, AnyUserData>("a_button")
                                   .unwrap().into()).unwrap();
         assert_eq!(button.modifiers().unwrap(), KeyMod::empty());
         lua.eval::<()>(r#"
@@ -322,8 +327,6 @@ assert(hit)
         lua.eval::<()>(r#"
 a_button = button{}
 assert(a_button.valid)
-getmetatable(a_button).__class = nil
-assert(not a_button.valid)
 "#, None).unwrap();
     }
 }

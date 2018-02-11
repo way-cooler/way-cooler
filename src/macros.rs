@@ -125,12 +125,16 @@ macro_rules! map(
 macro_rules! impl_objectable {
     ($WrapperType: ident, $StateType: ty) => {
         impl <'lua> Objectable<'lua, $WrapperType<'lua>, $StateType> for $WrapperType<'lua> {
-            fn _wrap(table: Table<'lua>) -> $WrapperType {
-                $WrapperType(table)
+            fn _wrap(object: Object<'lua>) -> $WrapperType {
+                $WrapperType(object)
             }
 
-            fn get_table(&self) -> Table<'lua> {
-                self.0.clone()
+            fn get_object(&self) -> $crate::rlua::Result<$StateType> {
+                Ok(self.0.object.borrow_mut::<$StateType>()?.clone())
+            }
+
+            fn get_object_mut(&mut self) -> $crate::rlua::Result<::std::cell::RefMut<$StateType>> {
+                Ok(self.0.object.borrow_mut::<$StateType>()?)
             }
         }
     }

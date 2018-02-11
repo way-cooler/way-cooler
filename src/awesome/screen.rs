@@ -4,7 +4,7 @@ use rustwlc::{Geometry, Point, Size, WlcOutput};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData};
 use super::object::{Object, Objectable};
 use super::property::Property;
 use super::class::{self, Class, ClassBuilder};
@@ -151,13 +151,13 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
                                 None))
 }
 
-fn get_geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
-    let screen = Screen::cast(table.into())?;
+fn get_geometry<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
+    let screen = Screen::cast(object.into())?;
     screen.get_geometry(lua)
 }
 
-fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
-    let screen = Screen::cast(table.into())?;
+fn get_workarea<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
+    let screen = Screen::cast(object.into())?;
     screen.get_workarea(lua)
 }
 
@@ -171,13 +171,13 @@ fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<
 fn iterate_over_screens<'lua>(lua: &'lua Lua,
                               (_, _, prev): (Value<'lua>, Value<'lua>, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {
-    let screens: Vec<Screen> = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?
-        .into_iter().map(|t| Screen::cast(t.into()).unwrap())
+    let screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
+        .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
         .collect();
     let index = match prev {
         Value::Nil => 0,
-        Value::Table(ref table) => {
-            if let Ok(screen) = Screen::cast(table.clone().into()) {
+        Value::UserData(ref object) => {
+            if let Ok(screen) = Screen::cast(object.clone().into()) {
                 screens.iter().position(|t| t.state().unwrap() == screen.state().unwrap())
                     .unwrap_or(screens.len()) + 1
             } else {
@@ -195,10 +195,11 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
 }
 
 fn index<'lua>(lua: &'lua Lua,
-               (obj_table, index): (Table<'lua>, Value<'lua>))
+               (data, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
-    let screens: Vec<Screen> = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?
-        .into_iter().map(|t| Screen::cast(t.into()).unwrap())
+    let obj: Object = data.clone().into();
+    let screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
+        .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
         .collect();
     match index {
         Value::String(ref string) => {
@@ -227,9 +228,9 @@ fn index<'lua>(lua: &'lua Lua,
             }
             return screens[(screen_index - 1) as usize].get_table().clone().to_lua(lua).clone()
         },
-        Value::Table(ref table) => {
+        Value::UserData(ref obj) => {
             // If this is a screen, just return it
-            if let Ok(screen) = Screen::cast(table.clone().into()) {
+            if let Ok(screen) = Screen::cast(obj.clone().into()) {
                 return screen.to_lua(lua)
             }
         },
@@ -237,6 +238,7 @@ fn index<'lua>(lua: &'lua Lua,
         _ => {}
     }
     // TODO checkudata
-    let meta = obj_table.get_metatable().unwrap();
-    meta.get(index.clone()).or_else(|_| super::object::default_index(lua, (obj_table, index)))
+    let table = obj.table()?;
+    let meta = table.get_metatable().unwrap();
+    meta.get(index.clone()).or_else(|_| super::object::default_index(lua, (data, index)))
 }
