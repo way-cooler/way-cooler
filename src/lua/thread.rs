@@ -6,7 +6,7 @@ use std::fs::{File};
 use std::path::Path;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 use std::cell::{Cell, RefCell};
-use std::sync::RwLock;
+use std::sync::{RwLock, Mutex};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::io::Read;
 
@@ -37,6 +37,9 @@ thread_local! {
 }
 
 lazy_static! {
+    /// Sends requests to the Lua thread
+    static ref CHANNEL: ChannelToLua = ChannelToLua::default();
+
     /// Requests to update the registry state from Lua
     static ref REGISTRY_QUEUE: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
@@ -64,20 +67,37 @@ impl Debug for LuaMessage {
     }
 }
 
+/// Struct used to communicate with the Lua thread.
+struct ChannelToLua {
+    sender: Mutex<Sender<LuaMessage>>,
+    receiver: Mutex<Option<Receiver<LuaMessage>>>
+}
+
+impl Default for ChannelToLua {
+    fn default() -> Self {
+        let (sender, receiver) = channel();
+        ChannelToLua {
+            sender: Mutex::new(sender),
+            receiver: Mutex::new(Some(receiver))
+        }
+    }
+}
+
 // Reexported in lua/mod.rs:11
 /// Errors which may arise from attempting
 /// to sending a message to the Lua thread.
 #[derive(Debug)]
 pub enum LuaSendError {
-    /// The thread was not initialized yet, crashed, was shut down, or rebooted.
-    #[allow(dead_code)] // TODO: This is a temporary
-    ThreadClosed,
+    /// The sender had an issue, most likely because the Lua thread panicked.
+    /// Following the `Sender` API, the original value sent is returned.
+    Sender(LuaQuery)
 }
 
 impl Into<rlua::Error> for LuaSendError {
     fn into(self) -> rlua::Error {
         rlua::Error::RuntimeError(match self {
-            LuaSendError::ThreadClosed => "Lua thread is not running".into()
+            LuaSendError::Sender(query) =>
+                format!("Could not send query to Lua thread: {:?}", query)
         })
     }
 }
@@ -125,16 +145,28 @@ fn idle_add_once<F>(func: F)
 pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     // Create a response channel
     let (response_tx, response_rx) = channel();
-    let message = LuaMessage { reply: response_tx, query: query };
-    idle_add_once(move || {
-        LUA.with(|lua| {
-            trace!("Handling a request");
-            let lua = &mut *lua.borrow_mut();
-            if !handle_message(message, lua) {
-                MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
-            }
-            emit_refresh(lua);
-        });
+    match CHANNEL.sender.lock() {
+        Err(_) => Err(LuaSendError::Sender(query)),
+        Ok(sender) => {
+            let message = LuaMessage { reply: response_tx, query: query };
+            sender.send(message)
+                .map_err(|e| LuaSendError::Sender(e.0.query))
+        }
+    }?;
+    idle_add_once(|| {
+        let receiver = CHANNEL.receiver.lock().unwrap();
+        if let Some(ref receiver) = *receiver {
+            LUA.with(|lua| {
+                let lua = &mut *lua.borrow_mut();
+                for message in receiver.try_iter() {
+                    trace!("Handling a request");
+                    if !handle_message(message, lua) {
+                        MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
+                    }
+                }
+                emit_refresh(lua);
+            });
+        }
     });
     Ok(response_rx)
 }
@@ -238,11 +270,26 @@ fn load_config(mut lua: &mut rlua::Lua) {
         emit_refresh(lua);
 }
 
+struct DropReceiver;
+
+impl Drop for DropReceiver {
+    fn drop(&mut self) {
+        // Drop the receiver, if possible
+        match CHANNEL.receiver.lock() {
+            Ok(mut receiver) => {
+                let _ = receiver.take();
+            },
+            _ => {}
+        }
+    }
+}
+
 /// Main loop of the Lua thread:
 ///
 /// * Initialise the Lua state
 /// * Run a GMainLoop
 fn main_loop() {
+    let _guard = DropReceiver;
     LUA.with(|lua| rust_interop::register_libraries(&*lua.borrow()))
         .expect("Could not register lua libraries");
     lua_init();
