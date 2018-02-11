@@ -69,17 +69,13 @@ impl Debug for LuaMessage {
     }
 }
 
-/// Whether the Lua thread is currently available.
-fn running() -> bool {
-    RUNNING.load(Ordering::Relaxed)
-}
-
 // Reexported in lua/mod.rs:11
 /// Errors which may arise from attempting
 /// to sending a message to the Lua thread.
 #[derive(Debug)]
 pub enum LuaSendError {
     /// The thread was not initialized yet, crashed, was shut down, or rebooted.
+    #[allow(dead_code)] // TODO: This is a temporary
     ThreadClosed,
 }
 
@@ -132,9 +128,6 @@ fn idle_add_once<F>(func: F)
 // Reexported in lua/mod.rs:11
 /// Attemps to send a LuaQuery to the Lua thread.
 pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
-    if !running() {
-        return Err(LuaSendError::ThreadClosed);
-    }
     // Create a response channel
     let (response_tx, response_rx) = channel();
     let message = LuaMessage { reply: response_tx, query: query };
