@@ -247,5 +247,8 @@ fn index<'lua>(lua: &'lua Lua,
     // TODO checkudata
     let table = obj.table()?;
     let meta = table.get_metatable().unwrap();
-    meta.get(index.clone()).or_else(|_| super::object::default_index(lua, (data, index)))
+    match meta.get(index.clone()) {
+        Err(_) | Ok(Value::Nil) => super::object::default_index(lua, (data, index)),
+        Ok(value) => Ok(value)
+    }
 }
