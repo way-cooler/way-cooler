@@ -76,6 +76,7 @@ impl Default for ScreenState {
 
 impl UserData for ScreenState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, index);
         methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
     }
 }
