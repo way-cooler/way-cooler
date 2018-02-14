@@ -176,7 +176,7 @@ fn get_workarea<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result
 /// increment it by 1 (starting at 0 if it's the start) and then once it falls outside
 /// the bounds it will stop by returning nil.
 fn iterate_over_screens<'lua>(lua: &'lua Lua,
-                              (_, _, prev): (Value<'lua>, Value<'lua>, Value<'lua>))
+                              (_, prev): (Value<'lua>, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {
     let screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
         .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
@@ -194,6 +194,7 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
         _ => panic!("Unexpected non-screen or nil value in screens loop")
     };
     if index < screens.len() {
+        warn!("here");
         screens[index].clone().to_lua(lua)
     } else {
         Ok(Value::Nil)

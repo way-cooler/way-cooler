@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use super::object;
+use super::{class, object};
 use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod, AnyUserData};
 use rustwlc::input;
 
@@ -31,32 +31,19 @@ impl Display for MouseState {
 
 impl UserData for MouseState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::Index, class::class_index);
+        // TODO Class newindex?
         methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
     }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let mouse_table = lua.create_table()?;
-    state_setup(lua, &mouse_table)?;
-    meta_setup(lua, &mouse_table)?;
+    let mouse = lua.create_userdata(MouseState::default())?;
     method_setup(lua, &mouse_table)?;
     let globals = lua.globals();
-    globals.set("mouse", mouse_table)
-}
-
-fn state_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
-    mouse_table.set("__data", MouseState::default().to_lua(lua)?)
-}
-
-fn meta_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
-    let meta_table = lua.create_table()?;
-    meta_table.set("__tostring", lua.create_function(|_, val: Table| {
-        Ok(format!("{}", val.get::<_, MouseState>("__data")?))
-    })?)?;
-    meta_table.set("__index", lua.create_function(index)?)?;
-    mouse_table.set_metatable(Some(meta_table));
-    Ok(())
+    mouse.set_user_value(mouse_table)?;
+    globals.set("mouse", mouse)
 }
 
 fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
@@ -91,11 +78,15 @@ fn coords<'lua>(lua: &'lua Lua, (coords, _ignore_enter): (rlua::Value<'lua>, rlu
 }
 
 fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
-    lua.globals().get::<_, Table>("button")?.set(INDEX_MISS_FUNCTION, func)
+    let button = lua.globals().get::<_, AnyUserData>("button")?;
+    let table = button.get_user_value::<Table>()?;
+    table.set(INDEX_MISS_FUNCTION, func)
 }
 
 fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
-    lua.globals().get::<_, Table>("button")?.set(NEWINDEX_MISS_FUNCTION, func)
+    let button = lua.globals().get::<_, AnyUserData>("button")?;
+    let table = button.get_user_value::<Table>()?;
+    table.set(NEWINDEX_MISS_FUNCTION, func)
 }
 
 fn index<'lua>(lua: &'lua Lua,

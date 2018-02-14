@@ -48,8 +48,9 @@ impl <'lua> ObjectBuilder<'lua> {
     pub fn handle_constructor_argument(self, args: Table) -> rlua::Result<Self> {
         let meta = self.object.table()?.get_metatable()
             .expect("Object had no meta table");
-        let class = meta.get::<_, Table>("__class")?;
-        let props = class.get::<_, Vec<Property>>("properties")?;
+        let class = meta.get::<_, AnyUserData>("__class")?;
+        let class_table = class.get_user_value::<Table>()?;
+        let props = class_table.get::<_, Vec<Property>>("properties")?;
 
         // Handle all table entries that correspond to known properties,
         // silently ignore all other keys
@@ -183,7 +184,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
     let obj_table = obj.table()?;
     let meta = obj_table.get_metatable()
         .expect("Object had no metatable");
-    if meta.get::<_, Table>("__class").is_ok() {
+    if meta.get::<_, AnyUserData>("__class").is_ok() {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
                 Value::Nil => {},
@@ -191,11 +192,14 @@ pub fn default_index<'lua>(lua: &'lua Lua,
             }
         }
     }
-    let index = String::from_lua(index, lua)?;
+    let index = match String::from_lua(index, lua) {
+        Ok(s) => s,
+        Err(_) => return Ok(Value::Nil)
+    };
     match index.as_str() {
         "valid" => {
             Ok(Value::Boolean(
-                if let Ok(class) = meta.get::<_, Table>("__class") {
+                if let Ok(class) = meta.get::<_, AnyUserData>("__class") {
                     let class: Class = class.into();
                     class.checker()?
                         .map(|checker| checker(obj))
@@ -209,8 +213,9 @@ pub fn default_index<'lua>(lua: &'lua Lua,
         },
         index => {
             // Try see if there is a property of the class with the name
-            if let Ok(class) = meta.get::<_, Table>("__class") {
-                let props = class.get::<_, Vec<Property>>("properties")?;
+            if let Ok(class) = meta.get::<_, AnyUserData>("__class") {
+                let class_table = class.get_user_value::<Table>()?;
+                let props = class_table.get::<_, Vec<Property>>("properties")?;
                 for prop in props {
                     if prop.name.as_str() == index {
                         // Property exists and has an index callback
@@ -219,7 +224,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                         }
                     }
                 }
-                match class.get::<_, Function>("__index_miss_handler") {
+                match class_table.get::<_, Function>("__index_miss_handler") {
                     Ok(function) => {
                         return function.bind(obj_table)?.call(index)
                     },
@@ -250,8 +255,9 @@ pub fn default_newindex<'lua>(_: &'lua Lua,
                 val => return Ok(val)
             }
         }
-        let class = meta.get::<_, Table>("__class")?;
-        let props = class.get::<_, Vec<Property>>("properties")?;
+        let class = meta.get::<_, AnyUserData>("__class")?;
+        let class_table = class.get_user_value::<Table>()?;
+        let props = class_table.get::<_, Vec<Property>>("properties")?;
         for prop in props {
             if prop.name.as_str() == index {
                 // Property exists and has a newindex callback
@@ -260,7 +266,7 @@ pub fn default_newindex<'lua>(_: &'lua Lua,
                 }
             }
         }
-        match class.get::<_, Function>("__newindex_miss_handler") {
+        match class_table.get::<_, Function>("__newindex_miss_handler") {
             Ok(function) => {
                 return function.bind(obj)?.call((index, val))
             },

@@ -41,12 +41,9 @@ impl <'lua> ToLua<'lua> for Client<'lua> {
     }
 }
 
-impl UserData for ClientState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, object::default_index);
-        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
-    }
-}
+// TODO Correct?
+// NOTE Provided in class.rs
+impl UserData for ClientState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     method_setup(lua, Class::builder(lua, "client", Some(Rc::new(Client::new)), None, None)?)?

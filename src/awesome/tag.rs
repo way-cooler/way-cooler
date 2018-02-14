@@ -60,7 +60,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
-           .method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Tag::new(lua, args))?)
+           .method("__call".into(), lua.create_function(|lua, args: Table| Tag::new(lua, args))?)
 }
 
 impl_objectable!(Tag, TagState);
