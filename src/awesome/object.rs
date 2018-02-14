@@ -226,7 +226,7 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                 }
                 match class_table.get::<_, Function>("__index_miss_handler") {
                     Ok(function) => {
-                        return function.bind(obj_table)?.call(index)
+                        return function.bind(obj)?.call(index)
                     },
                     Err(_) => {}
                 }
