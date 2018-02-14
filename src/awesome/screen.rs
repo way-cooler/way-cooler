@@ -76,7 +76,6 @@ impl Default for ScreenState {
 
 impl UserData for ScreenState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, index);
         methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
     }
 }
@@ -142,7 +141,8 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>)
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
-           .method("__call".into(), lua.create_function(iterate_over_screens)?)
+           .method("__call".into(), lua.create_function(iterate_over_screens)?)?
+           .method("__index".into(), lua.create_function(index)?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>)
@@ -247,7 +247,7 @@ fn index<'lua>(lua: &'lua Lua,
     }
     // TODO checkudata
     let table = obj.table()?;
-    let meta = table.get_metatable().unwrap();
+    let meta = table.get_metatable().expect("screen had no metatable");
     match meta.get(index.clone()) {
         Err(_) | Ok(Value::Nil) => super::object::default_index(lua, (data, index)),
         Ok(value) => Ok(value)

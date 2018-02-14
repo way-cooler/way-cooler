@@ -31,17 +31,17 @@ impl Display for MouseState {
 
 impl UserData for MouseState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, class::class_index);
-        // TODO Class newindex?
-        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+        methods.add_meta_function(MetaMethod::Index, index);
     }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let mouse_table = lua.create_table()?;
+    let meta_table = lua.create_table()?;
     let mouse = lua.create_userdata(MouseState::default())?;
     method_setup(lua, &mouse_table)?;
     let globals = lua.globals();
+    mouse_table.set_metatable(Some(meta_table));
     mouse.set_user_value(mouse_table)?;
     globals.set("mouse", mouse)
 }
@@ -90,14 +90,16 @@ fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
 }
 
 fn index<'lua>(lua: &'lua Lua,
-               (obj_table, index): (Table<'lua>, Value<'lua>))
+               (mouse, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
     use rustwlc::WlcOutput;
     use super::screen::SCREENS_HANDLE;
+    let obj_table = mouse.get_user_value::<Table>()?;
     match index {
         Value::String(ref string) => {
             let string = string.to_str()?;
             if string != "screen" {
+                return obj_table.get(string)
                 // TODO call miss index handler if it exists
             }
             // TODO Might need a more robust way to get the current output...
@@ -114,6 +116,5 @@ fn index<'lua>(lua: &'lua Lua,
         },
         _ => {}
     }
-    let meta = obj_table.get_metatable().unwrap();
-    meta.get(index)
+    return obj_table.get(index)
 }

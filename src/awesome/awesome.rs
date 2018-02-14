@@ -58,7 +58,10 @@ impl Display for AwesomeState {
 
 impl UserData for AwesomeState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, class::class_index);
+        methods.add_meta_function(MetaMethod::Index, |lua, (awesome, index): (AnyUserData, Value)| {
+            let table = awesome.get_user_value::<Table>()?;
+            table.get::<_, Value>(index)
+        });
         // TODO Class newindex?
         methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
     }

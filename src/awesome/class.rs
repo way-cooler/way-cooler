@@ -199,5 +199,10 @@ pub fn class_index<'lua>(lua: &'lua Lua,
                          (class, index): (AnyUserData<'lua>, Value<'lua>))
                          -> rlua::Result<Value<'lua>> {
     let table = class.get_user_value::<Table>()?;
-    table.get(index)
+    let meta = table.get_metatable().expect("class had no meta table");
+    match meta.raw_get("__index")? {
+        Value::Function(function) => function.call((class, index)),
+        Value::Table(table) => table.get(index),
+        v => panic!("Unexpected value in index")
+    }
 }
