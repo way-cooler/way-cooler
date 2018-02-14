@@ -107,6 +107,10 @@ impl UserData for ClassState {
                 v => Ok(v)
             }
         });
+        methods.add_meta_function(MetaMethod::ToString, |lua, class: AnyUserData| {
+            let table = class.get_user_value::<Table>()?;
+            table.get::<_, String>("name")
+        });
     }
 }
 
