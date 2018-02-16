@@ -14,7 +14,7 @@ use std::thread;
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods, MetaMethod,
            AnyUserData};
-use super::{class, object};
+use super::object;
 use super::{XCB_CONNECTION_HANDLE, signal};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 
@@ -58,7 +58,7 @@ impl Display for AwesomeState {
 
 impl UserData for AwesomeState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, |lua, (awesome, index): (AnyUserData, Value)| {
+        methods.add_meta_function(MetaMethod::Index, |_, (awesome, index): (AnyUserData, Value)| {
             let table = awesome.get_user_value::<Table>()?;
             table.get::<_, Value>(index)
         });

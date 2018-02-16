@@ -67,7 +67,7 @@ impl <'lua> ClassBuilder<'lua> {
         Ok(self)
     }
 
-    pub fn save_class(mut self, name: &str)
+    pub fn save_class(self, name: &str)
                       -> rlua::Result<Self> {
         self.lua.globals().set(name, self.class.class.clone())?;
         Ok(self)
@@ -107,7 +107,7 @@ impl UserData for ClassState {
                 v => Ok(v)
             }
         });
-        methods.add_meta_function(MetaMethod::ToString, |lua, class: AnyUserData| {
+        methods.add_meta_function(MetaMethod::ToString, |_, class: AnyUserData| {
             let table = class.get_user_value::<Table>()?;
             table.get::<_, String>("name")
         });
@@ -195,7 +195,7 @@ pub fn class_setup<'lua>(lua: &'lua Lua, name: &str) -> rlua::Result<Class<'lua>
 }
 
 
-pub fn class_index<'lua>(lua: &'lua Lua,
+pub fn class_index<'lua>(_: &'lua Lua,
                          (class, index): (AnyUserData<'lua>, Value<'lua>))
                          -> rlua::Result<Value<'lua>> {
     let table = class.get_user_value::<Table>()?;
@@ -203,6 +203,6 @@ pub fn class_index<'lua>(lua: &'lua Lua,
     match meta.raw_get("__index")? {
         Value::Function(function) => function.call((class, index)),
         Value::Table(table) => table.get(index),
-        v => panic!("Unexpected value in index")
+        _ => panic!("Unexpected value in index")
     }
 }

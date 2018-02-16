@@ -2,7 +2,6 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use super::{class, object};
 use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod, AnyUserData};
 use rustwlc::input;
 
