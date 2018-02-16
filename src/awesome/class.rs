@@ -35,6 +35,9 @@ pub struct ClassState {
     instances: u32
 }
 
+// TODO :(
+unsafe impl Send for ClassState {}
+
 pub struct ClassBuilder<'lua>{
     lua: &'lua Lua,
     class: Class<'lua>

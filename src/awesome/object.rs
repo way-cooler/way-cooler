@@ -86,7 +86,7 @@ impl <'lua> ObjectBuilder<'lua> {
 ///
 /// You can't do anything to the object until it has been converted into a
 /// canonical form using this trait.
-pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone> {
+pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone + Send> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
         if obj.object.is::<S>()? {
             Ok(Self::_wrap(obj))

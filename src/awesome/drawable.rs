@@ -33,6 +33,9 @@ impl Default for DrawableState {
     }
 }
 
+// TODO :(
+unsafe impl Send for DrawableState {}
+
 impl <'lua> Drawable<'lua> {
     pub fn new(lua: &Lua) -> rlua::Result<Object> {
         let class = class::class_setup(lua, "drawable")?;
