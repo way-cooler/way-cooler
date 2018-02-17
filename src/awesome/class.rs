@@ -104,12 +104,15 @@ impl UserData for ClassState {
         methods.add_meta_function(MetaMethod::Index, class_index);
         // TODO Class new index?
         methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
-        methods.add_meta_function(MetaMethod::Call, |lua, (class, args): (AnyUserData, rlua::MultiValue)| {
+        fn call<'lua>(lua: &'lua Lua,
+                      (class, args): (AnyUserData<'lua>, rlua::MultiValue<'lua>))
+                      -> rlua::Result<Value<'lua>> {
             match class_index(lua, (class, "__call".to_lua(lua)?))? {
                 Value::Function(function) => function.call(args),
                 v => Ok(v)
             }
-        });
+        }
+        methods.add_meta_function(MetaMethod::Call, call);
         methods.add_meta_function(MetaMethod::ToString, |_, class: AnyUserData| {
             let table = class.get_user_value::<Table>()?;
             table.get::<_, String>("name")

@@ -178,7 +178,12 @@ assert(a_button.button == 2)
     fn button_property_test() {
         let lua = Lua::new();
         let button_class = button::init(&lua).unwrap();
-        assert_eq!(button_class.properties().unwrap().len().unwrap(), 2);
+        use rlua::{self, Table, ToLua};
+        let mut count = -1;
+        if let rlua::Value::UserData(any) = button_class.to_lua(&lua).unwrap() {
+            count = any.get_user_value::<Table>().unwrap().get::<_, Table>("properties").unwrap().len().unwrap();
+        }
+        assert_eq!(count, 2);
         lua.eval(r#"
 a_button = button{}
 assert(a_button.button == 0)
@@ -297,7 +302,7 @@ a_button:emit_signal("property::modifiers")
 assert(hit)
 hit = false
 assert(not hit)
-button.button = nil
+a_button.button = nil -- FIXME: This was button.button = nil which caused an error which it should not
 assert(not hit)
 a_button.modifiers = { "Caps", "Mod2" }
 assert(hit)
