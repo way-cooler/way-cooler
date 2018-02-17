@@ -179,7 +179,7 @@ fn get_workarea<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result
 fn iterate_over_screens<'lua>(lua: &'lua Lua,
                               (_, prev): (Value<'lua>, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {
-    let screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
+    let mut screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
         .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
         .collect();
     let index = match prev {
@@ -196,7 +196,7 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
     };
     if index < screens.len() {
         warn!("here");
-        screens[index].clone().to_lua(lua)
+        screens.remove(index).to_lua(lua)
     } else {
         Ok(Value::Nil)
     }

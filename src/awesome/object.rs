@@ -224,11 +224,13 @@ pub fn default_index<'lua>(lua: &'lua Lua,
                         }
                     }
                 }
-                match class_table.get::<_, Function>("__index_miss_handler") {
-                    Ok(function) => {
-                        return function.bind(obj)?.call(index)
-                    },
-                    Err(_) => {}
+                if let Some(meta) = class_table.get_metatable() {
+                    match meta.get::<_, Function>("__index_miss_handler") {
+                        Ok(function) => {
+                            return function.bind(obj)?.call(index)
+                        },
+                        Err(_) => {}
+                    }
                 }
             }
             // TODO property miss handler if index doesn't exst
@@ -269,11 +271,13 @@ pub fn default_newindex<'lua>(_: &'lua Lua,
                 }
             }
         }
-        match class_table.get::<_, Function>("__newindex_miss_handler") {
-            Ok(function) => {
-                return function.bind(obj)?.call((index, val))
-            },
-            Err(_) => {}
+        if let Some(meta) = class_table.get_metatable() {
+            match meta.get::<_, Function>("__newindex_miss_handler") {
+                Ok(function) => {
+                    return function.bind(obj)?.call((index, val))
+                },
+                Err(_) => {}
+            }
         }
         // TODO property miss handler if index doesn't exst
     }
