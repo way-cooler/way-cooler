@@ -5,7 +5,7 @@ use rlua::{self, Lua, Table, Function, Value};
 use rustwlc::*;
 #[allow(deprecated)]
 use rustwlc::xkb::Keysym;
-use super::{GLOBAL_SIGNALS, signal};
+use super::signal;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const SECRET_CALLBACK: &str = "__callback";
@@ -84,15 +84,9 @@ fn isrunning(lua: &Lua, _: ()) -> rlua::Result<bool> {
 }
 
 fn index(lua: &Lua, args: Value) -> rlua::Result<()> {
-    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table()?;
-    fake_object.set("signals", global_signals)?;
-    signal::emit_signal(lua, fake_object.into(), "debug::index::miss".into(), args)
+    signal::global_emit_signal(lua, ("debug::index::miss".into(), args))
 }
 
 fn new_index(lua: &Lua, args: Value) -> rlua::Result<()> {
-    let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table()?;
-    fake_object.set("signals", global_signals)?;
-    signal::emit_signal(lua, fake_object.into(), "debug::newindex::miss".into(), args)
+    signal::global_emit_signal(lua, ("debug::newindex::miss".into(), args))
 }

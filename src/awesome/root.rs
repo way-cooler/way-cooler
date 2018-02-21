@@ -4,8 +4,8 @@ use cairo_sys::cairo_pattern_t;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
-use super::object::{Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods, MetaMethod};
+use super::object::{self, Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
@@ -14,7 +14,7 @@ pub struct RootState {
     dummy: i32
 }
 
-pub struct Root<'lua>(Table<'lua>);
+pub struct Root<'lua>(Object<'lua>);
 
 impl Default for RootState {
     fn default() -> Self {
@@ -44,7 +44,12 @@ impl <'lua> ToLua<'lua> for Root<'lua> {
     }
 }
 
-impl UserData for RootState {}
+impl UserData for RootState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     // FIXME: In awesome there is no root class

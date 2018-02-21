@@ -12,7 +12,8 @@ use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods, MetaMethod,
+           AnyUserData};
 use super::{XCB_CONNECTION_HANDLE, signal};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 
@@ -54,31 +55,27 @@ impl Display for AwesomeState {
     }
 }
 
-impl UserData for AwesomeState {}
+impl UserData for AwesomeState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        fn index<'lua>(_: &'lua Lua,
+                      (awesome, index): (AnyUserData<'lua>, Value<'lua>))
+                      -> rlua::Result<rlua::Value<'lua>>
+        {
+            let table = awesome.get_user_value::<Table>()?;
+            table.get::<_, Value>(index)
+        };
+        methods.add_meta_function(MetaMethod::Index, index);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let awesome_table = lua.create_table()?;
-    state_setup(lua, &awesome_table)?;
-    meta_setup(lua, &awesome_table)?;
     method_setup(lua, &awesome_table)?;
     property_setup(lua, &awesome_table)?;
     let globals = lua.globals();
-    globals.set("awesome", awesome_table)
-}
-
-fn state_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
-    awesome_table.set("__data", AwesomeState::default().to_lua(lua)?)
-}
-
-fn meta_setup(lua: &Lua, awesome_table: &Table) -> rlua::Result<()> {
-    let meta_table = awesome_table.get_metatable().map_or_else(|| {
-        let table = lua.create_table()?;
-        awesome_table.set_metatable(Some(table.clone()));
-        Ok(table)
-    }, |v| Ok(v))?;
-    meta_table.set("__tostring", lua.create_function(|_, val: Table| {
-        Ok(format!("{}", val.get::<_, AwesomeState>("__data")?))
-    })?)
+    let awesome = lua.create_userdata(AwesomeState::default())?;
+    awesome.set_user_value(awesome_table)?;
+    globals.set("awesome", awesome)
 }
 
 fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
@@ -239,9 +236,9 @@ fn kill(_: &Lua, (pid, sig): (libc::pid_t, libc::c_int)) -> rlua::Result<bool> {
 }
 
 fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
-    let mut awesome_state: AwesomeState = lua.globals().get::<_, Table>("awesome")?.get("__data")?;
+    let mut awesome_state = lua.globals().get::<_, AwesomeState>("awesome")?;
     awesome_state.preferred_icon_size = val;
-    lua.globals().get::<_, Table>("awesome")?.set("__data", awesome_state.to_lua(lua)?)
+    lua.globals().set("awesome", awesome_state.to_lua(lua)?)
 
 }
 

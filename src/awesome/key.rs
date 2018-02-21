@@ -2,8 +2,8 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::object::{Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod};
+use super::object::{self, Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
@@ -12,7 +12,7 @@ pub struct KeyState {
     dummy: i32
 }
 
-pub struct Key<'lua>(Table<'lua>);
+pub struct Key<'lua>(Object<'lua>);
 
 impl Default for KeyState {
     fn default() -> Self {
@@ -44,7 +44,12 @@ impl <'lua> ToLua<'lua> for Key<'lua> {
     }
 }
 
-impl UserData for KeyState {}
+impl UserData for KeyState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     property_setup(lua, method_setup(lua, Class::builder(lua, "key", None, None, None)?)?)?
@@ -54,7 +59,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 
 fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
-    builder.method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Key::new(lua, args))?)
+    builder.method("__call".into(), lua.create_function(|lua, args: Table| Key::new(lua, args))?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {

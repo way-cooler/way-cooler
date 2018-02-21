@@ -2,8 +2,8 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::object::{Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod};
+use super::object::{self, Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
@@ -12,7 +12,7 @@ pub struct TagState {
     dummy: i32
 }
 
-pub struct Tag<'lua>(Table<'lua>);
+pub struct Tag<'lua>(Object<'lua>);
 
 impl Default for TagState {
     fn default() -> Self {
@@ -43,7 +43,12 @@ impl <'lua> ToLua<'lua> for Tag<'lua> {
     }
 }
 
-impl UserData for TagState {}
+impl UserData for TagState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, object::default_index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     method_setup(lua, Class::builder(lua, "tag", None, None, None)?)?
@@ -55,7 +60,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
-           .method("__call".into(), lua.create_function(|lua, (_, args): (Value, Table)| Tag::new(lua, args))?)
+           .method("__call".into(), lua.create_function(|lua, args: Table| Tag::new(lua, args))?)
 }
 
 impl_objectable!(Tag, TagState);

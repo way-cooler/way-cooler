@@ -1,18 +1,26 @@
 //! Utility methods and constructors for Lua classes
 
+use std::convert::From;
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Lua, ToLua, Table, UserData, AnyUserData, Value, Function};
-use super::object::Object;
+use rlua::{self, Lua, ToLua, Table, Value, UserData, AnyUserData, Function,
+           UserDataMethods, MetaMethod};
+use super::object::{self, Object};
 use super::property::Property;
 
 pub type Allocator = Rc<Fn(&Lua) -> rlua::Result<Object>>;
 pub type Collector = Rc<Fn(Object)>;
 pub type Checker = Rc<Fn(Object) -> bool>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Class<'lua> {
-    table: Table<'lua>
+    class: AnyUserData<'lua>
+}
+
+impl <'lua> From<AnyUserData<'lua>> for Class<'lua> {
+    fn from(class: AnyUserData<'lua>) -> Self {
+        Class { class }
+    }
 }
 
 #[derive(Clone)]
@@ -27,6 +35,8 @@ pub struct ClassState {
     instances: u32
 }
 
+unsafe impl Send for ClassState {}
+
 pub struct ClassBuilder<'lua>{
     lua: &'lua Lua,
     class: Class<'lua>
@@ -35,14 +45,16 @@ pub struct ClassBuilder<'lua>{
 impl <'lua> ClassBuilder<'lua> {
     pub fn method(self, name: String, meth: rlua::Function)
                   -> rlua::Result<Self> {
-        let meta = self.class.table.get_metatable()
+        let table = self.class.class.get_user_value::<Table>()?;
+        let meta = table.get_metatable()
             .expect("Class had no meta table!");
         meta.set(name, meth)?;
         Ok(self)
     }
 
     pub fn property(self, prop: Property<'lua>) -> rlua::Result<Self> {
-        let properties = self.class.table.get::<_, Table>("properties")?;
+        let table = self.class.class.get_user_value::<Table>()?;
+        let properties = table.get::<_, Table>("properties")?;
         let length = properties.len().unwrap_or(0) + 1;
         properties.set(length, prop)?;
         Ok(self)
@@ -50,16 +62,16 @@ impl <'lua> ClassBuilder<'lua> {
 
     // TODO remove, do right
     pub fn dummy_property(self, key: String, val: rlua::Value<'lua>) -> rlua::Result<Self> {
-        let meta = self.class.table.get_metatable()
+        let table = self.class.class.get_user_value::<Table>()?;
+        let meta = table.get_metatable()
             .expect("Class had no meta table!");
         meta.set(key, val)?;
         Ok(self)
     }
 
-    pub fn save_class(mut self, name: &str)
+    pub fn save_class(self, name: &str)
                       -> rlua::Result<Self> {
-        self.lua.globals().set(name, self.class.table)?;
-        self.class.table = self.lua.globals().get(name)?;
+        self.lua.globals().set(name, self.class.class.clone())?;
         Ok(self)
     }
 
@@ -70,7 +82,7 @@ impl <'lua> ClassBuilder<'lua> {
 
 impl <'lua> ToLua<'lua> for Class<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.table.to_lua(lua)
+        self.class.to_lua(lua)
     }
 }
 
@@ -86,7 +98,26 @@ impl Default for ClassState {
     }
 }
 
-impl UserData for ClassState {}
+impl UserData for ClassState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, class_index);
+        // TODO Class new index?
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+        fn call<'lua>(lua: &'lua Lua,
+                      (class, args): (AnyUserData<'lua>, rlua::MultiValue<'lua>))
+                      -> rlua::Result<Value<'lua>> {
+            match class_index(lua, (class, "__call".to_lua(lua)?))? {
+                Value::Function(function) => function.call(args),
+                v => Ok(v)
+            }
+        }
+        methods.add_meta_function(MetaMethod::Call, call);
+        methods.add_meta_function(MetaMethod::ToString, |_, class: AnyUserData| {
+            let table = class.get_user_value::<Table>()?;
+            table.get::<_, String>("name")
+        });
+    }
+}
 
 impl <'lua> Class<'lua> {
     pub fn builder(lua: &'lua Lua,
@@ -99,78 +130,65 @@ impl <'lua> Class<'lua> {
         class.allocator = allocator;
         class.collector = collector;
         class.checker = checker;
+        let user_data = lua.create_userdata(class)?;
         let table = lua.create_table()?;
         // Store in not meta table so we can't index it
-        table.set("data", class)?;
         table.set("name", name)?;
         table.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         let meta = lua.create_table()?;
         meta.set("signals", lua.create_table()?)?;
         meta.set("set_index_miss_handler",
-                 lua.create_function(set_index_miss_handler)?.bind(table.clone())?)?;
+                 lua.create_function(set_index_miss_handler)?.bind(user_data.clone())?)?;
         meta.set("set_newindex_miss_handler",
-                 lua.create_function(set_newindex_miss_handler)?.bind(table.clone())?)?;
+                 lua.create_function(set_newindex_miss_handler)?.bind(user_data.clone())?)?;
         meta.set("__index", meta.clone())?;
-        table.set_metatable(Some(meta));
+        table.set_metatable(Some(meta.clone()));
+        user_data.set_user_value(table)?;
         Ok(ClassBuilder{
             lua: lua,
-            class: Class { table }
+            class: Class { class: user_data }
         })
     }
 
-
-    #[allow(dead_code)]
-    pub fn properties(&self) -> rlua::Result<Table<'lua>> {
-        self.table.get("properties")
-    }
-
-    #[allow(dead_code)]
-    pub fn parent(&self) -> rlua::Result<Option<Class>> {
-        use rlua::Value;
-        match self.table.get::<_, Value>("parent")? {
-            Value::Table(table) => {
-                let data = table.get::<_, AnyUserData>("data")?;
-                if !data.is::<ClassState>()? {
-                    Ok(None)
-                } else {
-                    Ok(Some(table.into()))
-                }
-            },
-            _ => Ok(None)
-        }
-    }
-
     pub fn checker(&self) -> rlua::Result<Option<Checker>> {
-        self.table.get::<_, ClassState>("data")
-            .map(|state| state.checker)
+        self.class.borrow::<ClassState>().map(|class| class.checker.clone())
     }
 }
 
-impl <'lua> From<Table<'lua>> for Class<'lua> {
-    fn from(table: Table<'lua>) -> Self {
-        Class { table }
-    }
-}
-
-fn set_index_miss_handler<'lua>(_: &'lua Lua, (class, func): (Table, Function))
+fn set_index_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
                                 -> rlua::Result<()> {
-    let meta = class.get_metatable()
+    let table = class.get_user_value::<Table>()?;
+    let meta = table.get_metatable()
         .expect("Object had no metatable");
     meta.set("__index_miss_handler", func)?;
     Ok(())
 }
-fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (Table, Function))
+fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
                                    -> rlua::Result<()> {
-    let meta = class.get_metatable()
+    let table = class.get_user_value::<Table>()?;
+    let meta = table.get_metatable()
         .expect("Object had no metatable");
     meta.set("__newindex_miss_handler", func)?;
     Ok(())
 }
 
 pub fn class_setup<'lua>(lua: &'lua Lua, name: &str) -> rlua::Result<Class<'lua>> {
-    let table = lua.globals().get::<_, Table>(name)
+    let class = lua.globals().get::<_, AnyUserData>(name)
         .expect("Class was not set! Did you call init?");
-    assert!(table.get::<_, AnyUserData>("data")?.is::<ClassState>()?,
-            "This table was not a class!");
-    Ok(Class { table })
+    assert!(class.is::<ClassState>()?,
+            "This user data was not a class!");
+    Ok(Class { class })
+}
+
+
+fn class_index<'lua>(_: &'lua Lua,
+                         (class, index): (AnyUserData<'lua>, Value<'lua>))
+                         -> rlua::Result<Value<'lua>> {
+    let table = class.get_user_value::<Table>()?;
+    let meta = table.get_metatable().expect("class had no meta table");
+    match meta.raw_get("__index")? {
+        Value::Function(function) => function.call((class, index)),
+        Value::Table(table) => table.get(index),
+        _ => panic!("Unexpected value in index")
+    }
 }

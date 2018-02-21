@@ -4,8 +4,9 @@ use rustwlc::{Geometry, Point, Size, WlcOutput};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::object::{Object, Objectable};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods,
+           MetaMethod};
+use super::object::{self, Object, Objectable};
 use super::property::Property;
 use super::class::{self, Class, ClassBuilder};
 
@@ -30,6 +31,9 @@ impl From<WlcOutput> for Output {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Screen<'lua>(Object<'lua>);
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScreenState {
     // Is this screen still valid and may be used
@@ -43,8 +47,6 @@ pub struct ScreenState {
     // Some XID indetifying this screen
     pub xid: u32
 }
-
-pub struct Screen<'lua>(Table<'lua>);
 
 impl_objectable!(Screen, ScreenState);
 
@@ -60,8 +62,6 @@ impl <'lua> ToLua<'lua> for Screen<'lua> {
     }
 }
 
-impl UserData for ScreenState {}
-
 impl Default for ScreenState {
     fn default() -> Self {
         ScreenState {
@@ -71,6 +71,13 @@ impl Default for ScreenState {
             outputs: vec![],
             xid: 0
         }
+    }
+}
+
+impl UserData for ScreenState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, index);
+        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
     }
 }
 
@@ -93,7 +100,6 @@ impl <'lua> Screen<'lua> {
         let state = self.state()?;
         let Point { x, y } = state.geometry.origin;
         let Size { w, h } = state.geometry.size;
-        // TODO I do this a lot, put it somewhere
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;
@@ -106,7 +112,6 @@ impl <'lua> Screen<'lua> {
         let state = self.state()?;
         let Point { x, y } = state.workarea.origin;
         let Size { w, h } = state.workarea.size;
-        // TODO I do this a lot, put it somewhere
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;
@@ -117,7 +122,8 @@ impl <'lua> Screen<'lua> {
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    let res = property_setup(lua, method_setup(lua, Class::builder(lua, "screen", Some(Rc::new(Screen::new)), None, None)?)?)?
+    let builder = Class::builder(lua, "screen", Some(Rc::new(Screen::new)), None, None)?;
+    let res = property_setup(lua, method_setup(lua, builder)?)?
         .save_class("screen")?
         .build()?;
     let mut screens: Vec<Screen> = vec![];
@@ -131,15 +137,17 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
     Ok(res)
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>)
+                      -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
-           .method("__index".into(), lua.create_function(index)?)?
-           .method("__call".into(), lua.create_function(iterate_over_screens)?)
+           .method("__call".into(), lua.create_function(iterate_over_screens)?)?
+           .method("__index".into(), lua.create_function(index)?)
 }
 
-fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>)
+                        -> rlua::Result<ClassBuilder<'lua>> {
     builder
         .property(Property::new("geometry".into(),
                                 None,
@@ -151,13 +159,13 @@ fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Re
                                 None))
 }
 
-fn get_geometry<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
-    let screen = Screen::cast(table.into())?;
+fn get_geometry<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
+    let screen = Screen::cast(object.into())?;
     screen.get_geometry(lua)
 }
 
-fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<'lua>> {
-    let screen = Screen::cast(table.into())?;
+fn get_workarea<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
+    let screen = Screen::cast(object.into())?;
     screen.get_workarea(lua)
 }
 
@@ -169,15 +177,15 @@ fn get_workarea<'lua>(lua: &'lua Lua, table: Table<'lua>) -> rlua::Result<Table<
 /// increment it by 1 (starting at 0 if it's the start) and then once it falls outside
 /// the bounds it will stop by returning nil.
 fn iterate_over_screens<'lua>(lua: &'lua Lua,
-                              (_, _, prev): (Value<'lua>, Value<'lua>, Value<'lua>))
+                              (_, prev): (Value<'lua>, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {
-    let screens: Vec<Screen> = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?
-        .into_iter().map(|t| Screen::cast(t.into()).unwrap())
+    let mut screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
+        .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
         .collect();
     let index = match prev {
         Value::Nil => 0,
-        Value::Table(ref table) => {
-            if let Ok(screen) = Screen::cast(table.clone().into()) {
+        Value::UserData(ref object) => {
+            if let Ok(screen) = Screen::cast(object.clone().into()) {
                 screens.iter().position(|t| t.state().unwrap() == screen.state().unwrap())
                     .unwrap_or(screens.len()) + 1
             } else {
@@ -187,7 +195,7 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
         _ => panic!("Unexpected non-screen or nil value in screens loop")
     };
     if index < screens.len() {
-        screens[index].get_table().to_lua(lua)
+        screens.remove(index).to_lua(lua)
     } else {
         Ok(Value::Nil)
     }
@@ -195,10 +203,11 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
 }
 
 fn index<'lua>(lua: &'lua Lua,
-               (obj_table, index): (Table<'lua>, Value<'lua>))
+               (data, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
-    let screens: Vec<Screen> = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?
-        .into_iter().map(|t| Screen::cast(t.into()).unwrap())
+    let obj: Object = data.clone().into();
+    let screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
+        .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
         .collect();
     match index {
         Value::String(ref string) => {
@@ -206,14 +215,14 @@ fn index<'lua>(lua: &'lua Lua,
             if string == "primary" {
                 // TODO Emit primary changed signal
                 if screens.len() > 0 {
-                    return screens[0].get_table().clone().to_lua(lua)
+                    return screens[0].clone().to_lua(lua)
                 }
             }
             for screen in screens.iter() {
                 let screen_state = screen.state()?;
                 for output in &screen_state.outputs {
                     if output.name.as_str() == string {
-                        return screen.get_table().clone().to_lua(lua)
+                        return screen.clone().to_lua(lua)
                     }
                 }
             }
@@ -225,11 +234,11 @@ fn index<'lua>(lua: &'lua Lua,
                     format!("invalid screen number: {} (of {} existing)",
                             screen_index, screens.len())))
             }
-            return screens[(screen_index - 1) as usize].get_table().clone().to_lua(lua).clone()
+            return screens[(screen_index - 1) as usize].clone().to_lua(lua)
         },
-        Value::Table(ref table) => {
+        Value::UserData(ref obj) => {
             // If this is a screen, just return it
-            if let Ok(screen) = Screen::cast(table.clone().into()) {
+            if let Ok(screen) = Screen::cast(obj.clone().into()) {
                 return screen.to_lua(lua)
             }
         },
@@ -237,6 +246,10 @@ fn index<'lua>(lua: &'lua Lua,
         _ => {}
     }
     // TODO checkudata
-    let meta = obj_table.get_metatable().unwrap();
-    meta.get(index.clone()).or_else(|_| super::object::default_index(lua, (obj_table, index)))
+    let table = obj.table()?;
+    let meta = table.get_metatable().expect("screen had no metatable");
+    match meta.get(index.clone()) {
+        Err(_) | Ok(Value::Nil) => super::object::default_index(lua, (data, index)),
+        Ok(value) => Ok(value)
+    }
 }

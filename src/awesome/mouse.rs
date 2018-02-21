@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod, AnyUserData};
 use rustwlc::input;
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
@@ -28,29 +28,21 @@ impl Display for MouseState {
     }
 }
 
-impl UserData for MouseState {}
+impl UserData for MouseState {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        methods.add_meta_function(MetaMethod::Index, index);
+    }
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     let mouse_table = lua.create_table()?;
-    state_setup(lua, &mouse_table)?;
-    meta_setup(lua, &mouse_table)?;
+    let meta_table = lua.create_table()?;
+    let mouse = lua.create_userdata(MouseState::default())?;
     method_setup(lua, &mouse_table)?;
     let globals = lua.globals();
-    globals.set("mouse", mouse_table)
-}
-
-fn state_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
-    mouse_table.set("__data", MouseState::default().to_lua(lua)?)
-}
-
-fn meta_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
-    let meta_table = lua.create_table()?;
-    meta_table.set("__tostring", lua.create_function(|_, val: Table| {
-        Ok(format!("{}", val.get::<_, MouseState>("__data")?))
-    })?)?;
-    meta_table.set("__index", lua.create_function(index)?)?;
     mouse_table.set_metatable(Some(meta_table));
-    Ok(())
+    mouse.set_user_value(mouse_table)?;
+    globals.set("mouse", mouse)
 }
 
 fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
@@ -85,22 +77,28 @@ fn coords<'lua>(lua: &'lua Lua, (coords, _ignore_enter): (rlua::Value<'lua>, rlu
 }
 
 fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
-    lua.globals().get::<_, Table>("button")?.set(INDEX_MISS_FUNCTION, func)
+    let button = lua.globals().get::<_, AnyUserData>("button")?;
+    let table = button.get_user_value::<Table>()?;
+    table.set(INDEX_MISS_FUNCTION, func)
 }
 
 fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
-    lua.globals().get::<_, Table>("button")?.set(NEWINDEX_MISS_FUNCTION, func)
+    let button = lua.globals().get::<_, AnyUserData>("button")?;
+    let table = button.get_user_value::<Table>()?;
+    table.set(NEWINDEX_MISS_FUNCTION, func)
 }
 
 fn index<'lua>(lua: &'lua Lua,
-               (obj_table, index): (Table<'lua>, Value<'lua>))
+               (mouse, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
     use rustwlc::WlcOutput;
     use super::screen::SCREENS_HANDLE;
+    let obj_table = mouse.get_user_value::<Table>()?;
     match index {
         Value::String(ref string) => {
             let string = string.to_str()?;
             if string != "screen" {
+                return obj_table.get(string)
                 // TODO call miss index handler if it exists
             }
             // TODO Might need a more robust way to get the current output...
@@ -109,7 +107,7 @@ fn index<'lua>(lua: &'lua Lua,
                 .position(|&output| output == WlcOutput::focused())
                 // NOTE Best to just lie because no one handles nil screens properly
                 .unwrap_or(0);
-            let screens = lua.globals().get::<_, Vec<Table>>(SCREENS_HANDLE)?;
+            let screens = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?;
             if index < screens.len() {
                 return screens[index].clone().to_lua(lua)
             }
@@ -117,6 +115,5 @@ fn index<'lua>(lua: &'lua Lua,
         },
         _ => {}
     }
-    let meta = obj_table.get_metatable().unwrap();
-    meta.get(index)
+    return obj_table.get(index)
 }

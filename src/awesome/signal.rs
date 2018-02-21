@@ -4,7 +4,7 @@
 //! Signals are stored with the object in its metatable,
 //! the methods defined here are just to make it easier to use.
 
-use rlua::{self, Lua, Table, ToLuaMulti, Value, Function};
+use rlua::{self, Lua, Table, ToLuaMulti, Value, Function, ToLua};
 use super::{GLOBAL_SIGNALS, Object};
 
 /// Connects functions to a signal. Creates a new entry in the table if it
@@ -12,6 +12,13 @@ use super::{GLOBAL_SIGNALS, Object};
 pub fn connect_signal(lua: &Lua, obj: Object, name: String, funcs: &[Function])
                       -> rlua::Result<()>{
     let signals = obj.signals()?;
+    connect_signals(lua, signals, name, funcs)
+}
+
+fn connect_signals<'lua>(lua: &'lua Lua,
+                         signals: Table<'lua>,
+                         name: String,
+                         funcs: &[Function]) -> rlua::Result<()> {
     if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.as_str()) {
         let mut length = table.len()? + 1;
         for func in funcs {
@@ -28,29 +35,43 @@ pub fn connect_signal(lua: &Lua, obj: Object, name: String, funcs: &[Function])
     }
 }
 
-pub fn disconnect_signal(_: &Lua, obj: Object, name: String)
+pub fn disconnect_signal(lua: &Lua, obj: Object, name: String)
                          -> rlua::Result<()> {
     let signals = obj.signals()?;
+    disconnect_signals(lua, signals, name)
+}
+
+fn disconnect_signals(_: &Lua, signals: Table, name: String) -> rlua::Result<()> {
     signals.set(name, Value::Nil)
 }
 
 /// Evaluate the functions associated with a signal.
-pub fn emit_signal<'lua, A>(_: &'lua Lua,
-                            obj: Object<'lua>,
-                            name: String,
-                            args: A)
-                            -> rlua::Result<()>
+pub fn emit_object_signal<'lua, A>(lua: &'lua Lua,
+                                   obj: Object<'lua>,
+                                   name: String,
+                                   args: A)
+                                   -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone
 {
     let signals = obj.signals()?;
+    let mut args = args.to_lua_multi(lua)?;
+    args.push_front(obj.to_lua(lua)?);
+    emit_signals(lua, signals, name, args)
+}
+
+fn emit_signals<'lua, A>(_: &'lua Lua,
+                         signals: Table<'lua>,
+                         name: String,
+                         args: A)
+                         -> rlua::Result<()>
+    where A: ToLuaMulti<'lua> + Clone
+{
     trace!("Checking signal {}", name);
-    let obj_table = obj.table();
     if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.clone()) {
         for entry in table.pairs::<Value, Function>() {
             if let Ok((_, func)) = entry {
                 trace!("Found func for signal");
-                match func.bind(obj_table.clone())?
-                    .call(args.clone()) {
+                match func.call(args.clone()) {
                     Ok(()) => {},
                     Err(e) => {
                         error!("Error while emitting signal {}: {}", name, e);
@@ -67,24 +88,18 @@ pub fn emit_signal<'lua, A>(_: &'lua Lua,
 pub fn global_connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function<'lua>))
                         -> rlua::Result<()> {
     let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table()?;
-    fake_object.set("signals", global_signals)?;
-    connect_signal(lua, fake_object.into(), name, &[func])
+    connect_signals(lua, global_signals, name, &[func])
 }
 
 /// Disconnect the function from the named signal in the global signal list.
 pub fn global_disconnect_signal<'lua>(lua: &'lua Lua, name: String) -> rlua::Result<()> {
     let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table()?;
-    fake_object.set("signals", global_signals)?;
-    disconnect_signal(lua, fake_object.into(), name)
+    disconnect_signals(lua, global_signals, name)
 }
 
 /// Emit the signal with the given name from the global signal list.
 pub fn global_emit_signal<'lua>(lua: &'lua Lua, (name, args): (String, Value))
                      -> rlua::Result<()> {
     let global_signals = lua.globals().get::<_, Table>(GLOBAL_SIGNALS)?;
-    let fake_object = lua.create_table()?;
-    fake_object.set("signals", global_signals)?;
-    emit_signal(lua, fake_object.into(), name, args)
+    emit_signals(lua, global_signals, name, args)
 }

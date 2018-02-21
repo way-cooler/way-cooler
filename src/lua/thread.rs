@@ -234,13 +234,22 @@ fn load_config(mut lua: &mut rlua::Lua) {
                     lua.exec(init_contents.as_str(), Some("init.lua".into()))
                         .map(|_:()| info!("Read init.lua successfully"))
                         .or_else(|err| {
+                            fn recursive_callback_print(error: ::std::sync::Arc<rlua::Error>) {
+                                match *error {
+                                    rlua::Error::CallbackError {traceback: ref err, ref cause } => {
+                                        error!("{}", err);
+                                        recursive_callback_print(cause.clone())
+                                    },
+                                    ref err => error!("{:?}", err)
+                                }
+                            }
                             match err {
                                 rlua::Error::RuntimeError(ref err) => {
                                     error!("{}", err);
                                 }
                                 rlua::Error::CallbackError{traceback: ref err, ref cause } => {
                                     error!("traceback: {}", err);
-                                    error!("cause: {}", *cause)
+                                    recursive_callback_print(cause.clone());
                                 },
                                 err => {
                                     error!("init file error: {:?}", err);
