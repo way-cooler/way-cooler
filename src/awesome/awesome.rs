@@ -14,7 +14,6 @@ use std::thread;
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods, MetaMethod,
            AnyUserData};
-use super::object;
 use super::{XCB_CONNECTION_HANDLE, signal};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 
@@ -66,8 +65,6 @@ impl UserData for AwesomeState {
             table.get::<_, Value>(index)
         };
         methods.add_meta_function(MetaMethod::Index, index);
-        // TODO Class newindex?
-        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
     }
 }
 

@@ -195,7 +195,6 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
         _ => panic!("Unexpected non-screen or nil value in screens loop")
     };
     if index < screens.len() {
-        warn!("here");
         screens.remove(index).to_lua(lua)
     } else {
         Ok(Value::Nil)

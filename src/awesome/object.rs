@@ -251,9 +251,6 @@ pub fn default_newindex<'lua>(_: &'lua Lua,
     let obj: Object<'lua> = obj.into();
     let obj_table = obj.table()?;
     if let Some(meta) = obj_table.get_metatable() {
-        // Why does this code first save the value in the metatable and then checks if the
-        // metatable has such an entry?!?
-        //meta.set(index.clone(), val.clone())?;
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
                 Value::Nil => {},

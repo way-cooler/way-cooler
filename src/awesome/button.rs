@@ -302,7 +302,7 @@ a_button:emit_signal("property::modifiers")
 assert(hit)
 hit = false
 assert(not hit)
-a_button.button = nil -- FIXME: This was button.button = nil which caused an error which it should not
+a_button.button = nil
 assert(not hit)
 a_button.modifiers = { "Caps", "Mod2" }
 assert(hit)

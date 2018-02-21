@@ -41,8 +41,6 @@ impl <'lua> ToLua<'lua> for Client<'lua> {
     }
 }
 
-// TODO Correct?
-// NOTE Provided in class.rs
 impl UserData for ClientState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {

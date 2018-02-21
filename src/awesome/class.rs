@@ -35,7 +35,6 @@ pub struct ClassState {
     instances: u32
 }
 
-// TODO :(
 unsafe impl Send for ClassState {}
 
 pub struct ClassBuilder<'lua>{
@@ -151,30 +150,12 @@ impl <'lua> Class<'lua> {
         })
     }
 
-    #[allow(dead_code)]
-    /*pub fn parent(&self) -> rlua::Result<Option<Class>> {
-        use rlua::Value;
-        let table = self.class.get_user_value::<Table>()?;
-        match table.get::<_, Value>("parent")? {
-            Value::Table(table) => {
-                let data = table.get::<_, AnyUserData>("data")?;
-                if !data.is::<ClassState>()? {
-                    Ok(None)
-                } else {
-                    Ok(Some(data.borrow::<ClassState>()?.clone()))
-                }
-            },
-            _ => Ok(None)
-        }
-    }
-    */
-
     pub fn checker(&self) -> rlua::Result<Option<Checker>> {
         self.class.borrow::<ClassState>().map(|class| class.checker.clone())
     }
 }
 
-pub fn set_index_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
+fn set_index_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
                                 -> rlua::Result<()> {
     let table = class.get_user_value::<Table>()?;
     let meta = table.get_metatable()
@@ -182,7 +163,7 @@ pub fn set_index_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, F
     meta.set("__index_miss_handler", func)?;
     Ok(())
 }
-pub fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
+fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
                                    -> rlua::Result<()> {
     let table = class.get_user_value::<Table>()?;
     let meta = table.get_metatable()
@@ -194,14 +175,13 @@ pub fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData
 pub fn class_setup<'lua>(lua: &'lua Lua, name: &str) -> rlua::Result<Class<'lua>> {
     let class = lua.globals().get::<_, AnyUserData>(name)
         .expect("Class was not set! Did you call init?");
-    // TODO FIXME Isn't this necessary?
-    //assert!(class.is::<ClassState>()?,
-    //        "This user data was not a class!");
+    assert!(class.is::<ClassState>()?,
+            "This user data was not a class!");
     Ok(Class { class })
 }
 
 
-pub fn class_index<'lua>(_: &'lua Lua,
+fn class_index<'lua>(_: &'lua Lua,
                          (class, index): (AnyUserData<'lua>, Value<'lua>))
                          -> rlua::Result<Value<'lua>> {
     let table = class.get_user_value::<Table>()?;
