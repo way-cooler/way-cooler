@@ -88,12 +88,12 @@ impl <'lua> Screen<'lua> {
     }
 
     fn init_screens(&mut self, output: WlcOutput, outputs: Vec<Output>) -> rlua::Result<()> {
-        let mut state = self.state()?;
+        let mut state = self.get_object_mut()?;
         let resolution = output.get_resolution().unwrap();
         state.outputs = outputs;
         state.geometry.size = resolution;
         state.workarea.size = resolution;
-        self.set_state(state)
+        Ok(())
     }
 
     fn get_geometry(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
