@@ -69,22 +69,23 @@ fn type_override(_lua: &rlua::Lua, arg: rlua::Value) -> Result<String, rlua::Err
         Value::Nil => Ok("nil".to_owned()),
         Value::Boolean(_) => Ok("boolean".to_owned()),
         Value::LightUserData(_) => Ok("userdata".to_owned()),
-        Value::UserData(_) => Ok("userdata".to_owned()),
         Value::Integer(_) => Ok("number".to_owned()),
         Value::Number(_) => Ok("number".to_owned()),
         Value::String(_) => Ok("string".to_owned()),
         Value::Function(_) => Ok("function".to_owned()),
         Value::Thread(_) => Ok("thread".to_owned()),
+        Value::Table(_) => Ok("table".to_owned()),
         Value::Error(e) => Err(e),
-        Value::Table(t) => {
-            // Handle our own objects specially: Return the metatable's .__class.name if it exists,
-            // else return "table".
-            match t.get_metatable() {
-                None => Ok("table".to_owned()),
-                Some(t) => t.raw_get("__class")
-                    .and_then(|t: rlua::Table| t.raw_get("name"))
-                    .or(Ok("table".to_owned()))
-            }
+        Value::UserData(o) => {
+            // Handle our own objects specially: Get the object's class from its user value's
+            // metatable's __class entry. Then get the class name from the class's user value's
+            // metatable's name entry.
+            o.get_user_value::<rlua::Table>().ok()
+                .and_then(|table| table.get_metatable())
+                .and_then(|meta| meta.raw_get::<_, rlua::AnyUserData>("__class").ok())
+                .and_then(|class| class.get_user_value::<rlua::Table>().ok())
+                .map(|table| table.raw_get("name"))
+                .unwrap_or_else(|| Ok("userdata".to_owned()))
         }
     }
 }
