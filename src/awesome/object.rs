@@ -107,11 +107,6 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone + Send> {
         Ok(self.get_object()?.clone())
     }
 
-    fn set_state(&mut self, data: S) -> rlua::Result<()> {
-        *self.get_object_mut()? = data;
-        Ok(())
-    }
-
 
     /// Gets the internal state for the concrete object.
     /// Used internally `state`, though there's nothing wrong with it being
@@ -119,8 +114,6 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone + Send> {
     fn get_object(&self) -> rlua::Result<S>;
 
     /// Gets a mutable reference to the internal state for the concrete object.
-    /// Used internally `set_state`, though there's nothing wrong with it being
-    /// used outside of internal object use.
     fn get_object_mut(&mut self) -> rlua::Result<::std::cell::RefMut<S>>;
 
     /// Lua objects in Way Cooler are just how they are in Awesome:
