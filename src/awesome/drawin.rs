@@ -74,10 +74,11 @@ impl <'lua> Drawin<'lua> {
     }
 
     fn set_visible(&mut self, val: bool) -> rlua::Result<()> {
-        let mut drawin = self.state()?;
-        drawin.visible = val;
-        self.map()?;
-        self.set_state(drawin)
+        {
+            let mut drawin = self.get_object_mut()?;
+            drawin.visible = val;
+        }
+        self.map()
     }
 
     fn map(&mut self) -> rlua::Result<()> {
@@ -90,20 +91,20 @@ impl <'lua> Drawin<'lua> {
     }
 
     fn resize(&mut self, geometry: Geometry) -> rlua::Result<()> {
-        let mut state = self.state()?;
-        let old_geometry = state.geometry;
-        state.geometry = geometry;
-        if state.geometry.size.w <= 0 {
-            state.geometry.size.w = old_geometry.size.w;
+        {
+            let mut state = self.get_object_mut()?;
+            let old_geometry = state.geometry;
+            state.geometry = geometry;
+            if state.geometry.size.w <= 0 {
+                state.geometry.size.w = old_geometry.size.w;
+            }
+            if state.geometry.size.h <= 0 {
+                state.geometry.size.h = old_geometry.size.h
+            }
+            state.geometry_dirty = true;
+            // TODO emit signals
+            // TODO update screen workareas like in awesome? Might not be necessary
         }
-        if state.geometry.size.h <= 0 {
-            state.geometry.size.h = old_geometry.size.h
-        }
-        state.geometry_dirty = true;
-        // TODO emit signals
-        // TODO update screen workareas like in awesome? Might not be necessary
-        // TODO Currently have to call set_state() before update_drawing; change that
-        self.set_state(state)?;
         self.update_drawing()
     }
 }
