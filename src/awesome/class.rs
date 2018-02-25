@@ -26,7 +26,6 @@ pub struct ClassState {
     // NOTE That this is missing fields from the C version.
     // They stored in the meta table instead, to not have unsafety.
     // They are fetchable using getters.
-    name: String,
     checker: Option<Checker>,
     instances: u32
 }
@@ -85,7 +84,6 @@ impl <'lua> ToLua<'lua> for Class<'lua> {
 impl Default for ClassState {
     fn default() -> Self {
         ClassState {
-            name: String::default(),
             checker: Option::default(),
             instances: 0
         }
