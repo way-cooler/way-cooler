@@ -2,13 +2,13 @@
 
 use std::convert::From;
 use std::default::Default;
-use std::rc::Rc;
+use std::sync::Arc;
 use rlua::{self, Lua, ToLua, Table, Value, UserData, AnyUserData, Function,
            UserDataMethods, MetaMethod};
 use super::object::{self, Object};
 use super::property::Property;
 
-pub type Checker = Rc<Fn(Object) -> bool>;
+pub type Checker = Arc<Fn(Object) -> bool + Send + Sync>;
 
 #[derive(Clone, Debug)]
 pub struct Class<'lua> {
@@ -29,8 +29,6 @@ pub struct ClassState {
     checker: Option<Checker>,
     instances: u32
 }
-
-unsafe impl Send for ClassState {}
 
 pub struct ClassBuilder<'lua>{
     lua: &'lua Lua,
