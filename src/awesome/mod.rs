@@ -103,7 +103,7 @@ fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
             panic!("Could not get xkb extension supported version {:?}", err);
         }
     }
-    lua.globals().set(XCB_CONNECTION_HANDLE, LightUserData(con.get_raw_conn() as _))?;
+    lua.set_named_registry_value(XCB_CONNECTION_HANDLE, LightUserData(con.get_raw_conn() as _))?;
     mem::forget(con);
     Ok(())
 }
