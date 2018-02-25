@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods};
 use super::object::{self, Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
@@ -46,8 +46,7 @@ impl <'lua> ToLua<'lua> for Key<'lua> {
 
 impl UserData for KeyState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, object::default_index);
-        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+        object::default_add_methods(methods);
     }
 }
 
