@@ -170,6 +170,7 @@ pub fn default_add_methods<S>(methods: &mut UserDataMethods<S>)
         where S: UserData {
     methods.add_meta_function(MetaMethod::Index, default_index);
     methods.add_meta_function(MetaMethod::NewIndex, default_newindex);
+    methods.add_meta_function(MetaMethod::ToString, default_tostring);
 }
 
 /// Default indexing of an Awesome object.
@@ -279,6 +280,20 @@ pub fn default_newindex<'lua>(_: &'lua Lua,
         // TODO property miss handler if index doesn't exst
     }
     Ok(Value::Nil)
+}
+
+pub fn default_tostring<'lua>(_: &'lua Lua,
+                              obj: AnyUserData<'lua>)
+                              -> rlua::Result<String> {
+    let obj: Object<'lua> = obj.into();
+    let obj_table = obj.table()?;
+    if let Some(meta) = obj_table.get_metatable() {
+        let class = meta.get::<_, AnyUserData>("__class")?;
+        let class_table = class.get_user_value::<Table>()?;
+        let name = class_table.get::<_, String>("name")?;
+        return Ok(format!("{}: {:p}", name, &obj.object as *const _));
+    }
+    Err(rlua::Error::UserDataTypeMismatch)
 }
 
 fn connect_signal(lua: &Lua, (obj, signal, func): (AnyUserData, String, Function))
