@@ -7,7 +7,6 @@ use std::mem;
 
 pub mod keygrabber;
 pub mod mousegrabber;
-pub mod awful;
 mod awesome;
 mod client;
 mod screen;
@@ -50,7 +49,6 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     drawin::init(lua)?;
     drawable::init(lua)?;
     mousegrabber::init(lua)?;
-    awful::init(lua)?;
     Ok(())
 }
 
