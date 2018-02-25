@@ -1,12 +1,12 @@
 //! AwesomeWM Mousegrabber interface
 
 use ::lua::run_with_lua;
-use rlua::{self, Lua, Table, Function, Value};
+use rlua::{self, Lua, Function, Value};
 use rustwlc::ButtonState;
 
 pub const MOUSEGRABBER_TABLE: &str = "mousegrabber";
-const SECRET_CALLBACK: &str = "__callback";
-const SECRET_CURSOR: &str = "__cursor";
+const MOUSEGRABBER_CALLBACK: &str = "__callback";
+const MOUSEGRABBER_CURSOR: &str = "__cursor";
 
 
 /// Init the methods defined on this interface
@@ -32,10 +32,7 @@ pub fn mousegrabber_handle(x: i32, y: i32, button: Option<(u32, ButtonState)>)
 fn call_mousegrabber(lua: &Lua,
                      (x, y, button_events):
                      (i32, i32, Vec<bool>)) -> rlua::Result<()> {
-    let globals = lua.globals();
-    let lua_callback = match globals
-        .get::<_, Table>(MOUSEGRABBER_TABLE)?
-        .get::<_, Function>(SECRET_CALLBACK) {
+    let lua_callback = match lua.named_registry_value::<Function>(MOUSEGRABBER_CALLBACK) {
         Ok(function) => function,
         _ => return Ok(())
     };
@@ -51,26 +48,23 @@ fn call_mousegrabber(lua: &Lua,
 
 
 fn run(lua: &Lua, (function, cursor): (Function, String)) -> rlua::Result<()> {
-    let mousegrabber_table = lua.globals().get::<_, Table>(MOUSEGRABBER_TABLE)?;
-    match mousegrabber_table.get::<_, Value>(SECRET_CALLBACK)? {
+    match lua.named_registry_value::<Value>(MOUSEGRABBER_CALLBACK)? {
         Value::Function(_) =>
             Err(rlua::Error::RuntimeError("mousegrabber callback already set!"
                                           .into())),
         _ => {
-            mousegrabber_table.set(SECRET_CALLBACK, function)?;
-            mousegrabber_table.set(SECRET_CURSOR, cursor)
+            lua.set_named_registry_value(MOUSEGRABBER_CALLBACK, function)?;
+            lua.set_named_registry_value(MOUSEGRABBER_CURSOR, cursor)
         }
     }
 }
 
 fn stop(lua: &Lua, _: ()) -> rlua::Result<()> {
-    let mousegrabber_table = lua.globals().get::<_, Table>(MOUSEGRABBER_TABLE)?;
-    mousegrabber_table.set(SECRET_CALLBACK, Value::Nil)
+    lua.set_named_registry_value(MOUSEGRABBER_CALLBACK, Value::Nil)
 }
 
 fn isrunning(lua: &Lua, _: ()) -> rlua::Result<bool> {
-    let mousegrabber_table = lua.globals().get::<_, Table>(MOUSEGRABBER_TABLE)?;
-    match mousegrabber_table.get::<_, Value>(SECRET_CALLBACK)? {
+    match lua.named_registry_value::<Value>(MOUSEGRABBER_TABLE)? {
         Value::Function(_) => Ok(true),
         _ => Ok(false)
     }

@@ -107,7 +107,7 @@ fn index<'lua>(lua: &'lua Lua,
                 .position(|&output| output == WlcOutput::focused())
                 // NOTE Best to just lie because no one handles nil screens properly
                 .unwrap_or(0);
-            let screens = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?;
+            let screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
             if index < screens.len() {
                 return screens[index].clone().to_lua(lua)
             }

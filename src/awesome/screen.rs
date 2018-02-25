@@ -133,7 +133,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         // TODO Move to Screen impl like the others
         screens.push(screen);
     }
-    lua.globals().set(SCREENS_HANDLE, screens.to_lua(lua)?)?;
+    lua.set_named_registry_value(SCREENS_HANDLE, screens.to_lua(lua)?)?;
     Ok(res)
 }
 
@@ -179,7 +179,7 @@ fn get_workarea<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result
 fn iterate_over_screens<'lua>(lua: &'lua Lua,
                               (_, prev): (Value<'lua>, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {
-    let mut screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
+    let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
         .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
         .collect();
     let index = match prev {
@@ -206,7 +206,7 @@ fn index<'lua>(lua: &'lua Lua,
                (data, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
     let obj: Object = data.clone().into();
-    let screens: Vec<Screen> = lua.globals().get::<_, Vec<AnyUserData>>(SCREENS_HANDLE)?
+    let screens: Vec<Screen> = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
         .into_iter().map(|obj| Screen::cast(obj.into()).unwrap())
         .collect();
     match index {

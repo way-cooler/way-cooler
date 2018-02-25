@@ -8,7 +8,7 @@ use rustwlc::xkb::Keysym;
 use super::signal;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
-const SECRET_CALLBACK: &str = "__callback";
+const KEYGRABBER_CALLBACK: &str = "__callback";
 
 /// Init the methods defined on this interface.
 pub fn init(lua: &Lua) -> rlua::Result<()> {
@@ -53,31 +53,25 @@ pub fn keygrabber_handle(mods: KeyboardModifiers, sym: Keysym, state: KeyState)
 fn call_keygrabber(lua: &Lua,
                    (mods, key, event): (Table, String, String))
                    -> rlua::Result<()> {
-    let globals = lua.globals();
-    let lua_callback = globals
-        .get::<_, Table>(KEYGRABBER_TABLE)?
-        .get::<_, Function>(SECRET_CALLBACK)?;
+    let lua_callback = lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK)?;
     lua_callback.call((mods, key, event))
 }
 
 fn run(lua: &Lua, function: rlua::Function) -> rlua::Result<()> {
-    let keygrabber_table = lua.globals().get::<_, Table>(KEYGRABBER_TABLE)?;
-    match keygrabber_table.get::<_, Value>(SECRET_CALLBACK)? {
+    match lua.named_registry_value::<Value>(KEYGRABBER_CALLBACK)? {
         Value::Function(_) =>
             Err(rlua::Error::RuntimeError("keygrabber callback already set!"
                                           .into())),
-        _ => keygrabber_table.set(SECRET_CALLBACK, function)
+        _ => lua.set_named_registry_value(KEYGRABBER_CALLBACK, function)
     }
 }
 
 fn stop(lua: &Lua, _: ()) -> rlua::Result<()> {
-    let keygrabber_table = lua.globals().get::<_, Table>(KEYGRABBER_TABLE)?;
-    keygrabber_table.set(SECRET_CALLBACK, Value::Nil)
+    lua.set_named_registry_value(KEYGRABBER_CALLBACK, Value::Nil)
 }
 
 fn isrunning(lua: &Lua, _: ()) -> rlua::Result<bool> {
-    let keygrabber_table = lua.globals().get::<_, Table>(KEYGRABBER_TABLE)?;
-    match keygrabber_table.get::<_, Value>(SECRET_CALLBACK)? {
+    match lua.named_registry_value::<Value>(KEYGRABBER_CALLBACK)? {
         Value::Function(_) => Ok(true),
         _ => Ok(false)
     }

@@ -76,8 +76,7 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
 ///
 /// We need to store this in Lua, because this make it safer to use.
 fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
-    let globals = lua.globals();
-    globals.set::<_, Table>(GLOBAL_SIGNALS, lua.create_table()?)
+    lua.set_named_registry_value(GLOBAL_SIGNALS, lua.create_table()?)
 }
 
 /// Sets up the xcb connection and stores it in Lua (for us to access it later)
@@ -101,7 +100,7 @@ fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
             panic!("Could not get xkb extension supported version {:?}", err);
         }
     }
-    lua.globals().set(XCB_CONNECTION_HANDLE, LightUserData(con.get_raw_conn() as _))?;
+    lua.set_named_registry_value(XCB_CONNECTION_HANDLE, LightUserData(con.get_raw_conn() as _))?;
     mem::forget(con);
     Ok(())
 }

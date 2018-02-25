@@ -113,7 +113,7 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String
     let arg_type = XPropertyType::from_string(v_type.clone())
         .ok_or(rlua::Error::RuntimeError(format!("{} not a valid xproperty", v_type)))?;
     unsafe {
-        let raw_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
+        let raw_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
         let atom_c = xproto::xcb_intern_atom_unchecked(raw_con,
                                                        false as u8,
                                                        name.to_bytes().len() as u16,
@@ -140,7 +140,7 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String
 
 /// Get layout short names
 fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
-    let xcb_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0;
+    let xcb_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?.0;
     unsafe {
         let con = Connection::from_raw_conn(xcb_con as _);
         let raw_con = con.get_raw_conn();
@@ -269,7 +269,7 @@ fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
 fn xkb_get_layout_group<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
     use xcb::ffi::xkb;
     unsafe {
-        let raw_con = lua.globals().get::<_, LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
+        let raw_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
         let state_c = xkb::xcb_xkb_get_state_unchecked(raw_con, xkb::XCB_XKB_ID_USE_CORE_KBD as _);
         let state_r = xkb::xcb_xkb_get_state_reply(raw_con, state_c, ptr::null_mut());
         if state_r.is_null() {
