@@ -1,10 +1,9 @@
 //! TODO Fill in
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value};
 use super::object::{Object, Objectable};
-use super::class::{self, Class, ClassBuilder};
+use super::class::{Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
 pub struct ClientState {
@@ -22,12 +21,16 @@ impl Default for ClientState {
     }
 }
 
+/* This is currently unused.
+ * TODO: Figure out if this will be needed later.
+
 impl <'lua> Client<'lua> {
     fn new(lua: &Lua) -> rlua::Result<Object> {
         let class = class::class_setup(lua, "client")?;
         Ok(Client::allocate(lua, class)?.build())
     }
 }
+*/
 
 impl Display for ClientState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -44,7 +47,7 @@ impl <'lua> ToLua<'lua> for Client<'lua> {
 impl UserData for ClientState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, "client", Some(Rc::new(Client::new)), None, None)?)?
+    method_setup(lua, Class::builder(lua, "client", None)?)?
         .save_class("client")?
         .build()
 }

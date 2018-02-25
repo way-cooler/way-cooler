@@ -117,7 +117,7 @@ impl <'lua> ToLua<'lua> for Drawin<'lua> {
 impl_objectable!(Drawin, DrawinState);
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None, None, None)?)?)?
+    property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None)?)?)?
         .save_class("drawin")?
         .build()
 }

@@ -8,8 +8,6 @@ use rlua::{self, Lua, ToLua, Table, Value, UserData, AnyUserData, Function,
 use super::object::{self, Object};
 use super::property::Property;
 
-pub type Allocator = Rc<Fn(&Lua) -> rlua::Result<Object>>;
-pub type Collector = Rc<Fn(Object)>;
 pub type Checker = Rc<Fn(Object) -> bool>;
 
 #[derive(Clone, Debug)]
@@ -29,8 +27,6 @@ pub struct ClassState {
     // They stored in the meta table instead, to not have unsafety.
     // They are fetchable using getters.
     name: String,
-    allocator: Option<Allocator>,
-    collector: Option<Collector>,
     checker: Option<Checker>,
     instances: u32
 }
@@ -90,8 +86,6 @@ impl Default for ClassState {
     fn default() -> Self {
         ClassState {
             name: String::default(),
-            allocator: Option::default(),
-            collector: Option::default(),
             checker: Option::default(),
             instances: 0
         }
@@ -122,13 +116,9 @@ impl UserData for ClassState {
 impl <'lua> Class<'lua> {
     pub fn builder(lua: &'lua Lua,
                    name: &str,
-                   allocator: Option<Allocator>,
-                   collector: Option<Collector>,
                    checker: Option<Checker>)
                    -> rlua::Result<ClassBuilder<'lua>> {
         let mut class = ClassState::default();
-        class.allocator = allocator;
-        class.collector = collector;
         class.checker = checker;
         let user_data = lua.create_userdata(class)?;
         let table = lua.create_table()?;

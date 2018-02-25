@@ -5,7 +5,6 @@ use glib::translate::ToGlibPtr;
 use rustwlc::Geometry;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, AnyUserData, UserDataMethods};
 use super::object::{self, Object, Objectable};
 use super::class::{self, Class};
@@ -111,7 +110,7 @@ impl UserData for DrawableState {
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    Class::builder(lua, "drawable", Some(Rc::new(Drawable::new)), None, None)?
+    Class::builder(lua, "drawable", None)?
         .method("geometry".into(), lua.create_function(geometry)?)?
         .property(Property::new("surface".into(),
                                 None,
