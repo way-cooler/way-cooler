@@ -2,15 +2,13 @@
 
 use std::convert::From;
 use std::default::Default;
-use std::rc::Rc;
+use std::sync::Arc;
 use rlua::{self, Lua, ToLua, Table, Value, UserData, AnyUserData, Function,
            UserDataMethods, MetaMethod};
 use super::object::{self, Object};
 use super::property::Property;
 
-pub type Allocator = Rc<Fn(&Lua) -> rlua::Result<Object>>;
-pub type Collector = Rc<Fn(Object)>;
-pub type Checker = Rc<Fn(Object) -> bool>;
+pub type Checker = Arc<Fn(Object) -> bool + Send + Sync>;
 
 #[derive(Clone, Debug)]
 pub struct Class<'lua> {
@@ -28,14 +26,9 @@ pub struct ClassState {
     // NOTE That this is missing fields from the C version.
     // They stored in the meta table instead, to not have unsafety.
     // They are fetchable using getters.
-    name: String,
-    allocator: Option<Allocator>,
-    collector: Option<Collector>,
     checker: Option<Checker>,
     instances: u32
 }
-
-unsafe impl Send for ClassState {}
 
 pub struct ClassBuilder<'lua>{
     lua: &'lua Lua,
@@ -89,9 +82,6 @@ impl <'lua> ToLua<'lua> for Class<'lua> {
 impl Default for ClassState {
     fn default() -> Self {
         ClassState {
-            name: String::default(),
-            allocator: Option::default(),
-            collector: Option::default(),
             checker: Option::default(),
             instances: 0
         }
@@ -122,13 +112,9 @@ impl UserData for ClassState {
 impl <'lua> Class<'lua> {
     pub fn builder(lua: &'lua Lua,
                    name: &str,
-                   allocator: Option<Allocator>,
-                   collector: Option<Collector>,
                    checker: Option<Checker>)
                    -> rlua::Result<ClassBuilder<'lua>> {
         let mut class = ClassState::default();
-        class.allocator = allocator;
-        class.collector = collector;
         class.checker = checker;
         let user_data = lua.create_userdata(class)?;
         let table = lua.create_table()?;

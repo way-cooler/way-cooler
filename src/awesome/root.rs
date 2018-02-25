@@ -3,10 +3,9 @@
 use cairo_sys::cairo_pattern_t;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods};
 use super::object::{self, Object, Objectable};
-use super::class::{self, Class, ClassBuilder};
+use super::class::{Class, ClassBuilder};
 
 #[derive(Clone, Debug)]
 pub struct RootState {
@@ -21,14 +20,6 @@ impl Default for RootState {
         RootState {
             dummy: 0
         }
-    }
-}
-
-impl <'lua> Root<'lua> {
-    fn new(lua: &Lua) -> rlua::Result<Object> {
-        // TODO FIXME
-        let class = class::class_setup(lua, "root")?;
-        Ok(Root::allocate(lua, class)?.build())
     }
 }
 
@@ -52,7 +43,7 @@ impl UserData for RootState {
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     // FIXME: In awesome there is no root class
-    method_setup(lua, Class::builder(lua, "FIXME", Some(Rc::new(Root::new)), None, None)?)?
+    method_setup(lua, Class::builder(lua, "FIXME", None)?)?
         .save_class("root")?
         .build()
 }

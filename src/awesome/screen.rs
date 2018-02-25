@@ -3,7 +3,6 @@
 use rustwlc::{Geometry, Point, Size, WlcOutput};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use std::rc::Rc;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods,
            MetaMethod};
 use super::object::{self, Object, Objectable};
@@ -122,7 +121,7 @@ impl <'lua> Screen<'lua> {
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    let builder = Class::builder(lua, "screen", Some(Rc::new(Screen::new)), None, None)?;
+    let builder = Class::builder(lua, "screen", None)?;
     let res = property_setup(lua, method_setup(lua, builder)?)?
         .save_class("screen")?
         .build()?;
