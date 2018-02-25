@@ -4,7 +4,7 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 use rustwlc::{Geometry, Point, Size};
-use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods, MetaMethod};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods};
 use rlua::prelude::LuaInteger;
 use super::drawable::Drawable;
 use super::property::Property;
@@ -28,8 +28,7 @@ pub struct Drawin<'lua>(Object<'lua>);
 
 impl UserData for DrawinState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, object::default_index);
-        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+        object::default_add_methods(methods);
     }
 }
 

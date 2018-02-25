@@ -4,7 +4,7 @@ use cairo_sys::cairo_pattern_t;
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use std::rc::Rc;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods, MetaMethod};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods};
 use super::object::{self, Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 
@@ -46,8 +46,7 @@ impl <'lua> ToLua<'lua> for Root<'lua> {
 
 impl UserData for RootState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        methods.add_meta_function(MetaMethod::Index, object::default_index);
-        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex);
+        object::default_add_methods(methods);
     }
 }
 

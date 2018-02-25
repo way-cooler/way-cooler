@@ -3,7 +3,7 @@
 use std::fmt::Display;
 use std::convert::From;
 use rlua::{self, Lua, Table, UserData, AnyUserData, Value,
-           FromLua, ToLua, Function};
+           FromLua, ToLua, Function, UserDataMethods, MetaMethod};
 use super::signal;
 use super::class::Class;
 use super::property::Property;
@@ -163,6 +163,13 @@ impl <'lua> Object<'lua> {
     pub fn table(&self) -> rlua::Result<Table<'lua>> {
         self.object.get_user_value::<Table<'lua>>()
     }
+}
+
+/// Can be used for implementing UserData for Lua objects. This provides some default metafunctions.
+pub fn default_add_methods<S>(methods: &mut UserDataMethods<S>)
+        where S: UserData {
+    methods.add_meta_function(MetaMethod::Index, default_index);
+    methods.add_meta_function(MetaMethod::NewIndex, default_newindex);
 }
 
 /// Default indexing of an Awesome object.
