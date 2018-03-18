@@ -11,6 +11,7 @@ use super::signal;
 #[derive(Clone, Debug)]
 pub struct TagState {
     name: Option<String>,
+    selected: bool,
     // TODO Fill in
     dummy: i32
 }
@@ -21,6 +22,7 @@ impl Default for TagState {
     fn default() -> Self {
         TagState {
             name: None,
+            selected: false,
             dummy: 0
         }
     }
@@ -67,7 +69,11 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
            .property(Property::new("name".into(),
                                    Some(lua.create_function(set_name)?),
                                    Some(lua.create_function(get_name)?),
-                                   Some(lua.create_function(set_name)?)))
+                                   Some(lua.create_function(set_name)?)))?
+           .property(Property::new("selected".into(),
+                                   Some(lua.create_function(set_selected)?),
+                                   Some(lua.create_function(get_selected)?),
+                                   Some(lua.create_function(set_selected)?)))
 }
 
 impl_objectable!(Tag, TagState);
@@ -89,6 +95,28 @@ fn get_name<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>)
         None => Ok(Value::Nil),
         Some(ref name) => Ok(Value::String(lua.create_string(&name)?))
     }
+}
+
+fn set_selected<'lua>(lua: &'lua Lua, (obj, val): (AnyUserData<'lua>, bool))
+                      -> rlua::Result<Value<'lua>> {
+    let mut tag = Tag::cast(obj.clone().into())?;
+    {
+        let mut tag = tag.get_object_mut()?;
+        if tag.selected == val {
+            return Ok(Value::Nil)
+        }
+        tag.selected = val;
+    }
+    signal::emit_object_signal(lua,
+                               obj.into(),
+                               "property::selected".into(),
+                               ())?;
+    Ok(Value::Nil)
+}
+
+fn get_selected<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>)
+                  -> rlua::Result<Value<'lua>> {
+    Ok(Value::Boolean(obj.borrow::<TagState>()?.selected))
 }
 
 #[cfg(test)]
@@ -131,6 +159,37 @@ end)
 t.name = "bye"
 assert(t.name == "bye")
 assert(called == 1)
+"#, None).unwrap()
+    }
+
+    #[test]
+    fn tag_selected() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        lua.eval(r#"
+local t = tag{}
+assert(t.selected == false)
+
+local called = 0
+t:connect_signal("property::selected", function(t)
+    called = called + 1
+end)
+
+t.selected = false
+assert(t.selected == false)
+assert(called == 0)
+
+t.selected = true
+assert(t.selected == true)
+assert(called == 1)
+
+t.selected = true
+assert(t.selected == true)
+assert(called == 1)
+
+t.selected = false
+assert(t.selected == false)
+assert(called == 2)
 "#, None).unwrap()
     }
 }
