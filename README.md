@@ -13,7 +13,7 @@ While Lua is used for the runtime configuration (like in [awesome][]), extension
 
 Way Cooler is currently in beta. The core features have been added and it is in a usable state, but there will be backwards-incompatible changes in future versions that might require some user intervention. 
 
-Once Way Cooler reaches 1.0, we will guarantee backwards compatibilty for both the configuration files and the D-Bus interfaces.
+Once Way Cooler reaches 1.0, we will guarantee backwards compatibility for both the configuration files and the D-Bus interfaces.
 
 Here are some pictures of what Way Cooler looks like today:
 
@@ -53,7 +53,7 @@ and is not backwards compatible with existing X11 tools, we wanted to put our st
 ## Planned Features
 
 - Notification support
-- AwesomeWM compatibilty (see [this issue for more info](https://github.com/way-cooler/way-cooler/issues/338))
+- AwesomeWM compatibility (see [this issue for more info](https://github.com/way-cooler/way-cooler/issues/338))
 - A dedicated status bar
   * The status bar should be swappable, such that a user can implement their own or use a different one.
 - More customization settings
@@ -72,7 +72,7 @@ Follow the development of these features in our [issues section] or checkout our
 
 ## NixOS
 
-@miltador mantains our [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
+@miltador maintains our [NixOS package](https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/window-managers/way-cooler/default.nix).
 
 ## openSUSE
 
@@ -128,7 +128,7 @@ Way Cooler was started by @Timidger and @SnirkImmington, but these fine people h
 - @thefarwind made kill way-cooler command rebindable
 - @bluss for updating our use of `PetGraph` to use `StableGraph`
 - @Abdillah
-  + fixed background program to have solid colors be variable size at initilization
+  + fixed background program to have solid colors be variable size at initialization
   + [added modes to the background program (fill, fit, stretch, title)](https://github.com/way-cooler/way-cooler-bg/pull/6#pullrequestreview-32859779)
 - @hedning fixed an unsigned underflow in the tiling code
 - @jubalh created the openSUSE package

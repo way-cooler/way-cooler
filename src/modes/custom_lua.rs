@@ -254,7 +254,7 @@ impl Mode for CustomLua {
         result
     }
 
-    /// Triggerd when a user moves the mouse.
+    /// Triggered when a user moves the mouse.
     /// Sends the UUID of the view where it was moved over,
     /// and the absolute point on the screen where it was.
     fn on_pointer_motion(&mut self,

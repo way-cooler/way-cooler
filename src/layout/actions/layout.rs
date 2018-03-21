@@ -118,7 +118,7 @@ impl LayoutTree {
                 // place floating children above everything else
                 let root_ix = self.tree.children_of(node_ix)[0];
                 for child_ix in self.tree.floating_children(root_ix) {
-                    // TODO Propogate error
+                    // TODO Propagate error
                     self.place_floating(child_ix, fullscreen_apps).ok();
                 }
             },
@@ -177,7 +177,7 @@ impl LayoutTree {
                                               fullscreen_apps);
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to horizontal container");
-                            // TODO Propogate error
+                            // TODO Propagate error
                             self.draw_borders_rec(children).ok();
                         }
                     }
@@ -226,7 +226,7 @@ impl LayoutTree {
                                               fullscreen_apps);
                             self.add_gaps(node_ix)
                                 .expect("Couldn't add gaps to vertical container");
-                            // TODO Propogate error
+                            // TODO Propagate error
                             self.draw_borders_rec(children).ok();
                         }
                     },
@@ -263,7 +263,7 @@ impl LayoutTree {
                             self.set_container_visibility(child_ix, true);
                         }
                         children.push(node_ix);
-                        // TODO Propogate error
+                        // TODO Propagate error
                         self.add_gaps(node_ix)
                             .expect("Couldn't add gaps to tabbed/stacked container");
                         self.draw_borders_rec(children).ok();
@@ -1018,7 +1018,7 @@ impl LayoutTree {
 
                                 b.set_children(titles, index);
 
-                                // Still necesary to draw the title when this
+                                // Still necessary to draw the title when this
                                 // container is inside another tabbed/stacked
                                 b.set_title(format!("{:?} ({}/{})",
                                                     layout,

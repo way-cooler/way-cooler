@@ -120,7 +120,7 @@ unsafe extern "C" fn set_gamma(_client: *mut wl_client,
 
 /// Resets the gamma to the original value set by the hardware.
 /// This action is performed properly by `set_gamma`, so method only
-/// logs that the action occured.
+/// logs that the action occurred.
 unsafe extern "C" fn reset_gamma(_client: *mut wl_client,
                                  _resource: *mut wl_resource) {
     info!("Resetting gamma");

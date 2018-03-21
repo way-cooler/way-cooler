@@ -1,6 +1,6 @@
 //! Implementations of the default callbacks exposed by wlc.
 //! These functions are the main entry points into Way Cooler from user action.
-//! This is the default mode that Way Cooler is in at initilization
+//! This is the default mode that Way Cooler is in at initialization
 use rustwlc::*;
 use rustwlc::input::{pointer, keyboard};
 use rustwlc::render::{read_pixels, wlc_pixel_format};

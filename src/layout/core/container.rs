@@ -124,7 +124,7 @@ pub enum Container {
     },
     /// Container
     Container {
-        /// How the container is layed out
+        /// How the container is laid out
         layout: Layout,
         /// If the container is floating
         floating: bool,

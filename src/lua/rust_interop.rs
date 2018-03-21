@@ -51,7 +51,7 @@ pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
     lua.exec::<()>(util_code, Some("utils.lua"))?;
     lua.exec::<()>(awesome_init_code, Some("awesome_init.lua"))?;
     awesome::init(&lua)
-        .expect("Could not initialize awesome compatibilty modules");
+        .expect("Could not initialize awesome compatibility modules");
     lua.exec::<()>(init_code, Some("lua_init.lua"))?;
     trace!("Lua register_libraries complete");
     Ok(())

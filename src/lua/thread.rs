@@ -141,7 +141,7 @@ fn idle_add_once<F>(func: F)
 }
 
 // Reexported in lua/mod.rs:11
-/// Attemps to send a LuaQuery to the Lua thread.
+/// Attempts to send a LuaQuery to the Lua thread.
 pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     // Create a response channel
     let (response_tx, response_rx) = channel();

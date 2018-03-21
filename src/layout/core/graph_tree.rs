@@ -128,7 +128,7 @@ impl InnerTree {
     }
 
     /// Gets the immediant child of the node that is active.
-    /// If there is no active child (e.g, there are no childern),
+    /// If there is no active child (e.g, there are no children),
     /// then `None` is returned.
     pub fn next_active_node(&self, node_ix: NodeIndex) -> Option<NodeIndex> {
         self.graph.edges(node_ix).find(|e| e.weight().is_active())
@@ -446,7 +446,7 @@ impl InnerTree {
     fn detach(&mut self, node_ix: NodeIndex) {
         if let Ok(parent_ix) = self.parent_of(node_ix) {
             let edge = self.graph.find_edge(parent_ix, node_ix)
-                .expect("detatch: Node has parent but edge cannot be found!");
+                .expect("detach: Node has parent but edge cannot be found!");
 
             self.graph.remove_edge(edge);
             self.normalize_edge_weights(parent_ix);
