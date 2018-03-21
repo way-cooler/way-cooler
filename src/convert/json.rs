@@ -57,7 +57,7 @@ pub fn lua_to_json<'lua>(lua_value: rlua::Value<'lua>)
     }
 }
 
-/// Convert an AnyLuaValue to a Json array using numerical indicies.
+/// Convert an AnyLuaValue to a Json array using numerical indices.
 ///
 /// # Result
 /// This function returns an Err if the Lua object has a non-String key.

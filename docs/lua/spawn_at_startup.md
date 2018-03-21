@@ -10,6 +10,6 @@ Registers the program to spawn at startup and every time Way Cooler restarts.
 ## Examples
 ```lua
 # Spawns the standard background program using an all white background.
-# Everytime Way Cooler is restarted, this program is killed and re-executed.
+# Every time Way Cooler is restarted, this program is killed and re-executed.
 util.program.spawn_at_startup("way-cooler-bg", "--color " .. 0xFFFFFF)
 ```

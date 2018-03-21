@@ -1,4 +1,4 @@
--- Defines the global tables for Awesome compatiblity
+-- Defines the global tables for Awesome compatibility
 
 keygrabber = {
   -- Secret callback function that is called for every keyboard press.

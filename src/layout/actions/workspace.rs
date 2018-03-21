@@ -152,7 +152,7 @@ impl LayoutTree {
                     },
                     _ => unreachable!()
                 }
-                // TODO Propogate this when this is refactored
+                // TODO Propagate this when this is refactored
                 match self.set_active_node(active_ix) {
                     Err(TreeError::Focus(
                         FocusError::BlockedByFullscreen(_, focus_id))) => {

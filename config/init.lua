@@ -1,4 +1,4 @@
--- Lua configration file for way-cooler. Ran at startup and when restarted.
+-- Lua configuration file for way-cooler. Ran at startup and when restarted.
 
 -- Programs that Way Cooler can run
 way_cooler.programs = {

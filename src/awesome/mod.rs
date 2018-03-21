@@ -1,4 +1,4 @@
-//! Awesome compatibilty modules
+//! Awesome compatibility modules
 use xcb::{xkb, Connection};
 
 use rlua::{self, Lua, Table, LightUserData};
