@@ -84,6 +84,57 @@ fn set_wallpaper<'lua>(_: &'lua Lua, _pattern: *mut cairo_pattern_t) -> rlua::Re
 
 fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
     let table = lua.create_table()?;
-    // TODO FIXME Get tags
+    let activated_tags = lua.named_registry_value::<Table>(super::tag::TAG_LIST)?;
+    for pair in activated_tags.pairs::<Value, Value>() {
+        let (key, value) = pair?;
+        table.set(key, value)?;
+    }
     Ok(table)
+}
+
+#[cfg(test)]
+mod test {
+    use rlua::Lua;
+    use super::super::root;
+    use super::super::tag;
+
+    #[test]
+    fn tags_none() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        root::init(&lua).unwrap();
+        lua.eval(r#"
+local t = root.tags()
+assert(type(t) == "table")
+assert(type(next(t)) == "nil")
+"#, None).unwrap()
+    }
+
+    #[test]
+    fn tags_does_not_copy() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        root::init(&lua).unwrap();
+        lua.eval(r#"
+local t = tag{ activated = true }
+local t2 = root.tags()[1]
+assert(t == t2)
+t2.name = "Foo"
+assert(t.name == "Foo")
+"#, None).unwrap()
+    }
+
+    #[test]
+    fn tags_some() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        root::init(&lua).unwrap();
+        lua.eval(r#"
+local first = tag{ activated = true }
+local second = tag{ activated = true }
+local t = root.tags()
+assert(t[1] == first)
+assert(t[2] == second)
+"#, None).unwrap()
+    }
 }
