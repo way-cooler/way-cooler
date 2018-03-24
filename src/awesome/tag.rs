@@ -2,11 +2,13 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, AnyUserData};
+use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, AnyUserData, Integer};
 use super::object::{self, Object, Objectable};
 use super::class::{self, Class, ClassBuilder};
 use super::property::Property;
 use super::signal;
+
+pub const TAG_LIST: &'static str = "__tag_list";
 
 #[derive(Clone, Debug)]
 pub struct TagState {
@@ -55,6 +57,7 @@ impl UserData for TagState {
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
+    lua.set_named_registry_value(TAG_LIST, lua.create_table()?)?;
     method_setup(lua, Class::builder(lua, "tag", None)?)?
         .save_class("tag")?
         .build()
@@ -76,7 +79,11 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
            .property(Property::new("activated".into(),
                                    Some(lua.create_function(set_activated)?),
                                    Some(lua.create_function(get_activated)?),
-                                   Some(lua.create_function(set_activated)?)))
+                                   Some(lua.create_function(set_activated)?)))?
+           .property(Property::new("clients".into(),
+                                   None,
+                                   Some(lua.create_function(get_clients)?),
+                                   None))
 }
 
 impl_objectable!(Tag, TagState);
@@ -132,7 +139,31 @@ fn set_activated<'lua>(lua: &'lua Lua, (obj, val): (AnyUserData<'lua>, bool))
         }
         tag.activated = val;
     }
-    if !val {
+    let activated_tags = lua.named_registry_value::<Table>(TAG_LIST)?;
+    let activated_tags_count = activated_tags.len()?;
+    if val {
+        let index = activated_tags_count + 1;
+        activated_tags.set(index, obj.clone())?;
+    } else {
+        // Find and remove the tag in/from the list of tags
+        {
+            let tag_ref = &*obj.borrow::<TagState>()? as *const _;
+            let mut found = false;
+            for pair in activated_tags.clone().pairs::<Integer, AnyUserData>() {
+                let (key, value) = pair?;
+                if tag_ref == &*value.borrow::<TagState>()? as *const _ {
+                    found = true;
+                    // Now remove this by shifting everything down...
+                    for index in key .. activated_tags_count {
+                        activated_tags.set(index,
+                                           activated_tags.get::<_, Value>(index + 1)?)?;
+                    }
+                    activated_tags.set(activated_tags_count, Value::Nil)?;
+                    break;
+                }
+            }
+            assert!(found);
+        }
         set_selected(lua, (obj.clone(), false))?;
     }
     signal::emit_object_signal(lua,
@@ -145,6 +176,15 @@ fn set_activated<'lua>(lua: &'lua Lua, (obj, val): (AnyUserData<'lua>, bool))
 fn get_activated<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>)
                        -> rlua::Result<Value<'lua>> {
     Ok(Value::Boolean(obj.borrow::<TagState>()?.activated))
+}
+
+fn get_clients<'lua>(lua: &'lua Lua, _obj: AnyUserData<'lua>)
+                    -> rlua::Result<Value<'lua>> {
+    // TODO / FIXME: Do this properly.
+    // - Actually return clients.
+    // - Right now this is a property that returns a function. Can we get rid of some of this
+    //   indirection?
+    Ok(Value::Function(lua.create_function(|lua, _: ()| lua.create_table())?))
 }
 
 #[cfg(test)]
