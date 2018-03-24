@@ -154,10 +154,11 @@ fn set_activated<'lua>(lua: &'lua Lua, (obj, val): (AnyUserData<'lua>, bool))
                 if tag_ref == &*value.borrow::<TagState>()? as *const _ {
                     found = true;
                     // Now remove this by shifting everything down...
-                    for index in key .. activated_tags_count-1 {
+                    for index in key .. activated_tags_count {
                         activated_tags.set(index,
                                            activated_tags.get::<_, Value>(index + 1)?)?;
                     }
+                    activated_tags.set(activated_tags_count, Value::Nil)?;
                     break;
                 }
             }

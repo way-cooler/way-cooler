@@ -137,4 +137,19 @@ assert(t[1] == first)
 assert(t[2] == second)
 "#, None).unwrap()
     }
+
+    #[test]
+    fn tags_removal() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        root::init(&lua).unwrap();
+        lua.eval(r#"
+local first = tag{ activated = true }
+local second = tag{ activated = true }
+first.activated = false
+local t = root.tags()
+assert(t[1] == second)
+assert(type(t[2]) == "nil")
+"#, None).unwrap()
+    }
 }
