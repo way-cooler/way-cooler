@@ -79,7 +79,11 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
            .property(Property::new("activated".into(),
                                    Some(lua.create_function(set_activated)?),
                                    Some(lua.create_function(get_activated)?),
-                                   Some(lua.create_function(set_activated)?)))
+                                   Some(lua.create_function(set_activated)?)))?
+           .property(Property::new("clients".into(),
+                                   None,
+                                   Some(lua.create_function(get_clients)?),
+                                   None))
 }
 
 impl_objectable!(Tag, TagState);
@@ -171,6 +175,15 @@ fn set_activated<'lua>(lua: &'lua Lua, (obj, val): (AnyUserData<'lua>, bool))
 fn get_activated<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>)
                        -> rlua::Result<Value<'lua>> {
     Ok(Value::Boolean(obj.borrow::<TagState>()?.activated))
+}
+
+fn get_clients<'lua>(lua: &'lua Lua, _obj: AnyUserData<'lua>)
+                    -> rlua::Result<Value<'lua>> {
+    // TODO / FIXME: Do this properly.
+    // - Actually return clients.
+    // - Right now this is a property that returns a function. Can we get rid of some of this
+    //   indirection?
+    Ok(Value::Function(lua.create_function(|lua, _: ()| lua.create_table())?))
 }
 
 #[cfg(test)]
