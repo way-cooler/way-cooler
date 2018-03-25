@@ -236,10 +236,10 @@ fn kill(_: &Lua, (pid, sig): (libc::pid_t, libc::c_int)) -> rlua::Result<bool> {
 }
 
 fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
-    let mut awesome_state = lua.globals().get::<_, AwesomeState>("awesome")?;
+    let awesome_state = lua.globals().get::<_, AnyUserData>("awesome")?;
+    let mut awesome_state = awesome_state.borrow_mut::<AwesomeState>()?;
     awesome_state.preferred_icon_size = val;
-    lua.globals().set("awesome", awesome_state.to_lua(lua)?)
-
+    Ok(())
 }
 
 fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
