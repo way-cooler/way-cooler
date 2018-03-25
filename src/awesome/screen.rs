@@ -141,6 +141,7 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>)
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
+           .method("count".into(), lua.create_function(count)?)?
            .method("__call".into(), lua.create_function(iterate_over_screens)?)?
            .method("__index".into(), lua.create_function(index)?)
 }
@@ -166,6 +167,12 @@ fn get_geometry<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result
 fn get_workarea<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
     let screen = Screen::cast(object.into())?;
     screen.get_workarea(lua)
+}
+
+fn count<'lua>(lua: &'lua Lua, _: ())
+               -> rlua::Result<Value<'lua>> {
+    let screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
+    Ok(Value::Integer(screens.len() as _))
 }
 
 /// Ok this requires some explanation...
