@@ -1,9 +1,9 @@
 [package]
 name = "way-cooler"
-description = "Customizeable Wayland compositor written in Rust"
+description = "Wayland compositor that emulates AwesomeWM"
 version = "0.8.0"
-repository = "https://github.com/Immington-Industries/way-cooler/"
-keywords = ["Wayland", "compositor", "window", "manager", "wlc"]
+repository = "https://github.com/way-cooler/way-cooler/"
+keywords = ["Wayland", "compositor", "window", "manager", "wlroots", "awesome"]
 readme = "README.md"
 license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
