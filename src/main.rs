@@ -31,7 +31,7 @@ extern crate xcb;
 
 #[macro_use]
 mod macros;
-//mod convert;
+mod convert;
 //mod callbacks;
 //mod keys;
 //mod lua;

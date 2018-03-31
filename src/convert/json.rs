@@ -1,6 +1,6 @@
 //! Conversion methods for JSON values.
 
-use rustwlc::{Geometry, Point, Size};
+use wlroots::{Origin, Size};
 use std::collections::BTreeMap;
 
 use rlua;
@@ -129,28 +129,4 @@ fn lua_object_to_json<'lua>(table: rlua::Table<'lua>)
         }
     }
     Ok(Json::Object(json_obj))
-}
-
-
-pub fn size_to_json(size: Size) -> Json {
-    let mut map = BTreeMap::new();
-    map.insert("w".into(), size.w.to_json());
-    map.insert("h".into(), size.h.to_json());
-    map.to_json()
-}
-
-pub fn point_to_json(point: Point) -> Json {
-    let mut map = BTreeMap::new();
-    map.insert("x".into(), point.x.to_json());
-    map.insert("y".into(), point.y.to_json());
-    map.to_json()
-}
-
-pub fn geometry_to_json(geometry: Geometry) -> Json {
-    let mut map = BTreeMap::new();
-    let origin = point_to_json(geometry.origin);
-    let size = size_to_json(geometry.size);
-    map.insert("origin".into(), origin);
-    map.insert("size".into(), size);
-    map.to_json()
 }
