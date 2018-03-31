@@ -10,7 +10,8 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-rustwlc = { version = "0.7.0", features = ["wlc-wayland"] }
+# TODO Pin this in crates.io once the API is stable.
+wlroots = { path = "../wlroots-rs" }
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
@@ -23,8 +24,8 @@ rustc-serialize = "0.3"
 json_macro = "0.1"
 nix = "0.6"
 uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
-wayland-sys = { version = "0.12.1", features = ["client", "dlopen"] }
-wayland-server = { version = "0.12.1" }
+wayland-sys = { version = "0.9.*", features = ["client", "dlopen"] }
+wayland-server = { version = "0.9.*" }
 getopts = "0.2"
 cairo-rs = "0.3.*"
 cairo-sys-rs = "0.5.*"
@@ -32,15 +33,11 @@ gdk-pixbuf = "0.3.*"
 glib = "0.4.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 
-[dev-dependencies]
-dummy-rustwlc = "0.7.1"
-
 [build-dependencies]
 wayland-scanner = { version = "0.12.1" }
 
 
 [features]
-static-wlc = ["rustwlc/static-wlc"]
 disable-debug = []
 builtin-lua= ["rlua/builtin-lua"]
 

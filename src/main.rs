@@ -4,11 +4,7 @@
 extern crate lazy_static;
 extern crate bitflags;
 extern crate dbus_macros;
-#[cfg(not(test))]
-extern crate rustwlc;
 extern crate getopts;
-#[cfg(test)]
-extern crate dummy_rustwlc as rustwlc;
 #[macro_use]
 extern crate log;
 extern crate env_logger;

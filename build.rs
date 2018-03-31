@@ -2,11 +2,7 @@ extern crate wayland_scanner;
 
 use wayland_scanner::{Side, generate_code, generate_interfaces};
 
-use std::env;
-use std::process::Command;
-use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::{env, fs, process::Command, io::Write, path::{Path, PathBuf}};
 
 fn main() {
     dump_git_version();
