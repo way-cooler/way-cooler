@@ -26,16 +26,12 @@ extern crate cairo;
 extern crate cairo_sys;
 extern crate gdk_pixbuf;
 extern crate glib;
-#[macro_use]
-extern crate wayland_sys;
-extern crate wayland_server;
 extern crate xcb;
 
 #[macro_use] mod macros;
 mod awesome;
 mod convert;
 mod lua;
-//mod wayland;
 
 
 use std::{env, process::exit, fs::File, io::{BufRead, BufReader}, path::Path};
@@ -81,8 +77,6 @@ fn main() {
     detect_proprietary();
     detect_raspi();
     ensure_good_env();
-    // TODO Custom protocols
-    //wayland::init_wayland_protocols();
 }
 
 /// Formats the log strings properly
