@@ -30,9 +30,9 @@ extern crate xcb;
 
 #[macro_use] mod macros;
 mod awesome;
-mod convert;
-mod lua;
+mod compositor;
 
+pub use awesome::lua;
 
 use std::{env, process::exit, fs::File, io::{BufRead, BufReader}, path::Path};
 

@@ -13,7 +13,7 @@ use std::io::Read;
 use glib::MainLoop;
 use glib::source::{idle_add, Continue};
 
-use convert::lua_to_json;
+use awesome::convert::lua_to_json;
 
 use rustc_serialize::json::Json;
 use uuid::Uuid;

@@ -3,7 +3,7 @@
 use rustc_serialize::json::ToJson;
 use uuid::Uuid;
 use rlua::{self, prelude::LuaResult};
-use {awesome, convert::json_to_lua};
+use awesome::{self, convert::json_to_lua};
 
 use super::{send, LuaQuery};
 
@@ -13,7 +13,7 @@ use super::{send, LuaQuery};
 pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
     trace!("Setting up Lua libraries");
     // TODO Is this awesome init code necessary?
-    let awesome_init_code = include_str!("../../lib/lua/awesome_init.lua");
+    let awesome_init_code = include_str!("../../../lib/lua/awesome_init.lua");
     lua.exec::<()>(awesome_init_code, Some("awesome_init.lua"))?;
     awesome::init(&lua)
         .expect("Could not initialize awesome compatibility modules");

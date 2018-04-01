@@ -4,6 +4,8 @@ use std::{env, mem, path::PathBuf};
 use xcb::{xkb, Connection};
 use rlua::{self, Lua, Table, LightUserData};
 
+mod convert;
+pub mod lua;
 pub mod keygrabber;
 pub mod mousegrabber;
 mod awesome;

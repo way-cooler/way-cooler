@@ -9,7 +9,7 @@ use std::io::Result as IOResult;
 pub const INIT_FILE: &'static str = "rc.lua";
 pub const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/";
 
-pub const DEFAULT_CONFIG: &'static str = include_str!("../../config/rc.lua");
+pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
 
 #[inline]
 fn read_file<P: AsRef<Path>>(path: P) -> IOResult<File> {
