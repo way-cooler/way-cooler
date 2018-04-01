@@ -61,4 +61,6 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
 
 impl_objectable!(Client, ClientState);
 
-fn dummy_table<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> { Ok((lua.create_table()?)) }
+fn dummy_table<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
+    Ok(lua.create_table()?)
+}

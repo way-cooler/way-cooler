@@ -1,6 +1,6 @@
 //! TODO Fill in
 
-use rustwlc::{Geometry, Point, Size, WlcOutput};
+use wlroots::{self, Area, Origin, Size, OutputHandle};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods,
@@ -19,13 +19,14 @@ pub struct Output {
     // TODO The XID array?
 }
 
-impl From<WlcOutput> for Output {
-    fn from(output: WlcOutput) -> Output {
-        let resolution = output.get_resolution().unwrap();
+impl From<wlroots::Output> for Output {
+    fn from(output: wlroots::Output) -> Output {
+        let name = output.name();
+        let (mm_width, mm_height) = output.effective_resolution();
         Output {
-            name: output.get_name(),
-            mm_width: resolution.w,
-            mm_height: resolution.h
+            name,
+            mm_width: mm_width as u32,
+            mm_height: mm_height as u32
         }
     }
 }
@@ -38,9 +39,9 @@ pub struct ScreenState {
     // Is this screen still valid and may be used
     pub valid: bool,
     // Screen geometry
-    pub geometry: Geometry,
+    pub geometry: Area,
     // Screen workarea
-    pub workarea: Geometry,
+    pub workarea: Area,
     // The screen outputs information
     pub outputs: Vec<Output>,
     // Some XID indetifying this screen
@@ -65,8 +66,8 @@ impl Default for ScreenState {
     fn default() -> Self {
         ScreenState {
             valid: true,
-            geometry: Geometry::zero(),
-            workarea: Geometry::zero(),
+            geometry: Area::default(),
+            workarea: Area::default(),
             outputs: vec![],
             xid: 0
         }
@@ -86,36 +87,37 @@ impl <'lua> Screen<'lua> {
         Ok(Screen::allocate(lua, class)?.build())
     }
 
-    fn init_screens(&mut self, output: WlcOutput, outputs: Vec<Output>) -> rlua::Result<()> {
+    fn init_screens(&mut self, output: &wlroots::Output, outputs: Vec<Output>) -> rlua::Result<()> {
         let mut state = self.get_object_mut()?;
-        let resolution = output.get_resolution().unwrap();
+        let (width, height) = output.effective_resolution();
+        let resolution = Size { width, height };
         state.outputs = outputs;
-        state.geometry.size = resolution;
-        state.workarea.size = resolution;
+        state.geometry = state.geometry.with_size(resolution);
+        state.workarea = state.workarea.with_size(resolution);
         Ok(())
     }
 
     fn get_geometry(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
-        let Point { x, y } = state.geometry.origin;
-        let Size { w, h } = state.geometry.size;
+        let Origin { x, y } = state.geometry.into();
+        let Size { width, height } = state.geometry.into();
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;
-        table.set("width", w)?;
-        table.set("height", h)?;
+        table.set("width", width)?;
+        table.set("height", height)?;
         Ok(table)
     }
 
     fn get_workarea(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
-        let Point { x, y } = state.workarea.origin;
-        let Size { w, h } = state.workarea.size;
+        let Origin { x, y } = state.workarea.into();
+        let Size { width, height } = state.workarea.into();
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;
-        table.set("width", w)?;
-        table.set("height", h)?;
+        table.set("width", width)?;
+        table.set("height", height)?;
         Ok(table)
     }
 }
@@ -126,12 +128,14 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .save_class("screen")?
         .build()?;
     let mut screens: Vec<Screen> = vec![];
-    for output in WlcOutput::list() {
-        let mut screen = Screen::cast(Screen::new(lua)?)?;
-        screen.init_screens(output, vec![output.into()])?;
-        // TODO Move to Screen impl like the others
-        screens.push(screen);
-    }
+    // TODO FIXME
+    // Get the list of screens and init properly.
+    //for output in WlcOutput::list() {
+    //    let mut screen = Screen::cast(Screen::new(lua)?)?;
+    //    screen.init_screens(output, vec![output.into()])?;
+    //    // TODO Move to Screen impl like the others
+    //    screens.push(screen);
+    //}
     lua.set_named_registry_value(SCREENS_HANDLE, screens.to_lua(lua)?)?;
     Ok(res)
 }

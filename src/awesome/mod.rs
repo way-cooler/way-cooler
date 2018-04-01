@@ -1,9 +1,8 @@
 //! Awesome compatibility modules
+
+use std::{env, mem, path::PathBuf};
 use xcb::{xkb, Connection};
-
 use rlua::{self, Lua, Table, LightUserData};
-
-use std::mem;
 
 pub mod keygrabber;
 pub mod mousegrabber;
@@ -29,9 +28,6 @@ pub use self::mousegrabber::mousegrabber_handle;
 
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
-
-use std::env;
-use std::path::PathBuf;
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     setup_awesome_path(lua)?;

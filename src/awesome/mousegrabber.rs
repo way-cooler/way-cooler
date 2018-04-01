@@ -2,7 +2,7 @@
 
 use ::lua::run_with_lua;
 use rlua::{self, Lua, Function, Value};
-use rustwlc::ButtonState;
+use wlroots::wlr_button_state;
 
 pub const MOUSEGRABBER_TABLE: &str = "mousegrabber";
 const MOUSEGRABBER_CALLBACK: &str = "__callback";
@@ -19,7 +19,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     globals.set(MOUSEGRABBER_TABLE, mousegrabber_table)
 }
 
-pub fn mousegrabber_handle(x: i32, y: i32, button: Option<(u32, ButtonState)>)
+pub fn mousegrabber_handle(x: i32, y: i32, button: Option<(u32, wlr_button_state)>)
                          -> rlua::Result<()> {
     run_with_lua(move |lua| {
         let button_events = button.map(|(button, button_state)|

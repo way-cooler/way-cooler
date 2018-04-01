@@ -4,6 +4,8 @@
 #![allow(unused_macros)]
 #![allow(unused_imports)]
 
+#![allow(non_upper_case_globals)]
+
 extern crate wlroots;
 #[macro_use]
 extern crate lazy_static;
@@ -29,20 +31,20 @@ extern crate wayland_sys;
 extern crate wayland_server;
 extern crate xcb;
 
-#[macro_use]
-mod macros;
+#[macro_use] mod macros;
+mod awesome;
 mod convert;
+mod lua;
+//mod wayland;
+
 //mod callbacks;
 //mod keys;
-//mod lua;
 //mod registry;
 //mod commands;
 //mod ipc;
 //mod layout;
 //mod render;
-//mod wayland;
 //mod modes;
-//mod awesome;
 
 use std::{env, process::exit, fs::File, io::{BufRead, BufReader}, path::Path};
 

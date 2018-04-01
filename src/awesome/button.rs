@@ -5,13 +5,13 @@ use super::object::{self, Object, Objectable};
 use super::signal;
 use super::property::Property;
 use super::class::{self, Class};
-use rustwlc::types::KeyMod;
+use wlroots::events::key_events::Key;
 use xcb::ffi::xproto::xcb_button_t;
 
 #[derive(Clone, Debug)]
 pub struct ButtonState {
     button: xcb_button_t,
-    modifiers: KeyMod
+    modifiers: Vec<Key>
 }
 
 #[derive(Clone, Debug)]
@@ -27,7 +27,7 @@ impl Default for ButtonState {
     fn default() -> Self {
         ButtonState {
             button: xcb_button_t::default(),
-            modifiers: KeyMod::empty()
+            modifiers: Vec::new()
         }
     }
 }
@@ -57,7 +57,7 @@ impl <'lua> Button<'lua> {
         Ok(())
     }
 
-    pub fn modifiers(&self) -> rlua::Result<KeyMod> {
+    pub fn modifiers(&self) -> rlua::Result<Vec<Key>> {
         let button = self.state()?;
         Ok(button.modifiers)
     }
@@ -131,7 +131,7 @@ fn set_modifiers<'lua>(lua: &'lua Lua, (obj, modifiers): (AnyUserData<'lua>, Tab
 fn get_modifiers<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>)
                     -> rlua::Result<Value<'lua>> {
     use ::lua::mods_to_lua;
-    mods_to_lua(lua, Button::cast(obj.into())?.modifiers()?).map(Value::Table)
+    mods_to_lua(lua, &Button::cast(obj.into())?.modifiers()?).map(Value::Table)
 }
 
 #[cfg(test)]

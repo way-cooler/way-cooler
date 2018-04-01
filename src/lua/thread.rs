@@ -13,7 +13,7 @@ use std::io::Read;
 use glib::MainLoop;
 use glib::source::{idle_add, Continue};
 
-use convert::json::lua_to_json;
+use convert::lua_to_json;
 
 use rustc_serialize::json::Json;
 use uuid::Uuid;
@@ -22,12 +22,7 @@ use rlua;
 use super::types::*;
 use super::rust_interop;
 use super::init_path;
-use super::super::keys;
 use awesome::signal;
-
-use registry::{self};
-
-use ::layout::{lock_tree, ContainerType};
 
 thread_local! {
     // NOTE The debug library does some powerful reflection that can do crazy things,
@@ -39,13 +34,8 @@ thread_local! {
 lazy_static! {
     /// Sends requests to the Lua thread
     static ref CHANNEL: ChannelToLua = ChannelToLua::default();
-
-    /// Requests to update the registry state from Lua
-    static ref REGISTRY_QUEUE: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
 
-pub const ERR_LOCK_QUEUE: &'static str =
-    "Lua thread: unable to lock REGISTRY_QUEUE";
 
 const INIT_LUA_FUNC: &'static str = "way_cooler.on_init()";
 const LUA_TERMINATE_CODE: &'static str = "way_cooler.on_terminate()";
@@ -100,12 +90,6 @@ impl Into<rlua::Error> for LuaSendError {
                 format!("Could not send query to Lua thread: {:?}", query)
         })
     }
-}
-
-/// Appends this combination of category and key to the registry queue.
-pub fn update_registry_value(category: String) {
-    let mut queue = REGISTRY_QUEUE.write().expect(ERR_LOCK_QUEUE);
-    queue.push(category);
 }
 
 // Reexported in lua/mod.rs
@@ -177,22 +161,6 @@ pub fn init() {
     let _lua_handle = thread::Builder::new()
         .name("Lua thread".to_string())
         .spawn(|| main_loop());
-    // Immediately update all the values that the init file set
-    send(LuaQuery::UpdateRegistryFromCache)
-        .expect("Could not update registry from cache");
-
-    // Re-tile the layout tree, to make any changes appear immediantly.
-    if let Ok(mut tree) = lock_tree() {
-        tree.layout_active_of(ContainerType::Root)
-            .unwrap_or_else(|_| {
-                warn!("Lua thread could not re-tile the layout tree");
-            });
-        // Yeah this is silly, it's so the active border can be updated properly.
-        if let Some(active_id) = tree.active_id() {
-            tree.focus(active_id)
-                .expect("Could not focus on the focused id");
-        }
-    }
 }
 
 pub fn on_compositor_ready() {
@@ -211,72 +179,67 @@ fn lua_init() {
 }
 
 fn load_config(mut lua: &mut rlua::Lua) {
-        info!("Loading way-cooler libraries...");
+    info!("Loading way-cooler libraries...");
 
-        let (use_config, maybe_init_file) = init_path::get_config();
-        if use_config {
-            match maybe_init_file {
-                Ok((init_dir, mut init_file)) => {
-                    if init_dir.components().next().is_some() {
-                        // Add the config directory to the package path.
-                        let globals = lua.globals();
-                        let package: rlua::Table = globals.get("package")
-                            .expect("package not defined in Lua");
-                        let paths: String = package.get("path")
-                            .expect("package.path not defined in Lua");
-                        package.set("path", paths + ";" + init_dir.join("?.lua").to_str()
-                                    .expect("init_dir not a valid UTF-8 string"))
-                            .expect("Failed to set package.path");
-                    }
-                    let mut init_contents = String::new();
-                    init_file.read_to_string(&mut init_contents)
-                        .expect("Could not read contents");
-                    lua.exec(init_contents.as_str(), Some("init.lua".into()))
-                        .map(|_:()| info!("Read init.lua successfully"))
-                        .or_else(|err| {
-                            fn recursive_callback_print(error: ::std::sync::Arc<rlua::Error>) {
-                                match *error {
-                                    rlua::Error::CallbackError {traceback: ref err, ref cause } => {
-                                        error!("{}", err);
-                                        recursive_callback_print(cause.clone())
-                                    },
-                                    ref err => error!("{:?}", err)
-                                }
-                            }
-                            match err {
-                                rlua::Error::RuntimeError(ref err) => {
-                                    error!("{}", err);
-                                }
-                                rlua::Error::CallbackError{traceback: ref err, ref cause } => {
-                                    error!("traceback: {}", err);
-                                    recursive_callback_print(cause.clone());
-                                },
-                                err => {
-                                    error!("init file error: {:?}", err);
-                                }
-                            }
-                            // Keeping this an error, so that it is visible
-                            // in release builds.
-                            info!("Defaulting to pre-compiled init.lua");
-                            unsafe { *lua = rlua::Lua::new_with_debug(); }
-                            rust_interop::register_libraries(&mut lua)?;
-                            lua.exec(init_path::DEFAULT_CONFIG,
-                                    Some("init.lua <DEFAULT>".into()))
-                            })
-                        .expect("Unable to load pre-compiled init file");
-                }
-                Err(_) => {
-                    warn!("Defaulting to pre-compiled init.lua");
-                    let _: () = lua.exec(init_path::DEFAULT_CONFIG,
-                                        Some("init.lua <DEFAULT>".into()))
-                        .expect("Unable to load pre-compiled init file");
-                }
+    let maybe_init_file = init_path::get_config();
+    match maybe_init_file {
+        Ok((init_dir, mut init_file)) => {
+            if init_dir.components().next().is_some() {
+                // Add the config directory to the package path.
+                let globals = lua.globals();
+                let package: rlua::Table = globals.get("package")
+                    .expect("package not defined in Lua");
+                let paths: String = package.get("path")
+                    .expect("package.path not defined in Lua");
+                package.set("path", paths + ";" + init_dir.join("?.lua").to_str()
+                            .expect("init_dir not a valid UTF-8 string"))
+                    .expect("Failed to set package.path");
             }
+            let mut init_contents = String::new();
+            init_file.read_to_string(&mut init_contents)
+                .expect("Could not read contents");
+            lua.exec(init_contents.as_str(), Some("init.lua".into()))
+                .map(|_:()| info!("Read init.lua successfully"))
+                .or_else(|err| {
+                    fn recursive_callback_print(error: ::std::sync::Arc<rlua::Error>) {
+                        match *error {
+                            rlua::Error::CallbackError {traceback: ref err, ref cause } => {
+                                error!("{}", err);
+                                recursive_callback_print(cause.clone())
+                            },
+                            ref err => error!("{:?}", err)
+                        }
+                    }
+                    match err {
+                        rlua::Error::RuntimeError(ref err) => {
+                            error!("{}", err);
+                        }
+                        rlua::Error::CallbackError{traceback: ref err, ref cause } => {
+                            error!("traceback: {}", err);
+                            recursive_callback_print(cause.clone());
+                        },
+                        err => {
+                            error!("init file error: {:?}", err);
+                        }
+                    }
+                    // Keeping this an error, so that it is visible
+                    // in release builds.
+                    info!("Defaulting to pre-compiled init.lua");
+                    unsafe { *lua = rlua::Lua::new_with_debug(); }
+                    rust_interop::register_libraries(&mut lua)?;
+                    lua.exec(init_path::DEFAULT_CONFIG,
+                             Some("init.lua <DEFAULT>".into()))
+                })
+                .expect("Unable to load pre-compiled init file");
         }
-        else {
-            info!("Skipping config search");
+        Err(_) => {
+            warn!("Defaulting to pre-compiled init.lua");
+            let _: () = lua.exec(init_path::DEFAULT_CONFIG,
+                                 Some("init.lua <DEFAULT>".into()))
+                .expect("Unable to load pre-compiled init file");
         }
-        emit_refresh(lua);
+    }
+    emit_refresh(lua);
 }
 
 struct DropReceiver;
@@ -333,10 +296,7 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
             unsafe { *lua = rlua::Lua::new_with_debug(); }
             rust_interop::register_libraries(lua)
                 .expect("Could not register libraries");
-            send(LuaQuery::UpdateRegistryFromCache)
-                .expect("Could not update registry from cache");
             load_config(lua);
-            keys::init();
             return true;
         },
         LuaQuery::Execute(code) => {
@@ -391,116 +351,13 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
                 Err(e) => thread_send(request.reply, LuaResponse::Error(e))
             };
         },
-        LuaQuery::HandleKey(press) => {
-            trace!("Lua: handling keypress {}", &press);
-            let press_ix = press.get_lua_index_string();
-            // Access the index
-            let code = format!("__key_map['{}']()", press_ix);
-            match lua.exec::<()>(&code, Some(&format!("{}", press))) {
-                Err(error) => {
-                    if let rlua::Error::RuntimeError(ref err) = error {
-                        warn!("Error handling {}:\n {}", press, err);
-                    } else {
-                        warn!("Error handling {}: {:?}", press, error);
-                    }
-                    thread_send(request.reply, LuaResponse::Error(error));
-                }
-                Ok(_) => {
-                    trace!("Handled keypress okay.");
-                    thread_send(request.reply, LuaResponse::Pong);
-                }
-            }
-        }
         LuaQuery::Ping => {
             thread_send(request.reply, LuaResponse::Pong);
-        },
-        LuaQuery::UpdateRegistryFromCache => {
-            let lock = registry::clients_read();
-            // Lua has access to everything
-            let client = lock.client(Uuid::nil()).unwrap();
-            let mut handle = registry::WriteHandle::new(&client);
-
-            let mut queue = REGISTRY_QUEUE.write().expect(ERR_LOCK_QUEUE);
-            for category in queue.drain(0..) {
-                let globals = lua.globals();
-                let registry_cache: rlua::Table = globals.get("__registry_cache")
-                    .expect("__registry_cache wasn't defined");
-                match lua.create_string(category.as_str()) {
-                    Ok(category_str) => {
-                        if let Ok(mut category_table) = registry_cache.get::<rlua::String, rlua::Table>(category_str) {
-                            let cat_table = match handle.write(category.clone()) {
-                                Ok(cat) => cat,
-                                Err(err) => {
-                                    warn!("Could not lock {}: {:?}", category, err);
-                                    break;
-                                }
-                            };
-                            update_values(&mut category_table, cat_table);
-                        }
-                    },
-                    Err(e) => {
-                        warn!("Failed to create a Lua string: {}", e);
-                    }
-                }
-                drop(registry_cache)
-            }
-            lua.exec::<()>("__registry_cache = {}", None)
-                .expect("Could not clear __registry_cache");
         },
     }
     return true
 }
 
-fn update_values<'lua>(table: &mut rlua::Table<'lua>,
-                    category: &mut registry::Category) {
-    use rlua::Value;
-    let mut keys = Vec::new();
-    for entry in table.clone().pairs::<rlua::String, Value>() {
-        if let Ok((key, value)) = entry {
-            match value {
-                rlua::Value::Table(_) => {
-                    keys.push(key.clone());
-                    category.insert(key.to_str().unwrap().into(),
-                                    Json::Object(BTreeMap::new()));
-                },
-                value => {
-                    match lua_to_json(value) {
-                        Ok(val) => {
-                            trace!("Updating {}:{:?} = {:#?}", category.name(), key, &val);
-                            category.insert(key.to_str().unwrap().into(), val);
-                        },
-                        Err(value) => {
-                            warn!("Could not translate {:?} to JSON", value);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    for key in keys {
-        let inner_mapping = category.get_mut(key.to_str().unwrap())
-            .expect("Could not get the value we just made")
-            .as_object_mut()
-            .expect("The inner value was not an object!");
-        if let Ok(inner_table) = table.get::<rlua::String, rlua::Table>(key) {
-            for entry in inner_table.pairs::<rlua::String, Value>() {
-                if let Ok((key, value)) = entry {
-                    match value {
-                        rlua::Value::Table(_) => {
-                            warn!("Dropping inner table {:?}", key);
-                        },
-                        value => {
-                            if let Ok(val) = lua_to_json(value) {
-                                inner_mapping.insert(key.to_str().unwrap().into(),
-                                                     val);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
     match sender.send(response) {

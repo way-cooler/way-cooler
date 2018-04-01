@@ -5,10 +5,7 @@ use std::fmt::Result as FmtResult;
 
 use rlua;
 
-use keys::KeyPress;
-
 /// Messages sent to the lua thread
-#[allow(dead_code)]
 pub enum LuaQuery {
     /// Pings the lua thread
     Ping,
@@ -16,7 +13,6 @@ pub enum LuaQuery {
     Terminate,
     // Restart the lua thread
     Restart,
-
     /// Execute a string
     Execute(String),
     /// Execute a file
@@ -25,40 +21,9 @@ pub enum LuaQuery {
     ExecRust(fn(&rlua::Lua) -> rlua::Value<'static>),
     /// Execute some Rust using the Lua context.
     ExecWithLua(Box<FnMut(&rlua::Lua) -> rlua::Result<()>>),
-
-    /// Handle the key press for the given key.
-    HandleKey(KeyPress),
-
-    /// Update the registry value from Lua's registry cache.
-    UpdateRegistryFromCache,
-}
-
-impl Debug for LuaQuery {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match *self {
-            LuaQuery::Ping => write!(f, "LuaQuery::Ping"),
-            LuaQuery::Terminate => write!(f, "LuaQuery::Terminate"),
-            LuaQuery::Restart => write!(f, "LuaQuery::Restart"),
-            LuaQuery::Execute(ref val) =>
-                write!(f, "LuaQuery::Execute({:?})", val),
-            LuaQuery::ExecFile(ref val) =>
-                write!(f, "LuaQuery::ExecFile({:?})", val),
-            // This is why there's no #[derive(Debug)],
-            // and why we have lua/types.rs
-            LuaQuery::ExecRust(_) =>
-                write!(f, "LuaQuery::ExecRust()"),
-            LuaQuery::ExecWithLua(_) =>
-                write!(f, "LuaQuery::ExecWithLua()"),
-            LuaQuery::HandleKey(ref press) =>
-                write!(f, "LuaQuery::HandleKey({:?})", press),
-            LuaQuery::UpdateRegistryFromCache =>
-                write!(f, "LuaQuery::UpdateRegistryFromCache")
-        }
-    }
 }
 
 /// Messages received from lua thread
-#[allow(dead_code)]
 pub enum LuaResponse {
     /// If the identifier had length 0
     InvalidName,
@@ -72,7 +37,6 @@ pub enum LuaResponse {
     Pong,
 }
 
-#[allow(dead_code)]
 impl LuaResponse {
     /// Whether this response is an InvalidName or Error
     pub fn is_err(&self) -> bool {
@@ -103,6 +67,24 @@ impl Debug for LuaResponse {
                 write!(f, "LuaResponse::Function"),
             LuaResponse::Pong =>
                 write!(f, "LuaResponse::Pong")
+        }
+    }
+}
+
+impl Debug for LuaQuery {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match *self {
+            LuaQuery::Ping => write!(f, "LuaQuery::Ping"),
+            LuaQuery::Terminate => write!(f, "LuaQuery::Terminate"),
+            LuaQuery::Restart => write!(f, "LuaQuery::Restart"),
+            LuaQuery::Execute(ref val) =>
+                write!(f, "LuaQuery::Execute({:?})", val),
+            LuaQuery::ExecFile(ref val) =>
+                write!(f, "LuaQuery::ExecFile({:?})", val),
+            LuaQuery::ExecRust(_) =>
+                write!(f, "LuaQuery::ExecRust()"),
+            LuaQuery::ExecWithLua(_) =>
+                write!(f, "LuaQuery::ExecWithLua()"),
         }
     }
 }

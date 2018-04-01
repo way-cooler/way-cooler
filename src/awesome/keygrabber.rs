@@ -1,10 +1,11 @@
 //! AwesomeWM Keygrabber interface
 
+use wlroots::{wlr_keyboard_modifiers, wlr_key_state,
+              events::key_events::Key,
+              xkbcommon::xkb::keysym_get_name};
+
 use ::lua::run_with_lua;
 use rlua::{self, Lua, Table, Function, Value};
-use rustwlc::*;
-#[allow(deprecated)]
-use rustwlc::xkb::Keysym;
 use super::signal;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
@@ -27,18 +28,16 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 #[allow(deprecated)]
 /// Given the current input, handle calling the Lua defined callback if it is
 /// defined with the input.
-pub fn keygrabber_handle(mods: KeyboardModifiers, sym: Keysym, state: KeyState)
+pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state)
                          -> rlua::Result<()> {
     run_with_lua(move |lua| {
-        let lua_state = if state == KeyState::Pressed {
+        let lua_state = if state == wlr_key_state::WLR_KEY_PRESSED {
             "press"
         } else {
             "release"
         }.into();
-        let lua_sym = sym.get_name()
-            .ok_or_else(|| rlua::Error::RuntimeError(
-                     format!("Symbol did not have a name: {:#?}", sym)))?;
-        let lua_mods = ::lua::mods_to_lua(lua, mods.mods)?;
+        let lua_sym = keysym_get_name(sym);
+        let lua_mods = ::lua::mods_to_lua(lua, &mods)?;
         let res = call_keygrabber(lua, (lua_mods, lua_sym, lua_state));
         match res {
             Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => {Ok(())},

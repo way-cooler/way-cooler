@@ -1,5 +1,4 @@
 //! Contains methods for initializing the lua config
-#![allow(dead_code)]
 
 use std::fs::{OpenOptions, File};
 use std::env;
@@ -7,28 +6,17 @@ use std::path::{Path,PathBuf};
 
 use std::io::Result as IOResult;
 
-pub const INIT_FILE: &'static str = "init.lua";
+pub const INIT_FILE: &'static str = "rc.lua";
 pub const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/";
 
-pub const DEFAULT_CONFIG: &'static str = include_str!("../../config/init.lua");
+pub const DEFAULT_CONFIG: &'static str = include_str!("../../config/rc.lua");
 
 #[inline]
 fn read_file<P: AsRef<Path>>(path: P) -> IOResult<File> {
     OpenOptions::new().read(true).open(path)
 }
 
-#[cfg(test)]
-pub fn get_config() -> (bool, Result<(PathBuf, File), &'static str>) {
-    (false, Err("Loading config should be ignored during tests for now"))
-}
-
-#[cfg(not(test))]
-pub fn get_config() -> (bool, Result<(PathBuf, File), &'static str>) {
-    (true, get_config_file())
-}
-
-/// Parses environment variables
-fn get_config_file() -> Result<(PathBuf, File), &'static str> {
+pub fn get_config() -> Result<(PathBuf, File), &'static str> {
     let home_var = env::var("HOME").expect("HOME environment variable not defined!");
     let home = home_var.as_str();
 
