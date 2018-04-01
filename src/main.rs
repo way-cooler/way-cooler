@@ -37,14 +37,6 @@ mod convert;
 mod lua;
 //mod wayland;
 
-//mod callbacks;
-//mod keys;
-//mod registry;
-//mod commands;
-//mod ipc;
-//mod layout;
-//mod render;
-//mod modes;
 
 use std::{env, process::exit, fs::File, io::{BufRead, BufReader}, path::Path};
 
