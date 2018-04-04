@@ -94,11 +94,14 @@ impl <'lua> Drawin<'lua> {
             let mut state = self.get_object_mut()?;
             let old_geometry = state.geometry;
             state.geometry = geometry;
-            if state.geometry.0.width <= 0 {
-                state.geometry.0.width = old_geometry.0.width;
-            }
-            if state.geometry.0.height <= 0 {
-                state.geometry.0.height = old_geometry.0.height
+            {
+                let Size { ref mut width, ref mut height } = state.geometry.size;
+                if *width <= 0 {
+                    *width = old_geometry.size.width;
+                }
+                if *height <= 0 {
+                    *height = old_geometry.size.height
+                }
             }
             state.geometry_dirty = true;
             // TODO emit signals
@@ -193,8 +196,8 @@ fn drawin_geometry<'lua>(lua: &'lua Lua,
         }
     }
     let new_geo = drawin.get_geometry()?;
-    let Size { width, height } = new_geo.into();
-    let Origin { x, y } = new_geo.into();
+    let Size { width, height } = new_geo.size;
+    let Origin { x, y } = new_geo.origin;
     let res = lua.create_table()?;
     res.set("x", x)?;
     res.set("y", y)?;
@@ -205,35 +208,35 @@ fn drawin_geometry<'lua>(lua: &'lua Lua,
 
 fn get_x<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
     let drawin = Drawin::cast(drawin.into())?;
-    let Origin { x, .. } = drawin.get_geometry()?.into();
+    let Origin { x, .. } = drawin.get_geometry()?.origin;
     Ok(x as LuaInteger)
 }
 
 fn set_x<'lua>(_: &'lua Lua, (drawin, x): (AnyUserData<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
-    geo.0.x = x as i32;
+    geo.origin.x = x as i32;
     drawin.resize(geo)?;
     Ok(())
 }
 
 fn get_y<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
     let drawin = Drawin::cast(drawin.into())?;
-    let Origin { y, .. } = drawin.get_geometry()?.into();
+    let Origin { y, .. } = drawin.get_geometry()?.origin;
     Ok(y as LuaInteger)
 }
 
 fn set_y<'lua>(_: &'lua Lua, (drawin, y): (AnyUserData<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
-    geo.0.y = y as i32;
+    geo.origin.y = y as i32;
     drawin.resize(geo)?;
     Ok(())
 }
 
 fn get_width<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
     let drawin = Drawin::cast(drawin.into())?;
-    let Size { width, .. } = drawin.get_geometry()?.into();
+    let Size { width, .. } = drawin.get_geometry()?.size;
     Ok(width as LuaInteger)
 }
 
@@ -242,7 +245,7 @@ fn set_width<'lua>(_: &'lua Lua, (drawin, width): (AnyUserData<'lua>, LuaInteger
     let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
     if width > 0 {
-        geo.0.width = width as i32;
+        geo.size.width = width as i32;
         drawin.resize(geo)?;
     }
     Ok(())
@@ -250,7 +253,7 @@ fn set_width<'lua>(_: &'lua Lua, (drawin, width): (AnyUserData<'lua>, LuaInteger
 
 fn get_height<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
     let drawin = Drawin::cast(drawin.into())?;
-    let Size { height, .. } = drawin.get_geometry()?.into();
+    let Size { height, .. } = drawin.get_geometry()?.size;
     Ok(height as LuaInteger)
 }
 
@@ -258,7 +261,7 @@ fn set_height<'lua>(_: &'lua Lua, (drawin, height): (AnyUserData<'lua>, LuaInteg
     let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
     if height > 0 {
-        geo.0.height = height as i32;
+        geo.size.height = height as i32;
         drawin.resize(geo)?;
     }
     Ok(())

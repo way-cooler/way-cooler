@@ -99,8 +99,8 @@ impl <'lua> Screen<'lua> {
 
     fn get_geometry(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
-        let Origin { x, y } = state.geometry.into();
-        let Size { width, height } = state.geometry.into();
+        let Origin { x, y } = state.geometry.origin;
+        let Size { width, height } = state.geometry.size;
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;
@@ -111,8 +111,8 @@ impl <'lua> Screen<'lua> {
 
     fn get_workarea(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
-        let Origin { x, y } = state.workarea.into();
-        let Size { width, height } = state.workarea.into();
+        let Origin { x, y } = state.workarea.origin;
+        let Size { width, height } = state.workarea.size;
         let table = lua.create_table()?;
         table.set("x", x)?;
         table.set("y", y)?;

@@ -71,7 +71,7 @@ impl <'lua> Drawable<'lua> {
         if size_changed {
             drawable.surface = None;
             drawable.refreshed = false;
-            let size: Size = geometry.into();
+            let size: Size = geometry.size;
             if size.width > 0 && size.height > 0 {
                 drawable.surface = Some(ImageSurface::create(Format::ARgb32,
                                                         size.width,
@@ -129,8 +129,8 @@ fn get_surface<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value
 fn geometry<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
     let drawable = Drawable::cast(obj.into())?;
     let geometry = drawable.get_geometry()?;
-    let Origin { x, y } = geometry.into();
-    let Size { width, height } = geometry.into();
+    let Origin { x, y } = geometry.origin;
+    let Size { width, height } = geometry.size;
     let table = lua.create_table()?;
     table.set("x", x)?;
     table.set("y", y)?;
