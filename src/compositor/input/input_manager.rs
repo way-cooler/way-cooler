@@ -19,7 +19,7 @@ impl InputManagerHandler for InputManager {
         server.keyboards.push(keyboard.weak_reference());
         if server.keyboards.len() == 1 {
             // Now that we have at least one keyboard, update the seat capabilities.
-            run_handles!([(seat: {&mut server.seat})] => {
+            run_handles!([(seat: {&mut server.seat.seat})] => {
                 let mut capabilities = seat.capabilities();
                 capabilities.insert(Capability::Keyboard);
                 seat.set_capabilities(capabilities);
@@ -37,7 +37,7 @@ impl InputManagerHandler for InputManager {
         server.pointers.push(pointer.weak_reference());
         if server.pointers.len() == 1 {
             // Now that we have at least one keyboard, update the seat capabilities.
-            run_handles!([(seat: {&mut server.seat})] => {
+            run_handles!([(seat: {&mut server.seat.seat})] => {
                 let mut capabilities = seat.capabilities();
                 capabilities.insert(Capability::Pointer);
                 seat.set_capabilities(capabilities);
@@ -56,7 +56,7 @@ impl InputManagerHandler for InputManager {
         if let Some(index) = server.keyboards.iter().position(|k| *k == weak_reference) {
             server.keyboards.remove(index);
             if server.keyboards.len() == 0 {
-                run_handles!([(seat: {&mut server.seat})] => {
+                run_handles!([(seat: {&mut server.seat.seat})] => {
                     let mut capabilities = seat.capabilities();
                     capabilities.remove(Capability::Keyboard);
                     seat.set_capabilities(capabilities);
@@ -71,7 +71,7 @@ impl InputManagerHandler for InputManager {
         if let Some(index) = server.pointers.iter().position(|p| *p == weak_reference) {
             server.pointers.remove(index);
             if server.pointers.len() == 0 {
-                run_handles!([(seat: {&mut server.seat})] => {
+                run_handles!([(seat: {&mut server.seat.seat})] => {
                     let mut capabilities = seat.capabilities();
                     capabilities.remove(Capability::Pointer);
                     seat.set_capabilities(capabilities);

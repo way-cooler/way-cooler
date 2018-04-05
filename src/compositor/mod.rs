@@ -3,24 +3,27 @@ mod input;
 mod seat;
 mod cursor;
 mod shells;
+mod view;
 
 pub use self::cursor::*;
 pub use self::input::*;
 pub use self::output::*;
 pub use self::seat::*;
 pub use self::shells::*;
-use wlroots::{Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle, OutputLayout,
-              OutputLayoutHandle, PointerHandle, Seat, SeatHandle, XCursorTheme};
+pub use self::view::*;
+
+use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
+              OutputLayout, OutputLayoutHandle, PointerHandle, SeatHandle, XCursorTheme};
 
 #[derive(Debug)]
 struct Server {
     xcursor_theme: XCursorTheme,
     layout: OutputLayoutHandle,
-    seat: SeatHandle,
+    seat: Seat,
     cursor: CursorHandle,
     keyboards: Vec<KeyboardHandle>,
     pointers: Vec<PointerHandle>,
-    shells: Vec<Shell>
+    views: Vec<View>
 }
 
 impl Default for Server {
@@ -29,11 +32,11 @@ impl Default for Server {
             XCursorTheme::load_theme(None, 16).expect("Could not load default theme");
         Server { xcursor_theme,
                  layout: OutputLayoutHandle::default(),
-                 seat: SeatHandle::default(),
+                 seat: Seat::default(),
                  cursor: CursorHandle::default(),
                  keyboards: Vec::default(),
                  pointers: Vec::default(),
-                 shells: Vec::default() }
+                 views: Vec::default() }
     }
 }
 
@@ -58,12 +61,12 @@ pub fn init() {
                                                  .build_auto(Server::new(layout, cursor));
     // NOTE We need to create this afterwards because it needs the compositor
     // running to announce the seat.
-    let seat = Seat::create(&mut compositor,
-                            "seat0".into(),
-                            Box::new(SeatManager::new()));
+    let seat = wlroots::Seat::create(&mut compositor,
+                                     "seat0".into(),
+                                     Box::new(SeatManager::new()));
     {
         let server: &mut Server = (&mut compositor).into();
-        server.seat = seat;
+        server.seat = Seat::new(seat);
     }
     compositor.run()
 }

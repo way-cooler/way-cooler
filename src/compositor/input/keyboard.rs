@@ -22,9 +22,9 @@ impl KeyboardHandler for Keyboard {
             }
         }
         let server: &mut Server = compositor.into();
-        run_handles!([(seat: {&mut server.seat})] => {
+        run_handles!([(seat: {&mut server.seat.seat})] => {
             seat.keyboard_notify_key(event.time_msec(), event.keycode(), event.key_state() as u32);
-            seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks())
+            seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
         }).expect("Seat was destroyed");
     }
 }

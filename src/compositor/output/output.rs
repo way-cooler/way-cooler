@@ -9,13 +9,13 @@ impl OutputHandler for Output {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut wlroots::Output) {
         let state: &mut Server = compositor.data.downcast_mut().unwrap();
         let Server { ref mut layout,
-                     ref mut shells,
+                     ref mut views,
                      .. } = *state;
         let renderer = compositor.renderer.as_mut().expect("gles2 disabled");
         let mut renderer = renderer.render(output, None);
         renderer.clear([0.25, 0.25, 0.25, 1.0]);
-        for shell in shells {
-            let mut surface = shell.surface();
+        for view in views {
+            let mut surface = view.shell.surface();
             run_handles!([(surface: {surface}),
                           (layout: {&mut *layout})] => {
                 let (width, height) = surface.current_state().size();

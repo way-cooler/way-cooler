@@ -1,4 +1,4 @@
-use compositor::{self, Server};
+use compositor::{self, Server, Shell, View};
 use wlroots::{Compositor, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellSurface,
               XdgV6ShellSurfaceHandle};
 
@@ -23,7 +23,8 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                    shell_surface: &mut XdgV6ShellSurface)
                    -> Option<Box<XdgV6ShellHandler>> {
         let server: &mut Server = compositor.into();
-        server.shells.push(shell_surface.weak_reference().into());
+        server.views
+              .push(View::new(Shell::XdgV6(shell_surface.weak_reference().into())));
         Some(Box::new(XdgV6::new()))
     }
 
@@ -32,11 +33,11 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                          shell_surface: &mut XdgV6ShellSurface) {
         let server: &mut Server = compositor.into();
         let destroyed_shell = shell_surface.weak_reference().into();
-        if let Some(pos) = server.shells
+        if let Some(pos) = server.views
                                  .iter()
-                                 .position(|shell| *shell == destroyed_shell)
+                                 .position(|view| view.shell == destroyed_shell)
         {
-            server.shells.remove(pos);
+            server.views.remove(pos);
         }
     }
 }

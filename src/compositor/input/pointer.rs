@@ -1,5 +1,6 @@
-use compositor::{self, Server, Shell};
-use wlroots::{self, Area, Compositor, Origin, PointerHandler, Size, pointer_events::*};
+use compositor::{self, Server, Shell, View};
+use wlroots::{self, Area, Compositor, HandleResult, Origin, PointerHandler, Size,
+              pointer_events::*};
 
 #[derive(Debug, Default)]
 pub struct Pointer;
@@ -22,18 +23,18 @@ impl PointerHandler for Pointer {
                  _: &mut wlroots::Pointer,
                  _: &ButtonEvent) {
         let server: &mut Server = compositor.into();
-        shell_at(server);
+        if let Some(view) = view_at_pointer(server) {
+            focus_under_pointer(server, view).expect("Could not focus view");
+        }
     }
 }
 
-fn shell_at(server: &mut Server) -> Option<Shell> {
+fn view_at_pointer(server: &mut Server) -> Option<View> {
     let Server { ref mut cursor,
-                 ref mut shells,
-                 ref mut seat,
-                 ref mut keyboards,
+                 ref mut views,
                  .. } = *server;
-    for shell in shells {
-        match *shell {
+    for view in views {
+        match view.shell.clone() {
             Shell::XdgV6(ref mut shell) => {
                 let (mut sx, mut sy) = (0.0, 0.0);
                 let seen = run_handles!([(shell: {&mut *shell}),
@@ -43,29 +44,41 @@ fn shell_at(server: &mut Server) -> Option<Shell> {
                     let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                     shell.surface_at(view_sx, view_sy, &mut sx, &mut sy).is_some()
                 }).ok()?.ok()?;
-                // TODO Use those surface level coordinates to send events and shit
                 if seen {
-                    for keyboard in { &mut *keyboards } {
-                        run_handles!([(seat: {&mut *seat}),
-                                      (shell: {&mut *shell}),
-                                      (surface: {shell.surface()}),
-                                      (keyboard: {keyboard})] => {
-                            use wlroots::XdgV6ShellState::*;
-                            match shell.state() {
-                                Some(&mut TopLevel(ref mut toplevel)) => {
-                                    // TODO Don't send this for each keyboard!
-                                    toplevel.set_activated(true);
-                                },
-                                _ => unimplemented!()
-                            }
-                            seat.keyboard_notify_enter(surface,
-                                                       &mut keyboard.keycodes(),
-                                                       &mut keyboard.get_modifier_masks())
-                        }).ok()?.ok()?.ok()?.ok()?;
-                    }
+                    return Some(view.clone())
                 }
             }
         }
     }
     None
+}
+
+fn focus_under_pointer(server: &mut Server, mut view: View) -> HandleResult<()> {
+    let Server { ref mut seat,
+                 ref mut keyboards,
+                 .. } = *server;
+    // TODO Use those surface level coordinates to send events and shit
+    for keyboard in { &mut *keyboards } {
+        match &mut view.shell {
+            &mut Shell::XdgV6(ref mut shell) => {
+                run_handles!([(seat: {&mut seat.seat}),
+                              (shell: {&mut *shell}),
+                              (surface: {shell.surface()}),
+                              (keyboard: {keyboard})] => {
+                    use wlroots::XdgV6ShellState::*;
+                    match shell.state() {
+                        Some(&mut TopLevel(ref mut toplevel)) => {
+                            // TODO Don't send this for each keyboard!
+                            toplevel.set_activated(true);
+                        },
+                        _ => unimplemented!()
+                    }
+                    seat.keyboard_notify_enter(surface,
+                                               &mut keyboard.keycodes(),
+                                               &mut keyboard.get_modifier_masks())
+                })????;
+            }
+        }
+    }
+    Ok(())
 }
