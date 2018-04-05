@@ -1,13 +1,12 @@
 //! AwesomeWM Mousegrabber interface
 
-use ::lua::run_with_lua;
-use rlua::{self, Lua, Function, Value};
+use lua::run_with_lua;
+use rlua::{self, Function, Lua, Value};
 use wlroots::wlr_button_state;
 
 pub const MOUSEGRABBER_TABLE: &str = "mousegrabber";
 const MOUSEGRABBER_CALLBACK: &str = "__callback";
 const MOUSEGRABBER_CURSOR: &str = "__cursor";
-
 
 /// Init the methods defined on this interface
 pub fn init(lua: &Lua) -> rlua::Result<()> {
@@ -19,19 +18,21 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     globals.set(MOUSEGRABBER_TABLE, mousegrabber_table)
 }
 
-pub fn mousegrabber_handle(x: i32, y: i32, button: Option<(u32, wlr_button_state)>)
-                         -> rlua::Result<()> {
+pub fn mousegrabber_handle(x: i32,
+                           y: i32,
+                           button: Option<(u32, wlr_button_state)>)
+                           -> rlua::Result<()> {
     run_with_lua(move |lua| {
-        let button_events = button.map(|(button, button_state)|
-                                       ::lua::mouse_events_to_lua(lua, button, button_state))
-            .unwrap_or_else(|| Ok(vec![false, false, false, false, false]))?;
-        call_mousegrabber(lua, (x, y, button_events))
-    })
+                     let button_events =
+                         button.map(|(button, button_state)| {
+                                        ::lua::mouse_events_to_lua(lua, button, button_state)
+                                    })
+                               .unwrap_or_else(|| Ok(vec![false, false, false, false, false]))?;
+                     call_mousegrabber(lua, (x, y, button_events))
+                 })
 }
 
-fn call_mousegrabber(lua: &Lua,
-                     (x, y, button_events):
-                     (i32, i32, Vec<bool>)) -> rlua::Result<()> {
+fn call_mousegrabber(lua: &Lua, (x, y, button_events): (i32, i32, Vec<bool>)) -> rlua::Result<()> {
     let lua_callback = match lua.named_registry_value::<Function>(MOUSEGRABBER_CALLBACK) {
         Ok(function) => function,
         _ => return Ok(())
@@ -41,17 +42,16 @@ fn call_mousegrabber(lua: &Lua,
     res_table.set("y", y)?;
     res_table.set("buttons", button_events)?;
     match lua_callback.call(res_table)? {
-        Value::Boolean(true) => {Ok(())},
+        Value::Boolean(true) => Ok(()),
         _ => stop(lua, ())
     }
 }
 
-
 fn run(lua: &Lua, (function, cursor): (Function, String)) -> rlua::Result<()> {
     match lua.named_registry_value::<Value>(MOUSEGRABBER_CALLBACK)? {
-        Value::Function(_) =>
-            Err(rlua::Error::RuntimeError("mousegrabber callback already set!"
-                                          .into())),
+        Value::Function(_) => {
+            Err(rlua::Error::RuntimeError("mousegrabber callback already set!".into()))
+        }
         _ => {
             lua.set_named_registry_value(MOUSEGRABBER_CALLBACK, function)?;
             lua.set_named_registry_value(MOUSEGRABBER_CURSOR, cursor)

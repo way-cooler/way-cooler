@@ -1,5 +1,5 @@
-use wlroots::{Compositor, OutputManagerHandler, OutputBuilder, OutputBuilderResult};
 use compositor::Output;
+use wlroots::{Compositor, OutputBuilder, OutputBuilderResult, OutputManagerHandler};
 
 pub struct OutputManager;
 

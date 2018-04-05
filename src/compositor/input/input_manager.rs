@@ -1,5 +1,6 @@
 use compositor::{self, Server};
-use wlroots::{Compositor, InputManagerHandler, KeyboardHandler, Keyboard, Capability, Pointer, PointerHandler};
+use wlroots::{Capability, Compositor, InputManagerHandler, Keyboard, KeyboardHandler, Pointer,
+              PointerHandler};
 
 pub struct InputManager;
 
@@ -9,9 +10,10 @@ impl InputManager {
     }
 }
 
-
 impl InputManagerHandler for InputManager {
-    fn keyboard_added(&mut self, compositor: &mut Compositor, keyboard: &mut Keyboard)
+    fn keyboard_added(&mut self,
+                      compositor: &mut Compositor,
+                      keyboard: &mut Keyboard)
                       -> Option<Box<KeyboardHandler>> {
         let server: &mut Server = compositor.into();
         server.keyboards.push(keyboard.weak_reference());
@@ -26,7 +28,9 @@ impl InputManagerHandler for InputManager {
         Some(Box::new(compositor::Keyboard))
     }
 
-    fn pointer_added(&mut self, compositor: &mut Compositor, pointer: &mut Pointer)
+    fn pointer_added(&mut self,
+                     compositor: &mut Compositor,
+                     pointer: &mut Pointer)
                      -> Option<Box<PointerHandler>> {
         let server: &mut Server = compositor.into();
         server.pointers.push(pointer.weak_reference());

@@ -1,11 +1,11 @@
 //! TODO Fill in
 
-use cairo_sys::cairo_pattern_t;
-use std::fmt::{self, Display, Formatter};
-use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods};
-use super::object::{self, Object, Objectable};
 use super::class::{Class, ClassBuilder};
+use super::object::{self, Object, Objectable};
+use cairo_sys::cairo_pattern_t;
+use rlua::{self, LightUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use std::default::Default;
+use std::fmt::{self, Display, Formatter};
 
 #[derive(Clone, Debug)]
 pub struct RootState {
@@ -17,9 +17,7 @@ pub struct Root<'lua>(Object<'lua>);
 
 impl Default for RootState {
     fn default() -> Self {
-        RootState {
-            dummy: 0
-        }
+        RootState { dummy: 0 }
     }
 }
 
@@ -29,7 +27,7 @@ impl Display for RootState {
     }
 }
 
-impl <'lua> ToLua<'lua> for Root<'lua> {
+impl<'lua> ToLua<'lua> for Root<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.0.to_lua(lua)
     }
@@ -43,12 +41,13 @@ impl UserData for RootState {
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
     // FIXME: In awesome there is no root class
-    method_setup(lua, Class::builder(lua, "FIXME", None)?)?
-        .save_class("root")?
-        .build()
+    method_setup(lua, Class::builder(lua, "FIXME", None)?)?.save_class("root")?
+                                                           .build()
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn method_setup<'lua>(lua: &'lua Lua,
+                      builder: ClassBuilder<'lua>)
+                      -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
@@ -63,7 +62,9 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
 
 impl_objectable!(Root, RootState);
 
-fn dummy_double<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<(i32, i32)> { Ok((0, 0)) }
+fn dummy_double<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<(i32, i32)> {
+    Ok((0, 0))
+}
 
 /// Gets the wallpaper as a cairo surface or set it as a cairo pattern
 fn wallpaper<'lua>(lua: &'lua Lua, pattern: Option<LightUserData>) -> rlua::Result<Value<'lua>> {
@@ -94,20 +95,23 @@ fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
 
 #[cfg(test)]
 mod test {
-    use rlua::Lua;
     use super::super::root;
     use super::super::tag;
+    use rlua::Lua;
 
     #[test]
     fn tags_none() {
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
-        lua.eval(r#"
+        lua.eval(
+            r#"
 local t = root.tags()
 assert(type(t) == "table")
 assert(type(next(t)) == "nil")
-"#, None).unwrap()
+"#,
+            None
+        ).unwrap()
     }
 
     #[test]
@@ -115,13 +119,16 @@ assert(type(next(t)) == "nil")
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
-        lua.eval(r#"
+        lua.eval(
+            r#"
 local t = tag{ activated = true }
 local t2 = root.tags()[1]
 assert(t == t2)
 t2.name = "Foo"
 assert(t.name == "Foo")
-"#, None).unwrap()
+"#,
+            None
+        ).unwrap()
     }
 
     #[test]
@@ -129,13 +136,16 @@ assert(t.name == "Foo")
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
-        lua.eval(r#"
+        lua.eval(
+            r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 local t = root.tags()
 assert(t[1] == first)
 assert(t[2] == second)
-"#, None).unwrap()
+"#,
+            None
+        ).unwrap()
     }
 
     #[test]
@@ -143,13 +153,16 @@ assert(t[2] == second)
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
-        lua.eval(r#"
+        lua.eval(
+            r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 first.activated = false
 local t = root.tags()
 assert(t[1] == second)
 assert(type(t[2]) == "nil")
-"#, None).unwrap()
+"#,
+            None
+        ).unwrap()
     }
 }

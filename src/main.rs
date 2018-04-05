@@ -3,43 +3,43 @@
 // TODO FIXME Remove
 #![allow(unused_imports)]
 #![allow(dead_code)]
-
 #![allow(non_upper_case_globals)]
 
-#[macro_use]
-extern crate wlroots;
-#[macro_use]
-extern crate lazy_static;
 extern crate bitflags;
-extern crate dbus_macros;
-extern crate getopts;
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-extern crate rlua;
-extern crate rustc_serialize;
-extern crate json_macro;
-extern crate nix;
-extern crate petgraph;
-extern crate uuid;
-extern crate dbus;
 extern crate cairo;
 extern crate cairo_sys;
+extern crate dbus;
+extern crate dbus_macros;
+extern crate env_logger;
 extern crate gdk_pixbuf;
+extern crate getopts;
 extern crate glib;
+extern crate json_macro;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate log;
+extern crate nix;
+extern crate petgraph;
+extern crate rlua;
+extern crate rustc_serialize;
+extern crate uuid;
+#[macro_use]
+extern crate wlroots;
 extern crate xcb;
 
-#[macro_use] mod macros;
+#[macro_use]
+mod macros;
 mod awesome;
 mod compositor;
 mod ipc;
 
 pub use awesome::lua;
 
-use std::{env, process::exit, fs::File, io::{BufRead, BufReader}, path::Path};
+use std::{env, fs::File, io::{BufRead, BufReader}, path::Path, process::exit};
 
 use log::LogLevel;
-use nix::sys::signal::{self, SigHandler, SigSet, SigAction, SaFlags};
+use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
@@ -70,8 +70,7 @@ fn main() {
                                     SaFlags::empty(),
                                     SigSet::empty());
     unsafe {
-        signal::sigaction(signal::SIGINT, &sig_action)
-            .expect("Could not set SIGINT catcher");
+        signal::sigaction(signal::SIGINT, &sig_action).expect("Could not set SIGINT catcher");
     }
 
     init_logs();
@@ -89,8 +88,8 @@ fn log_format(record: &log::LogRecord) -> String {
         LogLevel::Info => "",
         LogLevel::Trace => "\x1B[37m",
         LogLevel::Debug => "\x1B[44m",
-        LogLevel::Warn =>  "\x1B[33m",
-        LogLevel::Error => "\x1B[31m",
+        LogLevel::Warn => "\x1B[33m",
+        LogLevel::Error => "\x1B[31m"
     };
     let location = record.location();
     let file = location.file();
@@ -101,7 +100,12 @@ fn log_format(record: &log::LogRecord) -> String {
         module_path = &module_path[index..];
     }
     format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
-            color, record.level(), module_path, file, line, record.args())
+            color,
+            record.level(),
+            module_path,
+            file,
+            line,
+            record.args())
 }
 
 /// Ensures that the environment is set up correctly. E.g:
@@ -109,13 +113,12 @@ fn log_format(record: &log::LogRecord) -> String {
 fn ensure_good_env() {
     use std::env::VarError;
     match env::var("XDG_RUNTIME_DIR") {
-        Ok(_) => {/* Do nothing, logged in `log_environment` */},
+        Ok(_) => { /* Do nothing, logged in `log_environment` */ }
         Err(VarError::NotUnicode(string)) => {
-            error!("The value set for XDG_RUNTIME_DIR ({:?}) \
-                    is not valid unicode!",
+            error!("The value set for XDG_RUNTIME_DIR ({:?}) is not valid unicode!",
                    string);
             exit(1);
-        },
+        }
         Err(VarError::NotPresent) => {
             error!("Please set the XDG_RUNTIME_DIR environment variable.");
             error!("e.g export XDG_RUNTIME_DIR=/run/user/1000");
@@ -136,24 +139,25 @@ fn detect_proprietary() {
             for line in reader.lines() {
                 if let Ok(line) = line {
                     if line.contains("nvidia") {
-                        error!("Error: Proprietary nvidia graphics drivers are installed, \
-                               but they are not compatible with Wayland. \
-                               Consider using nouveau drivers for Wayland.");
+                        error!("Error: Proprietary nvidia graphics drivers are installed, but \
+                                they are not compatible with Wayland. Consider using nouveau \
+                                drivers for Wayland.");
                         exit(1);
                     }
                 }
             }
-        },
+        }
         Err(err) => {
             warn!("Could not read proprietary modules at \"{}\", because: {:#?}",
                   DRIVER_MOD_PATH, err);
-            warn!("If you are running proprietary Nvidia graphics drivers, \
-                   Way Cooler will not work for you");
+            warn!("If you are running proprietary Nvidia graphics drivers, Way Cooler will not \
+                   work for you");
         }
     }
 }
 
-/// Checks the loaded modules to ensure vc4 is loaded if we are running on a raspi.
+/// Checks the loaded modules to ensure vc4 is loaded if we are running on a
+/// raspi.
 fn detect_raspi() {
     let raspi = match File::open(Path::new(DEVICE_MOD_PATH)) {
         Ok(f) => {
@@ -163,14 +167,14 @@ fn detect_raspi() {
                 if let Ok(line) = line {
                     if line.contains("Raspberry Pi") {
                         raspi = true;
-                        break;
+                        break
                     }
                 }
             }
             raspi
-        },
+        }
         Err(_) => {
-            return;
+            return
         }
     };
     let vc4 = match File::open(Path::new(DRIVER_MOD_PATH)) {
@@ -181,15 +185,16 @@ fn detect_raspi() {
                 if let Ok(line) = line {
                     if line.contains("vc4") {
                         vc4 = true;
-                        break;
+                        break
                     }
                 }
             }
             vc4
-        },
+        }
         Err(err) => {
-            warn!("Could not read file \"{}\", because {:#?}", DRIVER_MOD_PATH, err);
-            return;
+            warn!("Could not read file \"{}\", because {:#?}",
+                  DRIVER_MOD_PATH, err);
+            return
         }
     };
     if !vc4 && raspi {
@@ -204,8 +209,7 @@ pub fn init_logs() {
     builder.format(log_format);
     builder.filter(None, log::LogLevelFilter::Trace);
     if env::var("WAY_COOLER_LOG").is_ok() {
-        builder.parse(&env::var("WAY_COOLER_LOG")
-                      .expect("WAY_COOLER_LOG not defined"));
+        builder.parse(&env::var("WAY_COOLER_LOG").expect("WAY_COOLER_LOG not defined"));
     }
     builder.init().expect("Unable to initialize logging!");
     info!("Logger initialized");

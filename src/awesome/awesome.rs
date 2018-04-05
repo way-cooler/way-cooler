@@ -1,21 +1,21 @@
 //! TODO Fill in
 
+use super::{signal, XCB_CONNECTION_HANDLE};
+use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 use cairo::{self, ImageSurface};
-use std::{ptr, mem};
-use xcb::{xkb, Connection};
-use xcb::ffi::{self, xproto};
-use nix::{self, libc};
-use std::ffi::{CStr, CString};
 use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
+use nix::{self, libc};
+use rlua::{self, AnyUserData, LightUserData, Lua, MetaMethod, Table, ToLua, UserData,
+           UserDataMethods, Value};
+use std::{mem, ptr};
+use std::default::Default;
+use std::ffi::{CStr, CString};
 use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
-use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, UserDataMethods, MetaMethod,
-           AnyUserData};
-use super::{XCB_CONNECTION_HANDLE, signal};
-use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
+use xcb::{xkb, Connection};
+use xcb::ffi::{self, xproto};
 
 // TODO FIXME
 // Often we are getting some raw pointers from the xcb replies
@@ -33,7 +33,8 @@ extern "C" {
                                            nKeyAliases: u8,
                                            nRadioGroups: u8,
                                            which: u32,
-                                           aux: *mut ffi::xkb::xcb_xkb_get_names_value_list_t) -> libc::c_int;
+                                           aux: *mut ffi::xkb::xcb_xkb_get_names_value_list_t)
+                                           -> libc::c_int;
 }
 
 #[derive(Clone, Debug)]
@@ -43,9 +44,7 @@ pub struct AwesomeState {
 
 impl Default for AwesomeState {
     fn default() -> Self {
-        AwesomeState {
-            preferred_icon_size: 0
-        }
+        AwesomeState { preferred_icon_size: 0 }
     }
 }
 
@@ -58,9 +57,8 @@ impl Display for AwesomeState {
 impl UserData for AwesomeState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         fn index<'lua>(_: &'lua Lua,
-                      (awesome, index): (AnyUserData<'lua>, Value<'lua>))
-                      -> rlua::Result<rlua::Value<'lua>>
-        {
+                       (awesome, index): (AnyUserData<'lua>, Value<'lua>))
+                       -> rlua::Result<rlua::Value<'lua>> {
             let table = awesome.get_user_value::<Table>()?;
             table.get::<_, Value>(index)
         };
@@ -80,15 +78,23 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 
 fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
     // TODO Fill in rest
-    awesome_table.set("connect_signal", lua.create_function(signal::global_connect_signal)?)?;
-    awesome_table.set("disconnect_signal", lua.create_function(signal::global_disconnect_signal)?)?;
-    awesome_table.set("emit_signal", lua.create_function(signal::global_emit_signal)?)?;
+    awesome_table.set("connect_signal",
+                       lua.create_function(signal::global_connect_signal)?)?;
+    awesome_table.set("disconnect_signal",
+                       lua.create_function(signal::global_disconnect_signal)?)?;
+    awesome_table.set("emit_signal",
+                       lua.create_function(signal::global_emit_signal)?)?;
     awesome_table.set("xrdb_get_value", lua.create_function(xrdb_get_value)?)?;
-    awesome_table.set("xkb_set_layout_group", lua.create_function(xkb_set_layout_group)?)?;
-    awesome_table.set("xkb_get_layout_group", lua.create_function(xkb_get_layout_group)?)?;
-    awesome_table.set("set_preferred_icon_size", lua.create_function(set_preferred_icon_size)?)?;
-    awesome_table.set("register_xproperty", lua.create_function(register_xproperty)?)?;
-    awesome_table.set("xkb_get_group_names", lua.create_function(xkb_get_group_names)?)?;
+    awesome_table.set("xkb_set_layout_group",
+                       lua.create_function(xkb_set_layout_group)?)?;
+    awesome_table.set("xkb_get_layout_group",
+                       lua.create_function(xkb_get_layout_group)?)?;
+    awesome_table.set("set_preferred_icon_size",
+                       lua.create_function(set_preferred_icon_size)?)?;
+    awesome_table.set("register_xproperty",
+                       lua.create_function(register_xproperty)?)?;
+    awesome_table.set("xkb_get_group_names",
+                       lua.create_function(xkb_get_group_names)?)?;
     awesome_table.set("set_xproperty", lua.create_function(set_xproperty)?)?;
     awesome_table.set("get_xproperty", lua.create_function(get_xproperty)?)?;
     awesome_table.set("systray", lua.create_function(systray)?)?;
@@ -108,12 +114,15 @@ fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Re
 }
 
 /// Registers a new X property
-fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String)) -> rlua::Result<()> {
+fn register_xproperty<'lua>(lua: &'lua Lua,
+                            (name_rust, v_type): (String, String))
+                            -> rlua::Result<()> {
     let name = CString::new(name_rust.clone()).expect("XProperty was not CString");
     let arg_type = XPropertyType::from_string(v_type.clone())
         .ok_or(rlua::Error::RuntimeError(format!("{} not a valid xproperty", v_type)))?;
     unsafe {
-        let raw_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
+        let raw_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?
+                         .0 as _;
         let atom_c = xproto::xcb_intern_atom_unchecked(raw_con,
                                                        false as u8,
                                                        name.to_bytes().len() as u16,
@@ -123,13 +132,15 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String
             return Ok(())
         }
         let new_property = XProperty::new(name_rust.clone(), arg_type, (*atom_r).atom);
-        let mut properties = PROPERTIES.lock()
-            .expect("Could not lock properties list");
-        if let Some(found) = properties.iter().find(|&property| property == &new_property) {
+        let mut properties = PROPERTIES.lock().expect("Could not lock properties list");
+        if let Some(found) = properties.iter()
+                                       .find(|&property| property == &new_property)
+        {
             if found.type_ != new_property.type_ {
-                return Err(rlua::Error::RuntimeError(
-                    format!("property '{}' already registered with different type",
-                            name_rust)));
+                return Err(rlua::Error::RuntimeError(format!("property '{}' already \
+                                                              registered with \
+                                                              different type",
+                                                             name_rust)))
             }
             return Ok(())
         }
@@ -140,7 +151,8 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String
 
 /// Get layout short names
 fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
-    let xcb_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?.0;
+    let xcb_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?
+                     .0;
     unsafe {
         let con = Connection::from_raw_conn(xcb_con as _);
         let raw_con = con.get_raw_conn();
@@ -159,7 +171,7 @@ fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>>
                     return Ok(Value::Nil)
                 }
                 names_r
-            },
+            }
             Err(err) => {
                 warn!("Failed to get xkb symbols name {:?}", err);
                 return Ok(Value::Nil)
@@ -176,17 +188,27 @@ fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>>
             return Ok(Value::Nil)
         }
         let mut names_list: ffi::xkb::xcb_xkb_get_names_value_list_t = mem::uninitialized();
-        xcb_xkb_get_names_value_list_unpack(buffer, (*names_r_ptr).nTypes, (*names_r_ptr).indicators, (*names_r_ptr).virtualMods,
-                                            (*names_r_ptr).groupNames, (*names_r_ptr).nKeys, (*names_r_ptr).nKeyAliases,
-                                            (*names_r_ptr).nRadioGroups, (*names_r_ptr).which, &mut names_list);
+        xcb_xkb_get_names_value_list_unpack(buffer,
+                                            (*names_r_ptr).nTypes,
+                                            (*names_r_ptr).indicators,
+                                            (*names_r_ptr).virtualMods,
+                                            (*names_r_ptr).groupNames,
+                                            (*names_r_ptr).nKeys,
+                                            (*names_r_ptr).nKeyAliases,
+                                            (*names_r_ptr).nRadioGroups,
+                                            (*names_r_ptr).which,
+                                            &mut names_list);
         let atom_name_c = ffi::xproto::xcb_get_atom_name_unchecked(raw_con, names_list.symbolsName);
-        let atom_name_r = ffi::xproto::xcb_get_atom_name_reply(raw_con, atom_name_c, ptr::null_mut());
+        let atom_name_r =
+            ffi::xproto::xcb_get_atom_name_reply(raw_con, atom_name_c, ptr::null_mut());
         if atom_name_r.is_null() {
             warn!("Failed to get atom symbols name");
             return Ok(Value::Nil)
         }
         let name_c = ffi::xproto::xcb_get_atom_name_name(atom_name_r);
-        CStr::from_ptr(name_c).to_string_lossy().into_owned().to_lua(lua)
+        CStr::from_ptr(name_c).to_string_lossy()
+                              .into_owned()
+                              .to_lua(lua)
     }
 }
 
@@ -211,7 +233,8 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
         .map_err(|err| rlua::Error::RuntimeError(format!("{}", err)))?;
     let surface = load_surface_from_pixbuf(pixbuf);
     // UGH, I wanted to do to_glib_full, but that isn't defined apparently
-    // So now I have to ignore the lifetime completely and just forget about the surface.
+    // So now I have to ignore the lifetime completely and just forget about the
+    // surface.
     let surface_ptr = surface.to_glib_none().0;
     ::std::mem::forget(surface);
     rlua::LightUserData(surface_ptr as _).to_lua(lua)
@@ -219,12 +242,13 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
 
 fn exec(_: &Lua, command: String) -> rlua::Result<()> {
     trace!("exec: \"{}\"", command);
-    thread::Builder::new().name(command.clone()).spawn(|| {
-        Command::new(command)
-            .stdout(Stdio::null())
-            .spawn()
-            .expect("Could not spawn command")
-    }).expect("Unable to spawn thread");
+    thread::Builder::new().name(command.clone())
+                          .spawn(|| {
+                                     Command::new(command).stdout(Stdio::null())
+                                                          .spawn()
+                                                          .expect("Could not spawn command")
+                                 })
+                          .expect("Unable to spawn thread");
     Ok(())
 }
 
@@ -248,8 +272,9 @@ fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
 }
 
 /// No need to sync in Wayland
-fn sync(_: &Lua, _: ()) -> rlua::Result<()> { Ok(()) }
-
+fn sync(_: &Lua, _: ()) -> rlua::Result<()> {
+    Ok(())
+}
 
 fn set_xproperty(_: &Lua, _: Value) -> rlua::Result<()> {
     warn!("set_xproperty not supported");
@@ -269,18 +294,20 @@ fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
 fn xkb_get_layout_group<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
     use xcb::ffi::xkb;
     unsafe {
-        let raw_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?.0 as _;
+        let raw_con = lua.named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?
+                         .0 as _;
         let state_c = xkb::xcb_xkb_get_state_unchecked(raw_con, xkb::XCB_XKB_ID_USE_CORE_KBD as _);
         let state_r = xkb::xcb_xkb_get_state_reply(raw_con, state_c, ptr::null_mut());
         if state_r.is_null() {
             warn!("State reply was NULL");
-            return Ok(Value::Nil);
+            return Ok(Value::Nil)
         }
         (*state_r).group.to_lua(lua)
     }
 }
 
-fn xrdb_get_value(_lua: &Lua, (_resource_class, _resource_name): (String, String))
+fn xrdb_get_value(_lua: &Lua,
+                  (_resource_class, _resource_name): (String, String))
                   -> rlua::Result<Value> {
     warn!("xrdb_get_value not supported");
     Ok(Value::Nil)
@@ -292,11 +319,16 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
     let height = pixbuf.get_height();
     let channels = pixbuf.get_n_channels();
     let pix_stride = pixbuf.get_rowstride() as usize;
-    // NOTE This is safe because we aren't modifying the bytes, but there's no immutable view
+    // NOTE This is safe because we aren't modifying the bytes, but there's no
+    // immutable view
     let pixels = unsafe { pixbuf.get_pixels() };
-    let format = if channels == 3 {cairo::Format::Rgb24} else { cairo::Format::ARgb32};
-    let mut surface = ImageSurface::create(format, width, height)
-        .expect("Could not create image of that size");
+    let format = if channels == 3 {
+        cairo::Format::Rgb24
+    } else {
+        cairo::Format::ARgb32
+    };
+    let mut surface =
+        ImageSurface::create(format, width, height).expect("Could not create image of that size");
     let cairo_stride = surface.get_stride() as usize;
     {
         let mut cairo_data = surface.get_data().unwrap();

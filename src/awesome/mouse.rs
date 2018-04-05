@@ -1,9 +1,9 @@
 //! TODO Fill in
 
-use awesome::{POINTER, OUTPUTS};
-use std::fmt::{self, Display, Formatter};
+use awesome::{OUTPUTS, POINTER};
+use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, UserDataMethods, MetaMethod, AnyUserData};
+use std::fmt::{self, Display, Formatter};
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
 const NEWINDEX_MISS_FUNCTION: &'static str = "__newindex_miss_function";
@@ -16,9 +16,7 @@ pub struct MouseState {
 
 impl Default for MouseState {
     fn default() -> Self {
-        MouseState {
-            dummy: 0
-        }
+        MouseState { dummy: 0 }
     }
 }
 
@@ -47,38 +45,42 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 
 fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
     mouse_table.set("coords", lua.create_function(coords)?)?;
-    mouse_table.set("set_index_miss_handler", lua.create_function(set_index_miss)?)?;
-    mouse_table.set("set_newindex_miss_handler", lua.create_function(set_newindex_miss)?)?;
+    mouse_table.set("set_index_miss_handler",
+                     lua.create_function(set_index_miss)?)?;
+    mouse_table.set("set_newindex_miss_handler",
+                     lua.create_function(set_newindex_miss)?)?;
     Ok(())
 }
 
-
-fn coords<'lua>(lua: &'lua Lua, (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
+fn coords<'lua>(lua: &'lua Lua,
+                (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
     let mut res = None;
     POINTER.with(|pointer| {
-        inner_try!(res, {
-            let pointer = &mut *pointer.borrow_mut();
-            match coords {
-                rlua::Value::Table(coords) => {
-                    let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
-                    // TODO The ignore_enter is supposed to not send a send event to the client
-                    // That's not possible, at least until wlroots is complete.
-                    pointer.set_position((x as _, y as _));
-                    Ok(coords)
-                },
-                _ => {
-                    // get the coords
-                    let coords = lua.create_table()?;
-                    let (x, y) = pointer.position;
-                    coords.set("x", x as i32)?;
-                    coords.set("y", y as i32)?;
-                    // TODO It expects a table of what buttons were pressed.
-                    coords.set("buttons", lua.create_table()?)?;
-                    Ok(coords)
-                }
-            }
-        })});
+                     inner_try!(res, {
+                         let pointer = &mut *pointer.borrow_mut();
+                         match coords {
+                             rlua::Value::Table(coords) => {
+                                 let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
+                                 // TODO The ignore_enter is supposed to not send a send event to
+                                 // the client That's not
+                                 // possible, at least until wlroots is complete.
+                                 pointer.set_position((x as _, y as _));
+                                 Ok(coords)
+                             }
+                             _ => {
+                                 // get the coords
+                                 let coords = lua.create_table()?;
+                                 let (x, y) = pointer.position;
+                                 coords.set("x", x as i32)?;
+                                 coords.set("y", y as i32)?;
+                                 // TODO It expects a table of what buttons were pressed.
+                                 coords.set("buttons", lua.create_table()?)?;
+                                 Ok(coords)
+                             }
+                         }
+                     })
+                 });
     res.unwrap()
 }
 
@@ -123,9 +125,10 @@ fn index<'lua>(lua: &'lua Lua,
                     // TODO Return screen even in bad case,
                     // see how awesome does it for maximal compatibility
                     panic!("Could not find a screen")
-                })});
+                })
+            });
             return res.expect("Failed to get a screen")
-        },
+        }
         _ => {}
     }
     return obj_table.get(index)

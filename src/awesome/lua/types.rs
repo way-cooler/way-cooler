@@ -20,7 +20,7 @@ pub enum LuaQuery {
     /// Execute some Rust using the Lua context.
     ExecRust(fn(&rlua::Lua) -> rlua::Value<'static>),
     /// Execute some Rust using the Lua context.
-    ExecWithLua(Box<FnMut(&rlua::Lua) -> rlua::Result<()>>),
+    ExecWithLua(Box<FnMut(&rlua::Lua) -> rlua::Result<()>>)
 }
 
 /// Messages received from lua thread
@@ -34,7 +34,7 @@ pub enum LuaResponse {
     /// A function is returned
     Function(rlua::Function<'static>),
     /// Pong response from lua ping
-    Pong,
+    Pong
 }
 
 impl LuaResponse {
@@ -53,20 +53,14 @@ impl LuaResponse {
     }
 }
 
-
 impl Debug for LuaResponse {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match *self {
-            LuaResponse::InvalidName =>
-                write!(f, "LuaReponse::InvalidName"),
-            LuaResponse::Variable(ref var) =>
-                write!(f, "LuaResponse::Variable({:?})", var),
-            LuaResponse::Error(ref err) =>
-                write!(f, "LuaResponse::Error({:?})", err),
-            LuaResponse::Function(_) =>
-                write!(f, "LuaResponse::Function"),
-            LuaResponse::Pong =>
-                write!(f, "LuaResponse::Pong")
+            LuaResponse::InvalidName => write!(f, "LuaReponse::InvalidName"),
+            LuaResponse::Variable(ref var) => write!(f, "LuaResponse::Variable({:?})", var),
+            LuaResponse::Error(ref err) => write!(f, "LuaResponse::Error({:?})", err),
+            LuaResponse::Function(_) => write!(f, "LuaResponse::Function"),
+            LuaResponse::Pong => write!(f, "LuaResponse::Pong")
         }
     }
 }
@@ -77,14 +71,10 @@ impl Debug for LuaQuery {
             LuaQuery::Ping => write!(f, "LuaQuery::Ping"),
             LuaQuery::Terminate => write!(f, "LuaQuery::Terminate"),
             LuaQuery::Restart => write!(f, "LuaQuery::Restart"),
-            LuaQuery::Execute(ref val) =>
-                write!(f, "LuaQuery::Execute({:?})", val),
-            LuaQuery::ExecFile(ref val) =>
-                write!(f, "LuaQuery::ExecFile({:?})", val),
-            LuaQuery::ExecRust(_) =>
-                write!(f, "LuaQuery::ExecRust()"),
-            LuaQuery::ExecWithLua(_) =>
-                write!(f, "LuaQuery::ExecWithLua()"),
+            LuaQuery::Execute(ref val) => write!(f, "LuaQuery::Execute({:?})", val),
+            LuaQuery::ExecFile(ref val) => write!(f, "LuaQuery::ExecFile({:?})", val),
+            LuaQuery::ExecRust(_) => write!(f, "LuaQuery::ExecRust()"),
+            LuaQuery::ExecWithLua(_) => write!(f, "LuaQuery::ExecWithLua()")
         }
     }
 }

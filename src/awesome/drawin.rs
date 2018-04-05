@@ -1,16 +1,16 @@
-// NOTE need to store the drawable in lua, because it's a reference to a drawable a lua object
+// NOTE need to store the drawable in lua, because it's a reference to a
+// drawable a lua object
 
-
+use super::drawable::Drawable;
+use super::property::Property;
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::prelude::LuaInteger;
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 use wlroots::{Area, Origin, Size};
-use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods};
-use rlua::prelude::LuaInteger;
-use super::drawable::Drawable;
-use super::property::Property;
 
 use super::class::{self, Class, ClassBuilder};
-use super::object::{self, Object, Objectable, ObjectBuilder};
+use super::object::{self, Object, ObjectBuilder, Objectable};
 
 #[derive(Clone, Debug)]
 pub struct DrawinState {
@@ -34,13 +34,11 @@ impl UserData for DrawinState {
 
 impl Default for DrawinState {
     fn default() -> Self {
-        DrawinState {
-            ontop: false,
-            visible: false,
-            cursor: String::default(),
-            geometry: Area::default(),
-            geometry_dirty: false
-        }
+        DrawinState { ontop: false,
+                      visible: false,
+                      cursor: String::default(),
+                      geometry: Area::default(),
+                      geometry_dirty: false }
     }
 }
 
@@ -50,12 +48,11 @@ impl Display for DrawinState {
     }
 }
 
-impl <'lua> Drawin<'lua> {
+impl<'lua> Drawin<'lua> {
     fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
         let class = class::class_setup(lua, "drawin")?;
-        Ok(object_setup(lua, Drawin::allocate(lua, class)?)?
-           .handle_constructor_argument(args)?
-           .build())
+        Ok(object_setup(lua, Drawin::allocate(lua, class)?)?.handle_constructor_argument(args)?
+                                                            .build())
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
@@ -95,7 +92,8 @@ impl <'lua> Drawin<'lua> {
             let old_geometry = state.geometry;
             state.geometry = geometry;
             {
-                let Size { ref mut width, ref mut height } = state.geometry.size;
+                let Size { ref mut width,
+                           ref mut height } = state.geometry.size;
                 if *width <= 0 {
                     *width = old_geometry.size.width;
                 }
@@ -111,7 +109,7 @@ impl <'lua> Drawin<'lua> {
     }
 }
 
-impl <'lua> ToLua<'lua> for Drawin<'lua> {
+impl<'lua> ToLua<'lua> for Drawin<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.0.to_lua(lua)
     }
@@ -125,7 +123,9 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .build()
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn method_setup<'lua>(lua: &'lua Lua,
+                      builder: ClassBuilder<'lua>)
+                      -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
@@ -134,31 +134,34 @@ fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Resu
                                                         Drawin::new(lua, args))?)
 }
 
-fn property_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
-    builder
-        .property(Property::new("x".into(),
-                                Some(lua.create_function(set_x)?),
-                                Some(lua.create_function(get_x)?),
-                                Some(lua.create_function(set_x)?)))?
-        .property(Property::new("y".into(),
-                                Some(lua.create_function(set_y)?),
-                                Some(lua.create_function(get_y)?),
-                                Some(lua.create_function(set_y)?)))?
-        .property(Property::new("width".into(),
-                                Some(lua.create_function(set_width)?),
-                                Some(lua.create_function(get_width)?),
-                                Some(lua.create_function(set_width)?)))?
-        .property(Property::new("height".into(),
-                                Some(lua.create_function(set_height)?),
-                                Some(lua.create_function(get_height)?),
-                                Some(lua.create_function(set_height)?)))?
-        .property(Property::new("visible".into(),
-                                Some(lua.create_function(set_visible)?),
-                                Some(lua.create_function(get_visible)?),
-                                Some(lua.create_function(set_visible)?)))
+fn property_setup<'lua>(lua: &'lua Lua,
+                        builder: ClassBuilder<'lua>)
+                        -> rlua::Result<ClassBuilder<'lua>> {
+    builder.property(Property::new("x".into(),
+                                   Some(lua.create_function(set_x)?),
+                                   Some(lua.create_function(get_x)?),
+                                   Some(lua.create_function(set_x)?)))?
+           .property(Property::new("y".into(),
+                                   Some(lua.create_function(set_y)?),
+                                   Some(lua.create_function(get_y)?),
+                                   Some(lua.create_function(set_y)?)))?
+           .property(Property::new("width".into(),
+                                   Some(lua.create_function(set_width)?),
+                                   Some(lua.create_function(get_width)?),
+                                   Some(lua.create_function(set_width)?)))?
+           .property(Property::new("height".into(),
+                                   Some(lua.create_function(set_height)?),
+                                   Some(lua.create_function(get_height)?),
+                                   Some(lua.create_function(set_height)?)))?
+           .property(Property::new("visible".into(),
+                                   Some(lua.create_function(set_visible)?),
+                                   Some(lua.create_function(get_visible)?),
+                                   Some(lua.create_function(set_visible)?)))
 }
 
-fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Result<ObjectBuilder<'lua>> {
+fn object_setup<'lua>(lua: &'lua Lua,
+                      builder: ObjectBuilder<'lua>)
+                      -> rlua::Result<ObjectBuilder<'lua>> {
     // TODO Do properly
     let table = lua.create_table()?;
     let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
@@ -168,8 +171,7 @@ fn object_setup<'lua>(lua: &'lua Lua, builder: ObjectBuilder<'lua>) -> rlua::Res
     builder.add_to_meta(table)
 }
 
-fn set_visible<'lua>(_: &'lua Lua, (obj, visible): (AnyUserData<'lua>, bool))
-                     -> rlua::Result<()> {
+fn set_visible<'lua>(_: &'lua Lua, (obj, visible): (AnyUserData<'lua>, bool)) -> rlua::Result<()> {
     let mut drawin = Drawin::cast(obj.into())?;
     drawin.set_visible(visible)
     // TODO signal
@@ -240,7 +242,8 @@ fn get_width<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaI
     Ok(width as LuaInteger)
 }
 
-fn set_width<'lua>(_: &'lua Lua, (drawin, width): (AnyUserData<'lua>, LuaInteger))
+fn set_width<'lua>(_: &'lua Lua,
+                   (drawin, width): (AnyUserData<'lua>, LuaInteger))
                    -> rlua::Result<()> {
     let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
@@ -257,7 +260,9 @@ fn get_height<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<Lua
     Ok(height as LuaInteger)
 }
 
-fn set_height<'lua>(_: &'lua Lua, (drawin, height): (AnyUserData<'lua>, LuaInteger)) -> rlua::Result<()> {
+fn set_height<'lua>(_: &'lua Lua,
+                    (drawin, height): (AnyUserData<'lua>, LuaInteger))
+                    -> rlua::Result<()> {
     let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
     if height > 0 {
@@ -267,10 +272,10 @@ fn set_height<'lua>(_: &'lua Lua, (drawin, height): (AnyUserData<'lua>, LuaInteg
     Ok(())
 }
 
-fn drawin_struts<'lua>(lua: &'lua Lua, _drawin: AnyUserData<'lua>)
-                       -> rlua::Result<Table<'lua>> {
-    // TODO: Implement this properly. Struts means this drawin reserves some space on the screen
-    // that it is visible on, shrinking the workarea in the specified directions.
+fn drawin_struts<'lua>(lua: &'lua Lua, _drawin: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
+    // TODO: Implement this properly. Struts means this drawin reserves some space
+    // on the screen that it is visible on, shrinking the workarea in the
+    // specified directions.
     let res = lua.create_table()?;
     res.set("left", 0)?;
     res.set("right", 0)?;

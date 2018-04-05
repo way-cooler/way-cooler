@@ -1,21 +1,21 @@
 //! TODO Fill in
 
+use super::class::{self, Class};
+use super::object::{self, Object, Objectable};
+use super::property::Property;
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
-use wlroots::{Area, Origin, Size};
-use std::fmt::{self, Display, Formatter};
+use rlua::{self, AnyUserData, LightUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value, LightUserData, AnyUserData, UserDataMethods};
-use super::object::{self, Object, Objectable};
-use super::class::{self, Class};
-use super::property::Property;
+use std::fmt::{self, Display, Formatter};
+use wlroots::{Area, Origin, Size};
 
 #[derive(Clone, Debug)]
 pub struct DrawableState {
     pub surface: Option<ImageSurface>,
     geo: Area,
     // TODO Use this to determine whether we draw this or not
-    refreshed: bool,
+    refreshed: bool
 }
 
 pub struct Drawable<'lua>(Object<'lua>);
@@ -24,15 +24,13 @@ impl_objectable!(Drawable, DrawableState);
 
 impl Default for DrawableState {
     fn default() -> Self {
-        DrawableState {
-            surface: None,
-            geo: Area::default(),
-            refreshed: false
-        }
+        DrawableState { surface: None,
+                        geo: Area::default(),
+                        refreshed: false }
     }
 }
 
-impl <'lua> Drawable<'lua> {
+impl<'lua> Drawable<'lua> {
     pub fn new(lua: &Lua) -> rlua::Result<Object> {
         let class = class::class_setup(lua, "drawable")?;
         let builder = Drawable::allocate(lua, class)?;
@@ -97,7 +95,7 @@ impl Display for DrawableState {
     }
 }
 
-impl <'lua> ToLua<'lua> for Drawable<'lua> {
+impl<'lua> ToLua<'lua> for Drawable<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.0.to_lua(lua)
     }
@@ -119,7 +117,6 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .save_class("drawable")?
         .build()
 }
-
 
 fn get_surface<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
     let drawable = Drawable::cast(obj.into())?;

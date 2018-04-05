@@ -1,9 +1,9 @@
 //! TODO Fill in
-use std::fmt::{self, Display, Formatter};
-use std::default::Default;
-use rlua::{self, Table, Lua, UserData, ToLua, Value};
-use super::object::{Object, Objectable};
 use super::class::{Class, ClassBuilder};
+use super::object::{Object, Objectable};
+use rlua::{self, Lua, Table, ToLua, UserData, Value};
+use std::default::Default;
+use std::fmt::{self, Display, Formatter};
 
 #[derive(Clone, Debug)]
 pub struct ClientState {
@@ -15,9 +15,7 @@ pub struct Client<'lua>(Object<'lua>);
 
 impl Default for ClientState {
     fn default() -> Self {
-        ClientState {
-            dummy: 0
-        }
+        ClientState { dummy: 0 }
     }
 }
 
@@ -38,7 +36,7 @@ impl Display for ClientState {
     }
 }
 
-impl <'lua> ToLua<'lua> for Client<'lua> {
+impl<'lua> ToLua<'lua> for Client<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.0.to_lua(lua)
     }
@@ -47,12 +45,13 @@ impl <'lua> ToLua<'lua> for Client<'lua> {
 impl UserData for ClientState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    method_setup(lua, Class::builder(lua, "client", None)?)?
-        .save_class("client")?
-        .build()
+    method_setup(lua, Class::builder(lua, "client", None)?)?.save_class("client")?
+                                                            .build()
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, builder: ClassBuilder<'lua>) -> rlua::Result<ClassBuilder<'lua>> {
+fn method_setup<'lua>(lua: &'lua Lua,
+                      builder: ClassBuilder<'lua>)
+                      -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?

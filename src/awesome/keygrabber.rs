@@ -1,12 +1,11 @@
 //! AwesomeWM Keygrabber interface
 
-use wlroots::{wlr_keyboard_modifiers, wlr_key_state,
-              events::key_events::Key,
+use wlroots::{wlr_key_state, wlr_keyboard_modifiers, events::key_events::Key,
               xkbcommon::xkb::keysym_get_name};
 
-use ::lua::run_with_lua;
-use rlua::{self, Lua, Table, Function, Value};
 use super::signal;
+use lua::run_with_lua;
+use rlua::{self, Function, Lua, Table, Value};
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const KEYGRABBER_CALLBACK: &str = "__callback";
@@ -28,39 +27,34 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 #[allow(deprecated)]
 /// Given the current input, handle calling the Lua defined callback if it is
 /// defined with the input.
-pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state)
-                         -> rlua::Result<()> {
+pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua::Result<()> {
     run_with_lua(move |lua| {
-        let lua_state = if state == wlr_key_state::WLR_KEY_PRESSED {
-            "press"
-        } else {
-            "release"
-        }.into();
-        let lua_sym = keysym_get_name(sym);
-        let lua_mods = ::lua::mods_to_lua(lua, &mods)?;
-        let res = call_keygrabber(lua, (lua_mods, lua_sym, lua_state));
-        match res {
-            Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => {Ok(())},
-            err => {
-                err
-            }
-        }
-    })
+                     let lua_state = if state == wlr_key_state::WLR_KEY_PRESSED {
+                                         "press"
+                                     } else {
+                                         "release"
+                                     }.into();
+                     let lua_sym = keysym_get_name(sym);
+                     let lua_mods = ::lua::mods_to_lua(lua, &mods)?;
+                     let res = call_keygrabber(lua, (lua_mods, lua_sym, lua_state));
+                     match res {
+                         Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => Ok(()),
+                         err => err
+                     }
+                 })
 }
 
 /// Call the Lua callback function for when a key is pressed.
-fn call_keygrabber(lua: &Lua,
-                   (mods, key, event): (Table, String, String))
-                   -> rlua::Result<()> {
+fn call_keygrabber(lua: &Lua, (mods, key, event): (Table, String, String)) -> rlua::Result<()> {
     let lua_callback = lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK)?;
     lua_callback.call((mods, key, event))
 }
 
 fn run(lua: &Lua, function: rlua::Function) -> rlua::Result<()> {
     match lua.named_registry_value::<Value>(KEYGRABBER_CALLBACK)? {
-        Value::Function(_) =>
-            Err(rlua::Error::RuntimeError("keygrabber callback already set!"
-                                          .into())),
+        Value::Function(_) => {
+            Err(rlua::Error::RuntimeError("keygrabber callback already set!".into()))
+        }
         _ => lua.set_named_registry_value(KEYGRABBER_CALLBACK, function)
     }
 }

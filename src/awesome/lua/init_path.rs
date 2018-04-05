@@ -1,8 +1,8 @@
 //! Contains methods for initializing the lua config
 
-use std::fs::{OpenOptions, File};
 use std::env;
-use std::path::{Path,PathBuf};
+use std::fs::{File, OpenOptions};
+use std::path::{Path, PathBuf};
 
 use std::io::Result as IOResult;
 
@@ -37,12 +37,12 @@ pub fn get_config() -> Result<(PathBuf, File), &'static str> {
     if let Ok(xdg) = env::var("XDG_CONFIG_HOME") {
         let dir = Path::new(&xdg).join("way-cooler");
         let init_file_path = dir.join(INIT_FILE);
-        info!("Found $XDG_CONFIG_DIR to be defined, will look for the init file at $XDG_CONFIG_DIR/way-cooler/init.lua");
+        info!("Found $XDG_CONFIG_DIR to be defined, will look for the init file at \
+               $XDG_CONFIG_DIR/way-cooler/init.lua");
         if let Ok(file) = read_file(&init_file_path) {
             info!("Reading init file from $XDG_CONFIG_HOME/way-cooler/init.lua");
             return Ok((dir, file))
-        }
-        else {
+        } else {
             warn!("Did not find an init file inside $XDG_CONFIG_HOME, no file {}.",
                   &init_file_path.to_string_lossy().replace(home, "~"));
         }
@@ -66,14 +66,12 @@ pub fn get_config() -> Result<(PathBuf, File), &'static str> {
         return Ok((etc_config_dir, file))
     }
 
-    warn!("way-cooler was unable to find an init file. \
-           Using our default, pre-compiled init.lua.");
-    warn!("Our default init.lua is available on GitHub, \
-           it is included with the source.");
-    warn!("You may place it in ~/.config/way-cooler/init.lua, \
-           or a similar folder if you use $XDG_CONFIG_HOME, or /etc/way-cooler.");
-    warn!("You may also use the environment variable $WAY_COOLER_INIT_FILE to point \
-           directly to the file of your choice.");
+    warn!("way-cooler was unable to find an init file. Using our default, pre-compiled init.lua.");
+    warn!("Our default init.lua is available on GitHub, it is included with the source.");
+    warn!("You may place it in ~/.config/way-cooler/init.lua, or a similar folder if you use \
+           $XDG_CONFIG_HOME, or /etc/way-cooler.");
+    warn!("You may also use the environment variable $WAY_COOLER_INIT_FILE to point directly to \
+           the file of your choice.");
 
     return Err("Could not find an init file in any path!")
 }
