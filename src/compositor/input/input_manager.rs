@@ -42,6 +42,10 @@ impl InputManagerHandler for InputManager {
                 seat.set_capabilities(capabilities);
             }).expect("Seat was destroyed");
         }
+
+        run_handles!([(cursor: {&mut server.cursor})] => {
+            cursor.attach_input_device(pointer.input_device());
+        }).expect("Cursor was destroyed");
         Some(Box::new(compositor::Pointer))
     }
 
@@ -73,5 +77,10 @@ impl InputManagerHandler for InputManager {
                 }).expect("Seat was destroyed")
             }
         }
+        // TODO Double check this isn't a safety hole actually,
+        // because if it isn't then we may not have to do this here...
+        run_handles!([(cursor: {&mut server.cursor})] => {
+            cursor.deattach_input_device(pointer.input_device());
+        }).expect("Cursor was destroyed");
     }
 }

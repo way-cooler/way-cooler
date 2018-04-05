@@ -173,9 +173,7 @@ fn detect_raspi() {
             }
             raspi
         }
-        Err(_) => {
-            return
-        }
+        Err(_) => return
     };
     let vc4 = match File::open(Path::new(DRIVER_MOD_PATH)) {
         Ok(f) => {
