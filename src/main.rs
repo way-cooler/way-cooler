@@ -77,6 +77,7 @@ fn main() {
     detect_proprietary();
     detect_raspi();
     ensure_good_env();
+    compositor::init();
 }
 
 /// Formats the log strings properly
@@ -215,6 +216,5 @@ fn log_environment() {
 
 /// Handler for signals
 extern "C" fn sig_handle(_: nix::libc::c_int) {
-    // TODO FIXME Terminate
-    //rustwlc::terminate();
+    wlroots::terminate();
 }
