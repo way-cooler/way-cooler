@@ -1,8 +1,8 @@
 //! Main module of way-cooler
 
 // TODO FIXME Remove
-#![allow(unused_macros)]
 #![allow(unused_imports)]
+#![allow(dead_code)]
 
 #![allow(non_upper_case_globals)]
 
@@ -31,6 +31,7 @@ extern crate xcb;
 #[macro_use] mod macros;
 mod awesome;
 mod compositor;
+mod ipc;
 
 pub use awesome::lua;
 

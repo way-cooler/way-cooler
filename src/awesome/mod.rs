@@ -1,6 +1,6 @@
 //! Awesome compatibility modules
 
-use std::{env, mem, path::PathBuf};
+use std::{env, mem, path::PathBuf, cell::RefCell};
 use xcb::{xkb, Connection};
 use rlua::{self, Lua, Table, LightUserData};
 
@@ -28,8 +28,15 @@ pub use self::object::Object;
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 
+use ipc::{Pointer, Output};
+
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
+
+thread_local! {
+    pub static OUTPUTS: RefCell<Vec<Output>> = RefCell::new(vec![]);
+    pub static POINTER: RefCell<Pointer> = RefCell::new(Pointer::default());
+}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     setup_awesome_path(lua)?;
@@ -39,7 +46,10 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     awesome::init(lua)?;
     key::init(lua)?;
     client::init(lua)?;
-    screen::init(lua)?;
+    let mut res = None;
+    OUTPUTS.with(|outputs|
+                res = Some(screen::init(lua, &mut *outputs.borrow_mut())));
+    res.unwrap()?;
     keygrabber::init(lua)?;
     root::init(lua)?;
     mouse::init(lua)?;

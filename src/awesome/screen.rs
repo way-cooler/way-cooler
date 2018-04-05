@@ -1,13 +1,15 @@
 //! TODO Fill in
 
+use ipc;
 use wlroots::{self, Area, Origin, Size, OutputHandle};
 use std::fmt::{self, Display, Formatter};
 use std::default::Default;
 use rlua::{self, Table, Lua, UserData, ToLua, Value, AnyUserData, UserDataMethods,
            MetaMethod};
-use super::object::{self, Object, Objectable};
-use super::property::Property;
-use super::class::{self, Class, ClassBuilder};
+use awesome::{OUTPUTS,
+              object::{self, Object, Objectable},
+              property::Property,
+              class::{self, Class, ClassBuilder}};
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 
@@ -19,10 +21,10 @@ pub struct Output {
     // TODO The XID array?
 }
 
-impl From<wlroots::Output> for Output {
-    fn from(output: wlroots::Output) -> Output {
-        let name = output.name();
-        let (mm_width, mm_height) = output.effective_resolution();
+impl From<ipc::Output> for Output {
+    fn from(output: ipc::Output) -> Output {
+        let name = output.name.clone();
+        let (mm_width, mm_height) = output.effective_resolution;
         Output {
             name,
             mm_width: mm_width as u32,
@@ -87,9 +89,9 @@ impl <'lua> Screen<'lua> {
         Ok(Screen::allocate(lua, class)?.build())
     }
 
-    fn init_screens(&mut self, output: &wlroots::Output, outputs: Vec<Output>) -> rlua::Result<()> {
+    fn init_screens(&mut self, output: ipc::Output, outputs: Vec<Output>) -> rlua::Result<()> {
         let mut state = self.get_object_mut()?;
-        let (width, height) = output.effective_resolution();
+        let (width, height) = output.effective_resolution;
         let resolution = Size { width, height };
         state.outputs = outputs;
         state.geometry = state.geometry.with_size(resolution);
@@ -122,21 +124,19 @@ impl <'lua> Screen<'lua> {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init<'lua>(lua: &'lua Lua, outputs: &mut Vec<ipc::Output>) -> rlua::Result<Class<'lua>> {
     let builder = Class::builder(lua, "screen", None)?;
     let res = property_setup(lua, method_setup(lua, builder)?)?
         .save_class("screen")?
         .build()?;
-    let mut screens: Vec<Screen> = vec![];
-    // TODO FIXME
-    // Get the list of screens and init properly.
-    //for output in WlcOutput::list() {
-    //    let mut screen = Screen::cast(Screen::new(lua)?)?;
-    //    screen.init_screens(output, vec![output.into()])?;
-    //    // TODO Move to Screen impl like the others
-    //    screens.push(screen);
-    //}
-    lua.set_named_registry_value(SCREENS_HANDLE, screens.to_lua(lua)?)?;
+    let screens: &mut Vec<Screen> = &mut vec![];
+    for output in outputs {
+        let mut screen = Screen::cast(Screen::new(lua)?)?;
+        screen.init_screens(output.clone(), vec![output.clone().into()])?;
+        // TODO Move to Screen impl like the others
+        screens.push(screen);
+    }
+    lua.set_named_registry_value(SCREENS_HANDLE, screens.clone().to_lua(lua)?)?;
     Ok(res)
 }
 
