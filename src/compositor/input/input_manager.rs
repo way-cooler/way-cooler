@@ -23,6 +23,7 @@ impl InputManagerHandler for InputManager {
                 let mut capabilities = seat.capabilities();
                 capabilities.insert(Capability::Keyboard);
                 seat.set_capabilities(capabilities);
+                seat.set_keyboard(keyboard.input_device());
             }).expect("Seat was destroyed");
         }
         Some(Box::new(compositor::Keyboard))

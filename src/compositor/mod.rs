@@ -2,11 +2,13 @@ mod output;
 mod input;
 mod seat;
 mod cursor;
+mod shells;
 
 pub use self::cursor::*;
 pub use self::input::*;
 pub use self::output::*;
 pub use self::seat::*;
+pub use self::shells::*;
 use wlroots::{Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle, OutputLayout,
               OutputLayoutHandle, PointerHandle, Seat, SeatHandle, XCursorTheme};
 
@@ -17,7 +19,8 @@ struct Server {
     seat: SeatHandle,
     cursor: CursorHandle,
     keyboards: Vec<KeyboardHandle>,
-    pointers: Vec<PointerHandle>
+    pointers: Vec<PointerHandle>,
+    shells: Vec<Shell>
 }
 
 impl Default for Server {
@@ -29,7 +32,8 @@ impl Default for Server {
                  seat: SeatHandle::default(),
                  cursor: CursorHandle::default(),
                  keyboards: Vec::default(),
-                 pointers: Vec::default() }
+                 pointers: Vec::default(),
+                 shells: Vec::default() }
     }
 }
 
@@ -50,6 +54,7 @@ pub fn init() {
                                                  .data_device(true)
                                                  .output_manager(Box::new(OutputManager::new()))
                                                  .input_manager(Box::new(InputManager::new()))
+                                                 .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
                                                  .build_auto(Server::new(layout, cursor));
     // NOTE We need to create this afterwards because it needs the compositor
     // running to announce the seat.
