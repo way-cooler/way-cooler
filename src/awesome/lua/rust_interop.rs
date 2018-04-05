@@ -13,8 +13,8 @@ use super::{send, LuaQuery};
 pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
     trace!("Setting up Lua libraries");
     // TODO Is this awesome init code necessary?
-    let awesome_init_code = include_str!("../../../lib/lua/awesome_init.lua");
-    lua.exec::<()>(awesome_init_code, Some("awesome_init.lua"))?;
+    let init_code = include_str!("../../../lib/lua/init.lua");
+    lua.exec::<()>(init_code, Some("init.lua"))?;
     awesome::init(&lua)
         .expect("Could not initialize awesome compatibility modules");
     Ok(())

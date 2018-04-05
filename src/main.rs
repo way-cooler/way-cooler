@@ -78,6 +78,7 @@ fn main() {
     detect_proprietary();
     detect_raspi();
     ensure_good_env();
+    awesome::lua::on_compositor_ready();
     compositor::init();
 }
 
