@@ -1,24 +1,32 @@
 use compositor::View;
-use wlroots::{SeatHandle, SeatHandler};
+use wlroots::{Origin, SeatHandle, SeatHandler};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Action {
-    Moving(View),
-    Resizing(View)
+    /// We are moving a view.
+    ///
+    /// The start is the surface level coordinates of where the first click was
+    Moving {
+        start: Origin
+    },
+    Resizing
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Seat {
     pub seat: SeatHandle,
-    pub action: Option<Action>
+    pub focused: Option<View>,
+    pub action: Option<Action>,
+    pub meta: bool
 }
 
 impl Seat {
     pub fn new(seat: SeatHandle) -> Seat {
         Seat { seat,
+               meta: true,
                ..Seat::default() }
     }
 }

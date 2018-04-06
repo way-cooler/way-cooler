@@ -2,7 +2,7 @@ mod xdg_v6;
 
 pub use self::xdg_v6::*;
 
-use wlroots::{SurfaceHandle, XdgV6ShellSurfaceHandle};
+use wlroots::{Area, HandleResult, SurfaceHandle, XdgV6ShellSurfaceHandle};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Shell {
@@ -18,6 +18,13 @@ impl Shell {
                 shell.run(|shell| shell.surface())
                      .expect("An xdg v6 client did not provide us a surface")
             }
+        }
+    }
+
+    /// Get the geometry of a shell.
+    pub fn geometry(&mut self) -> HandleResult<Area> {
+        match *self {
+            Shell::XdgV6(ref mut shell) => shell.run(|shell| shell.geometry())
         }
     }
 }

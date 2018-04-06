@@ -22,8 +22,7 @@ impl OutputHandler for Output {
                 let (render_width, render_height) =
                     (width * renderer.output.scale() as i32,
                      height * renderer.output.scale() as i32);
-                let (lx, ly) = (0.0, 0.0);
-                let render_box = Area::new(Origin::new(lx as i32, ly as i32),
+                let render_box = Area::new(view.origin,
                                            Size::new(render_width,
                                                      render_height));
                 if layout.intersects(renderer.output, render_box) {

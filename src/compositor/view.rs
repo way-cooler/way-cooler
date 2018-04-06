@@ -1,12 +1,15 @@
 use compositor::Shell;
+use wlroots::Origin;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct View {
-    pub shell: Shell
+    pub shell: Shell,
+    pub origin: Origin
 }
 
 impl View {
     pub fn new(shell: Shell) -> View {
-        View { shell }
+        View { shell,
+               origin: Origin::default() }
     }
 }
