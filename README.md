@@ -1,6 +1,6 @@
 # <img src="http://i.imgur.com/OGeL1nN.png" width="60"> Way Cooler [![Crates.io](https://img.shields.io/crates/v/way-cooler.svg)](https://crates.io/crates/way-cooler) [![Downloads](https://img.shields.io/crates/d/way-cooler.svg)](https://crates.io/crates/way-cooler) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/way-cooler/)
 
-Way Cooler is a clone of [AwesomeWM][] written in [Rust][] for [Wayland][] using [wlroots][].
+Way Cooler is the spiritual successor of [AwesomeWM][] for [Wayland][]. It is written in [Rust][] and uses [wlroots][].
 
 
 # Development
@@ -23,3 +23,4 @@ If you find bugs or have questions about the code, please [submit an issue][] or
 [submit an issue]: https://github.com/Immington-Industries/way-cooler/issues/new
 [wlroots]: https://github.com/swaywm/wlroots
 [IRC]: https://webchat.freenode.net/?channels=awesome&uio=d4
+[i3]: https://i3wm.org
