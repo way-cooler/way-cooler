@@ -1,23 +1,18 @@
 //! Code for the internal Lua thread which handles all Lua requests.
 
 use std::cell::{Cell, RefCell};
-use std::collections::btree_map::BTreeMap;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::sync::{Mutex, RwLock};
+use std::sync::Mutex;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 
 use glib::MainLoop;
 use glib::source::{idle_add, Continue};
 
-use awesome::convert::lua_to_json;
-
 use rlua;
-use rustc_serialize::json::Json;
-use uuid::Uuid;
 
 use super::init_path;
 use super::rust_interop;

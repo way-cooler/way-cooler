@@ -1,7 +1,6 @@
-use compositor::{self, Server, Shell};
+use compositor::Server;
 use std::time::{SystemTime, UNIX_EPOCH};
-use wlroots::{self, project_box, Area, Compositor, Origin, OutputHandler, Size,
-              WL_SHM_FORMAT_ARGB8888};
+use wlroots::{self, project_box, Area, Compositor, OutputHandler, Size};
 
 pub struct Output;
 

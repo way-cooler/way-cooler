@@ -1,7 +1,7 @@
 use compositor::{self, Action, Server, Shell, View};
 use std::time::Duration;
-use wlroots::{self, Area, Compositor, CursorHandle, HandleResult, KeyboardHandle, Origin,
-              PointerHandler, Size, XdgV6ShellState::*, pointer_events::*, WLR_BUTTON_RELEASED};
+use wlroots::{self, Compositor, CursorHandle, HandleResult, KeyboardHandle, Origin,
+              PointerHandler, XdgV6ShellState::*, pointer_events::*, WLR_BUTTON_RELEASED};
 
 #[derive(Debug, Default)]
 pub struct Pointer;

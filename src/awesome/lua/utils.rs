@@ -1,9 +1,8 @@
 //! Utilities to talk to Lua
 
-use wlroots::{events::{key_events::{Key, KeyEvent},
-                       pointer_events::{wlr_button_state, ButtonEvent, BTN_BACK, BTN_EXTRA,
-                                        BTN_FORWARD, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT, BTN_SIDE,
-                                        BTN_TASK}},
+use wlroots::{events::{key_events::Key,
+                       pointer_events::{wlr_button_state, BTN_EXTRA, BTN_LEFT, BTN_MIDDLE,
+                                        BTN_RIGHT, BTN_SIDE}},
               xkbcommon::xkb::keysyms::*};
 
 use rlua::{self, Error::RuntimeError, Lua, Table, Value};

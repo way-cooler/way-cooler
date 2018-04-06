@@ -1,4 +1,4 @@
-use compositor::{self, Server, Shell, View};
+use compositor::{Server, Shell, View};
 use wlroots::{Compositor, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellSurface,
               XdgV6ShellSurfaceHandle};
 

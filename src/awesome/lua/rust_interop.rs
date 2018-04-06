@@ -1,11 +1,7 @@
 //! Rust code which is called from lua in the init file
 
-use awesome::{self, convert::json_to_lua};
+use awesome;
 use rlua::{self, prelude::LuaResult};
-use rustc_serialize::json::ToJson;
-use uuid::Uuid;
-
-use super::{send, LuaQuery};
 
 /// We've `include!`d the code which initializes from the Lua side.
 
@@ -15,6 +11,8 @@ pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
     // TODO Is this awesome init code necessary?
     let init_code = include_str!("../../../lib/lua/init.lua");
     lua.exec::<()>(init_code, Some("init.lua"))?;
+    let globals = lua.globals();
+    globals.set("type", lua.create_function(type_override)?)?;
     awesome::init(&lua).expect("Could not initialize awesome compatibility modules");
     Ok(())
 }

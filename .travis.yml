@@ -45,8 +45,6 @@ before_install:
 install:
   # install travis-cargo
   - pip install --user -e ./travis-cargo
-  # install dependencies for ci.py
-  - pip install --user docopt
   # Sometimes cargo check doesn't exist?
   - cargo install --force cargo-check
 
@@ -60,8 +58,6 @@ script:
   # run tests
   # Currently not running tests because linking fails with Lua and DBus
   - cargo test --features builtin-lua --verbose
-  # run tag checks
-  - python $TRAVIS_BUILD_DIR/scripts/ci.py travis-check
 
 after_success:
   # Test and upload coverage to coveralls
@@ -73,8 +69,6 @@ after_success:
   # callbacks.rs: we don't have any integration tests for callbacks right now. They'd need to deal with the lazy statics that the other components of the program live in.
   - travis-cargo coveralls --no-sudo --verify --exclude-pattern="main.rs,mod.rs,tests.rs,wayland_client_api.rs,callbacks.rs"
 
-before_deploy:
-  - python $TRAVIS_BUILD_DIR/scripts/ci.py prepare-deploy
 deploy:
   provider: releases
   skip_cleanup: false # We do not need to skip cleanup as we recompile with --release

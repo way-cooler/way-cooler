@@ -6,7 +6,7 @@ use ipc;
 use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
-use wlroots::{self, Area, Origin, OutputHandle, Size};
+use wlroots::{Area, Origin, Size};
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 

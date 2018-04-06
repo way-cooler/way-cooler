@@ -1,29 +1,22 @@
 //! Main module of way-cooler
 
 // TODO FIXME Remove
-#![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 
 extern crate bitflags;
 extern crate cairo;
 extern crate cairo_sys;
-extern crate dbus;
-extern crate dbus_macros;
 extern crate env_logger;
 extern crate gdk_pixbuf;
 extern crate getopts;
 extern crate glib;
-extern crate json_macro;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate nix;
-extern crate petgraph;
 extern crate rlua;
-extern crate rustc_serialize;
-extern crate uuid;
 #[macro_use]
 extern crate wlroots;
 extern crate xcb;

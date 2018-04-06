@@ -1,5 +1,3 @@
-use wlroots::Area;
-
 /// A representation of an Output for use in the Awesome module.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Output {

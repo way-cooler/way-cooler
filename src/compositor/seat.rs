@@ -9,10 +9,7 @@ pub enum Action {
     /// We are moving a view.
     ///
     /// The start is the surface level coordinates of where the first click was
-    Moving {
-        start: Origin
-    },
-    Resizing
+    Moving { start: Origin }
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
