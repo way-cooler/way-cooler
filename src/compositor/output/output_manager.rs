@@ -28,7 +28,7 @@ impl OutputManagerHandler for OutputManager {
             cursor.set_cursor_image(&xcursor.images()[0]);
             let (x, y) = cursor.coords();
             cursor.warp(None, x, y);
-        }).expect("Layout was destroyed").expect("Cursor was destroyed");
+        }).expect("Could not setup output with cursor and layout");
         Some(res)
     }
 }

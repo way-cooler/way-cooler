@@ -38,9 +38,7 @@ impl OutputHandler for Output {
                         .expect("Time went backwards");
                     surface.send_frame_done(now);
                 }
-            })
-                .expect("Surface was destroyed")
-                .expect("Layout was destroyed")
+            }).expect("Could not render views")
         }
     }
 }

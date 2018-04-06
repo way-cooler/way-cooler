@@ -75,7 +75,7 @@ fn view_at_pointer<'view>(views: &'view mut [View],
                     let Origin {x: shell_x, y: shell_y} = view.origin;
                     let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                     shell.surface_at(view_sx, view_sy, &mut sx, &mut sy).is_some()
-                }).ok()?.ok()?;
+                }).ok()?;
                 if seen {
                     return Some(view)
                 }
@@ -132,7 +132,7 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
                     seat.keyboard_notify_enter(surface,
                                                &mut keyboard.keycodes(),
                                                &mut keyboard.get_modifier_masks())
-                })????;
+                })?;
                     }
                 }
             }
