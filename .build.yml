@@ -1,0 +1,36 @@
+image: archlinux
+packages:
+  - meson
+  - ninja
+  - wayland
+  - wayland-protocols
+  - mesa
+  - xorg-server-xwayland
+  - cairo
+  - xcb-util-image
+  - libinput
+  - pixman
+  - libxkbcommon
+  - gdk-pixbuf2
+  - xcb-util-image
+  - libcap
+  - rustup
+  - clang
+  - libxcb
+  - xcb-util-image
+  - xcb-util-cursor
+  - xcb-util-wm
+sources:
+  - https://github.com/way-cooler/way-cooler
+tasks:
+  - setup: |
+      rustup install stable
+      export CC=clang
+      rustup default stable
+      export RUST_BACKTRACE=full
+      cd way-cooler
+      git submodule update --init --recursive
+  - build: |
+      cd way-cooler
+      cargo build --verbose
+      cargo test --verbose
