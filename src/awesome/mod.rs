@@ -1,7 +1,7 @@
 //! Awesome compatibility modules
 
 use rlua::{self, LightUserData, Lua, Table};
-use std::{env, mem, cell::RefCell, path::PathBuf};
+use std::{env, mem, path::PathBuf, sync::Mutex};
 use xcb::{xkb, Connection};
 
 mod convert;
@@ -33,9 +33,9 @@ use ipc::{Output, Pointer};
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 
-thread_local! {
-    pub static OUTPUTS: RefCell<Vec<Output>> = RefCell::new(vec![]);
-    pub static POINTER: RefCell<Pointer> = RefCell::new(Pointer::default());
+lazy_static! {
+    pub static ref OUTPUTS: Mutex<Vec<Output>> = Mutex::new(vec![]);
+    pub static ref POINTER: Mutex<Pointer> = Mutex::new(Pointer::default());
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
@@ -46,9 +46,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     awesome::init(lua)?;
     key::init(lua)?;
     client::init(lua)?;
-    let mut res = None;
-    OUTPUTS.with(|outputs| res = Some(screen::init(lua, &mut *outputs.borrow_mut())));
-    res.unwrap()?;
+    screen::init(lua)?;
     keygrabber::init(lua)?;
     root::init(lua)?;
     mouse::init(lua)?;

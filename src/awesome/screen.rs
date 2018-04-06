@@ -116,12 +116,13 @@ impl<'lua> Screen<'lua> {
     }
 }
 
-pub fn init<'lua>(lua: &'lua Lua, outputs: &mut Vec<ipc::Output>) -> rlua::Result<Class<'lua>> {
+pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<'lua>> {
     let builder = Class::builder(lua, "screen", None)?;
     let res = property_setup(lua, method_setup(lua, builder)?)?.save_class("screen")?
                                                                .build()?;
     let screens: &mut Vec<Screen> = &mut vec![];
-    for output in outputs {
+    let outputs = OUTPUTS.lock().expect("Outputs was poisoned");
+    for output in outputs.iter() {
         let mut screen = Screen::cast(Screen::new(lua)?)?;
         screen.init_screens(output.clone(), vec![output.clone().into()])?;
         // TODO Move to Screen impl like the others

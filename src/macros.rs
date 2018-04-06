@@ -28,15 +28,3 @@ macro_rules! impl_objectable {
         }
     }
 }
-
-/// Inner try for use within a LocalKey with call.
-///
-/// We use an `Option<T>` to get the return value to "escape",
-/// this simply lets you keep try mechanics with it.
-///
-/// Simply specify the "out" variable and then write the expression.
-macro_rules! inner_try {
-    ($i: ident, $b: block) => {
-        $i = ::std::option::Option::Some((|| $b)())
-    }
-}

@@ -55,33 +55,27 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 fn coords<'lua>(lua: &'lua Lua,
                 (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
-    let mut res = None;
-    POINTER.with(|pointer| {
-                     inner_try!(res, {
-                         let pointer = &mut *pointer.borrow_mut();
-                         match coords {
-                             rlua::Value::Table(coords) => {
-                                 let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
-                                 // TODO The ignore_enter is supposed to not send a send event to
-                                 // the client That's not
-                                 // possible, at least until wlroots is complete.
-                                 pointer.set_position((x as _, y as _));
-                                 Ok(coords)
-                             }
-                             _ => {
-                                 // get the coords
-                                 let coords = lua.create_table()?;
-                                 let (x, y) = pointer.position;
-                                 coords.set("x", x as i32)?;
-                                 coords.set("y", y as i32)?;
-                                 // TODO It expects a table of what buttons were pressed.
-                                 coords.set("buttons", lua.create_table()?)?;
-                                 Ok(coords)
-                             }
-                         }
-                     })
-                 });
-    res.unwrap()
+    let mut pointer = POINTER.lock().expect("Lock was poisoned");
+    match coords {
+        rlua::Value::Table(coords) => {
+            let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
+            // TODO The ignore_enter is supposed to not send a send event to
+            // the client That's not
+            // possible, at least until wlroots is complete.
+            pointer.set_position((x as _, y as _));
+            Ok(coords)
+        }
+        _ => {
+            // get the coords
+            let coords = lua.create_table()?;
+            let (x, y) = pointer.position;
+            coords.set("x", x as i32)?;
+            coords.set("y", y as i32)?;
+            // TODO It expects a table of what buttons were pressed.
+            coords.set("buttons", lua.create_table()?)?;
+            Ok(coords)
+        }
+    }
 }
 
 fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
@@ -111,23 +105,18 @@ fn index<'lua>(lua: &'lua Lua,
             // TODO Might need a more robust way to get the current output...
             // E.g they look at where the cursor is, I don't think we need to do that.
 
-            let mut res: Option<rlua::Result<Value<'lua>>> = None;
-            OUTPUTS.with(|outputs| {
-                inner_try!(res, {
-                    let index = outputs.borrow().iter()
-                        .position(|output| output.focused)
-                    // NOTE Best to just lie because no one handles nil screens properly
-                        .unwrap_or(0);
-                    let screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
-                    if index < screens.len() {
-                        return screens[index].clone().to_lua(lua)
-                    }
-                    // TODO Return screen even in bad case,
-                    // see how awesome does it for maximal compatibility
-                    panic!("Could not find a screen")
-                })
-            });
-            return res.expect("Failed to get a screen")
+            let outputs = OUTPUTS.lock().expect("Outputs was poisoned");
+            let index = outputs.iter()
+                .position(|output| output.focused)
+            // NOTE Best to just lie because no one handles nil screens properly
+                .unwrap_or(0);
+            let screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
+            if index < screens.len() {
+                return screens[index].clone().to_lua(lua)
+            }
+            // TODO Return screen even in bad case,
+            // see how awesome does it for maximal compatibility
+            panic!("Could not find a screen")
         }
         _ => {}
     }
