@@ -1,41 +1,20 @@
-//! Main module of way-cooler ipc.
-
-use std::sync::Mutex;
-use std::sync::mpsc::{self, Sender};
-use std::thread;
-
-use dbus::tree::{Factory, ObjectPath, Tree, MTFn, MethodErr};
-
-mod utils;
-mod keybindings;
-mod dbus_message;
-pub use self::dbus_message::DBusMessage;
-mod session;
-pub use self::session::DBusSession;
-
-mod interfaces;
-pub use self::interfaces::screen;
-pub use self::interfaces::layout;
-
-pub const VERSION: u32 = 1;
-
-type DBusResult<T> = Result<T, MethodErr>;
-type DBusObjPath = ObjectPath<MTFn<()>, ()>;
-type DBusFactory = Factory<MTFn<()>>;
-type DBusTree = Tree<MTFn<()>, ()>;
-
-lazy_static! {
-    static ref SENDER: Mutex<Option<Sender<DBusMessage>>> = Mutex::new(None);
+/// A representation of an Output for use in the Awesome module.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Output {
+    pub name: String,
+    pub effective_resolution: (i32, i32),
+    pub focused: bool
 }
 
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Pointer {
+    pub position: (f64, f64)
+}
 
-pub fn init() {
-    let (send, recv) = mpsc::channel();
-    let _join = thread::spawn( move || {
-        let mut session = DBusSession::create(recv);
-
-        *SENDER.lock().expect("Unable to unlock") = Some(send);
-
-        session.run_thread();
-    });
+impl Pointer {
+    /// Set the position of the pointer.
+    pub fn set_position(&mut self, pos: (f64, f64)) {
+        // TODO: post to the server
+        self.position = pos
+    }
 }

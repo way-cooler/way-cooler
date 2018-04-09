@@ -1,10 +1,11 @@
 # Contributing to Way Cooler
 
-We are always looking for more help to improve Way Cooler. Even if you don't know how to write any Rust code, we always need better documentation, detailed bug reports, and suggestions for more features.
+To contribute code, all that is required is that you have an email address and you can send a pull request via Github.
 
-See [here](ways-to-contribute.md) to find out how you can contribute to Way Cooler.
+Regardless if you are planning for or looking for something to do, it's best if you reach out via the [IRC channel](https://webchat.freenode.net/?channels=awesome&uio=d4) first.
 
-## Guidelines
+# Release Cycle
+For pre-1.0 there is no fixed release. Once 1.0 has been released a release cycle will be determined and will probably follow what Awesome does.
 
-Every pull request that adds new functionality / fixes a bug should have tests ensuring that the feature works / the bug can't happen again. If this isn't possible (for example it would require mocking wlc, something that is currently very difficult), exceptions can be made.
-
+# Coding style
+Please run rustfmt on your code before submission. That is the easiest way to ensure you follow the code style. To invoke the formatter, simply run `cargo fmt`.

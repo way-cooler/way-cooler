@@ -1,12 +1,12 @@
 //! Utility methods and constructors for Lua classes
 
+use super::object::{self, Object};
+use super::property::Property;
+use rlua::{self, AnyUserData, Function, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods,
+           Value};
 use std::convert::From;
 use std::default::Default;
 use std::sync::Arc;
-use rlua::{self, Lua, ToLua, Table, Value, UserData, AnyUserData, Function,
-           UserDataMethods, MetaMethod};
-use super::object::{self, Object};
-use super::property::Property;
 
 pub type Checker = Arc<Fn(Object) -> bool + Send + Sync>;
 
@@ -15,7 +15,7 @@ pub struct Class<'lua> {
     class: AnyUserData<'lua>
 }
 
-impl <'lua> From<AnyUserData<'lua>> for Class<'lua> {
+impl<'lua> From<AnyUserData<'lua>> for Class<'lua> {
     fn from(class: AnyUserData<'lua>) -> Self {
         Class { class }
     }
@@ -30,17 +30,15 @@ pub struct ClassState {
     instances: u32
 }
 
-pub struct ClassBuilder<'lua>{
+pub struct ClassBuilder<'lua> {
     lua: &'lua Lua,
     class: Class<'lua>
 }
 
-impl <'lua> ClassBuilder<'lua> {
-    pub fn method(self, name: String, meth: rlua::Function)
-                  -> rlua::Result<Self> {
+impl<'lua> ClassBuilder<'lua> {
+    pub fn method(self, name: String, meth: rlua::Function) -> rlua::Result<Self> {
         let table = self.class.class.get_user_value::<Table>()?;
-        let meta = table.get_metatable()
-            .expect("Class had no meta table!");
+        let meta = table.get_metatable().expect("Class had no meta table!");
         meta.set(name, meth)?;
         Ok(self)
     }
@@ -56,14 +54,12 @@ impl <'lua> ClassBuilder<'lua> {
     // TODO remove, do right
     pub fn dummy_property(self, key: String, val: rlua::Value<'lua>) -> rlua::Result<Self> {
         let table = self.class.class.get_user_value::<Table>()?;
-        let meta = table.get_metatable()
-            .expect("Class had no meta table!");
+        let meta = table.get_metatable().expect("Class had no meta table!");
         meta.set(key, val)?;
         Ok(self)
     }
 
-    pub fn save_class(self, name: &str)
-                      -> rlua::Result<Self> {
+    pub fn save_class(self, name: &str) -> rlua::Result<Self> {
         self.lua.globals().set(name, self.class.class.clone())?;
         Ok(self)
     }
@@ -73,7 +69,7 @@ impl <'lua> ClassBuilder<'lua> {
     }
 }
 
-impl <'lua> ToLua<'lua> for Class<'lua> {
+impl<'lua> ToLua<'lua> for Class<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.class.to_lua(lua)
     }
@@ -81,10 +77,8 @@ impl <'lua> ToLua<'lua> for Class<'lua> {
 
 impl Default for ClassState {
     fn default() -> Self {
-        ClassState {
-            checker: Option::default(),
-            instances: 0
-        }
+        ClassState { checker: Option::default(),
+                     instances: 0 }
     }
 }
 
@@ -109,7 +103,7 @@ impl UserData for ClassState {
     }
 }
 
-impl <'lua> Class<'lua> {
+impl<'lua> Class<'lua> {
     pub fn builder(lua: &'lua Lua,
                    name: &str,
                    checker: Option<Checker>)
@@ -124,52 +118,51 @@ impl <'lua> Class<'lua> {
         let meta = lua.create_table()?;
         meta.set("signals", lua.create_table()?)?;
         meta.set("set_index_miss_handler",
-                 lua.create_function(set_index_miss_handler)?.bind(user_data.clone())?)?;
+                  lua.create_function(set_index_miss_handler)?
+                     .bind(user_data.clone())?)?;
         meta.set("set_newindex_miss_handler",
-                 lua.create_function(set_newindex_miss_handler)?.bind(user_data.clone())?)?;
+                  lua.create_function(set_newindex_miss_handler)?
+                     .bind(user_data.clone())?)?;
         meta.set("__index", meta.clone())?;
         table.set_metatable(Some(meta.clone()));
         user_data.set_user_value(table)?;
-        Ok(ClassBuilder{
-            lua: lua,
-            class: Class { class: user_data }
-        })
+        Ok(ClassBuilder { lua: lua,
+                          class: Class { class: user_data } })
     }
 
     pub fn checker(&self) -> rlua::Result<Option<Checker>> {
-        self.class.borrow::<ClassState>().map(|class| class.checker.clone())
+        self.class.borrow::<ClassState>()
+            .map(|class| class.checker.clone())
     }
 }
 
-fn set_index_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
+fn set_index_miss_handler<'lua>(_: &'lua Lua,
+                                (class, func): (AnyUserData, Function))
                                 -> rlua::Result<()> {
     let table = class.get_user_value::<Table>()?;
-    let meta = table.get_metatable()
-        .expect("Object had no metatable");
+    let meta = table.get_metatable().expect("Object had no metatable");
     meta.set("__index_miss_handler", func)?;
     Ok(())
 }
-fn set_newindex_miss_handler<'lua>(_: &'lua Lua, (class, func): (AnyUserData, Function))
+fn set_newindex_miss_handler<'lua>(_: &'lua Lua,
+                                   (class, func): (AnyUserData, Function))
                                    -> rlua::Result<()> {
     let table = class.get_user_value::<Table>()?;
-    let meta = table.get_metatable()
-        .expect("Object had no metatable");
+    let meta = table.get_metatable().expect("Object had no metatable");
     meta.set("__newindex_miss_handler", func)?;
     Ok(())
 }
 
 pub fn class_setup<'lua>(lua: &'lua Lua, name: &str) -> rlua::Result<Class<'lua>> {
     let class = lua.globals().get::<_, AnyUserData>(name)
-        .expect("Class was not set! Did you call init?");
-    assert!(class.is::<ClassState>()?,
-            "This user data was not a class!");
+                   .expect("Class was not set! Did you call init?");
+    assert!(class.is::<ClassState>()?, "This user data was not a class!");
     Ok(Class { class })
 }
 
-
 fn class_index<'lua>(_: &'lua Lua,
-                         (class, index): (AnyUserData<'lua>, Value<'lua>))
-                         -> rlua::Result<Value<'lua>> {
+                     (class, index): (AnyUserData<'lua>, Value<'lua>))
+                     -> rlua::Result<Value<'lua>> {
     let table = class.get_user_value::<Table>()?;
     let meta = table.get_metatable().expect("class had no meta table");
     match meta.raw_get("__index")? {

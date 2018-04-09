@@ -36,8 +36,6 @@ pub struct XProperty {
 
 impl XProperty {
     pub fn new(name: String, type_: XPropertyType, atom: xcb_atom_t) -> Self {
-        XProperty {
-            atom, name, type_
-        }
+        XProperty { atom, name, type_ }
     }
 }

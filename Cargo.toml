@@ -1,30 +1,22 @@
 [package]
 name = "way-cooler"
-description = "Customizeable Wayland compositor written in Rust"
+description = "Wayland compositor that emulates AwesomeWM"
 version = "0.8.0"
-repository = "https://github.com/Immington-Industries/way-cooler/"
-keywords = ["Wayland", "compositor", "window", "manager", "wlc"]
+repository = "https://github.com/way-cooler/way-cooler/"
+keywords = ["Wayland", "compositor", "window", "manager", "wlroots", "awesome"]
 readme = "README.md"
 license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
 build = "build.rs"
 
 [dependencies]
-rustwlc = { version = "0.7.0", features = ["wlc-wayland"] }
+wlroots = { path = "./wlroots-rs" }
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"
-dbus = "0.4"
-dbus-macros = "0.0.6"
 rlua = { version = "0.12.0", default-features = false }
 bitflags = "0.7"
-petgraph = "0.4.5"
-rustc-serialize = "0.3"
-json_macro = "0.1"
 nix = "0.6"
-uuid = { version = "0.3", features = ["v4", "rustc-serialize"]}
-wayland-sys = { version = "0.12.1", features = ["client", "dlopen"] }
-wayland-server = { version = "0.12.1" }
 getopts = "0.2"
 cairo-rs = "0.3.*"
 cairo-sys-rs = "0.5.*"
@@ -32,15 +24,8 @@ gdk-pixbuf = "0.3.*"
 glib = "0.4.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 
-[dev-dependencies]
-dummy-rustwlc = "0.7.1"
-
-[build-dependencies]
-wayland-scanner = { version = "0.12.1" }
-
 
 [features]
-static-wlc = ["rustwlc/static-wlc"]
 disable-debug = []
 builtin-lua= ["rlua/builtin-lua"]
 
