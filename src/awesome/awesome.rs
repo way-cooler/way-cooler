@@ -2,7 +2,7 @@
 
 use super::{signal, XCB_CONNECTION_HANDLE};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
-use cairo::{self, ImageSurface};
+use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
 use nix::{self, libc};
@@ -313,11 +313,27 @@ fn xrdb_get_value(_lua: &Lua,
     Ok(Value::Nil)
 }
 
+#[cfg(target_endian = "big")]
+fn write_u32(data: &mut ImageSurfaceData, i: usize, a: u8, r: u8, g: u8, b: u8) {
+    data[i + 0] = a;
+    data[i + 1] = r;
+    data[i + 2] = g;
+    data[i + 3] = b;
+}
+
+#[cfg(target_endian = "little")]
+fn write_u32(data: &mut ImageSurfaceData, i: usize, a: u8, r: u8, g: u8, b: u8) {
+    data[i + 3] = a;
+    data[i + 2] = r;
+    data[i + 1] = g;
+    data[i + 0] = b;
+}
+
 /// Using a Pixbuf buffer, loads the data into a Cairo surface.
 pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
     let width = pixbuf.get_width();
     let height = pixbuf.get_height();
-    let channels = pixbuf.get_n_channels();
+    let channels = pixbuf.get_n_channels() as usize;
     let pix_stride = pixbuf.get_rowstride() as usize;
     // NOTE This is safe because we aren't modifying the bytes, but there's no
     // immutable view
@@ -332,41 +348,25 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
     let cairo_stride = surface.get_stride() as usize;
     {
         let mut cairo_data = surface.get_data().unwrap();
-        let mut pix_pixels_index = 0;
-        let mut cairo_pixels_index = 0;
-        for _ in 0..height {
-            let mut pix_pixels_index2 = pix_pixels_index;
-            let mut cairo_pixels_index2 = cairo_pixels_index;
+        for y in 0..height as usize {
+            let mut pix_pixels_index = y * pix_stride;
+            let mut cairo_pixels_index = y * cairo_stride;
             for _ in 0..width {
-                if channels == 3 {
-                    let r = pixels[pix_pixels_index2];
-                    let g = pixels[pix_pixels_index2 + 1];
-                    let b = pixels[pix_pixels_index2 + 2];
-                    cairo_data[cairo_pixels_index2] = b;
-                    cairo_data[cairo_pixels_index2 + 1] = g;
-                    cairo_data[cairo_pixels_index2 + 2] = r;
-                    pix_pixels_index2 += 3;
-                    // NOTE Four because of the alpha value we ignore
-                    cairo_pixels_index2 += 4;
-                } else {
-                    let mut r = pixels[pix_pixels_index];
-                    let mut g = pixels[pix_pixels_index + 1];
-                    let mut b = pixels[pix_pixels_index + 2];
-                    let a = pixels[pix_pixels_index + 3];
+                let mut r = pixels[pix_pixels_index];
+                let mut g = pixels[pix_pixels_index + 1];
+                let mut b = pixels[pix_pixels_index + 2];
+                let mut a = 1;
+                if channels == 4 {
+                    a = pixels[pix_pixels_index + 3];
                     let alpha = a as f64 / 255.0;
-                    r *= alpha as u8;
-                    g *= alpha as u8;
-                    b *= alpha as u8;
-                    cairo_data[cairo_pixels_index] = b;
-                    cairo_data[cairo_pixels_index + 1] = g;
-                    cairo_data[cairo_pixels_index + 2] = r;
-                    cairo_data[cairo_pixels_index + 3] = a;
-                    pix_pixels_index2 += 4;
-                    cairo_pixels_index2 += 4;
+                    r = (r as f64 * alpha) as u8;
+                    g = (g as f64 * alpha) as u8;
+                    b = (b as f64 * alpha) as u8;
                 }
+                write_u32(&mut cairo_data, cairo_pixels_index, b, g, r, a);
+                pix_pixels_index += channels;
+                cairo_pixels_index += 4;
             }
-            pix_pixels_index += pix_stride;
-            cairo_pixels_index += cairo_stride;
         }
     }
     surface
