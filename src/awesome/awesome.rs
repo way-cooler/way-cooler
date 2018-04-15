@@ -354,9 +354,9 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
                     let mut b = pixels[pix_pixels_index2 + 2];
                     let a = pixels[pix_pixels_index2 + 3];
                     let alpha = a as f64 / 255.0;
-                    r *= alpha as u8;
-                    g *= alpha as u8;
-                    b *= alpha as u8;
+                    r = (r as f64 * alpha) as u8;
+                    g = (g as f64 * alpha) as u8;
+                    b = (b as f64 * alpha) as u8;
                     cairo_data[cairo_pixels_index2] = b;
                     cairo_data[cairo_pixels_index2 + 1] = g;
                     cairo_data[cairo_pixels_index2 + 2] = r;
