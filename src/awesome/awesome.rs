@@ -333,7 +333,7 @@ fn write_u32(data: &mut ImageSurfaceData, i: usize, a: u8, r: u8, g: u8, b: u8) 
 pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
     let width = pixbuf.get_width();
     let height = pixbuf.get_height();
-    let channels = pixbuf.get_n_channels();
+    let channels = pixbuf.get_n_channels() as usize;
     let pix_stride = pixbuf.get_rowstride() as usize;
     // NOTE This is safe because we aren't modifying the bytes, but there's no
     // immutable view
@@ -354,27 +354,20 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
             let mut pix_pixels_index2 = pix_pixels_index;
             let mut cairo_pixels_index2 = cairo_pixels_index;
             for _ in 0..width {
-                if channels == 3 {
-                    let r = pixels[pix_pixels_index2];
-                    let g = pixels[pix_pixels_index2 + 1];
-                    let b = pixels[pix_pixels_index2 + 2];
-                    write_u32(&mut cairo_data, cairo_pixels_index2, b, g, r, 1);
-                    pix_pixels_index2 += 3;
-                    // NOTE Four because of the alpha value we ignore
-                    cairo_pixels_index2 += 4;
-                } else {
-                    let mut r = pixels[pix_pixels_index2];
-                    let mut g = pixels[pix_pixels_index2 + 1];
-                    let mut b = pixels[pix_pixels_index2 + 2];
-                    let a = pixels[pix_pixels_index2 + 3];
+                let mut r = pixels[pix_pixels_index2];
+                let mut g = pixels[pix_pixels_index2 + 1];
+                let mut b = pixels[pix_pixels_index2 + 2];
+                let mut a = 1;
+                if channels == 4 {
+                    a = pixels[pix_pixels_index2 + 3];
                     let alpha = a as f64 / 255.0;
                     r = (r as f64 * alpha) as u8;
                     g = (g as f64 * alpha) as u8;
                     b = (b as f64 * alpha) as u8;
-                    write_u32(&mut cairo_data, cairo_pixels_index2, b, g, r, a);
-                    pix_pixels_index2 += 4;
-                    cairo_pixels_index2 += 4;
                 }
+                write_u32(&mut cairo_data, cairo_pixels_index2, b, g, r, a);
+                pix_pixels_index2 += channels;
+                cairo_pixels_index2 += 4;
             }
             pix_pixels_index += pix_stride;
             cairo_pixels_index += cairo_stride;
