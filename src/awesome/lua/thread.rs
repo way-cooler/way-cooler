@@ -31,10 +31,6 @@ lazy_static! {
     static ref CHANNEL: ChannelToLua = ChannelToLua::default();
 }
 
-const INIT_LUA_FUNC: &'static str = "way_cooler.on_init()";
-const LUA_TERMINATE_CODE: &'static str = "way_cooler.on_terminate()";
-const LUA_RESTART_CODE: &'static str = "way_cooler.on_restart()";
-
 /// Struct sent to the Lua query
 struct LuaMessage {
     reply: Sender<LuaResponse>,
@@ -149,30 +145,12 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     Ok(response_rx)
 }
 
-/// Initialize the Lua thread.
-pub fn init() {
-    info!("Starting Lua thread...");
-    let _lua_handle = thread::Builder::new().name("Lua thread".to_string())
-                                            .spawn(|| main_loop());
-}
-
 pub fn on_compositor_ready() {
     info!("Running lua on_init()");
     // Call the special init hook function that we read from the init file
-    init();
-    send(LuaQuery::Execute(INIT_LUA_FUNC.to_owned())).err()
-                                                     .map(|error| {
-                                                              warn!("Lua init callback returned \
-                                                                     an error: {:?}",
-                                                                    error)
-                                                          });
-}
-
-fn lua_init() {
-    info!("Initializing lua...");
-    LUA.with(|lua| {
-                 load_config(&mut *lua.borrow_mut());
-             });
+    info!("Starting Lua thread...");
+    let _lua_handle = thread::Builder::new().name("Lua thread".to_string())
+                                            .spawn(|| main_loop());
 }
 
 fn load_config(mut lua: &mut rlua::Lua) {
@@ -262,9 +240,12 @@ impl Drop for DropReceiver {
 /// * Run a GMainLoop
 fn main_loop() {
     let _guard = DropReceiver;
-    LUA.with(|lua| rust_interop::register_libraries(&*lua.borrow()))
-        .expect("Could not register lua libraries");
-    lua_init();
+    LUA.with(|lua| {
+        rust_interop::register_libraries(&*lua.borrow())
+            .expect("Could not register lua libraries");
+        info!("Initializing lua...");
+        load_config(&mut *lua.borrow_mut());
+    });
     MAIN_LOOP.with(|main_loop| main_loop.borrow().run());
 }
 
@@ -273,12 +254,6 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
     match request.query {
         LuaQuery::Terminate => {
             trace!("Received terminate signal");
-            if let Err(error) =
-                lua.exec::<()>(LUA_TERMINATE_CODE, Some("custom terminate code".into()))
-            {
-                warn!("Lua termination callback returned an error: {:?}", error);
-                warn!("However, termination will continue");
-            }
             thread_send(request.reply, LuaResponse::Pong);
 
             info!("Lua thread terminating!");
@@ -286,11 +261,6 @@ fn handle_message(request: LuaMessage, lua: &mut rlua::Lua) -> bool {
         }
         LuaQuery::Restart => {
             trace!("Received restart signal!");
-            if let Err(error) = lua.exec::<()>(LUA_RESTART_CODE, Some("custom restart code".into()))
-            {
-                warn!("Lua restart callback returned an error: {:?}", error);
-                warn!("However, Lua will be restarted");
-            }
             thread_send(request.reply, LuaResponse::Pong);
 
             info!("Lua thread restarting");
