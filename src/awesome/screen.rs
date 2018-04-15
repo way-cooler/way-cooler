@@ -128,6 +128,18 @@ pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<'lua>> {
         // TODO Move to Screen impl like the others
         screens.push(screen);
     }
+
+    // If no screens exist, fake one.
+    if screens.is_empty() {
+        let mut screen = Screen::cast(Screen::new(lua)?)?;
+        {
+            let mut obj = screen.get_object_mut()?;
+            obj.geometry = Size::new(1024, 768).into();
+            obj.workarea = obj.geometry;
+        }
+        screens.push(screen);
+    }
+
     lua.set_named_registry_value(SCREENS_HANDLE, screens.clone().to_lua(lua)?)?;
     Ok(res)
 }
