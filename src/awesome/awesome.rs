@@ -2,7 +2,7 @@
 
 use super::{signal, XCB_CONNECTION_HANDLE};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
-use cairo::{self, ImageSurface};
+use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::Pixbuf;
 use glib::translate::ToGlibPtr;
 use nix::{self, libc};
@@ -313,6 +313,22 @@ fn xrdb_get_value(_lua: &Lua,
     Ok(Value::Nil)
 }
 
+#[cfg(target_endian = "big")]
+fn write_u32(data: &mut ImageSurfaceData, i: usize, a: u8, r: u8, g: u8, b: u8) {
+    data[i + 0] = a;
+    data[i + 1] = r;
+    data[i + 2] = g;
+    data[i + 3] = b;
+}
+
+#[cfg(target_endian = "little")]
+fn write_u32(data: &mut ImageSurfaceData, i: usize, a: u8, r: u8, g: u8, b: u8) {
+    data[i + 3] = a;
+    data[i + 2] = r;
+    data[i + 1] = g;
+    data[i + 0] = b;
+}
+
 /// Using a Pixbuf buffer, loads the data into a Cairo surface.
 pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
     let width = pixbuf.get_width();
@@ -342,9 +358,7 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
                     let r = pixels[pix_pixels_index2];
                     let g = pixels[pix_pixels_index2 + 1];
                     let b = pixels[pix_pixels_index2 + 2];
-                    cairo_data[cairo_pixels_index2] = b;
-                    cairo_data[cairo_pixels_index2 + 1] = g;
-                    cairo_data[cairo_pixels_index2 + 2] = r;
+                    write_u32(&mut cairo_data, cairo_pixels_index2, b, g, r, 1);
                     pix_pixels_index2 += 3;
                     // NOTE Four because of the alpha value we ignore
                     cairo_pixels_index2 += 4;
@@ -357,10 +371,7 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
                     r = (r as f64 * alpha) as u8;
                     g = (g as f64 * alpha) as u8;
                     b = (b as f64 * alpha) as u8;
-                    cairo_data[cairo_pixels_index2] = b;
-                    cairo_data[cairo_pixels_index2 + 1] = g;
-                    cairo_data[cairo_pixels_index2 + 2] = r;
-                    cairo_data[cairo_pixels_index2 + 3] = a;
+                    write_u32(&mut cairo_data, cairo_pixels_index2, b, g, r, a);
                     pix_pixels_index2 += 4;
                     cairo_pixels_index2 += 4;
                 }
