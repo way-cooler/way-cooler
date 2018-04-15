@@ -348,29 +348,25 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
     let cairo_stride = surface.get_stride() as usize;
     {
         let mut cairo_data = surface.get_data().unwrap();
-        let mut pix_pixels_index = 0;
-        let mut cairo_pixels_index = 0;
-        for _ in 0..height {
-            let mut pix_pixels_index2 = pix_pixels_index;
-            let mut cairo_pixels_index2 = cairo_pixels_index;
+        for y in 0..height as usize {
+            let mut pix_pixels_index = y * pix_stride;
+            let mut cairo_pixels_index = y * cairo_stride;
             for _ in 0..width {
-                let mut r = pixels[pix_pixels_index2];
-                let mut g = pixels[pix_pixels_index2 + 1];
-                let mut b = pixels[pix_pixels_index2 + 2];
+                let mut r = pixels[pix_pixels_index];
+                let mut g = pixels[pix_pixels_index + 1];
+                let mut b = pixels[pix_pixels_index + 2];
                 let mut a = 1;
                 if channels == 4 {
-                    a = pixels[pix_pixels_index2 + 3];
+                    a = pixels[pix_pixels_index + 3];
                     let alpha = a as f64 / 255.0;
                     r = (r as f64 * alpha) as u8;
                     g = (g as f64 * alpha) as u8;
                     b = (b as f64 * alpha) as u8;
                 }
-                write_u32(&mut cairo_data, cairo_pixels_index2, b, g, r, a);
-                pix_pixels_index2 += channels;
-                cairo_pixels_index2 += 4;
+                write_u32(&mut cairo_data, cairo_pixels_index, b, g, r, a);
+                pix_pixels_index += channels;
+                cairo_pixels_index += 4;
             }
-            pix_pixels_index += pix_stride;
-            cairo_pixels_index += cairo_stride;
         }
     }
     surface
