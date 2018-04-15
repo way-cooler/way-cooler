@@ -349,18 +349,18 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
                     // NOTE Four because of the alpha value we ignore
                     cairo_pixels_index2 += 4;
                 } else {
-                    let mut r = pixels[pix_pixels_index];
-                    let mut g = pixels[pix_pixels_index + 1];
-                    let mut b = pixels[pix_pixels_index + 2];
-                    let a = pixels[pix_pixels_index + 3];
+                    let mut r = pixels[pix_pixels_index2];
+                    let mut g = pixels[pix_pixels_index2 + 1];
+                    let mut b = pixels[pix_pixels_index2 + 2];
+                    let a = pixels[pix_pixels_index2 + 3];
                     let alpha = a as f64 / 255.0;
                     r *= alpha as u8;
                     g *= alpha as u8;
                     b *= alpha as u8;
-                    cairo_data[cairo_pixels_index] = b;
-                    cairo_data[cairo_pixels_index + 1] = g;
-                    cairo_data[cairo_pixels_index + 2] = r;
-                    cairo_data[cairo_pixels_index + 3] = a;
+                    cairo_data[cairo_pixels_index2] = b;
+                    cairo_data[cairo_pixels_index2 + 1] = g;
+                    cairo_data[cairo_pixels_index2 + 2] = r;
+                    cairo_data[cairo_pixels_index2 + 3] = a;
                     pix_pixels_index2 += 4;
                     cairo_pixels_index2 += 4;
                 }
