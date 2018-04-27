@@ -220,4 +220,5 @@ fn log_environment() {
 /// Handler for signals
 extern "C" fn sig_handle(_: nix::libc::c_int) {
     wlroots::terminate();
+    awesome::lua::terminate();
 }

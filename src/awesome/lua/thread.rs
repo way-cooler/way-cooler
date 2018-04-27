@@ -337,3 +337,7 @@ fn thread_send(sender: Sender<LuaResponse>, response: LuaResponse) {
         Ok(_) => {}
     }
 }
+
+pub fn terminate() {
+    MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
+}
