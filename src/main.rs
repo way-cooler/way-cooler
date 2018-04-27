@@ -29,7 +29,7 @@ mod ipc;
 
 pub use awesome::lua;
 
-use std::{env, fs::File, io::{BufRead, BufReader}, path::Path, process::exit};
+use std::{env, fs::File, io::{BufRead, BufReader}, path::Path, process::exit, os::raw::c_void};
 
 use log::LogLevel;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
@@ -71,8 +71,13 @@ fn main() {
     detect_proprietary();
     detect_raspi();
     ensure_good_env();
-    awesome::lua::on_compositor_ready();
-    compositor::init();
+    let compositor = compositor::init();
+    unsafe {
+        #[link(name="wayland_glib_interface", kind="static")]
+        extern { fn wayland_glib_interface_init(display: *mut c_void); }
+        wayland_glib_interface_init(compositor.display() as *mut c_void);
+    }
+    compositor.run_with(|_| awesome::lua::on_compositor_ready());
 }
 
 /// Formats the log strings properly

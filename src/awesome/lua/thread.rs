@@ -7,7 +7,6 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Mutex;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread;
 
 use glib::MainLoop;
 use glib::source::{idle_add, Continue};
@@ -148,9 +147,8 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
 pub fn on_compositor_ready() {
     info!("Running lua on_init()");
     // Call the special init hook function that we read from the init file
-    info!("Starting Lua thread...");
-    let _lua_handle = thread::Builder::new().name("Lua thread".to_string())
-                                            .spawn(|| main_loop());
+    info!("Starting Lua main loop...");
+    main_loop();
 }
 
 fn load_config(mut lua: &mut rlua::Lua) {
