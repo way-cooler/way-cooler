@@ -12,7 +12,7 @@ pub use self::seat::*;
 pub use self::shells::*;
 pub use self::view::*;
 
-use wlroots::{self, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle, OutputLayout,
+use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle, OutputLayout,
               OutputLayoutHandle, PointerHandle, XCursorTheme};
 
 #[derive(Debug)]
@@ -50,7 +50,7 @@ impl Server {
 
 compositor_data!(Server);
 
-pub fn init() {
+pub fn init() -> Compositor {
     let layout = OutputLayout::create(Box::new(OutputLayoutManager::new()));
     let cursor = Cursor::create(Box::new(CursorManager::new()));
     let mut compositor = CompositorBuilder::new().gles2(true)
@@ -68,5 +68,5 @@ pub fn init() {
         let server: &mut Server = (&mut compositor).into();
         server.seat = Seat::new(seat);
     }
-    compositor.run()
+    compositor
 }

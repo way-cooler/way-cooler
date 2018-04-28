@@ -11,7 +11,8 @@ impl KeyboardHandler for Keyboard {
         if event.key_state() == WLR_KEY_PRESSED {
             for key in event.pressed_keys() {
                 if key == KEY_Escape {
-                    compositor.terminate()
+                    compositor.terminate();
+                    ::awesome::lua::terminate();
                 // TODO Remove
                 } else if key == KEY_F1 {
                     ::std::thread::spawn(|| {
