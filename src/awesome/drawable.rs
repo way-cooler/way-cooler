@@ -53,8 +53,6 @@ impl<'lua> Drawable<'lua> {
             Some(ref surface) => {
                 let stash = surface.to_glib_none();
                 let ptr = stash.0 as _;
-                // So that it lives _forever_ heheheh.
-                ::std::mem::forget(stash);
                 Value::LightUserData(LightUserData(ptr))
             }
         })

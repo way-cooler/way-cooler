@@ -89,9 +89,10 @@ fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
 fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
     let con = match Connection::connect(None) {
         Err(err) => {
-            error!("xcb: Could not connect to xwayland instance. Is it running?");
+            error!("Way Cooler requires XWayland in order to function");
+            error!("However, xcb could not connect to it. Is it running?");
             error!("{:?}", err);
-            return Ok(())
+            panic!("Could not connect to XWayland instance");
         }
         Ok(con) => con.0
     };

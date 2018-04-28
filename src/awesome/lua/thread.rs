@@ -212,6 +212,36 @@ fn load_config(mut lua: &mut rlua::Lua) {
             warn!("Defaulting to pre-compiled init.lua");
             let _: () = lua.exec(init_path::DEFAULT_CONFIG,
                                  Some("init.lua <DEFAULT>".into()))
+                .or_else(|err| {
+                    fn recursive_callback_print(error: ::std::sync::Arc<rlua::Error>) {
+                        match *error {
+                            rlua::Error::CallbackError {traceback: ref err, ref cause } => {
+                                error!("{}", err);
+                                recursive_callback_print(cause.clone())
+                            },
+                            ref err => error!("{:?}", err)
+                        }
+                    }
+                    match err {
+                        rlua::Error::RuntimeError(ref err) => {
+                            error!("{}", err);
+                        }
+                        rlua::Error::CallbackError{traceback: ref err, ref cause } => {
+                            error!("traceback: {}", err);
+                            recursive_callback_print(cause.clone());
+                        },
+                        err => {
+                            error!("init file error: {:?}", err);
+                        }
+                    }
+                    // Keeping this an error, so that it is visible
+                    // in release builds.
+                    info!("Defaulting to pre-compiled init.lua");
+                    unsafe { *lua = rlua::Lua::new_with_debug(); }
+                    rust_interop::register_libraries(&mut lua)?;
+                    lua.exec(init_path::DEFAULT_CONFIG,
+                             Some("init.lua <DEFAULT>".into()))
+                })
                 .expect("Unable to load pre-compiled init file");
         }
     }
@@ -239,11 +269,11 @@ impl Drop for DropReceiver {
 fn main_loop() {
     let _guard = DropReceiver;
     LUA.with(|lua| {
-        rust_interop::register_libraries(&*lua.borrow())
-            .expect("Could not register lua libraries");
-        info!("Initializing lua...");
-        load_config(&mut *lua.borrow_mut());
-    });
+                 rust_interop::register_libraries(&*lua.borrow()).expect("Could not register lua \
+                                                                          libraries");
+                 info!("Initializing lua...");
+                 load_config(&mut *lua.borrow_mut());
+             });
     MAIN_LOOP.with(|main_loop| main_loop.borrow().run());
 }
 
