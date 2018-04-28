@@ -79,7 +79,8 @@ fn main() {
         }
         wayland_glib_interface_init(compositor.display() as *mut c_void);
     }
-    compositor.run_with(|_| awesome::lua::on_compositor_ready());
+    awesome::lua::setup_lua();
+    compositor.run_with(|_| awesome::lua::main_loop());
 }
 
 /// Formats the log strings properly

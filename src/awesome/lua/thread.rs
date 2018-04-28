@@ -144,13 +144,6 @@ pub fn send(query: LuaQuery) -> Result<Receiver<LuaResponse>, LuaSendError> {
     Ok(response_rx)
 }
 
-pub fn on_compositor_ready() {
-    info!("Running lua on_init()");
-    // Call the special init hook function that we read from the init file
-    info!("Starting Lua main loop...");
-    main_loop();
-}
-
 fn load_config(mut lua: &mut rlua::Lua) {
     info!("Loading way-cooler libraries...");
 
@@ -262,18 +255,22 @@ impl Drop for DropReceiver {
     }
 }
 
-/// Main loop of the Lua thread:
-///
-/// * Initialise the Lua state
-/// * Run a GMainLoop
-fn main_loop() {
-    let _guard = DropReceiver;
+/// Sets up the Lua environment before running the compositor.
+pub fn setup_lua() {
     LUA.with(|lua| {
                  rust_interop::register_libraries(&*lua.borrow()).expect("Could not register lua \
                                                                           libraries");
                  info!("Initializing lua...");
                  load_config(&mut *lua.borrow_mut());
              });
+}
+
+/// Main loop of the Lua thread:
+///
+/// * Initialise the Lua state
+/// * Run a GMainLoop
+pub fn main_loop() {
+    let _guard = DropReceiver;
     MAIN_LOOP.with(|main_loop| main_loop.borrow().run());
 }
 
