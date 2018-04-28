@@ -52,8 +52,16 @@ impl<'lua> Drawable<'lua> {
             None => Value::Nil,
             Some(ref surface) => {
                 let stash = surface.to_glib_none();
-                let ptr = stash.0 as _;
-                Value::LightUserData(LightUserData(ptr))
+                let ptr = stash.0;
+                // NOTE
+                // We bump the reference count because now Lua has a reference which
+                // it manages via LGI.
+                //
+                // If there's a bug, worst case scenario there's a memory leak.
+                unsafe {
+                    ::cairo_sys::cairo_surface_reference(ptr);
+                }
+                Value::LightUserData(LightUserData(ptr as _))
             }
         })
     }
