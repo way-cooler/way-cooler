@@ -18,10 +18,10 @@ rlua = { version = "0.12.0", default-features = false }
 bitflags = "0.7"
 nix = "0.6"
 getopts = "0.2"
-cairo-rs = "0.3.*"
-cairo-sys-rs = "0.5.*"
-gdk-pixbuf = "0.3.*"
-glib = "0.4.*"
+cairo-rs = "0.4.1"
+cairo-sys-rs = "0.6.0"
+gdk-pixbuf = "0.4.*"
+glib = "0.5.0"
 xcb = { version = "0.8.1", features = ["xkb"] }
 
 [build-dependencies]

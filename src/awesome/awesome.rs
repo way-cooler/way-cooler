@@ -3,7 +3,7 @@
 use super::{signal, XCB_CONNECTION_HANDLE};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 use cairo::{self, ImageSurface, ImageSurfaceData};
-use gdk_pixbuf::Pixbuf;
+use gdk_pixbuf::{Pixbuf, PixbufExt};
 use glib::translate::ToGlibPtr;
 use nix::{self, libc};
 use rlua::{self, AnyUserData, LightUserData, Lua, MetaMethod, Table, ToLua, UserData,
