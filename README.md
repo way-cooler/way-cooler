@@ -3,6 +3,13 @@
 Way Cooler is the spiritual successor of [AwesomeWM][] for [Wayland][]. It is written in [Rust][] and uses [wlroots][].
 
 
+# Building
+To build Way Cooler, make sure init the submodules correctly:
+
+```bash
+git submodule update --init --recursive --remote
+```
+
 # Development
 
 Way Cooler is under very active development right now. Currently, master is not usable for production. There are old versions of Way Cooler that do work, however:

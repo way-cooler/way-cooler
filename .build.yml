@@ -30,7 +30,7 @@ tasks:
       rustup default stable
       export RUST_BACKTRACE=full
       cd way-cooler
-      git submodule update --init --recursive
+      git submodule update --init --recursive --remote
   - build: |
       cd way-cooler
       cargo build --verbose
