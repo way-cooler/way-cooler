@@ -161,15 +161,13 @@ fn move_view<O>(seat: &mut compositor::Seat,
                 let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                 let start = Origin::new(view_sx as _, view_sy as _);
                 seat.action = Some(Action::Moving{start});
-                return
             }
             Some(start) => {
                 let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
                 view.origin = pos;
             }
         };
-    })?;
-    Ok(())
+    })
 }
 
 fn send_pointer_button(seat: &mut compositor::Seat, event: &ButtonEvent) -> HandleResult<()> {

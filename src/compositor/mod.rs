@@ -12,8 +12,8 @@ pub use self::seat::*;
 pub use self::shells::*;
 pub use self::view::*;
 
-use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle, OutputLayout,
-              OutputLayoutHandle, PointerHandle, XCursorTheme};
+use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
+              OutputLayout, OutputLayoutHandle, PointerHandle, XCursorTheme};
 
 #[derive(Debug)]
 struct Server {
