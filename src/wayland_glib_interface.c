@@ -65,12 +65,10 @@ static GSourceFuncs interface_funcs = {
 
 /* Initialise and register an event source with GLib. This event source
  * integrates the wayland event loop with the GLib main loop.
- * The argument is actually of type struct wl_display *.
  */
-void wayland_glib_interface_init(void *void_display)
+void wayland_glib_interface_init(struct wl_display *display)
 {
 	struct InterfaceEventSource *interface_source;
-	struct wl_display *display = void_display;
 	struct wl_event_loop *event_loop = wl_display_get_event_loop(display);
 	GSource *source = g_source_new(&interface_funcs, sizeof(*interface_source));
 
