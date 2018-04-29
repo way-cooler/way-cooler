@@ -17,7 +17,7 @@ impl XWaylandManagerHandler for XWaylandManager {
     fn on_ready(&mut self, _: &mut Compositor) {
         // TODO Do this properly with Results!
         match panic::catch_unwind(|| ::awesome::lua::setup_lua()) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(err) => {
                 awesome::lua::terminate();
                 panic::resume_unwind(err)

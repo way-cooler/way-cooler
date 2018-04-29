@@ -3,8 +3,6 @@
 use awesome;
 use rlua::{self, prelude::LuaResult};
 
-/// We've `include!`d the code which initializes from the Lua side.
-
 /// Register all the Rust functions for the lua libraries
 pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
     trace!("Setting up Lua libraries");

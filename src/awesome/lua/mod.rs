@@ -6,6 +6,6 @@ mod rust_interop;
 mod init_path;
 mod utils;
 
-pub use self::thread::{main_loop, run_with_lua, send, setup_lua, terminate, LuaSendError};
+pub use self::thread::{enter_glib_loop, run_with_lua, send, setup_lua, terminate, LuaSendError};
 pub use self::types::{LuaQuery, LuaResponse};
 pub use self::utils::{mods_to_lua, mods_to_rust, mouse_events_to_lua};
