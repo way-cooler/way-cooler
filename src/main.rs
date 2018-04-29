@@ -72,6 +72,7 @@ fn main() {
     detect_raspi();
     ensure_good_env();
     let compositor = compositor::init();
+    assert!(compositor.xwayland.is_some());
     unsafe {
         #[link(name = "wayland_glib_interface", kind = "static")]
         extern "C" {
@@ -79,7 +80,6 @@ fn main() {
         }
         wayland_glib_interface_init(compositor.display() as *mut c_void);
     }
-    awesome::lua::setup_lua();
     compositor.run_with(|_| awesome::lua::main_loop());
 }
 

@@ -4,6 +4,7 @@ mod seat;
 mod cursor;
 mod shells;
 mod view;
+mod xwayland;
 
 pub use self::cursor::*;
 pub use self::input::*;
@@ -11,6 +12,7 @@ pub use self::output::*;
 pub use self::seat::*;
 pub use self::shells::*;
 pub use self::view::*;
+pub use self::xwayland::*;
 
 use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
               OutputLayout, OutputLayoutHandle, PointerHandle, XCursorTheme};
@@ -57,6 +59,7 @@ pub fn init() -> Compositor {
                                                  .data_device(true)
                                                  .output_manager(Box::new(OutputManager::new()))
                                                  .input_manager(Box::new(InputManager::new()))
+                                                 .xwayland(Box::new(XWaylandManager::new()))
                                                  .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
                                                  .build_auto(Server::new(layout, cursor));
     // NOTE We need to create this afterwards because it needs the compositor
