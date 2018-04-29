@@ -23,6 +23,8 @@ mod class;
 mod property;
 mod xproperty;
 
+pub use self::lua::LUA;
+
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 pub use self::object::Object;

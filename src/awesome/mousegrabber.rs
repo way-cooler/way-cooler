@@ -1,6 +1,6 @@
 //! AwesomeWM Mousegrabber interface
 
-use lua::run_with_lua;
+use awesome::LUA;
 use rlua::{self, Function, Lua, Value};
 use wlroots::wlr_button_state;
 
@@ -22,14 +22,15 @@ pub fn mousegrabber_handle(x: i32,
                            y: i32,
                            button: Option<(u32, wlr_button_state)>)
                            -> rlua::Result<()> {
-    run_with_lua(move |lua| {
-                     let button_events =
-                         button.map(|(button, button_state)| {
-                                        ::lua::mouse_events_to_lua(lua, button, button_state)
-                                    })
-                               .unwrap_or_else(|| Ok(vec![false, false, false, false, false]))?;
-                     call_mousegrabber(lua, (x, y, button_events))
-                 })
+    LUA.with(|lua| {
+                 let lua = lua.borrow_mut();
+                 let button_events =
+                     button.map(|(button, button_state)| {
+                                    ::lua::mouse_events_to_lua(&*lua, button, button_state)
+                                })
+                           .unwrap_or_else(|| Ok(vec![false, false, false, false, false]))?;
+                 call_mousegrabber(&*lua, (x, y, button_events))
+             })
 }
 
 fn call_mousegrabber(lua: &Lua, (x, y, button_events): (i32, i32, Vec<bool>)) -> rlua::Result<()> {

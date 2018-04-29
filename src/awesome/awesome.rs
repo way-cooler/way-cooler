@@ -2,6 +2,7 @@
 
 use super::{signal, XCB_CONNECTION_HANDLE};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
+use awesome::lua::{load_config, rust_interop, LUA};
 use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::{Pixbuf, PixbufExt};
 use glib::translate::ToGlibPtr;
@@ -219,10 +220,15 @@ fn systray<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<(u32, Value)> {
 
 /// Restart Awesome by restarting the Lua thread
 fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
-    use lua::{self, LuaQuery};
-    if let Err(err) = lua::send(LuaQuery::Restart) {
-        warn!("Could not restart Lua thread {:#?}", err);
-    }
+    info!("Lua thread restarting");
+    LUA.with(|lua| {
+                 let mut lua = lua.borrow_mut();
+                 unsafe {
+                     *lua = rlua::Lua::new_with_debug();
+                 }
+                 rust_interop::register_libraries(&*lua).expect("Could not register libraries");
+                 load_config(&mut *lua);
+             });
     Ok(())
 }
 
