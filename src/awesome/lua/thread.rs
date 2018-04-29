@@ -125,7 +125,7 @@ fn load_config(mut lua: &mut rlua::Lua) {
                             ref err => error!("{:?}", err)
                         }
                     }
-                    match err {
+                    match err.clone() {
                         rlua::Error::RuntimeError(ref err) => {
                             error!("{}", err);
                         }
@@ -137,13 +137,7 @@ fn load_config(mut lua: &mut rlua::Lua) {
                             error!("init file error: {:?}", err);
                         }
                     }
-                    // Keeping this an error, so that it is visible
-                    // in release builds.
-                    info!("Defaulting to pre-compiled init.lua");
-                    unsafe { *lua = rlua::Lua::new_with_debug(); }
-                    rust_interop::register_libraries(&mut lua)?;
-                    lua.exec(init_path::DEFAULT_CONFIG,
-                             Some("init.lua <DEFAULT>".into()))
+                    Err(err)
                 })
                 .expect("Unable to load pre-compiled init file");
         }
