@@ -4,6 +4,7 @@ use super::{signal, XCB_CONNECTION_HANDLE};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 use awesome::lua::{load_config, rust_interop, LUA};
 use cairo::{self, ImageSurface, ImageSurfaceData};
+use compositor::Server;
 use gdk_pixbuf::{Pixbuf, PixbufExt};
 use glib::translate::ToGlibPtr;
 use nix::{self, libc};
@@ -15,6 +16,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
+use wlroots;
 use xcb::{xkb, Connection};
 use xcb::ffi::{self, xproto};
 
@@ -222,13 +224,16 @@ fn systray<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<(u32, Value)> {
 fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     info!("Lua thread restarting");
     LUA.with(|lua| {
-                 let mut lua = lua.borrow_mut();
-                 unsafe {
-                     *lua = rlua::Lua::new_with_debug();
-                 }
-                 rust_interop::register_libraries(&*lua).expect("Could not register libraries");
-                 load_config(&mut *lua);
-             });
+        let mut lua = lua.borrow_mut();
+        unsafe {
+            *lua = rlua::Lua::new_with_debug();
+        }
+        wlroots::with_compositor(|compositor| {
+            let server: &mut Server = compositor.into();
+            rust_interop::register_libraries(&*lua, server).expect("Could not register libraries");
+            load_config(&mut *lua, server);
+        }).expect("Could not borrow compositor")
+    });
     Ok(())
 }
 

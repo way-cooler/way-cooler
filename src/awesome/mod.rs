@@ -1,7 +1,7 @@
 //! Awesome compatibility modules
 
 use rlua::{self, LightUserData, Lua, Table};
-use std::{env, mem, path::PathBuf, sync::Mutex};
+use std::{env, mem, path::PathBuf};
 use xcb::{xkb, Connection};
 
 pub mod lua;
@@ -29,17 +29,12 @@ pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 pub use self::object::Object;
 
-use ipc::{Output, Pointer};
+use compositor::Server;
 
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 
-lazy_static! {
-    pub static ref OUTPUTS: Mutex<Vec<Output>> = Mutex::new(vec![]);
-    pub static ref POINTER: Mutex<Pointer> = Mutex::new(Pointer::default());
-}
-
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init(lua: &Lua, server: &mut Server) -> rlua::Result<()> {
     setup_awesome_path(lua)?;
     setup_global_signals(lua)?;
     setup_xcb_connection(lua)?;
@@ -47,7 +42,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     awesome::init(lua)?;
     key::init(lua)?;
     client::init(lua)?;
-    screen::init(lua)?;
+    screen::init(lua, server)?;
     keygrabber::init(lua)?;
     root::init(lua)?;
     mouse::init(lua)?;

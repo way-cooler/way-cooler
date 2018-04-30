@@ -1,17 +1,19 @@
 //! Rust code which is called from lua in the init file
 
-use awesome;
 use rlua::{self, prelude::LuaResult};
 
+use awesome;
+use compositor::Server;
+
 /// Register all the Rust functions for the lua libraries
-pub fn register_libraries(lua: &rlua::Lua) -> LuaResult<()> {
+pub fn register_libraries(lua: &rlua::Lua, server: &mut Server) -> LuaResult<()> {
     trace!("Setting up Lua libraries");
     // TODO Is this awesome init code necessary?
     let init_code = include_str!("../../../lib/lua/init.lua");
     lua.exec::<()>(init_code, Some("init.lua"))?;
     let globals = lua.globals();
     globals.set("type", lua.create_function(type_override)?)?;
-    awesome::init(&lua).expect("Could not initialize awesome compatibility modules");
+    awesome::init(&lua, server).expect("Could not initialize awesome compatibility modules");
     Ok(())
 }
 

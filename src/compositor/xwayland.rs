@@ -1,9 +1,11 @@
 //! This handles the XWayland server and any XWayland clients that connect to
 //! Way Cooler.
 
-use awesome;
 use std::panic;
 use wlroots::{Compositor, XWaylandManagerHandler};
+
+use awesome;
+use compositor::Server;
 
 pub struct XWaylandManager;
 
@@ -14,9 +16,10 @@ impl XWaylandManager {
 }
 
 impl XWaylandManagerHandler for XWaylandManager {
-    fn on_ready(&mut self, _: &mut Compositor) {
+    fn on_ready(&mut self, compositor: &mut Compositor) {
         // TODO Do this properly with Results!
-        match panic::catch_unwind(|| ::awesome::lua::setup_lua()) {
+        let server: &mut Server = compositor.into();
+        match panic::catch_unwind(panic::AssertUnwindSafe(|| ::awesome::lua::setup_lua(server))) {
             Ok(_) => {}
             Err(err) => {
                 awesome::lua::terminate();

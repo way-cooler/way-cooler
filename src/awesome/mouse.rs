@@ -1,9 +1,12 @@
 //! TODO Fill in
 
-use awesome::{OUTPUTS, POINTER};
-use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{self, AnyUserData, Lua, MetaMethod, Table, UserData, UserDataMethods, Value};
+use wlroots;
+
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use compositor::Server;
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
 const NEWINDEX_MISS_FUNCTION: &'static str = "__newindex_miss_function";
@@ -55,27 +58,31 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 fn coords<'lua>(lua: &'lua Lua,
                 (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
-    let mut pointer = POINTER.lock().expect("Lock was poisoned");
-    match coords {
-        rlua::Value::Table(coords) => {
-            let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
-            // TODO The ignore_enter is supposed to not send a send event to
-            // the client That's not
-            // possible, at least until wlroots is complete.
-            pointer.set_position((x as _, y as _));
-            Ok(coords)
-        }
-        _ => {
-            // get the coords
-            let coords = lua.create_table()?;
-            let (x, y) = pointer.position;
-            coords.set("x", x as i32)?;
-            coords.set("y", y as i32)?;
-            // TODO It expects a table of what buttons were pressed.
-            coords.set("buttons", lua.create_table()?)?;
-            Ok(coords)
-        }
-    }
+    wlroots::with_compositor(|compositor| {
+        let server: &mut Server = compositor.into();
+        // TODO Update pointer as well?
+        run_handles!([(cursor: {&mut server.cursor})] => {
+            match coords {
+                rlua::Value::Table(coords) => {
+                    let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
+                    // TODO The ignore_enter is supposed to not send a send event to
+                    // the client
+                    cursor.warp(None, x as _, y as _);
+                    Ok(coords)
+                }
+                _ => {
+                    // get the coords
+                    let (x, y) = cursor.coords();
+                    let coords = lua.create_table()?;
+                    coords.set("x", x as i32)?;
+                    coords.set("y", y as i32)?;
+                    // TODO It expects a table of what buttons were pressed.
+                    coords.set("buttons", lua.create_table()?)?;
+                    Ok(coords)
+                }
+            }
+        }).expect("Cursor was not defined")
+    }).expect("Could not lock compositor")
 }
 
 fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
@@ -90,10 +97,9 @@ fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
     table.set(NEWINDEX_MISS_FUNCTION, func)
 }
 
-fn index<'lua>(lua: &'lua Lua,
+fn index<'lua>(_: &'lua Lua,
                (mouse, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
-    use super::screen::SCREENS_HANDLE;
     let obj_table = mouse.get_user_value::<Table>()?;
     match index {
         Value::String(ref string) => {
@@ -105,18 +111,24 @@ fn index<'lua>(lua: &'lua Lua,
             // TODO Might need a more robust way to get the current output...
             // E.g they look at where the cursor is, I don't think we need to do that.
 
-            let outputs = OUTPUTS.lock().expect("Outputs was poisoned");
-            let index = outputs.iter()
-                .position(|output| output.focused)
-            // NOTE Best to just lie because no one handles nil screens properly
-                .unwrap_or(0);
-            let screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
-            if index < screens.len() {
-                return screens[index].clone().to_lua(lua)
-            }
-            // TODO Return screen even in bad case,
-            // see how awesome does it for maximal compatibility
-            panic!("Could not find a screen")
+            wlroots::with_compositor(|compositor| {
+                let server: &mut Server = compositor.into();
+                // TODO FIXME Actually returned the "focused" output.
+                // We need to define that in the compositor.
+                server.outputs[0].clone()
+                //use super::screen::SCREENS_HANDLE;
+                //let index = outputs.iter()
+                //    .position(|output| output.focused)
+                //// NOTE Best to just lie because no one handles nil screens properly
+                //    .unwrap_or(0);
+                //let screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
+                //if index < screens.len() {
+                //    return screens[index].clone().to_lua(lua)
+                //}
+                // TODO Return screen even in bad case,
+                // see how awesome does it for maximal compatibility
+                //panic!("Could not find a screen")
+            }).expect("Could not lock compositor");
         }
         _ => {}
     }

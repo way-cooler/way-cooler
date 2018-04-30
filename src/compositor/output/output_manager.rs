@@ -16,6 +16,7 @@ impl OutputManagerHandler for OutputManager {
                              -> Option<OutputBuilderResult<'output>> {
         let server: &mut Server = compositor.into();
         let res = builder.build_best_mode(Output);
+        server.outputs.push(res.output.weak_reference());
         let Server { ref mut cursor,
                      ref mut layout,
                      ref mut xcursor_theme,

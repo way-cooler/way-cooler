@@ -25,7 +25,6 @@ extern crate xcb;
 mod macros;
 mod awesome;
 mod compositor;
-mod ipc;
 
 pub use awesome::lua;
 
