@@ -14,8 +14,10 @@ pub use self::shells::*;
 pub use self::view::*;
 pub use self::xwayland::*;
 
-use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
+use wlroots::{self, Area, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
               OutputHandle, OutputLayout, OutputLayoutHandle, PointerHandle, XCursorTheme};
+
+use awesome::SharedImage;
 
 #[derive(Debug)]
 pub struct Server {
@@ -26,7 +28,8 @@ pub struct Server {
     pub keyboards: Vec<KeyboardHandle>,
     pub pointers: Vec<PointerHandle>,
     pub outputs: Vec<OutputHandle>,
-    pub views: Vec<View>
+    pub views: Vec<View>,
+    pub drawins: Vec<(SharedImage, Area)>
 }
 
 impl Default for Server {
@@ -40,7 +43,8 @@ impl Default for Server {
                  keyboards: Vec::default(),
                  pointers: Vec::default(),
                  outputs: Vec::default(),
-                 views: Vec::default() }
+                 views: Vec::default(),
+                 drawins: Vec::default() }
     }
 }
 

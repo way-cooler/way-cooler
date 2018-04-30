@@ -1,16 +1,19 @@
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
-
-use super::drawable::Drawable;
-use super::property::Property;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
-use rlua::prelude::LuaInteger;
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use glib::translate::ToGlibPtr;
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::prelude::LuaInteger;
+use wlroots;
 use wlroots::{Area, Origin, Size};
 
 use super::class::{self, Class, ClassBuilder};
+use super::drawable::{Drawable, SharedImage};
 use super::object::{self, Object, ObjectBuilder, Objectable};
+use super::property::Property;
+use compositor::Server;
 
 #[derive(Clone, Debug)]
 pub struct DrawinState {
@@ -20,7 +23,8 @@ pub struct DrawinState {
     visible: bool,
     cursor: String,
     geometry: Area,
-    geometry_dirty: bool
+    geometry_dirty: bool,
+    surface: SharedImage
 }
 
 #[derive(Clone, Debug)]
@@ -38,7 +42,8 @@ impl Default for DrawinState {
                       visible: false,
                       cursor: String::default(),
                       geometry: Area::default(),
-                      geometry_dirty: false }
+                      geometry_dirty: false,
+                      surface: SharedImage::new(None) }
     }
 }
 
@@ -56,10 +61,11 @@ impl<'lua> Drawin<'lua> {
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
-        let state = self.state()?;
+        let mut state = self.state()?;
         let table = self.0.table()?;
         let mut drawable = Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())?;
         drawable.set_geometry(state.geometry)?;
+        state.surface = drawable.state()?.surface.clone();
         table.raw_set("drawable", drawable)?;
         Ok(())
     }
@@ -74,12 +80,45 @@ impl<'lua> Drawin<'lua> {
             let mut drawin = self.get_object_mut()?;
             drawin.visible = val;
         }
-        self.map()
+        error!("Setting visible: {:#?}, {:?}", self, val);
+        if val {
+            self.map()
+        } else {
+            self.unmap()
+        }
     }
 
     fn map(&mut self) -> rlua::Result<()> {
         // TODO other things
-        self.update_drawing()
+        self.update_drawing()?;
+        let geometry = self.get_geometry()?;
+        let drawin = self.get_object_mut()?;
+        wlroots::with_compositor(|compositor| {
+            let server: &mut Server = compositor.into();
+            server.drawins.push((drawin.surface.clone(), geometry))
+        }).expect("Could not lock compositor");
+        Ok(())
+    }
+
+    fn unmap(&mut self) -> rlua::Result<()> {
+        let drawin = self.get_object_mut()?;
+        let lock = drawin.surface.image();
+        let image = match lock {
+            Err(_) => return Ok(()),
+            Ok(ref none) if none.is_none() => return Ok(()),
+            Ok(ref image) => image.as_ref().unwrap()
+        };
+        let image_ptr = image.to_glib_none().0;
+        wlroots::with_compositor(|compositor| {
+            let server: &mut Server = compositor.into();
+            let index = server.drawins.iter().position(|&(ref cur, _)| {
+                cur.image().map(|image| image.to_glib_none().0).unwrap_or(0 as _) == image_ptr
+            });
+            if let Some(index) = index {
+                server.drawins.remove(index);
+            }
+        }).expect("Could not lock compositor");
+        Ok(())
     }
 
     fn get_geometry(&self) -> rlua::Result<Area> {
