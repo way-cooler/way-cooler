@@ -69,11 +69,9 @@ fn emit_signals<'lua, A>(_: &'lua Lua,
                          -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone
 {
-    trace!("Checking signal {}", name);
     if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.clone()) {
         for entry in table.pairs::<Value, Function>() {
             if let Ok((_, func)) = entry {
-                trace!("Found func for signal");
                 match func.call(args.clone()) {
                     Ok(()) => {}
                     Err(e) => {
