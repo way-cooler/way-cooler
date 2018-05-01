@@ -2,7 +2,6 @@
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
-use std::sync::{Arc, Mutex, MutexGuard, TryLockResult};
 
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
@@ -14,30 +13,8 @@ use super::object::{self, Object, Objectable};
 use super::property::Property;
 
 #[derive(Clone, Debug)]
-pub struct SharedImage {
-    image: Arc<Mutex<Option<ImageSurface>>>
-}
-
-impl SharedImage {
-    /// Makes a new shared image out of an ImageSurface.
-    pub fn new<O>(image: O) -> Self
-        where O: Into<Option<ImageSurface>>
-    {
-        let image = Arc::new(Mutex::new(image.into()));
-        SharedImage { image }
-    }
-
-    /// Attempts to get a mutable reference to the underlying image.
-    ///
-    /// If the lock could not be acquired, returns an Error.
-    pub fn image(&self) -> TryLockResult<MutexGuard<Option<ImageSurface>>> {
-        self.image.try_lock()
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct DrawableState {
-    pub surface: SharedImage,
+    pub surface: Option<ImageSurface>,
     geo: Area,
     // TODO Use this to determine whether we draw this or not
     refreshed: bool
@@ -49,7 +26,7 @@ impl_objectable!(Drawable, DrawableState);
 
 impl Default for DrawableState {
     fn default() -> Self {
-        DrawableState { surface: SharedImage::new(None),
+        DrawableState { surface: None,
                         geo: Area::default(),
                         refreshed: false }
     }
@@ -73,11 +50,9 @@ impl<'lua> Drawable<'lua> {
 
     pub fn get_surface(&self) -> rlua::Result<Value<'lua>> {
         let drawable = self.state()?;
-        let lock = drawable.surface.image();
-        Ok(match lock {
-            Err(_) => Value::Nil,
-            Ok(ref none) if none.is_none() => Value::Nil,
-            Ok(ref image) => {
+        Ok(match drawable.surface {
+            None => Value::Nil,
+            Some(ref image) => {
                 let stash = image.to_glib_none();
                 let ptr = stash.0;
                 // NOTE
@@ -101,11 +76,10 @@ impl<'lua> Drawable<'lua> {
         drawable.geo = geometry;
         if size_changed {
             drawable.refreshed = false;
-            let mut image = drawable.surface.image().expect("Could not lock image");
-            *image = None;
+            drawable.surface = None;
             let size: Size = geometry.size;
             if size.width > 0 && size.height > 0 {
-                *image = Some(ImageSurface::create(Format::ARgb32,
+                drawable.surface = Some(ImageSurface::create(Format::ARgb32,
                                                         size.width,
                                                         size.height)
                     .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?);

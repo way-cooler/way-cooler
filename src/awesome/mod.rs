@@ -25,10 +25,10 @@ mod xproperty;
 
 pub use self::lua::LUA;
 
-pub use self::drawable::SharedImage;
+pub use self::drawin::{Drawin, DRAWINS_HANDLE};
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
-pub use self::object::Object;
+pub use self::object::{Object, Objectable};
 
 use compositor::Server;
 

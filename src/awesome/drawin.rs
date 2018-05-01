@@ -3,17 +3,17 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use glib::translate::ToGlibPtr;
+use cairo::ImageSurface;
 use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use rlua::prelude::LuaInteger;
-use wlroots;
 use wlroots::{Area, Origin, Size};
 
 use super::class::{self, Class, ClassBuilder};
-use super::drawable::{Drawable, SharedImage};
+use super::drawable::Drawable;
 use super::object::{self, Object, ObjectBuilder, Objectable};
 use super::property::Property;
-use compositor::Server;
+
+pub const DRAWINS_HANDLE: &'static str = "__drawins";
 
 #[derive(Clone, Debug)]
 pub struct DrawinState {
@@ -24,7 +24,7 @@ pub struct DrawinState {
     cursor: String,
     geometry: Area,
     geometry_dirty: bool,
-    surface: SharedImage
+    surface: Option<ImageSurface>
 }
 
 #[derive(Clone, Debug)]
@@ -43,7 +43,7 @@ impl Default for DrawinState {
                       cursor: String::default(),
                       geometry: Area::default(),
                       geometry_dirty: false,
-                      surface: SharedImage::new(None) }
+                      surface: None }
     }
 }
 
@@ -56,21 +56,38 @@ impl Display for DrawinState {
 impl<'lua> Drawin<'lua> {
     fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
         let class = class::class_setup(lua, "drawin")?;
-        Ok(object_setup(lua, Drawin::allocate(lua, class)?)?.handle_constructor_argument(args)?
-                                                            .build())
+        let mut drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
+        let drawin =
+            object_setup(lua, Drawin::allocate(lua, class)?)?.handle_constructor_argument(args)?
+                                                             .build();
+        let cloned_drawin = drawin.clone().object;
+        drawins.push(cloned_drawin);
+        lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
+        Ok(drawin)
+    }
+
+    /// Get the drawable associated with this drawin.
+    ///
+    /// It has the surface that is needed to render to the screen.
+    pub fn drawable(&mut self) -> rlua::Result<Drawable> {
+        let table = self.0.table()?;
+        Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
         let mut state = self.state()?;
         let table = self.0.table()?;
         let mut drawable = Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())?;
-        drawable.set_geometry(state.geometry)?;
+        if state.geometry_dirty {
+            drawable.set_geometry(state.geometry)?;
+            state.geometry_dirty = false;
+        }
         state.surface = drawable.state()?.surface.clone();
         table.raw_set("drawable", drawable)?;
         Ok(())
     }
 
-    fn get_visible(&mut self) -> rlua::Result<bool> {
+    pub fn get_visible(&mut self) -> rlua::Result<bool> {
         let drawin = self.state()?;
         Ok(drawin.visible)
     }
@@ -90,37 +107,15 @@ impl<'lua> Drawin<'lua> {
     fn map(&mut self) -> rlua::Result<()> {
         // TODO other things
         self.update_drawing()?;
-        let geometry = self.get_geometry()?;
-        let drawin = self.get_object_mut()?;
-        with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
-            let server: &mut Server = compositor.into();
-            server.drawins.push((drawin.surface.clone(), geometry))
-        }).unwrap();
         Ok(())
     }
 
     fn unmap(&mut self) -> rlua::Result<()> {
-        let drawin = self.get_object_mut()?;
-        let lock = drawin.surface.image();
-        let image = match lock {
-            Err(_) => return Ok(()),
-            Ok(ref none) if none.is_none() => return Ok(()),
-            Ok(ref image) => image.as_ref().unwrap()
-        };
-        let image_ptr = image.to_glib_none().0;
-        with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
-            let server: &mut Server = compositor.into();
-            let index = server.drawins.iter().position(|&(ref cur, _)| {
-                cur.image().map(|image| image.to_glib_none().0).unwrap_or(0 as _) == image_ptr
-            });
-            if let Some(index) = index {
-                server.drawins.remove(index);
-            }
-        }).expect("Could not lock compositor");
+        // TODO?
         Ok(())
     }
 
-    fn get_geometry(&self) -> rlua::Result<Area> {
+    pub fn get_geometry(&self) -> rlua::Result<Area> {
         Ok(self.state()?.geometry)
     }
 
@@ -156,6 +151,8 @@ impl<'lua> ToLua<'lua> for Drawin<'lua> {
 impl_objectable!(Drawin, DrawinState);
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
+    let drawins: Vec<Drawin> = Vec::new();
+    lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
     property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None)?)?)?
         .save_class("drawin")?
         .build()
