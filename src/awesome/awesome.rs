@@ -4,7 +4,6 @@ use super::{signal, XCB_CONNECTION_HANDLE};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 use awesome::lua::{load_config, rust_interop, LUA};
 use cairo::{self, ImageSurface, ImageSurfaceData};
-use compositor::Server;
 use gdk_pixbuf::{Pixbuf, PixbufExt};
 use glib::translate::ToGlibPtr;
 use nix::{self, libc};
@@ -228,11 +227,9 @@ fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
         unsafe {
             *lua = rlua::Lua::new_with_debug();
         }
-        wlroots::with_compositor(|compositor| {
-            let server: &mut Server = compositor.into();
-            rust_interop::register_libraries(&*lua, server).expect("Could not register libraries");
-            load_config(&mut *lua, server);
-        }).expect("Could not borrow compositor")
+        let mut compositor = wlroots::compositor_handle().unwrap();
+        rust_interop::register_libraries(&*lua, &mut compositor).expect("Could not register libraries");
+        load_config(&mut *lua, &mut compositor);
     });
     Ok(())
 }

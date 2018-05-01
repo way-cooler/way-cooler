@@ -80,7 +80,6 @@ impl<'lua> Drawin<'lua> {
             let mut drawin = self.get_object_mut()?;
             drawin.visible = val;
         }
-        error!("Setting visible: {:#?}, {:?}", self, val);
         if val {
             self.map()
         } else {
@@ -93,10 +92,10 @@ impl<'lua> Drawin<'lua> {
         self.update_drawing()?;
         let geometry = self.get_geometry()?;
         let drawin = self.get_object_mut()?;
-        wlroots::with_compositor(|compositor| {
+        with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
             let server: &mut Server = compositor.into();
             server.drawins.push((drawin.surface.clone(), geometry))
-        }).expect("Could not lock compositor");
+        }).unwrap();
         Ok(())
     }
 
@@ -109,7 +108,7 @@ impl<'lua> Drawin<'lua> {
             Ok(ref image) => image.as_ref().unwrap()
         };
         let image_ptr = image.to_glib_none().0;
-        wlroots::with_compositor(|compositor| {
+        with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
             let server: &mut Server = compositor.into();
             let index = server.drawins.iter().position(|&(ref cur, _)| {
                 cur.image().map(|image| image.to_glib_none().0).unwrap_or(0 as _) == image_ptr

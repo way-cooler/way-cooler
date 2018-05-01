@@ -58,10 +58,10 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 fn coords<'lua>(lua: &'lua Lua,
                 (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
-    wlroots::with_compositor(|compositor| {
+    with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
         let server: &mut Server = compositor.into();
         // TODO Update pointer as well?
-        run_handles!([(cursor: {&mut server.cursor})] => {
+        with_handles!([(cursor: {&mut server.cursor})] => {
             match coords {
                 rlua::Value::Table(coords) => {
                     let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
@@ -111,7 +111,7 @@ fn index<'lua>(_: &'lua Lua,
             // TODO Might need a more robust way to get the current output...
             // E.g they look at where the cursor is, I don't think we need to do that.
 
-            wlroots::with_compositor(|compositor| {
+            with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
                 let server: &mut Server = compositor.into();
                 // TODO FIXME Actually returned the "focused" output.
                 // We need to define that in the compositor.

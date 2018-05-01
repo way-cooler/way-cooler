@@ -2,10 +2,9 @@
 //! Way Cooler.
 
 use std::panic;
-use wlroots::{Compositor, XWaylandManagerHandler};
+use wlroots::{CompositorHandle, XWaylandManagerHandler};
 
 use awesome;
-use compositor::Server;
 
 pub struct XWaylandManager;
 
@@ -16,10 +15,10 @@ impl XWaylandManager {
 }
 
 impl XWaylandManagerHandler for XWaylandManager {
-    fn on_ready(&mut self, compositor: &mut Compositor) {
+    fn on_ready(&mut self, compositor: CompositorHandle) {
         // TODO Do this properly with Results!
-        let server: &mut Server = compositor.into();
-        match panic::catch_unwind(panic::AssertUnwindSafe(|| ::awesome::lua::setup_lua(server))) {
+        match panic::catch_unwind(panic::AssertUnwindSafe(|| ::awesome::lua::setup_lua(compositor)))
+        {
             Ok(_) => {}
             Err(err) => {
                 awesome::lua::terminate();
