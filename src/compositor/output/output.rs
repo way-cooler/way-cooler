@@ -102,21 +102,12 @@ fn render_drawins(lua: &Lua, renderer: &mut Renderer) -> rlua::Result<()> {
 /// Get the data associated with an ImageSurface.
 fn get_data(surface: &mut ImageSurface) -> &[u8] {
     use std::slice;
-    // FIXME
-    // This is a bad hack because we have multiple mutable pointers to the
-    // image data that cairo-rs will not let us borrow it.
+    // NOTE This is safe to do because there's one thread.
     //
-    // Since this is single threaded it's not the _biggest_ deal, but this should
-    // really be safe.
+    // We know Lua is not modifying it because it's not running.
     //
-    // TODO
-    // In order to do so, there needs to be exactly one reference count to the
-    // image surface. uncomment the following code in order to debug how many
-    // there are. Once it reaches 0 _always_, this can be removed.
-    //
-    //unsafe { println!("count {}",
-    //cairo_sys::cairo_surface_get_reference_count(surface.to_glib_none().
-    //0 as _))}
+    // Otherwise we'd need to make a copy of the buffer. This ensure we
+    // don't need to do that.
     unsafe {
         let len = surface.get_stride() as usize * surface.get_height() as usize;
         let surface = surface.to_glib_none().0;
