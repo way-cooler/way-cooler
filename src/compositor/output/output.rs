@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use cairo::{Context, ImageSurface};
+use cairo::ImageSurface;
 use cairo_sys;
 use glib::translate::ToGlibPtr;
 use wlroots::{project_box, Area, CompositorHandle, OutputHandle, OutputHandler,
@@ -82,11 +82,6 @@ fn render_drawins(lua: &Lua, renderer: &mut Renderer) -> rlua::Result<()> {
             Some(surface) => surface,
             None => continue
         };
-        {
-            let cr = Context::new(&*surface);
-            cr.set_source_surface(&*surface, 0.0, 0.0);
-            cr.paint();
-        }
         let Area { size: Size { width, height },
                    .. } = geometry;
         let data = get_data(surface);
