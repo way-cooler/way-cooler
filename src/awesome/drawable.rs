@@ -1,14 +1,16 @@
 //! TODO Fill in
 
-use super::class::{self, Class};
-use super::object::{self, Object, Objectable};
-use super::property::Property;
+use std::default::Default;
+use std::fmt::{self, Display, Formatter};
+
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
 use rlua::{self, AnyUserData, LightUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
-use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 use wlroots::{Area, Origin, Size};
+
+use super::class::{self, Class};
+use super::object::{self, Object, Objectable};
+use super::property::Property;
 
 #[derive(Clone, Debug)]
 pub struct DrawableState {
@@ -50,8 +52,8 @@ impl<'lua> Drawable<'lua> {
         let drawable = self.state()?;
         Ok(match drawable.surface {
             None => Value::Nil,
-            Some(ref surface) => {
-                let stash = surface.to_glib_none();
+            Some(ref image) => {
+                let stash = image.to_glib_none();
                 let ptr = stash.0;
                 // NOTE
                 // We bump the reference count because now Lua has a reference which
@@ -73,8 +75,8 @@ impl<'lua> Drawable<'lua> {
         let size_changed = drawable.geo != geometry;
         drawable.geo = geometry;
         if size_changed {
-            drawable.surface = None;
             drawable.refreshed = false;
+            drawable.surface = None;
             let size: Size = geometry.size;
             if size.width > 0 && size.height > 0 {
                 drawable.surface = Some(ImageSurface::create(Format::ARgb32,

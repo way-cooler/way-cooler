@@ -1,16 +1,19 @@
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
-
-use super::drawable::Drawable;
-use super::property::Property;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
-use rlua::prelude::LuaInteger;
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use cairo::ImageSurface;
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::prelude::LuaInteger;
 use wlroots::{Area, Origin, Size};
 
 use super::class::{self, Class, ClassBuilder};
+use super::drawable::Drawable;
 use super::object::{self, Object, ObjectBuilder, Objectable};
+use super::property::Property;
+
+pub const DRAWINS_HANDLE: &'static str = "__drawins";
 
 #[derive(Clone, Debug)]
 pub struct DrawinState {
@@ -20,7 +23,8 @@ pub struct DrawinState {
     visible: bool,
     cursor: String,
     geometry: Area,
-    geometry_dirty: bool
+    geometry_dirty: bool,
+    surface: Option<ImageSurface>
 }
 
 #[derive(Clone, Debug)]
@@ -38,7 +42,8 @@ impl Default for DrawinState {
                       visible: false,
                       cursor: String::default(),
                       geometry: Area::default(),
-                      geometry_dirty: false }
+                      geometry_dirty: false,
+                      surface: None }
     }
 }
 
@@ -51,20 +56,38 @@ impl Display for DrawinState {
 impl<'lua> Drawin<'lua> {
     fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
         let class = class::class_setup(lua, "drawin")?;
-        Ok(object_setup(lua, Drawin::allocate(lua, class)?)?.handle_constructor_argument(args)?
-                                                            .build())
+        let mut drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
+        let drawin =
+            object_setup(lua, Drawin::allocate(lua, class)?)?.handle_constructor_argument(args)?
+                                                             .build();
+        let cloned_drawin = drawin.clone().object;
+        drawins.push(cloned_drawin);
+        lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
+        Ok(drawin)
+    }
+
+    /// Get the drawable associated with this drawin.
+    ///
+    /// It has the surface that is needed to render to the screen.
+    pub fn drawable(&mut self) -> rlua::Result<Drawable> {
+        let table = self.0.table()?;
+        Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
-        let state = self.state()?;
+        let mut state = self.state()?;
         let table = self.0.table()?;
         let mut drawable = Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())?;
-        drawable.set_geometry(state.geometry)?;
+        if state.geometry_dirty {
+            drawable.set_geometry(state.geometry)?;
+            state.geometry_dirty = false;
+        }
+        state.surface = drawable.state()?.surface.clone();
         table.raw_set("drawable", drawable)?;
         Ok(())
     }
 
-    fn get_visible(&mut self) -> rlua::Result<bool> {
+    pub fn get_visible(&mut self) -> rlua::Result<bool> {
         let drawin = self.state()?;
         Ok(drawin.visible)
     }
@@ -74,15 +97,25 @@ impl<'lua> Drawin<'lua> {
             let mut drawin = self.get_object_mut()?;
             drawin.visible = val;
         }
-        self.map()
+        if val {
+            self.map()
+        } else {
+            self.unmap()
+        }
     }
 
     fn map(&mut self) -> rlua::Result<()> {
         // TODO other things
-        self.update_drawing()
+        self.update_drawing()?;
+        Ok(())
     }
 
-    fn get_geometry(&self) -> rlua::Result<Area> {
+    fn unmap(&mut self) -> rlua::Result<()> {
+        // TODO?
+        Ok(())
+    }
+
+    pub fn get_geometry(&self) -> rlua::Result<Area> {
         Ok(self.state()?.geometry)
     }
 
@@ -118,6 +151,8 @@ impl<'lua> ToLua<'lua> for Drawin<'lua> {
 impl_objectable!(Drawin, DrawinState);
 
 pub fn init(lua: &Lua) -> rlua::Result<Class> {
+    let drawins: Vec<Drawin> = Vec::new();
+    lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
     property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None)?)?)?
         .save_class("drawin")?
         .build()

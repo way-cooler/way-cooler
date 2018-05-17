@@ -10,6 +10,8 @@ pub use self::utils::{mods_to_lua, mods_to_rust, mouse_events_to_lua};
 
 use glib::MainLoop;
 use rlua;
+use wlroots::CompositorHandle;
+
 use std::cell::RefCell;
 use std::io::Read;
 
@@ -23,12 +25,13 @@ thread_local! {
 }
 
 /// Sets up the Lua environment before running the compositor.
-pub fn setup_lua() {
+pub fn setup_lua(mut compositor: CompositorHandle) {
     LUA.with(|lua| {
-                 rust_interop::register_libraries(&*lua.borrow()).expect("Could not register lua \
-                                                                          libraries");
+                 rust_interop::register_libraries(&*lua.borrow(), &mut compositor).expect("Could not \
+                                                                                  register lua \
+                                                                                  libraries");
                  info!("Initializing lua...");
-                 load_config(&mut *lua.borrow_mut());
+                 load_config(&mut *lua.borrow_mut(), &mut compositor);
              });
 }
 
@@ -50,7 +53,7 @@ pub fn terminate() {
     MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
 }
 
-pub fn load_config(mut lua: &mut rlua::Lua) {
+pub fn load_config(mut lua: &mut rlua::Lua, compositor: &mut CompositorHandle) {
     info!("Loading way-cooler libraries...");
 
     let maybe_init_file = init_path::get_config();
@@ -101,7 +104,7 @@ pub fn load_config(mut lua: &mut rlua::Lua) {
                     // in release builds.
                     info!("Defaulting to pre-compiled init.lua");
                     unsafe { *lua = rlua::Lua::new_with_debug(); }
-                    rust_interop::register_libraries(&mut lua)?;
+                    rust_interop::register_libraries(&mut lua, compositor)?;
                     lua.exec(init_path::DEFAULT_CONFIG,
                              Some("init.lua <DEFAULT>".into()))
                 })

@@ -1,31 +1,15 @@
 //! TODO Fill in
 
 use awesome::{class::{self, Class, ClassBuilder}, object::{self, Object, Objectable},
-              property::Property, OUTPUTS};
-use ipc;
+              property::Property};
 use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
-use wlroots::{Area, Origin, Size};
+use wlroots::{Area, Origin, OutputHandle, Size};
+
+use compositor::Server;
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Output {
-    pub name: String,
-    pub mm_width: u32,
-    pub mm_height: u32 // TODO The XID array?
-}
-
-impl From<ipc::Output> for Output {
-    fn from(output: ipc::Output) -> Output {
-        let name = output.name.clone();
-        let (mm_width, mm_height) = output.effective_resolution;
-        Output { name,
-                 mm_width: mm_width as u32,
-                 mm_height: mm_height as u32 }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct Screen<'lua>(Object<'lua>);
@@ -39,10 +23,12 @@ pub struct ScreenState {
     // Screen workarea
     pub workarea: Area,
     // The screen outputs information
-    pub outputs: Vec<Output>,
+    pub outputs: Vec<OutputHandle>,
     // Some XID indetifying this screen
     pub xid: u32
 }
+
+unsafe impl Send for ScreenState {}
 
 impl_objectable!(Screen, ScreenState);
 
@@ -81,9 +67,13 @@ impl<'lua> Screen<'lua> {
         Ok(Screen::allocate(lua, class)?.build())
     }
 
-    fn init_screens(&mut self, output: ipc::Output, outputs: Vec<Output>) -> rlua::Result<()> {
+    fn init_screens(&mut self,
+                    mut output: OutputHandle,
+                    outputs: Vec<OutputHandle>)
+                    -> rlua::Result<()> {
         let mut state = self.get_object_mut()?;
-        let (width, height) = output.effective_resolution;
+        let (width, height) = output.run(|output| output.effective_resolution())
+                                    .expect("Output handle was invalid");
         let resolution = Size { width, height };
         state.outputs = outputs;
         state.geometry = state.geometry.with_size(resolution);
@@ -116,15 +106,14 @@ impl<'lua> Screen<'lua> {
     }
 }
 
-pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<'lua>> {
+pub fn init<'lua>(lua: &'lua Lua, server: &mut Server) -> rlua::Result<Class<'lua>> {
     let builder = Class::builder(lua, "screen", None)?;
     let res = property_setup(lua, method_setup(lua, builder)?)?.save_class("screen")?
                                                                .build()?;
     let screens: &mut Vec<Screen> = &mut vec![];
-    let outputs = OUTPUTS.lock().expect("Outputs was poisoned");
-    for output in outputs.iter() {
+    for output in server.outputs.iter() {
         let mut screen = Screen::cast(Screen::new(lua)?)?;
-        screen.init_screens(output.clone(), vec![output.clone().into()])?;
+        screen.init_screens(output.clone(), vec![output.clone()])?;
         // TODO Move to Screen impl like the others
         screens.push(screen);
     }
@@ -235,9 +224,11 @@ fn index<'lua>(lua: &'lua Lua,
                 }
             }
             for screen in screens.iter() {
-                let screen_state = screen.state()?;
-                for output in &screen_state.outputs {
-                    if output.name.as_str() == string {
+                let mut screen_state = screen.state()?;
+                for output in &mut screen_state.outputs {
+                    let output_name = output.run(|output| output.name())
+                                            .expect("Output handle was invalid");
+                    if output_name.as_str() == string {
                         return screen.clone().to_lua(lua)
                     }
                 }

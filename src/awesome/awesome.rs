@@ -15,6 +15,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
+use wlroots;
 use xcb::{xkb, Connection};
 use xcb::ffi::{self, xproto};
 
@@ -222,13 +223,14 @@ fn systray<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<(u32, Value)> {
 fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     info!("Lua thread restarting");
     LUA.with(|lua| {
-                 let mut lua = lua.borrow_mut();
-                 unsafe {
-                     *lua = rlua::Lua::new_with_debug();
-                 }
-                 rust_interop::register_libraries(&*lua).expect("Could not register libraries");
-                 load_config(&mut *lua);
-             });
+        let mut lua = lua.borrow_mut();
+        unsafe {
+            *lua = rlua::Lua::new_with_debug();
+        }
+        let mut compositor = wlroots::compositor_handle().unwrap();
+        rust_interop::register_libraries(&*lua, &mut compositor).expect("Could not register libraries");
+        load_config(&mut *lua, &mut compositor);
+    });
     Ok(())
 }
 

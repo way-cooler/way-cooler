@@ -15,17 +15,18 @@ pub use self::view::*;
 pub use self::xwayland::*;
 
 use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
-              OutputLayout, OutputLayoutHandle, PointerHandle, XCursorTheme};
+              OutputHandle, OutputLayout, OutputLayoutHandle, PointerHandle, XCursorTheme};
 
 #[derive(Debug)]
-struct Server {
-    xcursor_theme: XCursorTheme,
-    layout: OutputLayoutHandle,
-    seat: Seat,
-    cursor: CursorHandle,
-    keyboards: Vec<KeyboardHandle>,
-    pointers: Vec<PointerHandle>,
-    views: Vec<View>
+pub struct Server {
+    pub xcursor_theme: XCursorTheme,
+    pub layout: OutputLayoutHandle,
+    pub seat: Seat,
+    pub cursor: CursorHandle,
+    pub keyboards: Vec<KeyboardHandle>,
+    pub pointers: Vec<PointerHandle>,
+    pub outputs: Vec<OutputHandle>,
+    pub views: Vec<View>
 }
 
 impl Default for Server {
@@ -38,6 +39,7 @@ impl Default for Server {
                  cursor: CursorHandle::default(),
                  keyboards: Vec::default(),
                  pointers: Vec::default(),
+                 outputs: Vec::default(),
                  views: Vec::default() }
     }
 }
