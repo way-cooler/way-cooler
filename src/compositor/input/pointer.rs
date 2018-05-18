@@ -1,5 +1,7 @@
 use compositor::{self, Action, Server, Shell, View};
 use std::time::Duration;
+use compositor::seat::Seat;
+use wlroots::types::Cursor;
 use wlroots::{CompositorHandle, CursorHandle, HandleResult, KeyboardHandle, Origin, PointerHandle,
               PointerHandler, XdgV6ShellState::*, pointer_events::*, WLR_BUTTON_RELEASED};
 
@@ -7,6 +9,33 @@ use wlroots::{CompositorHandle, CursorHandle, HandleResult, KeyboardHandle, Orig
 pub struct Pointer;
 
 impl PointerHandler for Pointer {
+
+    fn on_motion_absolute(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AbsoluteMotionEvent) {
+        with_handles!([(compositor: {compositor})] => {
+            let server: &mut Server = compositor.data.downcast_mut().unwrap();
+            let Server { ref mut cursor,
+                         ref mut seat,
+                         ref mut views,
+                         .. } = *server;
+            with_handles!([(cursor: {&mut *cursor})] => {
+                let (x, y) = event.pos();
+                cursor.warp_absolute(event.device(), x, y);
+            }).expect("Cursor was destroyed");
+            // TODO dry me up
+            match seat.action {
+                Some(Action::Moving { start }) => {
+                    if let Some(mut view) = view_at_pointer(views, cursor) {
+                        let meta_held_down = seat.meta;
+                        if meta_held_down {
+                            move_view(seat, cursor, &mut view, start).expect("Could not move view");
+                        }
+                    }
+                }
+                _ => { /* TODO */ }
+            }
+        }).unwrap();
+    }
+
     fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
@@ -18,6 +47,7 @@ impl PointerHandler for Pointer {
                 let (x, y) = event.delta();
                 cursor.move_to(event.device(), x, y);
             }).expect("Cursor was destroyed");
+            // TODO dry me up
             match seat.action {
                 Some(Action::Moving { start }) => {
                     if let Some(mut view) = view_at_pointer(views, cursor) {

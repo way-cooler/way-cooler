@@ -15,11 +15,11 @@ pub use self::view::*;
 pub use self::xwayland::*;
 
 use wlroots::{self, Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
-              OutputHandle, OutputLayout, OutputLayoutHandle, PointerHandle, XCursorTheme};
+              OutputHandle, OutputLayout, OutputLayoutHandle, PointerHandle, XCursorManager};
 
 #[derive(Debug)]
 pub struct Server {
-    pub xcursor_theme: XCursorTheme,
+    pub xcursor_manager: XCursorManager,
     pub layout: OutputLayoutHandle,
     pub seat: Seat,
     pub cursor: CursorHandle,
@@ -31,9 +31,10 @@ pub struct Server {
 
 impl Default for Server {
     fn default() -> Server {
-        let xcursor_theme =
-            XCursorTheme::load_theme(None, 16).expect("Could not load default theme");
-        Server { xcursor_theme,
+        let xcursor_manager =
+            XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
+        xcursor_manager.load(1.0);
+        Server { xcursor_manager,
                  layout: OutputLayoutHandle::default(),
                  seat: Seat::default(),
                  cursor: CursorHandle::default(),
@@ -45,8 +46,15 @@ impl Default for Server {
 }
 
 impl Server {
-    pub fn new(layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
-        Server { layout,
+    pub fn new(layout: OutputLayoutHandle, mut cursor: CursorHandle) -> Self {
+        let mut xcursor_manager =
+            XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
+        xcursor_manager.load(1.0);
+        cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c))
+            .unwrap();
+
+        Server { xcursor_manager,
+                 layout,
                  cursor,
                  ..Server::default() }
     }
