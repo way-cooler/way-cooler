@@ -1,12 +1,30 @@
 use compositor::{self, Action, Server, Shell, View};
 use std::time::Duration;
-use wlroots::{CompositorHandle, CursorHandle, HandleResult, KeyboardHandle, Origin, PointerHandle,
+use compositor::seat::Seat;
+use wlroots::types::Cursor;
+use wlroots::{CompositorHandle, HandleResult, KeyboardHandle, Origin, PointerHandle,
               PointerHandler, XdgV6ShellState::*, pointer_events::*, WLR_BUTTON_RELEASED};
 
 #[derive(Debug, Default)]
 pub struct Pointer;
 
 impl PointerHandler for Pointer {
+
+    fn on_motion_absolute(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AbsoluteMotionEvent) {
+        with_handles!([(compositor: {compositor})] => {
+            let server: &mut Server = compositor.data.downcast_mut().unwrap();
+            let Server { ref mut cursor,
+                         ref mut seat,
+                         ref mut views,
+                         .. } = *server;
+            with_handles!([(cursor: {&mut *cursor})] => {
+                let (x, y) = event.pos();
+                cursor.warp_absolute(event.device(), x, y);
+                update_view_position(cursor, seat, views);
+            }).expect("Cursor was destroyed");
+        }).unwrap();
+    }
+
     fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
@@ -17,18 +35,8 @@ impl PointerHandler for Pointer {
             with_handles!([(cursor: {&mut *cursor})] => {
                 let (x, y) = event.delta();
                 cursor.move_to(event.device(), x, y);
+                update_view_position(cursor, seat, views);
             }).expect("Cursor was destroyed");
-            match seat.action {
-                Some(Action::Moving { start }) => {
-                    if let Some(mut view) = view_at_pointer(views, cursor) {
-                        let meta_held_down = seat.meta;
-                        if meta_held_down {
-                            move_view(seat, cursor, &mut view, start).expect("Could not move view");
-                        }
-                    }
-                }
-                _ => { /* TODO */ }
-            }
         }).unwrap();
     }
 
@@ -40,35 +48,52 @@ impl PointerHandler for Pointer {
                          ref mut seat,
                          ref mut keyboards,
                          .. } = *server;
-            if event.state() == WLR_BUTTON_RELEASED {
-                seat.action = None;
-                send_pointer_button(seat, event).expect("Could not send pointer button");
-                return
-            }
-            if let Some(view) = view_at_pointer(views, cursor) {
-                focus_under_pointer(seat, &mut **keyboards, { &mut *view }).expect("Could not focus \
-                                                                                    view");
-                let meta_held_down = seat.meta;
-                if meta_held_down && event.button() == BTN_LEFT {
-                    move_view(seat, cursor, view, None).expect("Could not move view");
+            with_handles!([(cursor: {&mut *cursor})] => {
+                if event.state() == WLR_BUTTON_RELEASED {
+                    seat.action = None;
+                    send_pointer_button(seat, event).expect("Could not send pointer button");
+                    return
                 }
-                send_pointer_button(seat, event).expect("Could not send pointer button");
-            } else {
-                focus_under_pointer(seat, &mut **keyboards, None).expect("Could not focus view");
-            }
+                if let Some(view) = view_at_pointer(views, cursor) {
+                    focus_under_pointer(seat, &mut **keyboards, { &mut *view }).expect("Could not focus \
+                                                                                    view");
+                    let meta_held_down = seat.meta;
+                    if meta_held_down && event.button() == BTN_LEFT {
+                        move_view(seat, cursor, view, None);
+                    }
+                    send_pointer_button(seat, event).expect("Could not send pointer button");
+                } else {
+                    focus_under_pointer(seat, &mut **keyboards, None).expect("Could not focus view");
+                }
+            }).unwrap()
         }).unwrap()
     }
 }
 
+/// After the cursor has been warped, update the position of a view that might have been
+/// affected by an ongoing interactive move/resize operation
+fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut [View]) {
+    match seat.action {
+        Some(Action::Moving { start }) => {
+            if let Some(mut view) = view_at_pointer(views, cursor) {
+                let meta_held_down = seat.meta;
+                if meta_held_down {
+                    move_view(seat, cursor, &mut view, start);
+                }
+            }
+        }
+        _ => { /* TODO */ }
+    }
+}
+
 fn view_at_pointer<'view>(views: &'view mut [View],
-                          cursor: &mut CursorHandle)
+                          cursor: &mut Cursor)
                           -> Option<&'view mut View> {
     for view in views {
         match view.shell.clone() {
             Shell::XdgV6(ref mut shell) => {
                 let (mut sx, mut sy) = (0.0, 0.0);
-                let seen = with_handles!([(shell: {&mut *shell}),
-                                         (cursor: {&mut *cursor})] => {
+                let seen = with_handles!([(shell: {&mut *shell})] => {
                     let (lx, ly) = cursor.coords();
                     let Origin {x: shell_x, y: shell_y} = view.origin;
                     let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
@@ -144,28 +169,25 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
 /// Otherwise, update the view position relative to where the move started,
 /// which is provided by Action::Moving.
 fn move_view<O>(seat: &mut compositor::Seat,
-                cursor: &mut CursorHandle,
+                cursor: &mut Cursor,
                 view: &mut View,
                 start: O)
-                -> HandleResult<()>
     where O: Into<Option<Origin>>
 {
     let Origin { x: shell_x,
-                 y: shell_y } = view.origin;
-    with_handles!([(cursor: {cursor})] => {
-        let (lx, ly) = cursor.coords();
-        match start.into() {
-            None => {
-                let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
-                let start = Origin::new(view_sx as _, view_sy as _);
-                seat.action = Some(Action::Moving{start});
-            }
-            Some(start) => {
-                let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
-                view.origin = pos;
-            }
-        };
-    })
+    y: shell_y } = view.origin;
+    let (lx, ly) = cursor.coords();
+    match start.into() {
+        None => {
+            let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
+            let start = Origin::new(view_sx as _, view_sy as _);
+            seat.action = Some(Action::Moving{start});
+        }
+        Some(start) => {
+            let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
+            view.origin = pos;
+        }
+    };
 }
 
 fn send_pointer_button(seat: &mut compositor::Seat, event: &ButtonEvent) -> HandleResult<()> {

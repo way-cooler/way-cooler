@@ -20,16 +20,15 @@ impl OutputManagerHandler for OutputManager {
             server.outputs.push(res.output.clone());
             let Server { ref mut cursor,
                          ref mut layout,
-                         ref mut xcursor_theme,
+                         ref mut xcursor_manager,
                          .. } = *server;
             with_handles!([(layout: {layout}),
                            (cursor: {cursor}),
                            (output: {&mut res.output})] => {
-                let xcursor = xcursor_theme.get_cursor("left_ptr".into())
-                    .expect("Could not load left_ptr cursor");
                 layout.add_auto(output);
                 cursor.attach_output_layout(layout);
-                cursor.set_cursor_image(&xcursor.images()[0]);
+                xcursor_manager.load(output.scale());
+                xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
                 let (x, y) = cursor.coords();
                 cursor.warp(None, x, y);
             }).expect("Could not setup output with cursor and layout");
