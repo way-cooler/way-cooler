@@ -1,6 +1,6 @@
 use compositor::Server;
 use wlroots::{key_events::KeyEvent,
-              xkbcommon::xkb::{KEY_Escape, KEY_F1, KEY_Super_L, KEY_Super_R}, CompositorHandle,
+              xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R}, CompositorHandle,
               KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
 pub struct Keyboard;
 
@@ -20,12 +20,6 @@ impl KeyboardHandler for Keyboard {
                     if key == KEY_Escape {
                         compositor.terminate();
                         ::awesome::lua::terminate();
-                        // TODO Remove
-                    } else if key == KEY_F1 {
-                        ::std::thread::spawn(|| {
-                            ::std::process::Command::new("weston-terminal").output()
-                                .unwrap()
-                        });
                     }
                     if key_is_meta(key) {
                         let server: &mut Server = compositor.into();
