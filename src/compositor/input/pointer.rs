@@ -20,7 +20,7 @@ impl PointerHandler for Pointer {
             with_handles!([(cursor: {&mut *cursor})] => {
                 let (x, y) = event.pos();
                 cursor.warp_absolute(event.device(), x, y);
-                update_cursor_position(cursor, seat, views);
+                update_view_position(cursor, seat, views);
             }).expect("Cursor was destroyed");
         }).unwrap();
     }
@@ -35,7 +35,7 @@ impl PointerHandler for Pointer {
             with_handles!([(cursor: {&mut *cursor})] => {
                 let (x, y) = event.delta();
                 cursor.move_to(event.device(), x, y);
-                update_cursor_position(cursor, seat, views);
+                update_view_position(cursor, seat, views);
             }).expect("Cursor was destroyed");
         }).unwrap();
     }
@@ -70,9 +70,9 @@ impl PointerHandler for Pointer {
     }
 }
 
-/// After the cursor has been warped, do all the things needed to change the cursor from the old
-/// position to the new position.
-fn update_cursor_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut [View]) {
+/// After the cursor has been warped, update the position of a view that might have been
+/// affected by an ongoing interactive move/resize operation
+fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut [View]) {
     match seat.action {
         Some(Action::Moving { start }) => {
             if let Some(mut view) = view_at_pointer(views, cursor) {
