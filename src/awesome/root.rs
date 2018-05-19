@@ -7,6 +7,8 @@ use rlua::{self, LightUserData, Lua, Table, ToLua, UserData, UserDataMethods, Va
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
+const ROOT_KEYS_HANDLE: &'static str = "__ROOT_KEYS";
+
 #[derive(Clone, Debug)]
 pub struct RootState {
     // TODO Fill in
@@ -54,7 +56,7 @@ fn method_setup<'lua>(lua: &'lua Lua,
            .method("buttons".into(), lua.create_function(dummy)?)?
            .method("wallpaper".into(), lua.create_function(wallpaper)?)?
            .method("tags".into(), lua.create_function(tags)?)?
-           .method("keys".into(), lua.create_function(dummy)?)?
+           .method("keys".into(), lua.create_function(root_keys)?)?
            .method("size".into(), lua.create_function(dummy_double)?)?
            .method("size_mm".into(), lua.create_function(dummy_double)?)?
            .method("cursor".into(), lua.create_function(dummy)?)
@@ -91,6 +93,29 @@ fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
         table.set(key, value)?;
     }
     Ok(table)
+}
+
+/// Get or set global key bindings.
+///
+/// These bindings will be available when you press keys on the root window.
+fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value) -> rlua::Result<rlua::Value<'lua>> {
+    match key_array {
+        // Set the global keys
+        Value::Table(key_array) => {
+            lua.globals().set(ROOT_KEYS_HANDLE, key_array)?;
+            Ok(Value::Nil)
+        }
+        // Get the global keys
+        Value::Nil => {
+            // TODO Make a deep clone
+            lua.globals().get(ROOT_KEYS_HANDLE)
+        }
+        v => {
+            Err(rlua::Error::RuntimeError(format!("Expected nil or array \
+                                                   of keys, got {:?}",
+                                                  v)))
+        }
+    }
 }
 
 #[cfg(test)]
