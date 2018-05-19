@@ -1,5 +1,5 @@
 use rlua::{self, Lua};
-use wlroots::{key_events::KeyEvent,
+use wlroots::{self, key_events::KeyEvent,
               xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R}, CompositorHandle,
               KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED, KeyboardModifier};
 
@@ -22,7 +22,7 @@ impl KeyboardHandler for Keyboard {
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
                     if key == KEY_Escape {
-                        compositor.terminate();
+                        wlroots::terminate();
                         ::awesome::lua::terminate();
                     }
                     if key_is_meta(key) {
