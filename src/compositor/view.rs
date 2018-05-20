@@ -1,5 +1,5 @@
 use compositor::Shell;
-use wlroots::{Origin, SurfaceHandle};
+use wlroots::{Origin, SurfaceHandle, Surface};
 use wlroots::XdgV6ShellState::*;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -34,6 +34,16 @@ impl View {
                         },
                         _ => unimplemented!()
                     }
+                }).unwrap();
+            }
+        }
+    }
+
+    pub fn for_each_surface(&mut self, f: &FnMut(SurfaceHandle, i32, i32)) {
+        match &mut self.shell {
+            &mut Shell::XdgV6(ref mut xdg_surface) => {
+                with_handles!([(xdg_surface: {xdg_surface})] => {
+                    xdg_surface.for_each_surface(f);
                 }).unwrap();
             }
         }

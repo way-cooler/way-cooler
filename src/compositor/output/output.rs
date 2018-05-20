@@ -4,11 +4,12 @@ use cairo::ImageSurface;
 use cairo_sys;
 use glib::translate::ToGlibPtr;
 use wlroots::{project_box, Area, CompositorHandle, OutputHandle, OutputHandler,
-              OutputLayoutHandle, Renderer, Size, WL_SHM_FORMAT_ARGB8888};
+              OutputLayoutHandle, Renderer, Size, WL_SHM_FORMAT_ARGB8888, SurfaceHandle, Origin};
 
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
 use rlua::{self, AnyUserData, Lua};
+use std::cell::Cell;
 
 pub struct Output;
 
@@ -38,33 +39,37 @@ impl OutputHandler for Output {
 
 /// Render all of the client views.
 fn render_views(renderer: &mut Renderer, layout: &mut OutputLayoutHandle, views: &mut [View]) {
+    with_handles!([(layout: {&mut *layout})] => {
     for view in views {
-        let mut surface = view.shell.surface();
-        with_handles!([(surface: {surface}),
-                       (layout: {&mut *layout})] => {
-            let (width, height) = surface.current_state().size();
-            let (render_width, render_height) =
-                (width * renderer.output.scale() as i32,
-                 height * renderer.output.scale() as i32);
-            let render_box = Area::new(view.origin,
-                                       Size::new(render_width,
-                                                 render_height));
-            if layout.intersects(renderer.output, render_box) {
-                let transform = renderer.output.get_transform().invert();
-                let matrix = project_box(render_box,
-                                         transform,
-                                         0.0,
-                                         renderer.output
-                                         .transform_matrix());
-                renderer.render_texture_with_matrix(&surface.texture(),
-                                                    matrix);
-                let start = SystemTime::now();
-                let now = start.duration_since(UNIX_EPOCH)
-                    .expect("Time went backwards");
-                surface.send_frame_done(now);
-            }
-        }).expect("Could not render views")
+        let origin = view.origin;
+        view.for_each_surface(&|surface: SurfaceHandle, sx, sy| {
+            with_handles!([(surface: {surface})] => {
+                let (width, height) = surface.current_state().size();
+                let (render_width, render_height) =
+                    (width * renderer.output.scale() as i32,
+                    height * renderer.output.scale() as i32);
+                let render_box = Area::new(Origin::new(origin.x + sx, origin.y + sy),
+                                           Size::new(render_width,
+                                                     render_height));
+
+                if layout.intersects(renderer.output, render_box) {
+                    let transform = renderer.output.get_transform().invert();
+                    let matrix = project_box(render_box,
+                                             transform,
+                                             0.0,
+                                             renderer.output
+                                             .transform_matrix());
+                    renderer.render_texture_with_matrix(&surface.texture(),
+                    matrix);
+                    let start = SystemTime::now();
+                    let now = start.duration_since(UNIX_EPOCH)
+                        .expect("Time went backwards");
+                    surface.send_frame_done(now);
+                }
+            }).expect("Could not render views")
+        });
     }
+    }).unwrap();
 }
 
 /// Render all of the drawins provided by Lua.
