@@ -7,7 +7,8 @@ use rlua::{self, LightUserData, Lua, Table, ToLua, UserData, UserDataMethods, Va
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-const ROOT_KEYS_HANDLE: &'static str = "__ROOT_KEYS";
+/// Handle to the list of global key bindings
+pub const ROOT_KEYS_HANDLE: &'static str = "__ROOT_KEYS";
 
 #[derive(Clone, Debug)]
 pub struct RootState {
@@ -102,7 +103,7 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value) -> rlua::Result<rlua:
     match key_array {
         // Set the global keys
         Value::Table(key_array) => {
-            lua.globals().set(ROOT_KEYS_HANDLE, key_array)?;
+            lua.set_named_registry_value(ROOT_KEYS_HANDLE, key_array)?;
             Ok(Value::Nil)
         }
         // Get the global keys
