@@ -171,7 +171,6 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
                                       (keyboard: {keyboard})] => {
                     match shell.state() {
                         Some(&mut TopLevel(ref mut toplevel)) => {
-                            // TODO Don't send this for each keyboard!
                             toplevel.set_activated(true);
                         },
                         _ => unimplemented!()
