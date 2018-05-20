@@ -45,8 +45,41 @@ impl KeyboardHandler for Keyboard {
                                          event.keycode(),
                                          event.key_state() as u32);
                 seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
-                keyboard.get_modifiers()
-                // TODO Move up so that compositor isn't borrowed
+                let modifiers = keyboard.get_modifiers();
+                LUA.with(|lua| {
+                    let lua = lua.borrow_mut();
+                    let state_string = if event.key_state() == WLR_KEY_PRESSED {
+                        "press"
+                    } else {
+                        "release"
+                    };
+                    // TODO Awesome uses xcb_key_symbols_get_keysym,
+                    // are we using the right function?
+
+
+                    // TODO Should also emit by current focused client so we can
+                    // do client based rules.
+
+                    // TODO This should really be a hash map instead.
+
+                    // TODO Error handling
+                    let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>
+                        (ROOT_KEYS_HANDLE).unwrap();
+                    for keysym in event.pressed_keys() {
+                        for binding in &keybindings {
+                            let obj: awesome::Object = binding.clone().into();
+                            let key = awesome::Key::cast(obj.clone()).unwrap();
+                            if key.keysym().unwrap() == keysym &&
+                                key.modifiers().unwrap() == modifiers.bits() {
+                                    emit_object_signal(&*lua,
+                                                       obj,
+                                                       state_string.into(),
+                                                       keysym).unwrap();
+                            }
+                        }
+                    }
+                });
+                modifiers
             }).expect("Seat was destroyed")
         }).unwrap();
         LUA.with(|lua| {
