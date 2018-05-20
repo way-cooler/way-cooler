@@ -3,7 +3,7 @@ use std::time::Duration;
 use compositor::seat::Seat;
 use wlroots::types::Cursor;
 use wlroots::{CompositorHandle, HandleResult, KeyboardHandle, Origin, PointerHandle,
-              PointerHandler, XdgV6ShellState::*, pointer_events::*, WLR_BUTTON_RELEASED, SurfaceHandle};
+              PointerHandler, pointer_events::*, WLR_BUTTON_RELEASED, SurfaceHandle};
 
 #[derive(Debug, Default)]
 pub struct Pointer;
@@ -143,18 +143,7 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
     match view.into() {
         None => {
             if let Some(mut focused_view) = seat.focused.take() {
-                match focused_view.shell {
-                    Shell::XdgV6(ref mut shell) => {
-                        with_handles!([(shell: {shell})] => {
-                            match shell.state() {
-                                Some(&mut TopLevel(ref mut toplevel)) => {
-                                    toplevel.set_activated(false)
-                                },
-                                _ => unimplemented!()
-                            }
-                        })?;
-                    }
-                }
+                focused_view.activate(false);
             }
             with_handles!([(seat: {&mut seat.seat})] => {
                 seat.keyboard_clear_focus()
@@ -162,25 +151,15 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
         }
         Some(view) => {
             seat.focused = Some(view.clone());
+            view.activate(true);
             for keyboard in { &mut *keyboards } {
-                match &mut view.shell {
-                    &mut Shell::XdgV6(ref mut shell) => {
-                        with_handles!([(seat: {&mut seat.seat}),
-                                      (shell: {&mut *shell}),
-                                      (surface: {shell.surface()}),
-                                      (keyboard: {keyboard})] => {
-                    match shell.state() {
-                        Some(&mut TopLevel(ref mut toplevel)) => {
-                            toplevel.set_activated(true);
-                        },
-                        _ => unimplemented!()
-                    }
+                with_handles!([(seat: {&mut seat.seat}),
+                (surface: {view.surface()}),
+                (keyboard: {keyboard})] => {
                     seat.keyboard_notify_enter(surface,
                                                &mut keyboard.keycodes(),
                                                &mut keyboard.get_modifier_masks())
                 })?;
-                    }
-                }
             }
             Ok(())
         }
