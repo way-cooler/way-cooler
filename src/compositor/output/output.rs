@@ -9,7 +9,6 @@ use wlroots::{project_box, Area, CompositorHandle, OutputHandle, OutputHandler,
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
 use rlua::{self, AnyUserData, Lua};
-use std::cell::Cell;
 
 pub struct Output;
 

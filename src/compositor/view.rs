@@ -1,5 +1,5 @@
 use compositor::Shell;
-use wlroots::{Origin, SurfaceHandle, Surface};
+use wlroots::{Origin, SurfaceHandle};
 use wlroots::XdgV6ShellState::*;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
