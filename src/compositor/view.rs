@@ -39,7 +39,7 @@ impl View {
         }
     }
 
-    pub fn for_each_surface(&mut self, f: &FnMut(SurfaceHandle, i32, i32)) {
+    pub fn for_each_surface(&mut self, f: &mut FnMut(SurfaceHandle, i32, i32)) {
         match &mut self.shell {
             &mut Shell::XdgV6(ref mut xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {

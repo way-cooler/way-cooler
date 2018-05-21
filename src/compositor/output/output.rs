@@ -42,7 +42,7 @@ fn render_views(renderer: &mut Renderer, layout: &mut OutputLayoutHandle, views:
     with_handles!([(layout: {&mut *layout})] => {
     for view in views {
         let origin = view.origin;
-        view.for_each_surface(&|surface: SurfaceHandle, sx, sy| {
+        view.for_each_surface(&mut |surface: SurfaceHandle, sx, sy| {
             with_handles!([(surface: {surface})] => {
                 let (width, height) = surface.current_state().size();
                 let (render_width, render_height) =
