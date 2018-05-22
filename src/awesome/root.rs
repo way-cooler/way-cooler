@@ -108,8 +108,13 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value) -> rlua::Result<rlua:
         }
         // Get the global keys
         Value::Nil => {
-            // TODO Make a deep clone
-            lua.globals().get(ROOT_KEYS_HANDLE)
+            // NOTE We make a deep clone so they can't modify references.
+            let res = lua.create_table()?;
+            for entry in lua.globals().get::<_, Table>(ROOT_KEYS_HANDLE)?.pairs() {
+                let (key, value) = entry?;
+                res.set::<Value, Value>(key, value)?;
+            }
+            Ok(Value::Table(res))
         }
         v => {
             Err(rlua::Error::RuntimeError(format!("Expected nil or array \
