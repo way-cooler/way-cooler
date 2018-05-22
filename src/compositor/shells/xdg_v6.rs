@@ -1,6 +1,6 @@
 use compositor::{Server, Shell, View};
-use wlroots::{CompositorHandle, XdgV6ShellHandler, XdgV6ShellManagerHandler,
-              XdgV6ShellSurfaceHandle, XdgV6ShellState::*};
+use wlroots::{CompositorHandle, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState::*,
+              XdgV6ShellSurfaceHandle};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct XdgV6 {
@@ -22,7 +22,6 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                    compositor: CompositorHandle,
                    mut shell_surface: XdgV6ShellSurfaceHandle)
                    -> Option<Box<XdgV6ShellHandler>> {
-
         let is_toplevel = with_handles!([(shell_surface: {&mut shell_surface})] => {
             match shell_surface.state().unwrap() {
                 TopLevel(_) => true,

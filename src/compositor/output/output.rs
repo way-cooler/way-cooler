@@ -3,8 +3,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use cairo::ImageSurface;
 use cairo_sys;
 use glib::translate::ToGlibPtr;
-use wlroots::{project_box, Area, CompositorHandle, OutputHandle, OutputHandler,
-              OutputLayoutHandle, Renderer, Size, WL_SHM_FORMAT_ARGB8888, SurfaceHandle, Origin};
+use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputHandler,
+              OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888};
 
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
@@ -57,8 +57,7 @@ fn render_views(renderer: &mut Renderer, layout: &mut OutputLayoutHandle, views:
                                              0.0,
                                              renderer.output
                                              .transform_matrix());
-                    renderer.render_texture_with_matrix(&surface.texture(),
-                    matrix);
+                    renderer.render_texture_with_matrix(&surface.texture(), matrix);
                     let start = SystemTime::now();
                     let now = start.duration_since(UNIX_EPOCH)
                         .expect("Time went backwards");

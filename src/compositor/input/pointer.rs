@@ -1,16 +1,18 @@
+use compositor::seat::Seat;
 use compositor::{self, Action, Server, Shell, View};
 use std::time::Duration;
-use compositor::seat::Seat;
 use wlroots::types::Cursor;
-use wlroots::{CompositorHandle, HandleResult, KeyboardHandle, Origin, PointerHandle,
-              PointerHandler, pointer_events::*, WLR_BUTTON_RELEASED, SurfaceHandle};
+use wlroots::{pointer_events::*, CompositorHandle, HandleResult, KeyboardHandle, Origin,
+              PointerHandle, PointerHandler, SurfaceHandle, WLR_BUTTON_RELEASED};
 
 #[derive(Debug, Default)]
 pub struct Pointer;
 
 impl PointerHandler for Pointer {
-
-    fn on_motion_absolute(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AbsoluteMotionEvent) {
+    fn on_motion_absolute(&mut self,
+                          compositor: CompositorHandle,
+                          _: PointerHandle,
+                          event: &AbsoluteMotionEvent) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.data.downcast_mut().unwrap();
             let Server { ref mut cursor,
@@ -74,9 +76,9 @@ impl PointerHandler for Pointer {
     }
 }
 
-/// After the cursor has been warped, send pointer motion events to the view under the pointer or
-/// update the position of a view that might have been affected by an ongoing interactive
-/// move/resize operation
+/// After the cursor has been warped, send pointer motion events to the view
+/// under the pointer or update the position of a view that might have been
+/// affected by an ongoing interactive move/resize operation
 fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut [View], time_msec: u32) {
     match seat.action {
         Some(Action::Moving { start }) => {
@@ -87,7 +89,7 @@ fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut [View]
                     if meta_held_down {
                         move_view(seat, cursor, &mut view, start);
                     }
-                },
+                }
                 None => ()
             }
         }
@@ -100,14 +102,14 @@ fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut [View]
                         seat.pointer_notify_enter(surface, sx, sy);
                         seat.pointer_notify_motion(Duration::from_millis(time_msec as u64), sx, sy);
                     }).unwrap();
-                },
+                }
                 None => {
                     with_handles!([(seat: {seat})] => {
                         seat.pointer_clear_focus();
                     }).unwrap();
                 }
             }
-		}
+        }
     }
 }
 
@@ -125,7 +127,7 @@ fn view_at_pointer<'view>(views: &'view mut [View],
                     shell.surface_at(view_sx, view_sy, &mut sx, &mut sy)
                 }).unwrap();
                 if surface.is_some() {
-                    return (Some(view), surface, sx, sy);
+                    return (Some(view), surface, sx, sy)
                 }
             }
         }
@@ -170,20 +172,17 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
 ///
 /// Otherwise, update the view position relative to where the move started,
 /// which is provided by Action::Moving.
-fn move_view<O>(seat: &mut compositor::Seat,
-                cursor: &mut Cursor,
-                view: &mut View,
-                start: O)
+fn move_view<O>(seat: &mut compositor::Seat, cursor: &mut Cursor, view: &mut View, start: O)
     where O: Into<Option<Origin>>
 {
     let Origin { x: shell_x,
-    y: shell_y } = view.origin;
+                 y: shell_y } = view.origin;
     let (lx, ly) = cursor.coords();
     match start.into() {
         None => {
             let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
             let start = Origin::new(view_sx as _, view_sy as _);
-            seat.action = Some(Action::Moving{start});
+            seat.action = Some(Action::Moving { start });
         }
         Some(start) => {
             let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
