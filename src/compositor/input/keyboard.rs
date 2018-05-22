@@ -1,7 +1,7 @@
-use rlua;
+use rlua::{self, Lua};
 use wlroots::{key_events::KeyEvent,
               xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R}, CompositorHandle,
-              KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
+              KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED, KeyboardModifier};
 
 use awesome::{self, emit_object_signal, Objectable, LUA, ROOT_KEYS_HANDLE};
 use compositor::Server;
@@ -48,33 +48,8 @@ impl KeyboardHandler for Keyboard {
                 let modifiers = keyboard.get_modifiers();
                 LUA.with(|lua| {
                     let lua = lua.borrow_mut();
-                    let state_string = if event.key_state() == WLR_KEY_PRESSED {
-                        "press"
-                    } else {
-                        "release"
-                    };
-                    // TODO Awesome uses xcb_key_symbols_get_keysym,
-                    // are we using the right function?
-
-
-                    // TODO Should also emit by current focused client so we can
-                    // do client based rules.
-
-                    // TODO Error handling
-                    let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>
-                        (ROOT_KEYS_HANDLE).unwrap();
-                    for keysym in event.pressed_keys() {
-                        for binding in &keybindings {
-                            let obj: awesome::Object = binding.clone().into();
-                            let key = awesome::Key::cast(obj.clone()).unwrap();
-                            if key.keysym().unwrap() == keysym &&
-                                key.modifiers().unwrap() == modifiers.bits() {
-                                    emit_object_signal(&*lua,
-                                                       obj,
-                                                       state_string.into(),
-                                                       keysym).unwrap();
-                            }
-                        }
+                    if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
+                        warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
                     }
                 });
             }).expect("Seat was destroyed");
@@ -90,4 +65,29 @@ impl KeyboardHandler for Keyboard {
             }).unwrap();
         }).unwrap();
     }
+}
+
+/// Emits the Awesome keybindinsg.
+fn emit_awesome_keybindings(lua: &Lua,
+                            event: &KeyEvent,
+                            modifiers: KeyboardModifier)
+                            -> rlua::Result<()> {
+    let state_string = if event.key_state() == WLR_KEY_PRESSED {
+        "press"
+    } else {
+        "release"
+    };
+    // TODO Should also emit by current focused client so we can
+    // do client based rules.
+    let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>(ROOT_KEYS_HANDLE)?;
+    for keysym in event.pressed_keys() {
+        for binding in &keybindings {
+            let obj: awesome::Object = binding.clone().into();
+            let key = awesome::Key::cast(obj.clone()).unwrap();
+            if key.keysym()? == keysym && key.modifiers()? == modifiers.bits() {
+                emit_object_signal(&*lua, obj, state_string.into(), keysym)?;
+            }
+        }
+    }
+    Ok(())
 }
