@@ -18,13 +18,12 @@ impl KeyboardHandler for Keyboard {
               compositor: CompositorHandle,
               keyboard: KeyboardHandle,
               event: &KeyEvent) {
-        with_handles!([(compositor: {compositor})] => {
+        let modifiers = with_handles!([(compositor: {compositor})] => {
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
                     if key == KEY_Escape {
                         compositor.terminate();
                         ::awesome::lua::terminate();
-                        return
                     }
                     if key_is_meta(key) {
                         let server: &mut Server = compositor.into();
@@ -46,16 +45,16 @@ impl KeyboardHandler for Keyboard {
                                          event.keycode(),
                                          event.key_state() as u32);
                 seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
-                let modifiers = keyboard.get_modifiers();
+                keyboard.get_modifiers()
                 // TODO Move up so that compositor isn't borrowed
-                LUA.with(|lua| {
-                    let lua = lua.borrow_mut();
-                    if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
-                        warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
-                    }
-                });
-            }).expect("Seat was destroyed");
+            }).expect("Seat was destroyed")
         }).unwrap();
+        LUA.with(|lua| {
+                     let lua = lua.borrow_mut();
+                     if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
+                         warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
+                     }
+                 });
     }
 
     fn modifiers(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
