@@ -23,7 +23,7 @@ pub fn mousegrabber_handle(x: i32,
                            button: Option<(u32, wlr_button_state)>)
                            -> rlua::Result<()> {
     LUA.with(|lua| {
-                 let lua = lua.borrow_mut();
+                 let lua = lua.borrow();
                  let button_events =
                      button.map(|(button, button_state)| {
                                     ::lua::mouse_events_to_lua(&*lua, button, button_state)

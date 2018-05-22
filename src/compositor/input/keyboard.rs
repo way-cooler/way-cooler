@@ -50,7 +50,7 @@ impl KeyboardHandler for Keyboard {
             }).expect("Seat was destroyed")
         }).unwrap();
         LUA.with(|lua| {
-                     let lua = lua.borrow_mut();
+                     let lua = lua.borrow();
                      if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
                          warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
                      }
