@@ -52,6 +52,16 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
             {
                 server.views.remove(pos);
             }
+
+            let focused = if let Some(ref focused) = server.seat.focused {
+                focused.shell == destroyed_shell
+            } else {
+                false
+            };
+
+            if focused {
+                server.seat.focused = None;
+            }
         }).unwrap();
     }
 }
