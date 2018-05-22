@@ -48,6 +48,17 @@ impl<'lua> Key<'lua> {
         let state = self.state()?;
         Ok(state.keysym)
     }
+
+    pub fn set_keycode(&mut self, keycode: xkb::Keycode) -> rlua::Result<()> {
+        let mut state = self.get_object_mut()?;
+        state.keycode = keycode;
+        Ok(())
+    }
+
+    pub fn keycode(&self) -> rlua::Result<xkb::Keycode> {
+        let state = self.state()?;
+        Ok(state.keycode)
+    }
 }
 
 impl Display for KeyState {
@@ -121,13 +132,17 @@ fn get_key<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'
 }
 
 fn set_key<'lua>(_: &'lua Lua,
-                 (obj, key): (AnyUserData<'lua>, String))
+                 (obj, key_name): (AnyUserData<'lua>, String))
                  -> rlua::Result<Value<'lua>> {
-    // TODO Deal with #number's correctly. This isn't 1-1 to how awesome does
-    // parsing
-    let keysym = xkb::keysym_from_name(key.as_str(), 0);
+    let keysym = xkb::keysym_from_name(key_name.as_str(), 0);
     let mut key = Key::cast(obj.clone().into())?;
-    key.set_keysym(keysym)?;
+    if key_name.starts_with('#') && key_name.len() >= 2 {
+        let number = key_name[1..].parse::<xkb::Keycode>()
+            .map_err(|err| rlua::Error::RuntimeError(format!("Parse error: {:?}", err)))?;
+        key.set_keycode(number as xkb::Keycode)?;
+    } else {
+        key.set_keysym(keysym)?;
+    }
     Ok(rlua::Value::Nil)
 }
 

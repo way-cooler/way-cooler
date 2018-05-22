@@ -24,6 +24,7 @@ impl KeyboardHandler for Keyboard {
                     if key == KEY_Escape {
                         compositor.terminate();
                         ::awesome::lua::terminate();
+                        return
                     }
                     if key_is_meta(key) {
                         let server: &mut Server = compositor.into();
@@ -46,6 +47,7 @@ impl KeyboardHandler for Keyboard {
                                          event.key_state() as u32);
                 seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
                 let modifiers = keyboard.get_modifiers();
+                // TODO Move up so that compositor isn't borrowed
                 LUA.with(|lua| {
                     let lua = lua.borrow_mut();
                     if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
@@ -70,7 +72,7 @@ impl KeyboardHandler for Keyboard {
 /// Emits the Awesome keybindinsg.
 fn emit_awesome_keybindings(lua: &Lua,
                             event: &KeyEvent,
-                            modifiers: KeyboardModifier)
+                            event_modifiers: KeyboardModifier)
                             -> rlua::Result<()> {
     let state_string = if event.key_state() == WLR_KEY_PRESSED {
         "press"
@@ -80,12 +82,19 @@ fn emit_awesome_keybindings(lua: &Lua,
     // TODO Should also emit by current focused client so we can
     // do client based rules.
     let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>(ROOT_KEYS_HANDLE)?;
-    for keysym in event.pressed_keys() {
+    for event_keysym in event.pressed_keys() {
         for binding in &keybindings {
             let obj: awesome::Object = binding.clone().into();
             let key = awesome::Key::cast(obj.clone()).unwrap();
-            if key.keysym()? == keysym && key.modifiers()? == modifiers.bits() {
-                emit_object_signal(&*lua, obj, state_string.into(), keysym)?;
+            let keycode = key.keycode()?;
+            let keysym = key.keysym()?;
+            let modifiers = key.modifiers()?;
+            let binding_match = (keysym != 0 && keysym == event_keysym
+                                 || keycode != 0 && keycode == event.keycode())
+                                && modifiers == 0
+                                || modifiers == event_modifiers.bits();
+            if binding_match {
+                emit_object_signal(&*lua, obj, state_string.into(), event_keysym)?;
             }
         }
     }
