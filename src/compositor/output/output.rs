@@ -38,11 +38,10 @@ impl OutputHandler for Output {
 
 /// Render all of the client views.
 fn render_views(renderer: &mut Renderer, layout: &mut OutputLayoutHandle, views: &mut [View]) {
-    with_handles!([(layout: {&mut *layout})] => {
     for view in views {
         let origin = view.origin;
         view.for_each_surface(&mut |surface: SurfaceHandle, sx, sy| {
-            with_handles!([(surface: {surface})] => {
+            with_handles!([(surface: {surface}), (layout: {&mut *layout})] => {
                 let (width, height) = surface.current_state().size();
                 let (render_width, render_height) =
                     (width * renderer.output.scale() as i32,
@@ -68,7 +67,6 @@ fn render_views(renderer: &mut Renderer, layout: &mut OutputLayoutHandle, views:
             }).expect("Could not render views")
         });
     }
-    }).unwrap();
 }
 
 /// Render all of the drawins provided by Lua.
