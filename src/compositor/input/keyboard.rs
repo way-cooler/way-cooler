@@ -60,8 +60,6 @@ impl KeyboardHandler for Keyboard {
                     // TODO Should also emit by current focused client so we can
                     // do client based rules.
 
-                    // TODO This should really be a hash map instead.
-
                     // TODO Error handling
                     let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>
                         (ROOT_KEYS_HANDLE).unwrap();
