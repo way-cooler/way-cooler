@@ -68,7 +68,7 @@ impl KeyboardHandler for Keyboard {
     }
 }
 
-/// Emits the Awesome keybindinsg.
+/// Emits the Awesome keybindings.
 fn emit_awesome_keybindings(lua: &Lua,
                             event: &KeyEvent,
                             event_modifiers: KeyboardModifier)
