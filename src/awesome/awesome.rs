@@ -1,7 +1,7 @@
 //! TODO Fill in
 
-use super::{signal, XCB_CONNECTION_HANDLE};
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
+use super::{signal, XCB_CONNECTION_HANDLE};
 use awesome::lua::{load_config, rust_interop, LUA};
 use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::{Pixbuf, PixbufExt};
@@ -9,15 +9,15 @@ use glib::translate::ToGlibPtr;
 use nix::{self, libc};
 use rlua::{self, AnyUserData, LightUserData, Lua, MetaMethod, Table, ToLua, UserData,
            UserDataMethods, Value};
-use std::{mem, ptr};
 use std::default::Default;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
+use std::{mem, ptr};
 use wlroots;
-use xcb::{xkb, Connection};
 use xcb::ffi::{self, xproto};
+use xcb::{xkb, Connection};
 
 // TODO FIXME
 // Often we are getting some raw pointers from the xcb replies

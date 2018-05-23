@@ -28,7 +28,8 @@ pub struct ObjectBuilder<'lua> {
 
 impl<'lua> ObjectBuilder<'lua> {
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
-        let meta = self.object.table()?
+        let meta = self.object
+                       .table()?
                        .get_metatable()
                        .expect("Object had no meta table");
         for entry in new_meta.pairs::<rlua::Value, rlua::Value>() {
@@ -46,7 +47,8 @@ impl<'lua> ObjectBuilder<'lua> {
     }
 
     pub fn handle_constructor_argument(self, args: Table) -> rlua::Result<Self> {
-        let meta = self.object.table()?
+        let meta = self.object
+                       .table()?
                        .get_metatable()
                        .expect("Object had no meta table");
         let class = meta.get::<_, AnyUserData>("__class")?;
@@ -118,8 +120,8 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone + Send> {
 
     /// Lua objects in Way Cooler are just how they are in Awesome:
     /// * We expose the user data directly.
-    /// * State for the object is stored using set_user_value in a "wrapper" table.
-    /// * The wrapper table has a data field which hosts the data.
+    /// * State for the object is stored using set_user_value in a "wrapper"
+    /// table. * The wrapper table has a data field which hosts the data.
     /// * Class methods/attributes are on the meta table of the wrapper table.
     fn allocate(lua: &'lua Lua, class: Class) -> rlua::Result<ObjectBuilder<'lua>> {
         let object = lua.create_userdata(S::default())?;

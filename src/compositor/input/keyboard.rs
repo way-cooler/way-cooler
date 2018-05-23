@@ -1,6 +1,6 @@
 use compositor::Server;
-use wlroots::{CompositorHandle, KeyboardHandle, KeyboardHandler, key_events::KeyEvent,
-              xkbcommon::xkb::{KEY_Escape, KEY_F1}, WLR_KEY_PRESSED};
+use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_F1}, CompositorHandle,
+              KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
 pub struct Keyboard;
 
 impl KeyboardHandler for Keyboard {

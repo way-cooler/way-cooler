@@ -1,8 +1,8 @@
 //! Lua functionality
 
-mod types;
-pub mod rust_interop;
 mod init_path;
+pub mod rust_interop;
+mod types;
 mod utils;
 
 pub use self::types::{LuaQuery, LuaResponse};
@@ -113,33 +113,34 @@ pub fn load_config(mut lua: &mut rlua::Lua, compositor: &mut CompositorHandle) {
         None => {
             warn!("Could not find an init file in any path!");
             warn!("Defaulting to pre-compiled init.lua");
-            let _: () = lua.exec(init_path::DEFAULT_CONFIG,
-                                 Some("init.lua <DEFAULT>".into()))
-                .or_else(|err| {
-                    fn recursive_callback_print(error: ::std::sync::Arc<rlua::Error>) {
-                        match *error {
-                            rlua::Error::CallbackError {traceback: ref err, ref cause } => {
-                                error!("{}", err);
-                                recursive_callback_print(cause.clone())
-                            },
-                            ref err => error!("{:?}", err)
-                        }
-                    }
-                    match err.clone() {
-                        rlua::Error::RuntimeError(ref err) => {
-                            error!("{}", err);
-                        }
-                        rlua::Error::CallbackError{traceback: ref err, ref cause } => {
-                            error!("traceback: {}", err);
-                            recursive_callback_print(cause.clone());
-                        },
-                        err => {
-                            error!("init file error: {:?}", err);
-                        }
-                    }
-                    Err(err)
-                })
-                .expect("Unable to load pre-compiled init file");
+            let _: () = lua.exec(init_path::DEFAULT_CONFIG, Some("init.lua <DEFAULT>".into()))
+                           .or_else(|err| {
+                               fn recursive_callback_print(error: ::std::sync::Arc<rlua::Error>) {
+                                   match *error {
+                                       rlua::Error::CallbackError { traceback: ref err,
+                                                                    ref cause } => {
+                                           error!("{}", err);
+                                           recursive_callback_print(cause.clone())
+                                       }
+                                       ref err => error!("{:?}", err)
+                                   }
+                               }
+                               match err.clone() {
+                                   rlua::Error::RuntimeError(ref err) => {
+                                       error!("{}", err);
+                                   }
+                                   rlua::Error::CallbackError { traceback: ref err,
+                                                                ref cause } => {
+                                       error!("traceback: {}", err);
+                                       recursive_callback_print(cause.clone());
+                                   }
+                                   err => {
+                                       error!("init file error: {:?}", err);
+                                   }
+                               }
+                               Err(err)
+                           })
+                           .expect("Unable to load pre-compiled init file");
         }
     }
     emit_refresh(lua);

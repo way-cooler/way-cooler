@@ -187,10 +187,10 @@ mod test {
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 assert(type(tag{}.name) == "nil")
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -199,11 +199,11 @@ assert(type(tag{}.name) == "nil")
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local t = tag{ name = "a very cool tag" }
 assert(t.name == "a very cool tag")
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -212,7 +212,7 @@ assert(t.name == "a very cool tag")
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local t = tag{}
 
 local called = 0
@@ -225,7 +225,7 @@ t.name = "bye"
 assert(t.name == "bye")
 assert(called == 1)
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -234,7 +234,7 @@ assert(called == 1)
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local t = tag{}
 assert(t.selected == false)
 
@@ -259,7 +259,7 @@ t.selected = false
 assert(t.selected == false)
 assert(called == 2)
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -268,7 +268,7 @@ assert(called == 2)
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local t = tag{}
 assert(t.activated == false)
 
@@ -293,7 +293,7 @@ t.activated = false
 assert(t.activated == false)
 assert(called == 2)
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -302,7 +302,7 @@ assert(called == 2)
         let lua = Lua::new();
         tag::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local t = tag{selected = true, activated = true}
 
 local called_selected, called_activated = 0, 0
@@ -319,7 +319,7 @@ assert(t.selected == false)
 assert(called_activated == 1)
 assert(called_selected == 1)
 "#,
-            None
+                 None
         ).unwrap()
     }
 }

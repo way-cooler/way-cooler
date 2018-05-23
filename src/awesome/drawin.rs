@@ -4,8 +4,8 @@ use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
 use cairo::ImageSurface;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use rlua::prelude::LuaInteger;
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 
 use super::class::{self, Class, ClassBuilder};

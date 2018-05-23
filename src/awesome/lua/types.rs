@@ -1,7 +1,7 @@
 //! Types defined by Lua thread
 
-use std::fmt::{Debug, Formatter};
 use std::fmt::Result as FmtResult;
+use std::fmt::{Debug, Formatter};
 
 use rlua;
 

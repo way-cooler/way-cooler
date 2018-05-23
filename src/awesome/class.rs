@@ -154,7 +154,8 @@ fn set_newindex_miss_handler<'lua>(_: &'lua Lua,
 }
 
 pub fn class_setup<'lua>(lua: &'lua Lua, name: &str) -> rlua::Result<Class<'lua>> {
-    let class = lua.globals().get::<_, AnyUserData>(name)
+    let class = lua.globals()
+                   .get::<_, AnyUserData>(name)
                    .expect("Class was not set! Did you call init?");
     assert!(class.is::<ClassState>()?, "This user data was not a class!");
     Ok(Class { class })

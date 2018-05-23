@@ -176,9 +176,9 @@ fn count<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
 /// Lua gives us the previous value in the loop, with the first one being nil
 /// since there was nothing there before.
 ///
-/// To ensure we loop over everything, we take the index of that value in our list,
-/// increment it by 1 (starting at 0 if it's the start) and then once it falls outside
-/// the bounds it will stop by returning nil.
+/// To ensure we loop over everything, we take the index of that value in our
+/// list, increment it by 1 (starting at 0 if it's the start) and then once it
+/// falls outside the bounds it will stop by returning nil.
 fn iterate_over_screens<'lua>(lua: &'lua Lua,
                               (_, prev): (Value<'lua>, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {

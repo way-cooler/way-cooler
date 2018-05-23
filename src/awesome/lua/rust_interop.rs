@@ -21,8 +21,8 @@ pub fn register_libraries(lua: &rlua::Lua, compositor: &mut CompositorHandle) ->
     Ok(())
 }
 
-/// This function behaves just like Lua's built-in type() function, but also recognises classes and
-/// returns special names for them.
+/// This function behaves just like Lua's built-in type() function, but also
+/// recognises classes and returns special names for them.
 fn type_override(_lua: &rlua::Lua, arg: rlua::Value) -> Result<String, rlua::Error> {
     use rlua::Value;
 
@@ -43,7 +43,8 @@ fn type_override(_lua: &rlua::Lua, arg: rlua::Value) -> Result<String, rlua::Err
                // Handle our own objects specially: Get the object's class from its user
                // value's metatable's __class entry. Then get the class name
                // from the class's user value's metatable's name entry.
-               return o.get_user_value::<rlua::Table>().ok()
+               return o.get_user_value::<rlua::Table>()
+                       .ok()
                        .and_then(|table| table.get_metatable())
                        .and_then(|meta| meta.raw_get::<_, rlua::AnyUserData>("__class").ok())
                        .and_then(|class| class.get_user_value::<rlua::Table>().ok())
