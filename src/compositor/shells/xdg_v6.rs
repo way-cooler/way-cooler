@@ -1,6 +1,8 @@
-use compositor::{Server, Shell, View};
-use wlroots::{CompositorHandle, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState::*,
-              XdgV6ShellSurfaceHandle};
+use compositor::{Action, Server, Shell, View};
+use wlroots::{CompositorHandle, Origin, SurfaceHandle, XdgV6ShellHandler,
+              XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
+
+use wlroots::xdg_shell_v6_events::MoveEvent;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct XdgV6 {
@@ -13,7 +15,33 @@ impl XdgV6 {
     }
 }
 
-impl XdgV6ShellHandler for XdgV6 {}
+impl XdgV6ShellHandler for XdgV6 {
+    fn move_request(&mut self,
+                    compositor: CompositorHandle,
+                    surface: SurfaceHandle,
+                    shell_surface: XdgV6ShellSurfaceHandle,
+                    event: &MoveEvent) {
+        with_handles!([(compositor: {compositor})] => {
+            let server: &mut Server = compositor.data.downcast_mut().unwrap();
+            let ref mut seat = server.seat;
+            let ref mut cursor = server.cursor;
+
+            seat.focused = seat.focused.take().and_then(|view| {
+                let shell: Shell = shell_surface.into();
+                if view.shell == shell {
+                    with_handles!([(cursor: {cursor})] => {
+                        let (lx, ly) = cursor.coords();
+                        let Origin { x: shell_x, y: shell_y } = view.origin;
+                        let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
+                        let start = Origin::new(view_sx as _, view_sy as _);
+                        seat.action = Some(Action::Moving { start: start });
+                    }).unwrap();
+                }
+                Some(view)
+            });
+        }).unwrap();
+    }
+}
 
 pub struct XdgV6ShellManager;
 

@@ -60,6 +60,16 @@ impl Server {
                  cursor,
                  ..Server::default() }
     }
+
+    pub fn view_from_shell_surface(&self, shell: Shell) -> Option<View> {
+		for view in &self.views {
+			if view.shell == shell {
+				return Some(view.clone());
+			}
+		}
+
+		None
+    }
 }
 
 compositor_data!(Server);
