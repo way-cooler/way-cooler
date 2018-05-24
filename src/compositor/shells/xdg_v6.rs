@@ -18,27 +18,27 @@ impl XdgV6 {
 impl XdgV6ShellHandler for XdgV6 {
     fn move_request(&mut self,
                     compositor: CompositorHandle,
-                    surface: SurfaceHandle,
+                    _surface: SurfaceHandle,
                     shell_surface: XdgV6ShellSurfaceHandle,
-                    event: &MoveEvent) {
+                    _event: &MoveEvent) {
         with_handles!([(compositor: {compositor})] => {
-            let server: &mut Server = compositor.data.downcast_mut().unwrap();
+            let server: &mut Server = compositor.into();
             let ref mut seat = server.seat;
             let ref mut cursor = server.cursor;
 
-            seat.focused = seat.focused.take().and_then(|view| {
+            if let Some(ref mut view) = seat.focused {
                 let shell: Shell = shell_surface.into();
+                let action = &mut seat.action;
                 if view.shell == shell {
                     with_handles!([(cursor: {cursor})] => {
                         let (lx, ly) = cursor.coords();
                         let Origin { x: shell_x, y: shell_y } = view.origin;
                         let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                         let start = Origin::new(view_sx as _, view_sy as _);
-                        seat.action = Some(Action::Moving { start: start });
+                        *action = Some(Action::Moving { start: start });
                     }).unwrap();
                 }
-                Some(view)
-            });
+            }
         }).unwrap();
     }
 }
