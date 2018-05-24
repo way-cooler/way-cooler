@@ -105,12 +105,12 @@ mod test {
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local t = root.tags()
 assert(type(t) == "table")
 assert(type(next(t)) == "nil")
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -120,14 +120,14 @@ assert(type(next(t)) == "nil")
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local t = tag{ activated = true }
 local t2 = root.tags()[1]
 assert(t == t2)
 t2.name = "Foo"
 assert(t.name == "Foo")
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -137,14 +137,14 @@ assert(t.name == "Foo")
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 local t = root.tags()
 assert(t[1] == first)
 assert(t[2] == second)
 "#,
-            None
+                 None
         ).unwrap()
     }
 
@@ -154,7 +154,7 @@ assert(t[2] == second)
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-            r#"
+                 r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 first.activated = false
@@ -162,7 +162,7 @@ local t = root.tags()
 assert(t[1] == second)
 assert(type(t[2]) == "nil")
 "#,
-            None
+                 None
         ).unwrap()
     }
 }

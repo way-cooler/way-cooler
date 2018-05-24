@@ -5,15 +5,15 @@
 macro_rules! keypress {
     ($modifier:expr, $key:expr) => {
         $crate::keys::KeyPress::from_key_names(&[$modifier],
-                                 $key)
-            .expect(concat!("Unable to create keypress from macro with ",
-                            $modifier, " and ", $key))
+                                         $key)
+                    .expect(concat!("Unable to create keypress from macro with ",
+                                    $modifier, " and ", $key))
     };
 }
 
 macro_rules! impl_objectable {
-    ($WrapperType: ident, $StateType: ty) => {
-        impl <'lua> Objectable<'lua, $WrapperType<'lua>, $StateType> for $WrapperType<'lua> {
+    ($WrapperType:ident, $StateType:ty) => {
+        impl<'lua> Objectable<'lua, $WrapperType<'lua>, $StateType> for $WrapperType<'lua> {
             fn _wrap(object: Object<'lua>) -> $WrapperType {
                 $WrapperType(object)
             }
@@ -26,5 +26,5 @@ macro_rules! impl_objectable {
                 Ok(self.0.object.borrow_mut::<$StateType>()?)
             }
         }
-    }
+    };
 }

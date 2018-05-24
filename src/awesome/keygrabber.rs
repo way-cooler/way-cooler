@@ -1,6 +1,6 @@
 //! AwesomeWM Keygrabber interface
 
-use wlroots::{wlr_key_state, events::key_events::Key, xkbcommon::xkb::keysym_get_name};
+use wlroots::{events::key_events::Key, wlr_key_state, xkbcommon::xkb::keysym_get_name};
 
 use super::signal;
 use awesome::LUA;
