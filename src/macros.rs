@@ -5,9 +5,9 @@
 macro_rules! keypress {
     ($modifier:expr, $key:expr) => {
         $crate::keys::KeyPress::from_key_names(&[$modifier],
-                                         $key)
-                    .expect(concat!("Unable to create keypress from macro with ",
-                                    $modifier, " and ", $key))
+                                                 $key)
+                            .expect(concat!("Unable to create keypress from macro with ",
+                                            $modifier, " and ", $key))
     };
 }
 

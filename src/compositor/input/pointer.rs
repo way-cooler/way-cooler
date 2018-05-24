@@ -82,16 +82,15 @@ impl PointerHandler for Pointer {
 fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut [View], time_msec: u32) {
     match seat.action {
         Some(Action::Moving { start }) => {
-
             let mut focused = seat.focused.take();
 
             focused.as_mut().map(|ref mut view| {
-                for v in views {
-                    if v.shell == view.shell {
-                        move_view(seat, cursor, v, start);
-                    }
-                }
-            });
+                                     for v in views {
+                                         if v.shell == view.shell {
+                                             move_view(seat, cursor, v, start);
+                                         }
+                                     }
+                                 });
 
             seat.focused = focused;
         }
