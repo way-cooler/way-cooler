@@ -1,7 +1,13 @@
 use compositor::Server;
-use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_F1}, CompositorHandle,
+use wlroots::{key_events::KeyEvent,
+              xkbcommon::xkb::{KEY_Escape, KEY_F1, KEY_Super_L, KEY_Super_R}, CompositorHandle,
               KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
 pub struct Keyboard;
+
+fn key_is_meta(key: u32) -> bool {
+    // TODO configure meta key
+    key == KEY_Super_L || key == KEY_Super_R
+}
 
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle, event: &KeyEvent) {
@@ -17,6 +23,17 @@ impl KeyboardHandler for Keyboard {
                             ::std::process::Command::new("weston-terminal").output()
                                 .unwrap()
                         });
+                    }
+                    if key_is_meta(key) {
+                        let server: &mut Server = compositor.into();
+                        server.seat.meta = true;
+                    }
+                }
+            } else {
+                for key in event.pressed_keys() {
+                    if key_is_meta(key) {
+                        let server: &mut Server = compositor.into();
+                        server.seat.meta = false;
                     }
                 }
             }
