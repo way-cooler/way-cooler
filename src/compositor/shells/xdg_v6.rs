@@ -61,7 +61,7 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
             with_handles!([(compositor: {compositor})] => {
                 let server: &mut Server = compositor.into();
                 server.views
-                    .push(View::new(Shell::XdgV6(shell_surface.into())));
+                    .insert(0, View::new(Shell::XdgV6(shell_surface.into())));
             }).unwrap();
         }
 
