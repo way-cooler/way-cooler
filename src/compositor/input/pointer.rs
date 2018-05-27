@@ -160,7 +160,7 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
         Some(view) => {
             if let Some(mut focused_view) = seat.focused.as_mut() {
                 if focused_view.shell == view.shell {
-                    return Ok(());
+                    return Ok(())
                 }
                 focused_view.activate(false);
             }

@@ -73,17 +73,33 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                          shell_surface: XdgV6ShellSurfaceHandle) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
+            let Server { ref mut seat,
+                         ref mut views,
+                         .. } = *server;
             let destroyed_shell = shell_surface.into();
-            if let Some(pos) = server.views
-                .iter()
-                .position(|view| view.shell == destroyed_shell)
-            {
-                server.views.remove(pos);
+            if let Some(pos) = views.iter().position(|view| view.shell == destroyed_shell) {
+                views.remove(pos);
             }
 
-            server.seat.focused = server.seat.focused.take().and_then(|focused| {
+            seat.focused = seat.focused.take().and_then(|mut focused| {
                 if focused.shell == destroyed_shell {
-                    None
+                    with_handles!([(seat: {&mut seat.seat})] => {
+                        if views.len() > 0 {
+                            if let Some(keyboard) = seat.get_keyboard() {
+                                with_handles!([(keyboard: {keyboard}),
+                                    (surface: {focused.surface()})] => {
+                                    seat.keyboard_notify_enter(surface,
+                                                               &mut keyboard.keycodes(),
+                                                               &mut keyboard.get_modifier_masks());
+                                }).unwrap();
+                            }
+                            views[0].activate(true);
+                            Some(views[0].clone())
+                        } else {
+                            seat.keyboard_clear_focus();
+                            None
+                        }
+                    }).unwrap()
                 } else {
                     Some(focused)
                 }
