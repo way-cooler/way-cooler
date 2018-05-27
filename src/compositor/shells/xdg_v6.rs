@@ -64,11 +64,12 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                              ref mut views,
                              .. } = *server;
                 views.insert(0, View::new(Shell::XdgV6(shell_surface.into())));
+                seat.focused = Some(views[0].clone());
 
                 with_handles!([(seat: {&mut seat.seat})] => {
                     if let Some(keyboard) = seat.get_keyboard() {
                         with_handles!([(keyboard: {keyboard}),
-                                       (surface: {views[0].surface()})] => {
+                                       (surface: {views[0].shell.surface()})] => {
                                            seat.keyboard_notify_enter(surface,
                                                                       &mut keyboard.keycodes(),
                                                                       &mut keyboard.get_modifier_masks());

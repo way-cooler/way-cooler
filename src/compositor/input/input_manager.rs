@@ -18,15 +18,13 @@ impl InputManagerHandler for InputManager {
         with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
             let server: &mut Server = compositor.into();
             server.keyboards.push(keyboard.weak_reference());
-            if server.keyboards.len() == 1 {
-                // Now that we have at least one keyboard, update the seat capabilities.
-                with_handles!([(seat: {&mut server.seat.seat})] => {
-                    let mut capabilities = seat.capabilities();
-                    capabilities.insert(Capability::Keyboard);
-                    seat.set_capabilities(capabilities);
-                    seat.set_keyboard(keyboard.input_device());
-                }).expect("Seat was destroyed");
-            }
+            // Now that we have at least one keyboard, update the seat capabilities.
+            with_handles!([(seat: {&mut server.seat.seat})] => {
+                let mut capabilities = seat.capabilities();
+                capabilities.insert(Capability::Keyboard);
+                seat.set_capabilities(capabilities);
+                seat.set_keyboard(keyboard.input_device());
+            }).expect("Seat was destroyed");
         }).unwrap();
         Some(Box::new(compositor::Keyboard))
     }
