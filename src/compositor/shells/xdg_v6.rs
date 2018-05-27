@@ -60,8 +60,22 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
         if is_toplevel {
             with_handles!([(compositor: {compositor})] => {
                 let server: &mut Server = compositor.into();
-                server.views
-                    .insert(0, View::new(Shell::XdgV6(shell_surface.into())));
+                let Server { ref mut seat,
+                             ref mut views,
+                             .. } = *server;
+                views.insert(0, View::new(Shell::XdgV6(shell_surface.into())));
+
+                with_handles!([(seat: {&mut seat.seat})] => {
+                    if let Some(keyboard) = seat.get_keyboard() {
+                        with_handles!([(keyboard: {keyboard}),
+                                       (surface: {views[0].surface()})] => {
+                                           seat.keyboard_notify_enter(surface,
+                                                                      &mut keyboard.keycodes(),
+                                                                      &mut keyboard.get_modifier_masks());
+                        }).unwrap();
+                    }
+                    views[0].activate(true);
+                }).unwrap();
             }).unwrap();
         }
 
