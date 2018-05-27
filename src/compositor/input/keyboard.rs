@@ -22,8 +22,9 @@ impl KeyboardHandler for Keyboard {
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
                     if key == KEY_Escape {
-                        compositor.terminate();
-                        ::awesome::lua::terminate();
+                        // NOTE No need to call awesome::lua::terminate.
+                        // that will be handled by wlroots.
+                        ::wlroots::terminate();
                     }
                     if key_is_meta(key) {
                         let server: &mut Server = compositor.into();
@@ -46,7 +47,6 @@ impl KeyboardHandler for Keyboard {
                                          event.key_state() as u32);
                 seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
                 keyboard.get_modifiers()
-                // TODO Move up so that compositor isn't borrowed
             }).expect("Seat was destroyed")
         }).unwrap();
         LUA.with(|lua| {
@@ -68,7 +68,7 @@ impl KeyboardHandler for Keyboard {
     }
 }
 
-/// Emits the Awesome keybindings.
+/// Emits the Awesome keybindinsg.
 fn emit_awesome_keybindings(lua: &Lua,
                             event: &KeyEvent,
                             event_modifiers: KeyboardModifier)
