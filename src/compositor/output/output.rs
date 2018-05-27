@@ -24,8 +24,8 @@ impl OutputHandler for Output {
             renderer.clear([0.25, 0.25, 0.25, 1.0]);
             render_views(&mut renderer, layout, views);
             LUA.with(|lua| {
-                let mut lua = lua.borrow_mut();
-                match render_drawins(&mut *lua, &mut renderer) {
+                let lua = lua.borrow();
+                match render_drawins(&*lua, &mut renderer) {
                     Ok(_) => {},
                     Err(err) => {
                         warn!("Error rendering drawins: {:#?}", err);

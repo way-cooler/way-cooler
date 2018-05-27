@@ -28,7 +28,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 /// defined with the input.
 pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua::Result<()> {
     LUA.with(|lua| {
-                 let lua = lua.borrow_mut();
+                 let lua = lua.borrow();
                  let lua_state = if state == wlr_key_state::WLR_KEY_PRESSED {
                                      "press"
                                  } else {

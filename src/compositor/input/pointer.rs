@@ -1,9 +1,10 @@
-use compositor::seat::Seat;
-use compositor::{self, Action, Server, Shell, View};
 use std::time::Duration;
+
 use wlroots::types::Cursor;
 use wlroots::{pointer_events::*, CompositorHandle, HandleResult, KeyboardHandle, Origin,
               PointerHandle, PointerHandler, SurfaceHandle, WLR_BUTTON_RELEASED};
+
+use compositor::{self, Action, Server, Shell, View, Seat};
 
 #[derive(Debug, Default)]
 pub struct Pointer;

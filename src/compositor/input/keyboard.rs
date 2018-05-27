@@ -1,7 +1,11 @@
-use compositor::Server;
+use rlua::{self, Lua};
 use wlroots::{key_events::KeyEvent,
-              xkbcommon::xkb::{KEY_Escape, KEY_F1, KEY_Super_L, KEY_Super_R}, CompositorHandle,
-              KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
+              xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R}, CompositorHandle,
+              KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED, KeyboardModifier};
+
+use awesome::{self, emit_object_signal, Objectable, LUA, ROOT_KEYS_HANDLE};
+use compositor::Server;
+
 pub struct Keyboard;
 
 fn key_is_meta(key: u32) -> bool {
@@ -12,20 +16,14 @@ fn key_is_meta(key: u32) -> bool {
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self,
               compositor: CompositorHandle,
-              _keyboard: KeyboardHandle,
+              keyboard: KeyboardHandle,
               event: &KeyEvent) {
-        with_handles!([(compositor: {compositor})] => {
+        let modifiers = with_handles!([(compositor: {compositor})] => {
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
                     if key == KEY_Escape {
                         compositor.terminate();
                         ::awesome::lua::terminate();
-                        // TODO Remove
-                    } else if key == KEY_F1 {
-                        ::std::thread::spawn(|| {
-                            ::std::process::Command::new("weston-terminal").output()
-                                .unwrap()
-                        });
                     }
                     if key_is_meta(key) {
                         let server: &mut Server = compositor.into();
@@ -41,12 +39,22 @@ impl KeyboardHandler for Keyboard {
                 }
             }
             let server: &mut Server = compositor.into();
-            with_handles!([(seat: {&mut server.seat.seat})] => {
+            with_handles!([(seat: {&mut server.seat.seat}),
+                           (keyboard: {keyboard})] => {
                 seat.keyboard_notify_key(event.time_msec(),
                                          event.keycode(),
                                          event.key_state() as u32);
-            }).expect("Seat was destroyed");
+                seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
+                keyboard.get_modifiers()
+                // TODO Move up so that compositor isn't borrowed
+            }).expect("Seat was destroyed")
         }).unwrap();
+        LUA.with(|lua| {
+                     let lua = lua.borrow();
+                     if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
+                         warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
+                     }
+                 });
     }
 
     fn modifiers(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
@@ -58,4 +66,36 @@ impl KeyboardHandler for Keyboard {
             }).unwrap();
         }).unwrap();
     }
+}
+
+/// Emits the Awesome keybindings.
+fn emit_awesome_keybindings(lua: &Lua,
+                            event: &KeyEvent,
+                            event_modifiers: KeyboardModifier)
+                            -> rlua::Result<()> {
+    let state_string = if event.key_state() == WLR_KEY_PRESSED {
+        "press"
+    } else {
+        "release"
+    };
+    // TODO Should also emit by current focused client so we can
+    // do client based rules.
+    let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>(ROOT_KEYS_HANDLE)?;
+    for event_keysym in event.pressed_keys() {
+        for binding in &keybindings {
+            let obj: awesome::Object = binding.clone().into();
+            let key = awesome::Key::cast(obj.clone()).unwrap();
+            let keycode = key.keycode()?;
+            let keysym = key.keysym()?;
+            let modifiers = key.modifiers()?;
+            let binding_match = (keysym != 0 && keysym == event_keysym
+                                 || keycode != 0 && keycode == event.keycode())
+                                && modifiers == 0
+                                || modifiers == event_modifiers.bits();
+            if binding_match {
+                emit_object_signal(&*lua, obj, state_string.into(), event_keysym)?;
+            }
+        }
+    }
+    Ok(())
 }

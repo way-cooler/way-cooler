@@ -6,7 +6,7 @@ mod types;
 mod utils;
 
 pub use self::types::{LuaQuery, LuaResponse};
-pub use self::utils::{mods_to_lua, mods_to_rust, mouse_events_to_lua};
+pub use self::utils::*;
 
 use glib::MainLoop;
 use rlua;
