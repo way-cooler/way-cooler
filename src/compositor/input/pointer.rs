@@ -56,19 +56,27 @@ impl PointerHandler for Pointer {
                     send_pointer_button(seat, event).expect("Could not send pointer button");
                     return
                 }
-                let (view, _surface, _sx, _sy) = view_at_pointer(views, cursor);
+                let view = {
+                    let (view, _surface, _sx, _sy) = view_at_pointer(views, cursor);
+                    if let Some(view) = view {
+                        Some(view.clone())
+                    } else{
+                        None
+                    }
+                };
+
                 match view {
-                    Some(view) => {
-                        focus_under_pointer(seat, &mut **keyboards, { &mut *view }).expect("Could not focus \
+                    Some(mut view) => {
+                        focus_under_pointer(seat, &mut **keyboards, &mut view, views).expect("Could not focus \
                                                                                     view");
                         let meta_held_down = seat.meta;
                         if meta_held_down && event.button() == BTN_LEFT {
-                            move_view(seat, cursor, view, None);
+                            move_view(seat, cursor, &mut view, None);
                         }
                         send_pointer_button(seat, event).expect("Could not send pointer button");
                     },
                     None => {
-                        focus_under_pointer(seat, &mut **keyboards, None).expect("Could not focus view");
+                        focus_under_pointer(seat, &mut **keyboards, None, views).expect("Could not focus view");
                     }
                 }
             }).unwrap()
@@ -135,7 +143,8 @@ fn view_at_pointer<'view>(views: &'view mut [View],
 /// Focus the view under the pointer.
 fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
                                  keyboards: &mut [KeyboardHandle],
-                                 view: V)
+                                 view: V,
+                                 views: &mut Vec<View>)
                                  -> HandleResult<()>
     where V: Into<Option<&'view mut View>>
 {
@@ -149,7 +158,7 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
             })
         }
         Some(view) => {
-            if let Some(mut focused_view) = seat.focused.take() {
+            if let Some(mut focused_view) = seat.focused.as_mut() {
                 if focused_view.shell == view.shell {
                     return Ok(());
                 }
@@ -157,6 +166,12 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
             }
             seat.focused = Some(view.clone());
             view.activate(true);
+
+            if let Some(idx) = views.iter().position(|ref v| v.shell == view.shell) {
+                let v = views.remove(idx);
+                views.insert(0, v);
+            }
+
             for keyboard in { &mut *keyboards } {
                 with_handles!([(seat: {&mut seat.seat}),
                 (surface: {view.surface()}),
