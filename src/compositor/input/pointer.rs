@@ -149,6 +149,12 @@ fn focus_under_pointer<'view, V>(seat: &mut compositor::Seat,
             })
         }
         Some(view) => {
+            if let Some(mut focused_view) = seat.focused.take() {
+                if focused_view.shell == view.shell {
+                    return Ok(());
+                }
+                focused_view.activate(false);
+            }
             seat.focused = Some(view.clone());
             view.activate(true);
             for keyboard in { &mut *keyboards } {
