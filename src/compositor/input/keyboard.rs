@@ -1,5 +1,5 @@
 use rlua::{self, Lua};
-use wlroots::{self, key_events::KeyEvent,
+use wlroots::{key_events::KeyEvent,
               xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R}, CompositorHandle,
               KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED, KeyboardModifier};
 
