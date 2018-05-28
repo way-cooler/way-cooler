@@ -72,8 +72,8 @@ impl XdgV6ShellHandler for XdgV6 {
                         with_handles!([(keyboard: {keyboard}),
                                        (surface: {views[0].shell.surface()})] => {
                                            seat.keyboard_notify_enter(surface,
-                                                                      &mut keyboard.keycodes(),
-                                                                      &mut keyboard.get_modifier_masks());
+                                                              &mut keyboard.keycodes(),
+                                                              &mut keyboard.get_modifier_masks());
                         }).unwrap();
                     }
                     views[0].activate(true);
@@ -83,9 +83,9 @@ impl XdgV6ShellHandler for XdgV6 {
     }
 
     fn unmap_request(&mut self,
-                   compositor: CompositorHandle,
-                   _surface: SurfaceHandle,
-                   shell_surface: XdgV6ShellSurfaceHandle) {
+                     compositor: CompositorHandle,
+                     _surface: SurfaceHandle,
+                     shell_surface: XdgV6ShellSurfaceHandle) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
             let Server { ref mut seat,
@@ -121,7 +121,6 @@ impl XdgV6ShellHandler for XdgV6 {
             });
 
         }).unwrap();
-
     }
 }
 

@@ -1,6 +1,6 @@
 use compositor::Shell;
-use wlroots::{Origin, SurfaceHandle};
 use wlroots::XdgV6ShellState::*;
+use wlroots::{Origin, SurfaceHandle};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct View {
