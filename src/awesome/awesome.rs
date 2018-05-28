@@ -372,7 +372,7 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
                     g = (g as f64 * alpha) as u8;
                     b = (b as f64 * alpha) as u8;
                 }
-                write_u32(&mut cairo_data, cairo_pixels_index, b, g, r, a);
+                write_u32(&mut cairo_data, cairo_pixels_index, a, r, g, b);
                 pix_pixels_index += channels;
                 cairo_pixels_index += 4;
             }
