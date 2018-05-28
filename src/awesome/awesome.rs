@@ -5,7 +5,7 @@ use super::{signal, XCB_CONNECTION_HANDLE};
 use awesome::lua::{load_config, rust_interop, LUA};
 use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::{Pixbuf, PixbufExt};
-use glib::translate::ToGlibPtr;
+use glib::translate::{ToGlibPtr, FromGlibPtrNone};
 use nix::{self, libc};
 use rlua::{self, AnyUserData, LightUserData, Lua, MetaMethod, Table, ToLua, UserData,
            UserDataMethods, Value};
@@ -102,6 +102,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("systray", lua.create_function(systray)?)?;
     awesome_table.set("restart", lua.create_function(restart)?)?;
     awesome_table.set("load_image", lua.create_function(load_image)?)?;
+    awesome_table.set("pixbuf_to_surface", lua.create_function(pixbuf_to_surface)?)?;
     awesome_table.set("sync", lua.create_function(sync)?)?;
     awesome_table.set("exec", lua.create_function(exec)?)?;
     awesome_table.set("kill", lua.create_function(kill)?)?;
@@ -239,6 +240,19 @@ fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
 fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lua>> {
     let pixbuf = Pixbuf::new_from_file(file_path.as_str())
         .map_err(|err| rlua::Error::RuntimeError(format!("{}", err)))?;
+    let surface = load_surface_from_pixbuf(pixbuf);
+    // UGH, I wanted to do to_glib_full, but that isn't defined apparently
+    // So now I have to ignore the lifetime completely and just forget about the
+    // surface.
+    let surface_ptr = surface.to_glib_none().0;
+    ::std::mem::forget(surface);
+    rlua::LightUserData(surface_ptr as _).to_lua(lua)
+}
+
+/// Convert a pixbuf to a cairo image surface.
+/// Returns either a cairo surface as light user data, nil and an error message
+fn pixbuf_to_surface<'lua>(lua: &'lua Lua, pixbuf: LightUserData) -> rlua::Result<Value<'lua>> {
+    let pixbuf = unsafe { Pixbuf::from_glib_none(pixbuf.0 as *const _) };
     let surface = load_surface_from_pixbuf(pixbuf);
     // UGH, I wanted to do to_glib_full, but that isn't defined apparently
     // So now I have to ignore the lifetime completely and just forget about the
