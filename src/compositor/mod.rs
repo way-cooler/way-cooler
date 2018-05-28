@@ -73,6 +73,7 @@ pub fn init() -> Compositor {
                                                  .input_manager(Box::new(InputManager::new()))
                                                  .xwayland(Box::new(XWaylandManager::new()))
                                                  .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
+                                                 .custom_terminate(|| ::awesome::lua::terminate())
                                                  .build_auto(Server::new(layout, cursor));
     // NOTE We need to create this afterwards because it needs the compositor
     // running to announce the seat.

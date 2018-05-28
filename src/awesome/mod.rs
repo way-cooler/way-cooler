@@ -26,9 +26,12 @@ mod xproperty;
 pub use self::lua::LUA;
 
 pub use self::drawin::{Drawin, DRAWINS_HANDLE};
+pub use self::key::Key;
 pub use self::keygrabber::keygrabber_handle;
 pub use self::mousegrabber::mousegrabber_handle;
 pub use self::object::{Object, Objectable};
+pub use self::root::ROOT_KEYS_HANDLE;
+pub use self::signal::*;
 
 use compositor::Server;
 

@@ -1,6 +1,7 @@
 //! Utilities to talk to Lua
 
-use wlroots::{events::{key_events::Key,
+use wlroots::{KeyboardModifier,
+              events::{key_events::Key,
                        pointer_events::{wlr_button_state, BTN_EXTRA, BTN_LEFT, BTN_MIDDLE,
                                         BTN_RIGHT, BTN_SIDE}},
               xkbcommon::xkb::keysyms::*};
@@ -27,6 +28,27 @@ pub fn mods_to_lua<'lua>(lua: &'lua Lua, mods: &[Key]) -> rlua::Result<Table<'lu
                        }.into());
     }
     lua.create_table_from(mods_list.into_iter().enumerate())
+}
+
+/// Convert a modifier list to a single number.
+pub fn mods_to_num(modifiers: Table) -> rlua::Result<KeyboardModifier> {
+    let mut res = KeyboardModifier::empty();
+    for modifier in mods_to_rust(modifiers)? {
+        res.insert(match modifier {
+                       KEY_Shift_L => KeyboardModifier::WLR_MODIFIER_SHIFT,
+                       KEY_Caps_Lock => KeyboardModifier::WLR_MODIFIER_CAPS,
+                       KEY_Control_L => KeyboardModifier::WLR_MODIFIER_CTRL,
+                       KEY_Alt_L => KeyboardModifier::WLR_MODIFIER_ALT,
+                       KEY_Meta_L => KeyboardModifier::WLR_MODIFIER_MOD2,
+                       KEY_Super_L => KeyboardModifier::WLR_MODIFIER_LOGO,
+                       KEY_Hyper_L => KeyboardModifier::WLR_MODIFIER_MOD5,
+                       k => {
+                           error!("Unknown modifier {:?}", k);
+                           panic!("Unknown mod");
+                       }
+                   });
+    }
+    Ok(res)
 }
 
 /// Convert a modifier to the Rust interpretation, from the Lua interpretation

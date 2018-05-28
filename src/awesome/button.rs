@@ -112,11 +112,11 @@ fn get_button<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<
 
 fn set_modifiers<'lua>(lua: &'lua Lua,
                        (obj, modifiers): (AnyUserData<'lua>, Table<'lua>))
-                       -> rlua::Result<Value<'lua>> {
+                       -> rlua::Result<()> {
     let mut button = Button::cast(obj.clone().into())?;
     button.set_modifiers(modifiers.clone())?;
     signal::emit_object_signal(lua, obj.into(), "property::modifiers".into(), modifiers)?;
-    Ok(Value::Nil)
+    Ok(())
 }
 
 fn get_modifiers<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
