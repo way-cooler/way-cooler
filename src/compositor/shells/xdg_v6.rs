@@ -41,15 +41,11 @@ impl XdgV6ShellHandler for XdgV6 {
             }
         }).unwrap();
     }
-}
 
-pub struct XdgV6ShellManager;
-
-impl XdgV6ShellManagerHandler for XdgV6ShellManager {
-    fn new_surface(&mut self,
+    fn map_request(&mut self,
                    compositor: CompositorHandle,
-                   mut shell_surface: XdgV6ShellSurfaceHandle)
-                   -> Option<Box<XdgV6ShellHandler>> {
+                   _surface: SurfaceHandle,
+                   mut shell_surface: XdgV6ShellSurfaceHandle) {
         let is_toplevel = with_handles!([(shell_surface: {&mut shell_surface})] => {
             match shell_surface.state().unwrap() {
                 TopLevel(_) => true,
@@ -64,6 +60,11 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                              ref mut views,
                              .. } = *server;
                 views.insert(0, View::new(Shell::XdgV6(shell_surface.into())));
+
+                seat.focused.take().map(|mut focused| {
+                    focused.activate(false);
+                });
+
                 seat.focused = Some(views[0].clone());
 
                 with_handles!([(seat: {&mut seat.seat})] => {
@@ -79,13 +80,12 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                 }).unwrap();
             }).unwrap();
         }
-
-        Some(Box::new(XdgV6::new()))
     }
 
-    fn surface_destroyed(&mut self,
-                         compositor: CompositorHandle,
-                         shell_surface: XdgV6ShellSurfaceHandle) {
+    fn unmap_request(&mut self,
+                   compositor: CompositorHandle,
+                   _surface: SurfaceHandle,
+                   shell_surface: XdgV6ShellSurfaceHandle) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
             let Server { ref mut seat,
@@ -121,5 +121,22 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
             });
 
         }).unwrap();
+
+    }
+}
+
+pub struct XdgV6ShellManager;
+
+impl XdgV6ShellManagerHandler for XdgV6ShellManager {
+    fn new_surface(&mut self,
+                   _compositor: CompositorHandle,
+                   _shell_surface: XdgV6ShellSurfaceHandle)
+                   -> Option<Box<XdgV6ShellHandler>> {
+        Some(Box::new(XdgV6::new()))
+    }
+
+    fn surface_destroyed(&mut self,
+                         _compositor: CompositorHandle,
+                         _shell_surface: XdgV6ShellSurfaceHandle) {
     }
 }
