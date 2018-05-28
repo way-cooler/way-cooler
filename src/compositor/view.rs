@@ -1,17 +1,18 @@
 use compositor::Shell;
 use wlroots::XdgV6ShellState::*;
 use wlroots::{Origin, SurfaceHandle};
+use std::cell::Cell;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct View {
     pub shell: Shell,
-    pub origin: Origin
+    pub origin: Cell<Origin>
 }
 
 impl View {
     pub fn new(shell: Shell) -> View {
         View { shell,
-               origin: Origin::default() }
+               origin: Cell::new(Origin::default()) }
     }
 
     pub fn surface(&mut self) -> SurfaceHandle {

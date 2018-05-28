@@ -128,7 +128,7 @@ fn view_at_pointer<'view>(views: &'view mut [View],
                 let (mut sx, mut sy) = (0.0, 0.0);
                 let surface = with_handles!([(shell: {&mut *shell})] => {
                     let (lx, ly) = cursor.coords();
-                    let Origin {x: shell_x, y: shell_y} = view.origin;
+                    let Origin {x: shell_x, y: shell_y} = view.origin.get();
                     let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                     shell.surface_at(view_sx, view_sy, &mut sx, &mut sy)
                 }).unwrap();
@@ -195,7 +195,7 @@ fn move_view<O>(seat: &mut compositor::Seat, cursor: &mut Cursor, view: &mut Vie
     where O: Into<Option<Origin>>
 {
     let Origin { x: shell_x,
-                 y: shell_y } = view.origin;
+                 y: shell_y } = view.origin.get();
     let (lx, ly) = cursor.coords();
     match start.into() {
         None => {
@@ -205,7 +205,7 @@ fn move_view<O>(seat: &mut compositor::Seat, cursor: &mut Cursor, view: &mut Vie
         }
         Some(start) => {
             let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
-            view.origin = pos;
+            view.origin.replace(pos);
         }
     };
 }

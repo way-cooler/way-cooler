@@ -39,7 +39,7 @@ impl OutputHandler for Output {
 /// Render all of the client views.
 fn render_views(renderer: &mut Renderer, layout: &mut OutputLayoutHandle, views: &mut [View]) {
     for view in views.iter_mut().rev() {
-        let origin = view.origin;
+        let origin = view.origin.get();
         view.for_each_surface(&mut |surface: SurfaceHandle, sx, sy| {
             with_handles!([(surface: {surface}), (layout: {&mut *layout})] => {
                 let (width, height) = surface.current_state().size();

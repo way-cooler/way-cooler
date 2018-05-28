@@ -32,7 +32,7 @@ impl XdgV6ShellHandler for XdgV6 {
                 if view.shell == shell {
                     with_handles!([(cursor: {cursor})] => {
                         let (lx, ly) = cursor.coords();
-                        let Origin { x: shell_x, y: shell_y } = view.origin;
+                        let Origin { x: shell_x, y: shell_y } = view.origin.get();
                         let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                         let start = Origin::new(view_sx as _, view_sy as _);
                         *action = Some(Action::Moving { start: start });
