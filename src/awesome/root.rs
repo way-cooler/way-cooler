@@ -133,6 +133,7 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value<'lua>) -> rlua::Result
 mod test {
     use super::super::root;
     use super::super::tag;
+    use super::super::key;
     use rlua::Lua;
 
     #[test]
@@ -197,6 +198,34 @@ first.activated = false
 local t = root.tags()
 assert(t[1] == second)
 assert(type(t[2]) == "nil")
+"#,
+                 None
+        ).unwrap()
+    }
+
+    #[test]
+    fn keys() {
+        let lua = Lua::new();
+        key::init(&lua).unwrap();
+        root::init(&lua).unwrap();
+        lua.eval(
+                 r#"
+assert(next(root.keys()) == nil)
+
+local first = key{}
+local second = key{}
+local keys = { first, second }
+
+local res = root.keys(keys)
+assert(res[1] == first)
+assert(res[2] == second)
+assert(res[3] == nil)
+
+keys[3] = key{}
+local res = root.keys()
+assert(res[1] == first)
+assert(res[2] == second)
+assert(res[3] == nil)
 "#,
                  None
         ).unwrap()
