@@ -99,12 +99,12 @@ fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
 /// Get or set global key bindings.
 ///
 /// These bindings will be available when you press keys on the root window.
-fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value) -> rlua::Result<rlua::Value<'lua>> {
+fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value<'lua>) -> rlua::Result<rlua::Value<'lua>> {
     match key_array {
         // Set the global keys
         Value::Table(key_array) => {
-            lua.set_named_registry_value(ROOT_KEYS_HANDLE, key_array)?;
-            Ok(Value::Nil)
+            lua.set_named_registry_value(ROOT_KEYS_HANDLE, key_array.clone())?;
+            Ok(Value::Table(key_array))
         }
         // Get the global keys
         Value::Nil => {
