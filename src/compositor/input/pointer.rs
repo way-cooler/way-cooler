@@ -55,7 +55,7 @@ impl PointerHandler for Pointer {
             with_handles!([(cursor: {&mut *cursor})] => {
                 if event.state() == WLR_BUTTON_RELEASED {
                     seat.action = None;
-                    send_pointer_button(seat, event).expect("Could not send pointer button");
+                    seat.send_button(event);
                     return
                 }
                 let view = {
@@ -75,7 +75,7 @@ impl PointerHandler for Pointer {
                         if meta_held_down && event.button() == BTN_LEFT {
                             move_view(seat, cursor, view, None);
                         }
-                        send_pointer_button(seat, event).expect("Could not send pointer button");
+                        seat.send_button(event);
                     },
                     None => {
                         seat.clear_focus();
@@ -163,12 +163,4 @@ fn move_view<O>(seat: &mut compositor::Seat, cursor: &mut Cursor, view: Rc<View>
             view.origin.replace(pos);
         }
     };
-}
-
-fn send_pointer_button(seat: &mut compositor::Seat, event: &ButtonEvent) -> HandleResult<()> {
-    with_handles!([(seat: {&mut seat.seat})] => {
-        seat.pointer_notify_button(Duration::from_millis(event.time_msec() as _),
-                                   event.button(),
-                                   event.state() as u32);
-    })
 }

@@ -1,6 +1,8 @@
 use compositor::View;
 use std::rc::Rc;
 use wlroots::{Origin, SeatHandle, SeatHandler};
+use wlroots::pointer_events::ButtonEvent;
+use std::time::Duration;
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -60,6 +62,14 @@ impl Seat {
                                                &mut keyboard.get_modifier_masks());
                 }).unwrap();
             }
+        }).unwrap();
+    }
+
+    pub fn send_button(&self, event: &ButtonEvent) {
+        with_handles!([(seat: {&self.seat})] => {
+            seat.pointer_notify_button(Duration::from_millis(event.time_msec() as _),
+            event.button(),
+            event.state() as u32);
         }).unwrap();
     }
 }
