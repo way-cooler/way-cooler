@@ -1,5 +1,6 @@
 use compositor::View;
 use wlroots::{Origin, SeatHandle, SeatHandler};
+use std::rc::Rc;
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -15,7 +16,7 @@ pub enum Action {
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Seat {
     pub seat: SeatHandle,
-    pub focused: Option<View>,
+    pub focused: Option<Rc<View>>,
     pub action: Option<Action>,
     pub meta: bool
 }

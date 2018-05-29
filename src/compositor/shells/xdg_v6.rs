@@ -3,6 +3,7 @@ use wlroots::{CompositorHandle, Origin, SurfaceHandle, XdgV6ShellHandler,
               XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
 
 use wlroots::xdg_shell_v6_events::MoveEvent;
+use std::rc::Rc;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct XdgV6 {
@@ -59,18 +60,19 @@ impl XdgV6ShellHandler for XdgV6 {
                 let Server { ref mut seat,
                              ref mut views,
                              .. } = *server;
-                views.insert(0, View::new(Shell::XdgV6(shell_surface.into())));
+                views.insert(0, Rc::new(View::new(Shell::XdgV6(shell_surface.into()))));
+                let view = views[0].clone();
 
                 seat.focused.take().map(|mut focused| {
                     focused.activate(false);
                 });
 
-                seat.focused = Some(views[0].clone());
+                seat.focused = Some(view.clone());
 
                 with_handles!([(seat: {&mut seat.seat})] => {
                     if let Some(keyboard) = seat.get_keyboard() {
                         with_handles!([(keyboard: {keyboard}),
-                                       (surface: {views[0].shell.surface()})] => {
+                                       (surface: {view.surface()})] => {
                                            seat.keyboard_notify_enter(surface,
                                                               &mut keyboard.keycodes(),
                                                               &mut keyboard.get_modifier_masks());
