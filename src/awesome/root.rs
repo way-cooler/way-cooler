@@ -103,12 +103,17 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value<'lua>) -> rlua::Result
     match key_array {
         // Set the global keys
         Value::Table(key_array) => {
-            lua.set_named_registry_value(ROOT_KEYS_HANDLE, key_array.clone())?;
+            let copy = lua.create_table()?;
+            // NOTE We make a deep clone so they can't modify references.
+            for entry in key_array.clone().pairs() {
+                let (key, value) = entry?;
+                copy.set::<Value, Value>(key, value)?;
+            }
+            lua.set_named_registry_value(ROOT_KEYS_HANDLE, copy)?;
             Ok(Value::Table(key_array))
         }
         // Get the global keys
         Value::Nil => {
-            // NOTE We make a deep clone so they can't modify references.
             let res = lua.create_table()?;
             for entry in lua.globals().get::<_, Table>(ROOT_KEYS_HANDLE).or(lua.create_table())?.pairs() {
                 let (key, value) = entry?;
