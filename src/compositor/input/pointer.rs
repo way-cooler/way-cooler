@@ -69,8 +69,8 @@ impl PointerHandler for Pointer {
 
                 match view {
                     Some(view) => {
-                        focus_under_pointer(seat, &mut **keyboards, Some(view.clone()), views).expect("Could not focus \
-                                                                                    view");
+                        seat.focus_view(view.clone(), views);
+
                         let meta_held_down = seat.meta;
                         if meta_held_down && event.button() == BTN_LEFT {
                             move_view(seat, cursor, view, None);
@@ -78,7 +78,7 @@ impl PointerHandler for Pointer {
                         send_pointer_button(seat, event).expect("Could not send pointer button");
                     },
                     None => {
-                        focus_under_pointer(seat, &mut **keyboards, None, views).expect("Could not focus view");
+                        seat.clear_focus();
                     }
                 }
             }).unwrap()
@@ -89,13 +89,16 @@ impl PointerHandler for Pointer {
 /// After the cursor has been warped, send pointer motion events to the view
 /// under the pointer or update the position of a view that might have been
 /// affected by an ongoing interactive move/resize operation
-fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut Vec<Rc<View>>, time_msec: u32) {
+fn update_view_position(cursor: &mut Cursor,
+                        seat: &mut Seat,
+                        views: &mut Vec<Rc<View>>,
+                        time_msec: u32) {
     match seat.action {
         Some(Action::Moving { start }) => {
             seat.focused = seat.focused.take().map(|f| {
-                move_view(seat, cursor, f.clone(), start);
-                f
-            });
+                                                       move_view(seat, cursor, f.clone(), start);
+                                                       f
+                                                   });
         }
         _ => {
             let (_view, surface, sx, sy) = view_at_pointer(views, cursor);
@@ -118,8 +121,8 @@ fn update_view_position(cursor: &mut Cursor, seat: &mut Seat, views: &mut Vec<Rc
 }
 
 fn view_at_pointer(views: &mut Vec<Rc<View>>,
-                          cursor: &mut Cursor)
-                          -> (Option<Rc<View>>, Option<SurfaceHandle>, f64, f64) {
+                   cursor: &mut Cursor)
+                   -> (Option<Rc<View>>, Option<SurfaceHandle>, f64, f64) {
     for view in views {
         match view.shell {
             Shell::XdgV6(ref shell) => {
@@ -137,51 +140,6 @@ fn view_at_pointer(views: &mut Vec<Rc<View>>,
         }
     }
     (None, None, 0.0, 0.0)
-}
-
-/// Focus the view under the pointer.
-fn focus_under_pointer(seat: &mut compositor::Seat,
-                                 keyboards: &mut [KeyboardHandle],
-                                 view: Option<Rc<View>>,
-                                 views: &mut Vec<Rc<View>>)
-                                 -> HandleResult<()>
-{
-    match view {
-        None => {
-            if let Some(mut focused_view) = seat.focused.take() {
-                focused_view.activate(false);
-            }
-            with_handles!([(seat: {&mut seat.seat})] => {
-                seat.keyboard_clear_focus()
-            })
-        }
-        Some(view) => {
-            if let Some(ref focused_view) = seat.focused {
-                if focused_view == &view {
-                    return Ok(())
-                }
-                focused_view.activate(false);
-            }
-            seat.focused = Some(view.clone());
-            view.activate(true);
-
-            if let Some(idx) = views.iter().position(|v| *v == view) {
-                let v = views.remove(idx);
-                views.insert(0, v);
-            }
-
-            for keyboard in { &mut *keyboards } {
-                with_handles!([(seat: {&mut seat.seat}),
-                (surface: {view.surface()}),
-                (keyboard: {keyboard})] => {
-                    seat.keyboard_notify_enter(surface,
-                                               &mut keyboard.keycodes(),
-                                               &mut keyboard.get_modifier_masks())
-                })?;
-            }
-            Ok(())
-        }
-    }
 }
 
 /// Start moving a view if you haven't already by passing `start: None`.

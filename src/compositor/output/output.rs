@@ -38,7 +38,9 @@ impl OutputHandler for Output {
 }
 
 /// Render all of the client views.
-fn render_views(renderer: &mut Renderer, layout: &mut OutputLayoutHandle, views: &mut Vec<Rc<View>>) {
+fn render_views(renderer: &mut Renderer,
+                layout: &mut OutputLayoutHandle,
+                views: &mut Vec<Rc<View>>) {
     for view in views.iter_mut().rev() {
         let origin = view.origin.get();
         view.for_each_surface(&mut |surface: SurfaceHandle, sx, sy| {

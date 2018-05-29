@@ -2,8 +2,8 @@ use compositor::{Action, Server, Shell, View};
 use wlroots::{CompositorHandle, Origin, SurfaceHandle, XdgV6ShellHandler,
               XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
 
-use wlroots::xdg_shell_v6_events::MoveEvent;
 use std::rc::Rc;
+use wlroots::xdg_shell_v6_events::MoveEvent;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct XdgV6 {
@@ -60,26 +60,9 @@ impl XdgV6ShellHandler for XdgV6 {
                 let Server { ref mut seat,
                              ref mut views,
                              .. } = *server;
-                views.insert(0, Rc::new(View::new(Shell::XdgV6(shell_surface.into()))));
-                let view = views[0].clone();
-
-                seat.focused.take().map(|mut focused| {
-                    focused.activate(false);
-                });
-
-                seat.focused = Some(view.clone());
-
-                with_handles!([(seat: {&mut seat.seat})] => {
-                    if let Some(keyboard) = seat.get_keyboard() {
-                        with_handles!([(keyboard: {keyboard}),
-                                       (surface: {view.surface()})] => {
-                                           seat.keyboard_notify_enter(surface,
-                                                              &mut keyboard.keycodes(),
-                                                              &mut keyboard.get_modifier_masks());
-                        }).unwrap();
-                    }
-                    views[0].activate(true);
-                }).unwrap();
+                let view = Rc::new(View::new(Shell::XdgV6(shell_surface.into())));
+                views.push(view.clone());
+                seat.focus_view(view, views);
             }).unwrap();
         }
     }
@@ -98,30 +81,11 @@ impl XdgV6ShellHandler for XdgV6 {
                 views.remove(pos);
             }
 
-            seat.focused = seat.focused.take().and_then(|mut focused| {
-                if focused.shell == destroyed_shell {
-                    with_handles!([(seat: {&mut seat.seat})] => {
-                        if views.len() > 0 {
-                            if let Some(keyboard) = seat.get_keyboard() {
-                                with_handles!([(keyboard: {keyboard}),
-                                    (surface: {focused.surface()})] => {
-                                    seat.keyboard_notify_enter(surface,
-                                                               &mut keyboard.keycodes(),
-                                                               &mut keyboard.get_modifier_masks());
-                                }).unwrap();
-                            }
-                            views[0].activate(true);
-                            Some(views[0].clone())
-                        } else {
-                            seat.keyboard_clear_focus();
-                            None
-                        }
-                    }).unwrap()
-                } else {
-                    Some(focused)
-                }
-            });
-
+            if views.len() > 0 {
+                seat.focus_view(views[0].clone(), views);
+            } else {
+                seat.clear_focus();
+            }
         }).unwrap();
     }
 }

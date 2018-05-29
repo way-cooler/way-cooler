@@ -1,7 +1,7 @@
 use compositor::Shell;
+use std::cell::Cell;
 use wlroots::XdgV6ShellState::*;
 use wlroots::{Origin, SurfaceHandle};
-use std::cell::Cell;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct View {
