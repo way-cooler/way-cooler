@@ -1,8 +1,8 @@
 use compositor::View;
 use std::rc::Rc;
-use wlroots::{Origin, SeatHandle, SeatHandler};
-use wlroots::pointer_events::ButtonEvent;
 use std::time::Duration;
+use wlroots::pointer_events::ButtonEvent;
+use wlroots::{Origin, SeatHandle, SeatHandler};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -31,7 +31,7 @@ impl Seat {
     }
 
     pub fn clear_focus(&mut self) {
-        if let Some(mut focused_view) = self.focused.take() {
+        if let Some(focused_view) = self.focused.take() {
             focused_view.activate(false);
         }
         with_handles!([(seat: {&mut self.seat})] => {

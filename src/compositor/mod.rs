@@ -49,7 +49,7 @@ impl Default for Server {
 }
 
 impl Server {
-    pub fn new(layout: OutputLayoutHandle, mut cursor: CursorHandle) -> Self {
+    pub fn new(layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
         let mut xcursor_manager =
             XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
                                                                       manager");

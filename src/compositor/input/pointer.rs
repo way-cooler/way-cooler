@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use wlroots::types::Cursor;
-use wlroots::{pointer_events::*, CompositorHandle, HandleResult, KeyboardHandle, Origin,
-              PointerHandle, PointerHandler, SurfaceHandle, WLR_BUTTON_RELEASED};
+use wlroots::{pointer_events::*, CompositorHandle, Origin, PointerHandle, PointerHandler,
+              SurfaceHandle, WLR_BUTTON_RELEASED};
 
 use compositor::{self, Action, Seat, Server, Shell, View};
 use std::rc::Rc;
@@ -50,7 +50,6 @@ impl PointerHandler for Pointer {
             let Server { ref mut cursor,
                          ref mut views,
                          ref mut seat,
-                         ref mut keyboards,
                          .. } = *server;
             with_handles!([(cursor: {&mut *cursor})] => {
                 if event.state() == WLR_BUTTON_RELEASED {
