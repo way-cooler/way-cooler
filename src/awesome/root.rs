@@ -115,7 +115,7 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value<'lua>) -> rlua::Result
         // Get the global keys
         Value::Nil => {
             let res = lua.create_table()?;
-            for entry in lua.globals().get::<_, Table>(ROOT_KEYS_HANDLE).or(lua.create_table())?.pairs() {
+            for entry in lua.named_registry_value::<Table>(ROOT_KEYS_HANDLE).or(lua.create_table())?.pairs() {
                 let (key, value) = entry?;
                 res.set::<Value, Value>(key, value)?;
             }
