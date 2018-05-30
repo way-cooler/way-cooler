@@ -99,18 +99,23 @@ fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
 /// Get or set global key bindings.
 ///
 /// These bindings will be available when you press keys on the root window.
-fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value) -> rlua::Result<rlua::Value<'lua>> {
+fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value<'lua>) -> rlua::Result<rlua::Value<'lua>> {
     match key_array {
         // Set the global keys
         Value::Table(key_array) => {
-            lua.set_named_registry_value(ROOT_KEYS_HANDLE, key_array)?;
-            Ok(Value::Nil)
+            let copy = lua.create_table()?;
+            // NOTE We make a deep clone so they can't modify references.
+            for entry in key_array.clone().pairs() {
+                let (key, value) = entry?;
+                copy.set::<Value, Value>(key, value)?;
+            }
+            lua.set_named_registry_value(ROOT_KEYS_HANDLE, copy)?;
+            Ok(Value::Table(key_array))
         }
         // Get the global keys
         Value::Nil => {
-            // NOTE We make a deep clone so they can't modify references.
             let res = lua.create_table()?;
-            for entry in lua.globals().get::<_, Table>(ROOT_KEYS_HANDLE)?.pairs() {
+            for entry in lua.named_registry_value::<Table>(ROOT_KEYS_HANDLE).or(lua.create_table())?.pairs() {
                 let (key, value) = entry?;
                 res.set::<Value, Value>(key, value)?;
             }
@@ -128,6 +133,7 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value) -> rlua::Result<rlua:
 mod test {
     use super::super::root;
     use super::super::tag;
+    use super::super::key;
     use rlua::Lua;
 
     #[test]
@@ -192,6 +198,34 @@ first.activated = false
 local t = root.tags()
 assert(t[1] == second)
 assert(type(t[2]) == "nil")
+"#,
+                 None
+        ).unwrap()
+    }
+
+    #[test]
+    fn keys() {
+        let lua = Lua::new();
+        key::init(&lua).unwrap();
+        root::init(&lua).unwrap();
+        lua.eval(
+                 r#"
+assert(next(root.keys()) == nil)
+
+local first = key{}
+local second = key{}
+local keys = { first, second }
+
+local res = root.keys(keys)
+assert(res[1] == first)
+assert(res[2] == second)
+assert(res[3] == nil)
+
+keys[3] = key{}
+local res = root.keys()
+assert(res[1] == first)
+assert(res[2] == second)
+assert(res[3] == nil)
 "#,
                  None
         ).unwrap()
