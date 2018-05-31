@@ -1,8 +1,9 @@
-use compositor::View;
+use compositor::{Server, View};
 use std::rc::Rc;
 use std::time::Duration;
+use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
-use wlroots::{Origin, SeatHandle, SeatHandler};
+use wlroots::{CompositorHandle, Origin, SeatHandle, SeatHandler};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -20,6 +21,7 @@ pub struct Seat {
     pub seat: SeatHandle,
     pub focused: Option<Rc<View>>,
     pub action: Option<Action>,
+    pub has_client_cursor: bool,
     pub meta: bool
 }
 
@@ -74,7 +76,24 @@ impl Seat {
     }
 }
 
-impl SeatHandler for SeatManager {}
+impl SeatHandler for SeatManager {
+    fn cursor_set(&mut self, compositor: CompositorHandle, _: SeatHandle, event: &SetCursorEvent) {
+        if let Some(surface) = event.surface() {
+            with_handles!([(compositor: {compositor}), (surface: {surface})] => {
+                let server: &mut Server = compositor.into();
+                let Server { ref mut cursor,
+                             ref mut seat,
+                .. } = *server;
+                with_handles!([(cursor: {&mut *cursor})] => {
+                    let (hotspot_x, hotspot_y) = event.location();
+                    let surface = &*surface;
+                    cursor.set_surface(Some(surface), hotspot_x, hotspot_y);
+                    seat.has_client_cursor = true;
+                }).unwrap();
+            }).unwrap();
+        }
+    }
+}
 
 impl SeatManager {
     pub fn new() -> Self {

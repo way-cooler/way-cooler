@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use wlroots::types::Cursor;
 use wlroots::{pointer_events::*, CompositorHandle, Origin, PointerHandle, PointerHandler,
-              SurfaceHandle, WLR_BUTTON_RELEASED};
+              SurfaceHandle, XCursorManager, WLR_BUTTON_RELEASED};
 
 use compositor::{self, Action, Seat, Server, Shell, View};
 use std::rc::Rc;
@@ -18,13 +18,14 @@ impl PointerHandler for Pointer {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.data.downcast_mut().unwrap();
             let Server { ref mut cursor,
+                         ref mut xcursor_manager,
                          ref mut seat,
                          ref mut views,
                          .. } = *server;
             with_handles!([(cursor: {&mut *cursor})] => {
                 let (x, y) = event.pos();
                 cursor.warp_absolute(event.device(), x, y);
-                update_view_position(cursor, seat, views, event.time_msec());
+                update_view_position(cursor, xcursor_manager, seat, views, event.time_msec());
             }).expect("Cursor was destroyed");
         }).unwrap();
     }
@@ -33,13 +34,14 @@ impl PointerHandler for Pointer {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
             let Server { ref mut cursor,
+                         ref mut xcursor_manager,
                          ref mut seat,
                          ref mut views,
                          .. } = *server;
             with_handles!([(cursor: {&mut *cursor})] => {
                 let (x, y) = event.delta();
                 cursor.move_to(event.device(), x, y);
-                update_view_position(cursor, seat, views, event.time_msec());
+                update_view_position(cursor, xcursor_manager, seat, views, event.time_msec());
             }).expect("Cursor was destroyed");
         }).unwrap();
     }
@@ -78,6 +80,7 @@ impl PointerHandler for Pointer {
 /// under the pointer or update the position of a view that might have been
 /// affected by an ongoing interactive move/resize operation
 fn update_view_position(cursor: &mut Cursor,
+                        xcursor_manager: &mut XCursorManager,
                         seat: &mut Seat,
                         views: &mut [Rc<View>],
                         time_msec: u32) {
@@ -90,16 +93,19 @@ fn update_view_position(cursor: &mut Cursor,
         }
         _ => {
             let (_view, surface, sx, sy) = view_at_pointer(views, cursor);
-            let ref mut seat = seat.seat;
             match surface {
                 Some(surface) => {
-                    with_handles!([(surface: {surface}), (seat: {seat})] => {
+                    with_handles!([(surface: {surface}), (seat: {&mut seat.seat})] => {
                         seat.pointer_notify_enter(surface, sx, sy);
                         seat.pointer_notify_motion(Duration::from_millis(time_msec as u64), sx, sy);
                     }).unwrap();
                 }
                 None => {
-                    with_handles!([(seat: {seat})] => {
+                    if seat.has_client_cursor {
+                        xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
+                        seat.has_client_cursor = false;
+                    }
+                    with_handles!([(seat: {&mut seat.seat})] => {
                         seat.pointer_clear_focus();
                     }).unwrap();
                 }
