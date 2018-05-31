@@ -1,7 +1,6 @@
 use rlua::{self, Lua};
-use wlroots::{key_events::KeyEvent,
-              xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R}, CompositorHandle,
-              KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED, KeyboardModifier};
+use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
+              CompositorHandle, KeyboardHandle, KeyboardHandler, KeyboardModifier, WLR_KEY_PRESSED};
 
 use awesome::{self, emit_object_signal, Objectable, LUA, ROOT_KEYS_HANDLE};
 use compositor::Server;
@@ -14,10 +13,7 @@ fn key_is_meta(key: u32) -> bool {
 }
 
 impl KeyboardHandler for Keyboard {
-    fn on_key(&mut self,
-              compositor: CompositorHandle,
-              keyboard: KeyboardHandle,
-              event: &KeyEvent) {
+    fn on_key(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle, event: &KeyEvent) {
         let modifiers = with_handles!([(compositor: {compositor})] => {
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
@@ -42,6 +38,7 @@ impl KeyboardHandler for Keyboard {
             let server: &mut Server = compositor.into();
             with_handles!([(seat: {&mut server.seat.seat}),
                            (keyboard: {keyboard})] => {
+                seat.set_keyboard(keyboard.input_device());
                 seat.keyboard_notify_key(event.time_msec(),
                                          event.keycode(),
                                          event.key_state() as u32);

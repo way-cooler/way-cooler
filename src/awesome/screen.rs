@@ -68,7 +68,7 @@ impl<'lua> Screen<'lua> {
     }
 
     fn init_screens(&mut self,
-                    mut output: OutputHandle,
+                    output: OutputHandle,
                     outputs: Vec<OutputHandle>)
                     -> rlua::Result<()> {
         let mut state = self.get_object_mut()?;

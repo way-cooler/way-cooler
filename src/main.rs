@@ -203,6 +203,7 @@ fn detect_raspi() {
 
 /// Initializes the logging system.
 pub fn init_logs() {
+    wlroots::utils::init_logging(wlroots::utils::L_DEBUG, None);
     let mut builder = env_logger::LogBuilder::new();
     builder.format(log_format);
     builder.filter(None, log::LogLevelFilter::Trace);
