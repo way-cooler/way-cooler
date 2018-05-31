@@ -41,7 +41,7 @@ impl Seat {
 
     pub fn focus_view(&mut self, view: Rc<View>, views: &mut Vec<Rc<View>>) {
         if let Some(ref focused) = self.focused {
-            if focused == &view {
+            if *focused == view {
                 return
             }
             focused.activate(false);

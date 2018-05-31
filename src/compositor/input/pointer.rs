@@ -57,28 +57,17 @@ impl PointerHandler for Pointer {
                     seat.send_button(event);
                     return
                 }
-                let view = {
-                    let (view, _surface, _sx, _sy) = view_at_pointer(views, cursor);
-                    if let Some(view) = view {
-                        Some(view.clone())
-                    } else{
-                        None
-                    }
-                };
 
-                match view {
-                    Some(view) => {
-                        seat.focus_view(view.clone(), views);
+                if let (Some(view), _, _, _) = view_at_pointer(views, cursor) {
+                    seat.focus_view(view.clone(), views);
 
-                        let meta_held_down = seat.meta;
-                        if meta_held_down && event.button() == BTN_LEFT {
-                            move_view(seat, cursor, view, None);
-                        }
-                        seat.send_button(event);
-                    },
-                    None => {
-                        seat.clear_focus();
+                    let meta_held_down = seat.meta;
+                    if meta_held_down && event.button() == BTN_LEFT {
+                        move_view(seat, cursor, &view, None);
                     }
+                    seat.send_button(event);
+                } else {
+                    seat.clear_focus();
                 }
             }).unwrap()
         }).unwrap()
@@ -90,12 +79,12 @@ impl PointerHandler for Pointer {
 /// affected by an ongoing interactive move/resize operation
 fn update_view_position(cursor: &mut Cursor,
                         seat: &mut Seat,
-                        views: &mut Vec<Rc<View>>,
+                        views: &mut [Rc<View>],
                         time_msec: u32) {
     match seat.action {
         Some(Action::Moving { start }) => {
             seat.focused = seat.focused.take().map(|f| {
-                                                       move_view(seat, cursor, f.clone(), start);
+                                                       move_view(seat, cursor, &f, start);
                                                        f
                                                    });
         }
@@ -119,7 +108,7 @@ fn update_view_position(cursor: &mut Cursor,
     }
 }
 
-fn view_at_pointer(views: &mut Vec<Rc<View>>,
+fn view_at_pointer(views: &mut [Rc<View>],
                    cursor: &mut Cursor)
                    -> (Option<Rc<View>>, Option<SurfaceHandle>, f64, f64) {
     for view in views {
@@ -145,7 +134,7 @@ fn view_at_pointer(views: &mut Vec<Rc<View>>,
 ///
 /// Otherwise, update the view position relative to where the move started,
 /// which is provided by Action::Moving.
-fn move_view<O>(seat: &mut compositor::Seat, cursor: &mut Cursor, view: Rc<View>, start: O)
+fn move_view<O>(seat: &mut compositor::Seat, cursor: &mut Cursor, view: &View, start: O)
     where O: Into<Option<Origin>>
 {
     let Origin { x: shell_x,

@@ -19,9 +19,9 @@ impl XdgV6 {
 impl XdgV6ShellHandler for XdgV6 {
     fn move_request(&mut self,
                     compositor: CompositorHandle,
-                    _surface: SurfaceHandle,
+                    _: SurfaceHandle,
                     shell_surface: XdgV6ShellSurfaceHandle,
-                    _event: &MoveEvent) {
+                    _: &MoveEvent) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
             let ref mut seat = server.seat;
@@ -45,7 +45,7 @@ impl XdgV6ShellHandler for XdgV6 {
 
     fn map_request(&mut self,
                    compositor: CompositorHandle,
-                   _surface: SurfaceHandle,
+                   _: SurfaceHandle,
                    mut shell_surface: XdgV6ShellSurfaceHandle) {
         let is_toplevel = with_handles!([(shell_surface: {&mut shell_surface})] => {
             match shell_surface.state().unwrap() {
@@ -69,7 +69,7 @@ impl XdgV6ShellHandler for XdgV6 {
 
     fn unmap_request(&mut self,
                      compositor: CompositorHandle,
-                     _surface: SurfaceHandle,
+                     _: SurfaceHandle,
                      shell_surface: XdgV6ShellSurfaceHandle) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
@@ -94,14 +94,14 @@ pub struct XdgV6ShellManager;
 
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
-                   _compositor: CompositorHandle,
-                   _shell_surface: XdgV6ShellSurfaceHandle)
+                   _: CompositorHandle,
+                   _: XdgV6ShellSurfaceHandle)
                    -> Option<Box<XdgV6ShellHandler>> {
         Some(Box::new(XdgV6::new()))
     }
 
     fn surface_destroyed(&mut self,
-                         _compositor: CompositorHandle,
-                         _shell_surface: XdgV6ShellSurfaceHandle) {
+                         _: CompositorHandle,
+                         _: XdgV6ShellSurfaceHandle) {
     }
 }
