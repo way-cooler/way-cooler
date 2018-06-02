@@ -1,9 +1,10 @@
-use compositor::{Server, View};
+use compositor::{Server, Shell, View};
 use std::rc::Rc;
 use std::time::Duration;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
-use wlroots::{CompositorHandle, Origin, SeatHandle, SeatHandler};
+use wlroots::{CompositorHandle, Cursor, Origin, SeatHandle, SeatHandler, SurfaceHandle,
+              XCursorManager};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -73,6 +74,89 @@ impl Seat {
             event.button(),
             event.state() as u32);
         }).unwrap();
+    }
+
+    pub fn move_view<O>(&mut self, cursor: &mut Cursor, view: &View, start: O)
+        where O: Into<Option<Origin>>
+    {
+        let Origin { x: shell_x,
+                     y: shell_y } = view.origin.get();
+        let (lx, ly) = cursor.coords();
+        match start.into() {
+            None => {
+                let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
+                let start = Origin::new(view_sx as _, view_sy as _);
+                self.action = Some(Action::Moving { start });
+            }
+            Some(start) => {
+                let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
+                view.origin.replace(pos);
+            }
+        };
+    }
+
+    pub fn view_at_pointer(views: &mut [Rc<View>],
+                           cursor: &mut Cursor)
+                           -> (Option<Rc<View>>, Option<SurfaceHandle>, f64, f64) {
+        for view in views {
+            match view.shell {
+                Shell::XdgV6(ref shell) => {
+                    let (mut sx, mut sy) = (0.0, 0.0);
+                    let surface = with_handles!([(shell: {shell})] => {
+                        let (lx, ly) = cursor.coords();
+                        let Origin {x: shell_x, y: shell_y} = view.origin.get();
+                        let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
+                        shell.surface_at(view_sx, view_sy, &mut sx, &mut sy)
+                    }).unwrap();
+                    if surface.is_some() {
+                        return (Some(view.clone()), surface, sx, sy)
+                    }
+                }
+            }
+        }
+        (None, None, 0.0, 0.0)
+    }
+
+    pub fn update_cursor_position(&mut self,
+                                  cursor: &mut Cursor,
+                                  xcursor_manager: &mut XCursorManager,
+                                  views: &mut [Rc<View>],
+                                  time_msec: Option<u32>) {
+        let time = if let Some(time_msec) = time_msec {
+            Duration::from_millis(time_msec as u64)
+        } else {
+            // TODO need clock_gettime with CLOCK_MONOTONIC
+            Duration::from_millis(0 as u64)
+        };
+
+        match self.action {
+            Some(Action::Moving { start }) => {
+                self.focused = self.focused.take().map(|f| {
+                                                           self.move_view(cursor, &f, start);
+                                                           f
+                                                       });
+            }
+            _ => {
+                let (_view, surface, sx, sy) = Seat::view_at_pointer(views, cursor);
+                match surface {
+                    Some(surface) => {
+                        with_handles!([(surface: {surface}), (seat: {&mut self.seat})] => {
+                            seat.pointer_notify_enter(surface, sx, sy);
+                            seat.pointer_notify_motion(time, sx, sy);
+                        }).unwrap();
+                    }
+                    None => {
+                        if self.has_client_cursor {
+                            xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
+                            self.has_client_cursor = false;
+                        }
+                        with_handles!([(seat: {&mut self.seat})] => {
+                            seat.pointer_clear_focus();
+                        }).unwrap();
+                    }
+                }
+            }
+        }
     }
 }
 

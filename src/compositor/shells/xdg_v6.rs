@@ -54,17 +54,23 @@ impl XdgV6ShellHandler for XdgV6 {
             }
         }).unwrap();
 
-        if is_toplevel {
-            with_handles!([(compositor: {compositor})] => {
-                let server: &mut Server = compositor.into();
-                let Server { ref mut seat,
-                             ref mut views,
-                             .. } = *server;
+        with_handles!([(compositor: {compositor})] => {
+            let server: &mut Server = compositor.into();
+            let Server { ref mut seat,
+                         ref mut views,
+                         ref mut cursor,
+                         ref mut xcursor_manager,
+                         .. } = *server;
+            if is_toplevel {
                 let view = Rc::new(View::new(Shell::XdgV6(shell_surface.into())));
                 views.push(view.clone());
                 seat.focus_view(view, views);
+            }
+
+            with_handles!([(cursor: {cursor})] => {
+                seat.update_cursor_position(cursor, xcursor_manager, views, None);
             }).unwrap();
-        }
+        }).unwrap();
     }
 
     fn unmap_request(&mut self,
@@ -75,6 +81,8 @@ impl XdgV6ShellHandler for XdgV6 {
             let server: &mut Server = compositor.into();
             let Server { ref mut seat,
                          ref mut views,
+                         ref mut cursor,
+                         ref mut xcursor_manager,
                          .. } = *server;
             let destroyed_shell = shell_surface.into();
             if let Some(pos) = views.iter().position(|view| view.shell == destroyed_shell) {
@@ -86,6 +94,9 @@ impl XdgV6ShellHandler for XdgV6 {
             } else {
                 seat.clear_focus();
             }
+            with_handles!([(cursor: {cursor})] => {
+                seat.update_cursor_position(cursor, xcursor_manager, views, None);
+            }).unwrap();
         }).unwrap();
     }
 }
@@ -100,8 +111,5 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
         Some(Box::new(XdgV6::new()))
     }
 
-    fn surface_destroyed(&mut self,
-                         _: CompositorHandle,
-                         _: XdgV6ShellSurfaceHandle) {
-    }
+    fn surface_destroyed(&mut self, _: CompositorHandle, _: XdgV6ShellSurfaceHandle) {}
 }
