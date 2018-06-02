@@ -1,10 +1,9 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use cairo::ImageSurface;
 use cairo_sys;
 use glib::translate::ToGlibPtr;
 use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputHandler,
               OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888};
+use wlroots::utils::current_time;
 
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
@@ -61,10 +60,7 @@ fn render_views(renderer: &mut Renderer,
                                              renderer.output
                                              .transform_matrix());
                     renderer.render_texture_with_matrix(&surface.texture(), matrix);
-                    let start = SystemTime::now();
-                    let now = start.duration_since(UNIX_EPOCH)
-                        .expect("Time went backwards");
-                    surface.send_frame_done(now);
+                    surface.send_frame_done(current_time());
                 }
             }).expect("Could not render views")
         });
