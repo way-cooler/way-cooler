@@ -5,6 +5,7 @@ use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
 use wlroots::{CompositorHandle, Cursor, Origin, SeatHandle, SeatHandler, SurfaceHandle,
               XCursorManager};
+use wlroots::utils::current_time;
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -125,8 +126,7 @@ impl Seat {
         let time = if let Some(time_msec) = time_msec {
             Duration::from_millis(time_msec as u64)
         } else {
-            // TODO need clock_gettime with CLOCK_MONOTONIC
-            Duration::from_millis(0 as u64)
+            current_time()
         };
 
         match self.action {
