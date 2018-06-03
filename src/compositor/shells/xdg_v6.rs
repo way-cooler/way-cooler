@@ -1,5 +1,5 @@
 use compositor::{Action, Server, Shell, View};
-use wlroots::{CompositorHandle, Origin, SurfaceHandle, XdgV6ShellHandler,
+use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler, XdgV6ShellHandler,
               XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
 
 use std::rc::Rc;
@@ -107,9 +107,7 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
                    _: CompositorHandle,
                    _: XdgV6ShellSurfaceHandle)
-                   -> Option<Box<XdgV6ShellHandler>> {
-        Some(Box::new(XdgV6::new()))
+                   -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>) {
+        (Some(Box::new(XdgV6::new())), None)
     }
-
-    fn surface_destroyed(&mut self, _: CompositorHandle, _: XdgV6ShellSurfaceHandle) {}
 }
