@@ -3,9 +3,9 @@ use std::rc::Rc;
 use std::time::Duration;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
+use wlroots::utils::current_time;
 use wlroots::{CompositorHandle, Cursor, Origin, SeatHandle, SeatHandler, SurfaceHandle,
               XCursorManager};
-use wlroots::utils::current_time;
 
 #[derive(Debug, Default)]
 pub struct SeatManager;

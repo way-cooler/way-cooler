@@ -1,9 +1,9 @@
 use cairo::ImageSurface;
 use cairo_sys;
 use glib::translate::ToGlibPtr;
+use wlroots::utils::current_time;
 use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputHandler,
               OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888};
-use wlroots::utils::current_time;
 
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
