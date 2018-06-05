@@ -2,7 +2,8 @@
 //! Way Cooler.
 
 use std::panic;
-use wlroots::{CompositorHandle, XWaylandManagerHandler};
+use wlroots::{CompositorHandle, SurfaceHandler, XWaylandManagerHandler, XWaylandSurfaceHandle,
+              XWaylandSurfaceHandler};
 
 use awesome;
 
@@ -25,5 +26,11 @@ impl XWaylandManagerHandler for XWaylandManager {
                 panic::resume_unwind(err)
             }
         }
+    }
+    fn new_surface(&mut self,
+                   _: CompositorHandle,
+                   _: XWaylandSurfaceHandle)
+                   -> (Option<Box<XWaylandSurfaceHandler>>, Option<Box<SurfaceHandler>>) {
+        (None, None)
     }
 }
