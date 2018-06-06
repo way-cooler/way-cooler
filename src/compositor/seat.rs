@@ -3,9 +3,9 @@ use std::rc::Rc;
 use std::time::Duration;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
-use wlroots::utils::current_time;
+use wlroots::utils::{current_time, L_DEBUG};
 use wlroots::{CompositorHandle, Cursor, Origin, SeatHandle, SeatHandler, SurfaceHandle,
-              XCursorManager};
+              XCursorManager, SurfaceHandler, DragIconHandler, DragIconHandle};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -160,6 +160,22 @@ impl Seat {
     }
 }
 
+struct WCDragIconHandler;
+
+impl DragIconHandler for WCDragIconHandler {
+    fn on_map(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
+        wlr_log!(L_DEBUG, "TODO: handle drag icon mapped");
+    }
+
+    fn on_unmap(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
+        wlr_log!(L_DEBUG, "TODO: handle drag icon unmapped");
+    }
+
+    fn destroyed(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
+        wlr_log!(L_DEBUG, "TODO: handle drag icon destroyed");
+    }
+}
+
 impl SeatHandler for SeatManager {
     fn cursor_set(&mut self, compositor: CompositorHandle, _: SeatHandle, event: &SetCursorEvent) {
         if let Some(surface) = event.surface() {
@@ -176,6 +192,14 @@ impl SeatHandler for SeatManager {
                 }).unwrap();
             }).unwrap();
         }
+    }
+
+    fn new_drag_icon(&mut self,
+                     compositor: CompositorHandle,
+                     seat: SeatHandle,
+                     drag_icon: DragIconHandle)
+                     -> (Option<Box<DragIconHandler>>, Option<Box<SurfaceHandler>>) {
+        (Some(Box::new(WCDragIconHandler)), None)
     }
 }
 
