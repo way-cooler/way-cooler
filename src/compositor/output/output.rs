@@ -18,6 +18,8 @@ impl OutputHandler for Output {
             let state: &mut Server = compositor.data.downcast_mut().unwrap();
             let Server { ref mut layout,
                          ref mut views,
+                         ref mut seat,
+                         ref mut cursor,
                          .. } = *state;
             let renderer = compositor.renderer.as_mut().expect("gles2 disabled");
             let mut renderer = renderer.render(output, None);
@@ -32,6 +34,35 @@ impl OutputHandler for Output {
                     }
                 }
             });
+            let (lx, ly) = with_handles!([(cursor: {&cursor})] => {
+                cursor.coords()
+            }).unwrap();
+            for drag_icon in &seat.drag_icons {
+                with_handles!([(drag_icon: {&drag_icon.handle}), (layout: {&mut *layout})] => {
+                    let (sx, sy) = drag_icon.position();
+                    with_handles!([(surface: {&drag_icon.surface()})] => {
+                        let (width, height) = surface.current_state().size();
+                        let (render_width, render_height) =
+                            (width * renderer.output.scale() as i32,
+                            height * renderer.output.scale() as i32);
+                        let render_box = Area::new(Origin::new((lx as i32) + sx, (ly as i32) + sy),
+                        Size::new(render_width,
+                                  render_height));
+
+                        if layout.intersects(renderer.output, render_box) {
+                            let transform = renderer.output.get_transform().invert();
+                            let matrix = project_box(render_box,
+                                                     transform,
+                                                     0.0,
+                                                     renderer.output
+                                                     .transform_matrix());
+                            renderer.render_texture_with_matrix(&surface.texture(), matrix);
+                            surface.send_frame_done(current_time());
+                        }
+
+                        }).unwrap();
+                    }).unwrap();
+            }
         }).unwrap();
     }
 }

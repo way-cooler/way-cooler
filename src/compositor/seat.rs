@@ -4,8 +4,8 @@ use std::time::Duration;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
 use wlroots::utils::{current_time, L_DEBUG};
-use wlroots::{CompositorHandle, Cursor, Origin, SeatHandle, SeatHandler, SurfaceHandle,
-              XCursorManager, SurfaceHandler, DragIconHandler, DragIconHandle};
+use wlroots::{CompositorHandle, Cursor, DragIconHandle, DragIconHandler, Origin, SeatHandle,
+              SeatHandler, SurfaceHandle, SurfaceHandler, XCursorManager};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -18,13 +18,19 @@ pub enum Action {
     Moving { start: Origin }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct WCDragIcon {
+    pub handle: DragIconHandle
+}
+
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Seat {
     pub seat: SeatHandle,
     pub focused: Option<Rc<View>>,
     pub action: Option<Action>,
     pub has_client_cursor: bool,
-    pub meta: bool
+    pub meta: bool,
+    pub drag_icons: Vec<Rc<WCDragIcon>>
 }
 
 impl Seat {
@@ -173,6 +179,18 @@ impl DragIconHandler for WCDragIconHandler {
 
     fn destroyed(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
         wlr_log!(L_DEBUG, "TODO: handle drag icon destroyed");
+        with_handles!([(compositor: {compositor})] => {
+            let server: &mut Server = compositor.into();
+            let Server { ref mut seat, .. } = *server;
+
+            let idx = seat.drag_icons.iter().position(|icon| {
+                icon.handle == drag_icon
+            });
+
+            if let Some(idx) = idx {
+                seat.drag_icons.remove(idx);
+            }
+        }).unwrap();
     }
 }
 
@@ -199,6 +217,11 @@ impl SeatHandler for SeatManager {
                      seat: SeatHandle,
                      drag_icon: DragIconHandle)
                      -> (Option<Box<DragIconHandler>>, Option<Box<SurfaceHandler>>) {
+        with_handles!([(compositor: {compositor})] => {
+            let server: &mut Server = compositor.into();
+            let Server { ref mut seat, .. } = *server;
+            seat.drag_icons.push(Rc::new(WCDragIcon { handle: drag_icon }));
+        }).unwrap();
         (Some(Box::new(WCDragIconHandler)), None)
     }
 }
