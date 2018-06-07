@@ -1,6 +1,7 @@
 use compositor::{Server, Shell, View};
 use std::rc::Rc;
 use std::time::Duration;
+use std::collections::HashSet;
 use wlroots;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
@@ -19,7 +20,7 @@ pub enum Action {
     Moving { start: Origin }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct DragIcon {
     pub handle: DragIconHandle
 }
@@ -31,7 +32,7 @@ pub struct Seat {
     pub action: Option<Action>,
     pub has_client_cursor: bool,
     pub meta: bool,
-    pub drag_icons: Vec<Rc<DragIcon>>
+    pub drag_icons: HashSet<Rc<DragIcon>>
 }
 
 impl Seat {
@@ -181,15 +182,7 @@ impl wlroots::DragIconHandler for DragIconHandler {
     fn destroyed(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
-            let Server { ref mut seat, .. } = *server;
-
-            let idx = seat.drag_icons.iter().position(|icon| {
-                icon.handle == drag_icon
-            });
-
-            if let Some(idx) = idx {
-                seat.drag_icons.remove(idx);
-            }
+            server.seat.drag_icons.remove(&DragIcon{ handle: drag_icon });
         }).unwrap();
     }
 }
@@ -220,7 +213,7 @@ impl SeatHandler for SeatManager {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
             let Server { ref mut seat, .. } = *server;
-            seat.drag_icons.push(Rc::new(DragIcon { handle: drag_icon }));
+            seat.drag_icons.insert(Rc::new(DragIcon { handle: drag_icon }));
         }).unwrap();
         (Some(Box::new(DragIconHandler)), None)
     }
