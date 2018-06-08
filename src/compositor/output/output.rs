@@ -38,33 +38,41 @@ impl OutputHandler for Output {
                 cursor.coords()
             }).unwrap();
             for drag_icon in &seat.drag_icons {
-                with_handles!([(drag_icon: {&drag_icon.handle}), (layout: {&mut *layout})] => {
+                with_handles!([(drag_icon: {&drag_icon.handle})] => {
                     let (sx, sy) = drag_icon.position();
-                    with_handles!([(surface: {&drag_icon.surface()})] => {
-                        let (width, height) = surface.current_state().size();
-                        let (render_width, render_height) =
-                            (width * renderer.output.scale() as i32,
-                            height * renderer.output.scale() as i32);
-                        let render_box = Area::new(Origin::new((lx as i32) + sx, (ly as i32) + sy),
-                        Size::new(render_width,
-                                  render_height));
-
-                        if layout.intersects(renderer.output, render_box) {
-                            let transform = renderer.output.get_transform().invert();
-                            let matrix = project_box(render_box,
-                                                     transform,
-                                                     0.0,
-                                                     renderer.output
-                                                     .transform_matrix());
-                            renderer.render_texture_with_matrix(&surface.texture(), matrix);
-                            surface.send_frame_done(current_time());
-                        }
-
-                        }).unwrap();
+                    render_surface(&mut renderer, layout, &mut drag_icon.surface(), lx as i32 + sx, ly as i32 + sy);
                     }).unwrap();
             }
         }).unwrap();
     }
+}
+
+fn render_surface(renderer: &mut Renderer,
+                  layout: &mut OutputLayoutHandle,
+                  surface: &mut SurfaceHandle,
+                  lx: i32,
+                  ly: i32) {
+    with_handles!([(surface: {surface}), (layout: {&mut *layout})] => {
+        let (width, height) = surface.current_state().size();
+        let (render_width, render_height) =
+            (width * renderer.output.scale() as i32,
+            height * renderer.output.scale() as i32);
+        let render_box = Area::new(Origin::new(lx, ly),
+        Size::new(render_width,
+                  render_height));
+
+        if layout.intersects(renderer.output, render_box) {
+            let transform = renderer.output.get_transform().invert();
+            let matrix = project_box(render_box,
+                                     transform,
+                                     0.0,
+                                     renderer.output
+                                     .transform_matrix());
+            renderer.render_texture_with_matrix(&surface.texture(), matrix);
+            surface.send_frame_done(current_time());
+        }
+
+    }).unwrap();
 }
 
 /// Render all of the client views.
@@ -73,27 +81,8 @@ fn render_views(renderer: &mut Renderer,
                 views: &mut Vec<Rc<View>>) {
     for view in views.iter_mut().rev() {
         let origin = view.origin.get();
-        view.for_each_surface(&mut |surface: SurfaceHandle, sx, sy| {
-            with_handles!([(surface: {surface}), (layout: {&mut *layout})] => {
-                let (width, height) = surface.current_state().size();
-                let (render_width, render_height) =
-                    (width * renderer.output.scale() as i32,
-                    height * renderer.output.scale() as i32);
-                let render_box = Area::new(Origin::new(origin.x + sx, origin.y + sy),
-                                           Size::new(render_width,
-                                                     render_height));
-
-                if layout.intersects(renderer.output, render_box) {
-                    let transform = renderer.output.get_transform().invert();
-                    let matrix = project_box(render_box,
-                                             transform,
-                                             0.0,
-                                             renderer.output
-                                             .transform_matrix());
-                    renderer.render_texture_with_matrix(&surface.texture(), matrix);
-                    surface.send_frame_done(current_time());
-                }
-            }).expect("Could not render views")
+        view.for_each_surface(&mut |mut surface: SurfaceHandle, sx, sy| {
+            render_surface(renderer, layout, &mut surface, origin.x + sx, origin.y + sy);
         });
     }
 }
