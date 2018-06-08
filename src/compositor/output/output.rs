@@ -35,13 +35,18 @@ impl OutputHandler for Output {
                 }
             });
             let (lx, ly) = with_handles!([(cursor: {&cursor})] => {
-                cursor.coords()
+                let (lx, ly) = cursor.coords();
+                (lx as i32, ly as i32)
             }).unwrap();
             for drag_icon in &seat.drag_icons {
                 with_handles!([(drag_icon: {&drag_icon.handle})] => {
                     let (sx, sy) = drag_icon.position();
-                    render_surface(&mut renderer, layout, &mut drag_icon.surface(), lx as i32 + sx, ly as i32 + sy);
-                    }).unwrap();
+                    render_surface(&mut renderer,
+                                   layout,
+                                   &mut drag_icon.surface(),
+                                   lx + sx,
+                                   ly + sy);
+                }).unwrap();
             }
         }).unwrap();
     }
@@ -82,8 +87,12 @@ fn render_views(renderer: &mut Renderer,
     for view in views.iter_mut().rev() {
         let origin = view.origin.get();
         view.for_each_surface(&mut |mut surface: SurfaceHandle, sx, sy| {
-            render_surface(renderer, layout, &mut surface, origin.x + sx, origin.y + sy);
-        });
+                                  render_surface(renderer,
+                                                 layout,
+                                                 &mut surface,
+                                                 origin.x + sx,
+                                                 origin.y + sy);
+                              });
     }
 }
 

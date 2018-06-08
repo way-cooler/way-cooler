@@ -1,13 +1,13 @@
 use compositor::{Server, Shell, View};
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Duration;
-use std::collections::HashSet;
 use wlroots;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
-use wlroots::utils::{current_time, L_DEBUG};
-use wlroots::{CompositorHandle, Cursor, DragIconHandle, Origin, SeatHandle,
-              SeatHandler, SurfaceHandle, SurfaceHandler, XCursorManager};
+use wlroots::utils::current_time;
+use wlroots::{CompositorHandle, Cursor, DragIconHandle, Origin, SeatHandle, SeatHandler,
+              SurfaceHandle, SurfaceHandler, XCursorManager};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -171,12 +171,12 @@ impl Seat {
 struct DragIconHandler;
 
 impl wlroots::DragIconHandler for DragIconHandler {
-    fn on_map(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
-        wlr_log!(L_DEBUG, "TODO: handle drag icon mapped");
+    fn on_map(&mut self, _: CompositorHandle, _: DragIconHandle) {
+        // TODO damage the drag icon surface location
     }
 
-    fn on_unmap(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
-        wlr_log!(L_DEBUG, "TODO: handle drag icon unmapped");
+    fn on_unmap(&mut self, _: CompositorHandle, _: DragIconHandle) {
+        // TODO damage the drag icon surface location
     }
 
     fn destroyed(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
@@ -207,7 +207,7 @@ impl SeatHandler for SeatManager {
 
     fn new_drag_icon(&mut self,
                      compositor: CompositorHandle,
-                     seat: SeatHandle,
+                     _: SeatHandle,
                      drag_icon: DragIconHandle)
                      -> (Option<Box<wlroots::DragIconHandler>>, Option<Box<SurfaceHandler>>) {
         with_handles!([(compositor: {compositor})] => {
