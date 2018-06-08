@@ -32,7 +32,7 @@ pub struct Seat {
     pub action: Option<Action>,
     pub has_client_cursor: bool,
     pub meta: bool,
-    pub drag_icons: HashSet<Rc<DragIcon>>
+    pub drag_icons: HashSet<DragIcon>
 }
 
 impl Seat {
@@ -213,7 +213,7 @@ impl SeatHandler for SeatManager {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
             let Server { ref mut seat, .. } = *server;
-            seat.drag_icons.insert(Rc::new(DragIcon { handle: drag_icon }));
+            seat.drag_icons.insert(DragIcon { handle: drag_icon });
         }).unwrap();
         (Some(Box::new(DragIconHandler)), None)
     }
