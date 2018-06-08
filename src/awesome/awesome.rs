@@ -2,7 +2,7 @@
 
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 use super::{signal, XCB_CONNECTION_HANDLE};
-use awesome::lua::{load_config, rust_interop, LUA};
+use awesome::lua::NEXT_LUA;
 use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::{Pixbuf, PixbufExt};
 use glib::translate::{ToGlibPtr, FromGlibPtrNone};
@@ -15,7 +15,6 @@ use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::{mem, ptr};
-use wlroots;
 use xcb::ffi::{self, xproto};
 use xcb::{xkb, Connection};
 
@@ -223,14 +222,8 @@ fn systray<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<(u32, Value)> {
 /// Restart Awesome by restarting the Lua thread
 fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     info!("Lua thread restarting");
-    LUA.with(|lua| {
-        let mut lua = lua.borrow_mut();
-        unsafe {
-            *lua = rlua::Lua::new_with_debug();
-        }
-        let mut compositor = wlroots::compositor_handle().unwrap();
-        rust_interop::register_libraries(&*lua, &mut compositor).expect("Could not register libraries");
-        load_config(&mut *lua, &mut compositor);
+    NEXT_LUA.with(|next_lua| {
+        next_lua.set(true);
     });
     Ok(())
 }
