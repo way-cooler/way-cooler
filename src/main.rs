@@ -77,7 +77,7 @@ fn main() {
         extern "C" {
             fn wayland_glib_interface_init(display: *mut c_void);
         }
-        wayland_glib_interface_init(compositor.display() as *mut c_void);
+        wayland_glib_interface_init(compositor.display as *mut c_void);
     }
     compositor.run_with(|_| awesome::lua::enter_glib_loop());
 }
