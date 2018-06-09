@@ -58,31 +58,31 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 fn coords<'lua>(lua: &'lua Lua,
                 (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
-    with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
+    dehandle!(
+        @compositor = {wlroots::compositor_handle().unwrap()};
         let server: &mut Server = compositor.into();
         // TODO Update pointer as well?
-        with_handles!([(cursor: {&mut server.cursor})] => {
-            match coords {
-                rlua::Value::Table(coords) => {
-                    let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
-                    // TODO The ignore_enter is supposed to not send a send event to
-                    // the client
-                    cursor.warp(None, x as _, y as _);
-                    Ok(coords)
-                }
-                _ => {
-                    // get the coords
-                    let (x, y) = cursor.coords();
-                    let coords = lua.create_table()?;
-                    coords.set("x", x as i32)?;
-                    coords.set("y", y as i32)?;
-                    // TODO It expects a table of what buttons were pressed.
-                    coords.set("buttons", lua.create_table()?)?;
-                    Ok(coords)
-                }
+        @cursor = {&server.cursor};
+        match coords {
+            rlua::Value::Table(coords) => {
+                let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
+                // TODO The ignore_enter is supposed to not send a send event to
+                // the client
+                cursor.warp(None, x as _, y as _);
+                Ok(coords)
             }
-        }).expect("Cursor was not defined")
-    }).expect("Could not lock compositor")
+            _ => {
+                // get the coords
+                let (x, y) = cursor.coords();
+                let coords = lua.create_table()?;
+                coords.set("x", x as i32)?;
+                coords.set("y", y as i32)?;
+                // TODO It expects a table of what buttons were pressed.
+                coords.set("buttons", lua.create_table()?)?;
+                Ok(coords)
+            }
+        }
+    )
 }
 
 fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
@@ -111,7 +111,8 @@ fn index<'lua>(_: &'lua Lua,
             // TODO Might need a more robust way to get the current output...
             // E.g they look at where the cursor is, I don't think we need to do that.
 
-            with_handles!([(compositor: {wlroots::compositor_handle().unwrap()})] => {
+            dehandle!(
+                @compositor = {wlroots::compositor_handle().unwrap()};
                 let server: &mut Server = compositor.into();
                 // TODO FIXME Actually returned the "focused" output.
                 // We need to define that in the compositor.
@@ -128,7 +129,7 @@ fn index<'lua>(_: &'lua Lua,
                 // TODO Return screen even in bad case,
                 // see how awesome does it for maximal compatibility
                 //panic!("Could not find a screen")
-            }).expect("Could not lock compositor");
+            );
         }
         _ => {}
     }

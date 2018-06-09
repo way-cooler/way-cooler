@@ -52,9 +52,8 @@ impl Seat {
         if let Some(focused_view) = self.focused.take() {
             focused_view.activate(false);
         }
-        with_handles!([(seat: {&mut self.seat})] => {
-            seat.keyboard_clear_focus();
-        }).unwrap();
+        dehandle!(@seat = {&self.seat};
+                  seat.keyboard_clear_focus())
     }
 
     pub fn focus_view(&mut self, view: Rc<View>, views: &mut Vec<Rc<View>>) {
@@ -72,7 +71,8 @@ impl Seat {
             views.insert(0, v);
         }
 
-        with_handles!([(seat: {&mut self.seat})] => {
+        dehandle!(
+            @seat = {&self.seat};
             if let Some(keyboard) = seat.get_keyboard() {
                 with_handles!([(keyboard: {keyboard}), (surface: {view.surface()})] => {
                     seat.keyboard_notify_enter(surface,
@@ -80,15 +80,15 @@ impl Seat {
                                                &mut keyboard.get_modifier_masks());
                 }).unwrap();
             }
-        }).unwrap();
+        );
     }
 
     pub fn send_button(&self, event: &ButtonEvent) {
-        with_handles!([(seat: {&self.seat})] => {
+        dehandle!(
+            @seat = {&self.seat};
             seat.pointer_notify_button(Duration::from_millis(event.time_msec() as _),
             event.button(),
-            event.state() as u32);
-        }).unwrap();
+            event.state() as u32));
     }
 
     pub fn move_view<O>(&mut self, cursor: &mut Cursor, view: &View, start: O)
@@ -137,12 +137,13 @@ impl Seat {
             match view.shell {
                 Shell::XdgV6(ref shell) => {
                     let (mut sx, mut sy) = (0.0, 0.0);
-                    let surface = with_handles!([(shell: {shell})] => {
+                    let surface = dehandle!(
+                        @shell = {shell};
                         let (lx, ly) = cursor.coords();
                         let Origin {x: shell_x, y: shell_y} = view.origin.get();
                         let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                         shell.surface_at(view_sx, view_sy, &mut sx, &mut sy)
-                    }).unwrap();
+                    );
                     if surface.is_some() {
                         return (Some(view.clone()), surface, sx, sy)
                     }
@@ -209,19 +210,22 @@ impl Seat {
                 let (_view, surface, sx, sy) = Seat::view_at_pointer(views, cursor);
                 match surface {
                     Some(surface) => {
-                        with_handles!([(surface: {surface}), (seat: {&mut self.seat})] => {
+                        dehandle!(
+                            @surface = {surface};
+                            @seat = {&self.seat};
                             seat.pointer_notify_enter(surface, sx, sy);
-                            seat.pointer_notify_motion(time, sx, sy);
-                        }).unwrap();
+                            seat.pointer_notify_motion(time, sx, sy)
+                        );
                     }
                     None => {
                         if self.has_client_cursor {
                             xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
                             self.has_client_cursor = false;
                         }
-                        with_handles!([(seat: {&mut self.seat})] => {
-                            seat.pointer_clear_focus();
-                        }).unwrap();
+                        dehandle!(
+                            @seat = {&self.seat};
+                            seat.pointer_clear_focus()
+                        );
                     }
                 }
             }
@@ -251,18 +255,19 @@ impl wlroots::DragIconHandler for DragIconHandler {
 impl SeatHandler for SeatManager {
     fn cursor_set(&mut self, compositor: CompositorHandle, _: SeatHandle, event: &SetCursorEvent) {
         if let Some(surface) = event.surface() {
-            with_handles!([(compositor: {compositor}), (surface: {surface})] => {
+            dehandle!(
+                @compositor = {compositor};
+                @surface = {surface};
                 let server: &mut Server = compositor.into();
-                let Server { ref mut cursor,
+                let Server { ref cursor,
                              ref mut seat,
                 .. } = *server;
-                with_handles!([(cursor: {&mut *cursor})] => {
-                    let (hotspot_x, hotspot_y) = event.location();
-                    let surface = &*surface;
-                    cursor.set_surface(Some(surface), hotspot_x, hotspot_y);
-                    seat.has_client_cursor = true;
-                }).unwrap();
-            }).unwrap();
+                @cursor = {cursor};
+                let (hotspot_x, hotspot_y) = event.location();
+                let surface = &*surface;
+                cursor.set_surface(Some(surface), hotspot_x, hotspot_y);
+                seat.has_client_cursor = true
+            );
         }
     }
 

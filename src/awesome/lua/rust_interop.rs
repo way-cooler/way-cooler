@@ -14,10 +14,11 @@ pub fn register_libraries(lua: &rlua::Lua, compositor: &mut CompositorHandle) ->
     lua.exec::<()>(init_code, Some("init.lua"))?;
     let globals = lua.globals();
     globals.set("type", lua.create_function(type_override)?)?;
-    with_handles!([(compositor: {compositor})] => {
+    dehandle!(
+        @compositor = {compositor};
         let server: &mut Server = compositor.into();
-        awesome::init(&lua, server).expect("Could not initialize awesome compatibility modules");
-    }).unwrap();
+        awesome::init(&lua, server).expect("Could not initialize awesome compatibility modules")
+    );
     Ok(())
 }
 
