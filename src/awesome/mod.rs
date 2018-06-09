@@ -55,7 +55,7 @@ pub extern "C" fn refresh_awesome() {
                     *lua = rlua::Lua::new_with_debug();
                 }
             });
-            let mut compositor = wlroots::compositor_handle().unwrap();
+            let compositor = wlroots::compositor_handle().unwrap();
             setup_lua(compositor);
         }
     });
