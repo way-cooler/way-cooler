@@ -51,43 +51,4 @@ impl InputManagerHandler for InputManager {
         }).unwrap();
         Some(Box::new(compositor::Pointer))
     }
-
-    fn keyboard_removed(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
-        with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
-            let server: &mut Server = compositor.into();
-            let weak_reference = keyboard.weak_reference();
-            if let Some(index) = server.keyboards.iter().position(|k| *k == weak_reference) {
-                server.keyboards.remove(index);
-                if server.keyboards.len() == 0 {
-                    with_handles!([(seat: {&mut server.seat.seat})] => {
-                        let mut capabilities = seat.capabilities();
-                        capabilities.remove(Capability::Keyboard);
-                        seat.set_capabilities(capabilities);
-                    }).expect("Seat was destroyed")
-                }
-            }
-        }).unwrap();
-    }
-
-    fn pointer_removed(&mut self, compositor: CompositorHandle, pointer: PointerHandle) {
-        with_handles!([(compositor: {compositor}), (pointer: {pointer})] => {
-            let server: &mut Server = compositor.into();
-            let weak_reference = pointer.weak_reference();
-            if let Some(index) = server.pointers.iter().position(|p| *p == weak_reference) {
-                server.pointers.remove(index);
-                if server.pointers.len() == 0 {
-                    with_handles!([(seat: {&mut server.seat.seat})] => {
-                        let mut capabilities = seat.capabilities();
-                        capabilities.remove(Capability::Pointer);
-                        seat.set_capabilities(capabilities);
-                    }).expect("Seat was destroyed")
-                }
-            }
-            // TODO Double check this isn't a safety hole actually,
-            // because if it isn't then we may not have to do this here...
-            with_handles!([(cursor: {&mut server.cursor})] => {
-                cursor.deattach_input_device(pointer.input_device());
-            }).expect("Cursor was destroyed");
-        }).unwrap();
-    }
 }

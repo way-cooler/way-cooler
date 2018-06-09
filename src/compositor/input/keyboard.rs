@@ -1,5 +1,5 @@
 use rlua::{self, Lua};
-use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
+use wlroots::{Capability, key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
               CompositorHandle, KeyboardHandle, KeyboardHandler, KeyboardModifier, WLR_KEY_PRESSED};
 
 use awesome::{self, emit_object_signal, Objectable, LUA, ROOT_KEYS_HANDLE};
@@ -61,6 +61,23 @@ impl KeyboardHandler for Keyboard {
                            (keyboard: {keyboard})] => {
                 seat.keyboard_notify_modifiers(&mut keyboard.get_modifier_masks());
             }).unwrap();
+        }).unwrap();
+    }
+
+    fn destroyed(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
+        with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
+            let server: &mut Server = compositor.into();
+            let weak_reference = keyboard.weak_reference();
+            if let Some(index) = server.keyboards.iter().position(|k| *k == weak_reference) {
+                server.keyboards.remove(index);
+                if server.keyboards.len() == 0 {
+                    with_handles!([(seat: {&mut server.seat.seat})] => {
+                        let mut capabilities = seat.capabilities();
+                        capabilities.remove(Capability::Keyboard);
+                        seat.set_capabilities(capabilities);
+                    }).expect("Seat was destroyed")
+                }
+            }
         }).unwrap();
     }
 }
