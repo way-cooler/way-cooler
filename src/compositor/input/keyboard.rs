@@ -1,6 +1,7 @@
 use rlua::{self, Lua};
-use wlroots::{Capability, key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
-              CompositorHandle, KeyboardHandle, KeyboardHandler, KeyboardModifier, WLR_KEY_PRESSED};
+use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
+              Capability, CompositorHandle, KeyboardHandle, KeyboardHandler, KeyboardModifier,
+              WLR_KEY_PRESSED};
 
 use awesome::{self, emit_object_signal, Objectable, LUA, ROOT_KEYS_HANDLE};
 use compositor::Server;
