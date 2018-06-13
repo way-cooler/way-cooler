@@ -5,7 +5,7 @@ use std::time::Duration;
 use wlroots;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
-use wlroots::utils::current_time;
+use wlroots::utils::{current_time, Edges};
 use wlroots::{Area, CompositorHandle, Cursor, CursorHandle, DragIconHandle, Origin, SeatHandle,
               SeatHandler, Size, SurfaceHandle, SurfaceHandler, XCursorManager};
 
@@ -22,7 +22,7 @@ pub enum Action {
         start: Origin,
         offset: Origin,
         original_size: Size,
-        edges: u32
+        edges: Edges
     }
 }
 
@@ -115,7 +115,7 @@ impl Seat {
                         cursor: &mut CursorHandle,
                         view: Rc<View>,
                         views: &mut [Rc<View>],
-                        edges: u32) {
+                        edges: Edges) {
         self.focus_view(view.clone(), views);
         with_handles!([(cursor: {cursor})] => {
             let Origin { x: view_x, y: view_y } = view.origin.get();
@@ -185,23 +185,17 @@ impl Seat {
                     let Size { mut width,
                                mut height } = original_size;
 
-                    let EDGE_NONE = 0;
-                    let EDGE_TOP = 1;
-                    let EDGE_BOTTOM = 2;
-                    let EDGE_LEFT = 4;
-                    let EDGE_RIGHT = 8;
-
-                    if edges & EDGE_BOTTOM != 0 {
+                    if edges & Edges::WLR_EDGE_BOTTOM != Edges::empty() {
                         height += dy;
-                    } else if edges & EDGE_TOP != 0 {
+                    } else if edges & Edges::WLR_EDGE_TOP != Edges::empty() {
                         view_y += dy;
                         height -= dy;
                     }
 
-                    if edges & EDGE_LEFT != 0 {
+                    if edges & Edges::WLR_EDGE_LEFT != Edges::empty() {
                         view_x += dx;
                         width -= dx;
-                    } else if edges & EDGE_RIGHT != 0 {
+                    } else if edges & Edges::WLR_EDGE_RIGHT != Edges::empty() {
                         width += dx;
                     }
 
