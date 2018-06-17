@@ -57,8 +57,7 @@ impl Seat {
         }).unwrap();
     }
 
-    pub fn focus_view(&mut self, view: Rc<View>, views: &mut [Rc<View>]) {
-        let mut views: Vec<Rc<View>> = views.to_vec();
+    pub fn focus_view(&mut self, view: Rc<View>, views: &mut Vec<Rc<View>>) {
         if let Some(ref focused) = self.focused {
             if *focused == view {
                 return
@@ -114,7 +113,7 @@ impl Seat {
     pub fn begin_resize(&mut self,
                         cursor: &mut CursorHandle,
                         view: Rc<View>,
-                        views: &mut [Rc<View>],
+                        views: &mut Vec<Rc<View>>,
                         edges: Edges) {
         self.focus_view(view.clone(), views);
         with_handles!([(cursor: {cursor})] => {
@@ -125,7 +124,8 @@ impl Seat {
             self.action = Some(Action::Resizing {
                 start: Origin { x: view_x, y: view_y },
                 offset,
-                original_size: view.get_size(), edges
+                original_size: view.get_size(),
+                edges
             });
         }).unwrap();
     }
@@ -185,17 +185,17 @@ impl Seat {
                     let Size { mut width,
                                mut height } = original_size;
 
-                    if edges & Edges::WLR_EDGE_BOTTOM != Edges::empty() {
+                    if edges.contains(Edges::WLR_EDGE_BOTTOM) {
                         height += dy;
-                    } else if edges & Edges::WLR_EDGE_TOP != Edges::empty() {
+                    } else if edges.contains(Edges::WLR_EDGE_TOP) {
                         view_y += dy;
                         height -= dy;
                     }
 
-                    if edges & Edges::WLR_EDGE_LEFT != Edges::empty() {
+                    if edges.contains(Edges::WLR_EDGE_LEFT) {
                         view_x += dx;
                         width -= dx;
-                    } else if edges & Edges::WLR_EDGE_RIGHT != Edges::empty() {
+                    } else if edges.contains(Edges::WLR_EDGE_RIGHT) {
                         width += dx;
                     }
 

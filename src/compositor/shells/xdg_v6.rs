@@ -22,7 +22,6 @@ impl XdgV6ShellHandler for XdgV6 {
                       _: SurfaceHandle,
                       shell_surface: XdgV6ShellSurfaceHandle,
                       event: &ResizeEvent) {
-        println!("got a resize event: {:?}", event);
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
             let Server { ref mut seat,
@@ -30,10 +29,9 @@ impl XdgV6ShellHandler for XdgV6 {
                          ref mut cursor,
                          .. } = *server;
             let resizing_shell = shell_surface.into();
-            let idx = views.iter().position(|view| view.shell == resizing_shell);
-            if let Some(idx) = idx {
-                let view = views.get(idx).unwrap().clone();
-                seat.begin_resize(cursor, view, views, event.edges());
+
+            if let Some(view) = views.iter().find(|view| view.shell == resizing_shell).cloned() {
+                seat.begin_resize(cursor, view.clone(), views, event.edges())
             }
         }).unwrap();
     }
@@ -81,11 +79,10 @@ impl XdgV6ShellHandler for XdgV6 {
                          ref mut views,
                          ref mut cursor,
                          .. } = *server;
-            let idx = views.iter().position(|view| view.shell == surface);
-            if let Some(idx) = idx {
-                let view = views.get(idx).unwrap().clone();
+
+            if let Some(view) = views.iter().find(|view| view.shell == surface).cloned() {
                 if let Some(move_resize) = view.pending_move_resize.get() {
-                    if move_resize.serial > 0 && move_resize.serial >= configure_serial {
+                    if move_resize.serial >= configure_serial {
                         let Origin {mut x, mut y} = view.origin.get();
                         if move_resize.update_x {
                             x  = move_resize.area.origin.x + move_resize.area.size.width -
