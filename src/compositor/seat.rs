@@ -5,9 +5,9 @@ use std::time::Duration;
 use wlroots;
 use wlroots::events::seat_events::SetCursorEvent;
 use wlroots::pointer_events::ButtonEvent;
-use wlroots::utils::current_time;
-use wlroots::{CompositorHandle, Cursor, DragIconHandle, Origin, SeatHandle, SeatHandler,
-              SurfaceHandle, SurfaceHandler, XCursorManager};
+use wlroots::utils::{current_time, Edges};
+use wlroots::{Area, CompositorHandle, Cursor, CursorHandle, DragIconHandle, Origin, SeatHandle,
+              SeatHandler, Size, SurfaceHandle, SurfaceHandler, XCursorManager};
 
 #[derive(Debug, Default)]
 pub struct SeatManager;
@@ -17,7 +17,13 @@ pub enum Action {
     /// We are moving a view.
     ///
     /// The start is the surface level coordinates of where the first click was
-    Moving { start: Origin }
+    Moving { start: Origin },
+    Resizing {
+        start: Origin,
+        offset: Origin,
+        original_size: Size,
+        edges: Edges
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -104,6 +110,26 @@ impl Seat {
         };
     }
 
+    pub fn begin_resize(&mut self,
+                        cursor: &mut CursorHandle,
+                        view: Rc<View>,
+                        views: &mut Vec<Rc<View>>,
+                        edges: Edges) {
+        self.focus_view(view.clone(), views);
+        with_handles!([(cursor: {cursor})] => {
+            let Origin { x: view_x, y: view_y } = view.origin.get();
+            let (lx, ly) = cursor.coords();
+            let (view_sx, view_sy) = (lx - view_x as f64, ly - view_y as f64);
+            let offset = Origin::new(view_sx as _, view_sy as _);
+            self.action = Some(Action::Resizing {
+                start: Origin { x: view_x, y: view_y },
+                offset,
+                original_size: view.get_size(),
+                edges
+            });
+        }).unwrap();
+    }
+
     pub fn view_at_pointer(views: &mut [Rc<View>],
                            cursor: &mut Cursor)
                            -> (Option<Rc<View>>, Option<SurfaceHandle>, f64, f64) {
@@ -143,6 +169,41 @@ impl Seat {
                                                            self.move_view(cursor, &f, start);
                                                            f
                                                        });
+            }
+            Some(Action::Resizing { offset,
+                                    start,
+                                    original_size,
+                                    edges }) => {
+                self.focused = self.focused.take().map(|view| {
+                    let (cursor_lx, cursor_ly) = cursor.coords();
+                    let Origin { x: mut offs_x,
+                                 y: mut offs_y } = offset;
+                    let Origin { x: mut view_x,
+                                 y: mut view_y } = start;
+                    let (mut dx, mut dy) =
+                        (cursor_lx as i32 - offs_x - view_x, cursor_ly as i32 - offs_y - view_y);
+                    let Size { mut width,
+                               mut height } = original_size;
+
+                    if edges.contains(Edges::WLR_EDGE_BOTTOM) {
+                        height += dy;
+                    } else if edges.contains(Edges::WLR_EDGE_TOP) {
+                        view_y += dy;
+                        height -= dy;
+                    }
+
+                    if edges.contains(Edges::WLR_EDGE_LEFT) {
+                        view_x += dx;
+                        width -= dx;
+                    } else if edges.contains(Edges::WLR_EDGE_RIGHT) {
+                        width += dx;
+                    }
+
+                    view.move_resize(Area { origin: Origin { x: view_x,
+                                                             y: view_y },
+                                            size: Size { width, height } });
+                    view
+                });
             }
             _ => {
                 let (_view, surface, sx, sy) = Seat::view_at_pointer(views, cursor);

@@ -1,4 +1,4 @@
-use wlroots::{Capability, pointer_events::*, CompositorHandle, PointerHandle, PointerHandler,
+use wlroots::{pointer_events::*, Capability, CompositorHandle, PointerHandle, PointerHandler,
               WLR_BUTTON_RELEASED};
 
 use compositor::{Seat, Server};
