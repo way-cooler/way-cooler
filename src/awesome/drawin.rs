@@ -1,12 +1,13 @@
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
-use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use std::cell::RefMut;
 
 use cairo::ImageSurface;
 use rlua::prelude::LuaInteger;
 use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
-use wlroots::{Area, Origin, Size};
+use wlroots::{Area, Origin, Size, Texture};
 
 use super::class::{self, Class, ClassBuilder};
 use super::drawable::Drawable;
@@ -15,7 +16,7 @@ use super::property::Property;
 
 pub const DRAWINS_HANDLE: &'static str = "__drawins";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct DrawinState {
     // Note that the drawable is stored in Lua.
     // TODO WINDOW_OBJECT_HEADER??
@@ -24,8 +25,11 @@ pub struct DrawinState {
     cursor: String,
     geometry: Area,
     geometry_dirty: bool,
+    texture: Option<Texture>,
     surface: Option<ImageSurface>
 }
+
+unsafe impl Send for DrawinState {}
 
 #[derive(Clone, Debug)]
 pub struct Drawin<'lua>(Object<'lua>);
@@ -33,17 +37,6 @@ pub struct Drawin<'lua>(Object<'lua>);
 impl UserData for DrawinState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         object::default_add_methods(methods);
-    }
-}
-
-impl Default for DrawinState {
-    fn default() -> Self {
-        DrawinState { ontop: false,
-                      visible: false,
-                      cursor: String::default(),
-                      geometry: Area::default(),
-                      geometry_dirty: false,
-                      surface: None }
     }
 }
 
@@ -72,6 +65,11 @@ impl<'lua> Drawin<'lua> {
     pub fn drawable(&mut self) -> rlua::Result<Drawable> {
         let table = self.0.table()?;
         Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())
+    }
+
+    pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture>>> {
+        Ok(RefMut::map(self.get_object_mut()?, |state| &mut state.texture))
+        //Ok(&mut state.texture)
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {

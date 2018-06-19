@@ -223,7 +223,7 @@ fn systray<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<(u32, Value)> {
 fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
     info!("Lua thread restarting");
     NEXT_LUA.with(|next_lua| {
-        next_lua.set(true);
+        //next_lua.set(true);
     });
     Ok(())
 }

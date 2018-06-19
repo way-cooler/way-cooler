@@ -2,6 +2,7 @@ use cairo::ImageSurface;
 use cairo_sys;
 use glib::translate::ToGlibPtr;
 use wlroots::utils::current_time;
+use wlroots::wlroots_sys;
 use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputHandler,
             OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888};
 
@@ -100,31 +101,45 @@ fn render_views(renderer: &mut Renderer,
 /// Render all of the drawins provided by Lua.
 fn render_drawins(lua: &Lua, renderer: &mut Renderer) -> rlua::Result<()> {
     let drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
+    error!("Drawins: {}", drawins.len());
     for drawin in drawins {
         let mut drawin = Drawin::cast(drawin.into())?;
+        if let Some(texture) = drawin.texture()?.take() {
+            unsafe {
+                error!("Deleting {:p}", texture.as_ptr());
+                wlroots_sys::wlr_texture_destroy(texture.as_ptr());
+            }
+        }
         if !drawin.get_visible()? {
             continue
         }
         let geometry = drawin.get_geometry()?;
-        let drawable = drawin.drawable()?;
-        let mut drawable_state = drawable.state()?;
-        let surface = match drawable_state.surface.as_mut() {
-            Some(surface) => surface,
-            None => continue
-        };
-        let Area { size: Size { width, height },
-                   .. } = geometry;
-        let data = get_data(surface);
-        let texture = renderer.create_texture_from_pixels(WL_SHM_FORMAT_ARGB8888,
+        let texture;
+        {
+            let drawable = drawin.drawable()?;
+            let mut drawable_state = drawable.state()?;
+            let surface = match drawable_state.surface.as_mut() {
+                Some(surface) => surface,
+                None => continue
+            };
+            let Area { size: Size { width, height },
+                       .. } = geometry;
+            let data = get_data(surface);
+            texture = renderer.create_texture_from_pixels(WL_SHM_FORMAT_ARGB8888,
                                                           (width * 4) as _,
                                                           width as _,
                                                           height as _,
                                                           data)
-                              .expect("Could not allocate texture");
-        let transform_matrix = renderer.output.transform_matrix();
-        let inverted_transform = renderer.output.get_transform().invert();
-        let matrix = project_box(geometry, inverted_transform, 0.0, transform_matrix);
-        renderer.render_texture_with_matrix(&texture, matrix);
+                .expect("Could not allocate texture");
+            let transform_matrix = renderer.output.transform_matrix();
+            let inverted_transform = renderer.output.get_transform().invert();
+            let matrix = project_box(geometry, inverted_transform, 0.0, transform_matrix);
+            renderer.render_texture_with_matrix(&texture, matrix);
+        }
+        unsafe {
+            error!("Saving {:p}", texture.as_ptr());
+        }
+        *drawin.texture()? = Some(texture);
     }
     Ok(())
 }
