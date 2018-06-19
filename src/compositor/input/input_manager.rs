@@ -15,17 +15,17 @@ impl InputManagerHandler for InputManager {
                       compositor: CompositorHandle,
                       keyboard: KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
-        with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
+        dehandle!(
+            @compositor = {compositor};
+            @keyboard = {keyboard};
             let server: &mut Server = compositor.into();
             server.keyboards.push(keyboard.weak_reference());
             // Now that we have at least one keyboard, update the seat capabilities.
-            with_handles!([(seat: {&mut server.seat.seat})] => {
-                let mut capabilities = seat.capabilities();
-                capabilities.insert(Capability::Keyboard);
-                seat.set_capabilities(capabilities);
-                seat.set_keyboard(keyboard.input_device());
-            }).expect("Seat was destroyed");
-        }).unwrap();
+            @seat = {&server.seat.seat};
+            let mut capabilities = seat.capabilities();
+            capabilities.insert(Capability::Keyboard);
+            seat.set_capabilities(capabilities);
+            seat.set_keyboard(keyboard.input_device()));
         Some(Box::new(compositor::Keyboard))
     }
 
@@ -33,7 +33,9 @@ impl InputManagerHandler for InputManager {
                      compositor: CompositorHandle,
                      pointer: PointerHandle)
                      -> Option<Box<PointerHandler>> {
-        with_handles!([(compositor: {compositor}), (pointer: {pointer})] => {
+        dehandle!(
+            @compositor = {compositor};
+            @pointer = {pointer};
             let server: &mut Server = compositor.into();
             server.pointers.push(pointer.weak_reference());
             if server.pointers.len() == 1 {
@@ -43,12 +45,11 @@ impl InputManagerHandler for InputManager {
                     capabilities.insert(Capability::Pointer);
                     seat.set_capabilities(capabilities);
                 }).expect("Seat was destroyed");
-            }
+            };
 
-            with_handles!([(cursor: {&mut server.cursor})] => {
-                cursor.attach_input_device(pointer.input_device());
-            }).expect("Cursor was destroyed");
-        }).unwrap();
+            @cursor = {&server.cursor};
+            cursor.attach_input_device(pointer.input_device())
+        );
         Some(Box::new(compositor::Pointer))
     }
 }

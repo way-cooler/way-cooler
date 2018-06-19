@@ -15,7 +15,8 @@ fn key_is_meta(key: u32) -> bool {
 
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle, event: &KeyEvent) {
-        let modifiers = with_handles!([(compositor: {compositor})] => {
+        let modifiers = dehandle!(
+            @compositor = {compositor};
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
                     if key == KEY_Escape {
@@ -35,18 +36,17 @@ impl KeyboardHandler for Keyboard {
                         server.seat.meta = false;
                     }
                 }
-            }
+            };
             let server: &mut Server = compositor.into();
-            with_handles!([(seat: {&mut server.seat.seat}),
-                           (keyboard: {keyboard})] => {
-                seat.set_keyboard(keyboard.input_device());
-                seat.keyboard_notify_key(event.time_msec(),
-                                         event.keycode(),
-                                         event.key_state() as u32);
-                seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
-                keyboard.get_modifiers()
-            }).expect("Seat was destroyed")
-        }).unwrap();
+            @seat = {&server.seat.seat};
+            @keyboard = {keyboard};
+            seat.set_keyboard(keyboard.input_device());
+            seat.keyboard_notify_key(event.time_msec(),
+                                        event.keycode(),
+                                        event.key_state() as u32);
+            seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
+            keyboard.get_modifiers()
+        );
         LUA.with(|lua| {
                      let lua = lua.borrow();
                      if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
@@ -56,13 +56,13 @@ impl KeyboardHandler for Keyboard {
     }
 
     fn modifiers(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
-        with_handles!([(compositor: {compositor})] => {
+        dehandle!(
+            @compositor = {compositor};
             let server: &mut Server = compositor.into();
-            with_handles!([(seat: {&mut server.seat.seat}),
-                           (keyboard: {keyboard})] => {
-                seat.keyboard_notify_modifiers(&mut keyboard.get_modifier_masks());
-            }).unwrap();
-        }).unwrap();
+            @seat = {&server.seat.seat};
+            @keyboard = {keyboard};
+            seat.keyboard_notify_modifiers(&mut keyboard.get_modifier_masks())
+        );
     }
 
     fn destroyed(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {

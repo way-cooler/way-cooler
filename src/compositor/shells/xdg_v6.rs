@@ -107,58 +107,55 @@ impl XdgV6ShellHandler for XdgV6 {
     fn map_request(&mut self,
                    compositor: CompositorHandle,
                    _: SurfaceHandle,
-                   mut shell_surface: XdgV6ShellSurfaceHandle) {
-        let is_toplevel = with_handles!([(shell_surface: {&mut shell_surface})] => {
-            match shell_surface.state().unwrap() {
+                   shell_surface_handle: XdgV6ShellSurfaceHandle) {
+        dehandle!(
+            @shell_surface = {shell_surface_handle.clone()};
+            let is_toplevel = match shell_surface.state().unwrap() {
                 TopLevel(_) => true,
                 _ => false
-            }
-        }).unwrap();
-
-        with_handles!([(compositor: {compositor})] => {
+            };
+            @compositor = {compositor};
             let server: &mut Server = compositor.into();
             let Server { ref mut seat,
                          ref mut views,
-                         ref mut cursor,
+                         ref cursor,
                          ref mut xcursor_manager,
                          .. } = *server;
             if is_toplevel {
-                let view = Rc::new(View::new(Shell::XdgV6(shell_surface.into())));
+                let view = Rc::new(View::new(Shell::XdgV6(shell_surface_handle.into())));
                 views.push(view.clone());
                 seat.focus_view(view, views);
-            }
-
-            with_handles!([(cursor: {cursor})] => {
-                seat.update_cursor_position(cursor, xcursor_manager, views, None);
-            }).unwrap();
-        }).unwrap();
+            };
+            @cursor = {cursor};
+            seat.update_cursor_position(cursor, xcursor_manager, views, None)
+        );
     }
 
     fn unmap_request(&mut self,
                      compositor: CompositorHandle,
                      _: SurfaceHandle,
                      shell_surface: XdgV6ShellSurfaceHandle) {
-        with_handles!([(compositor: {compositor})] => {
+        dehandle!(
+            @compositor = {compositor};
             let server: &mut Server = compositor.into();
             let Server { ref mut seat,
                          ref mut views,
-                         ref mut cursor,
+                         ref cursor,
                          ref mut xcursor_manager,
                          .. } = *server;
             let destroyed_shell = shell_surface.into();
             if let Some(pos) = views.iter().position(|view| view.shell == destroyed_shell) {
                 views.remove(pos);
-            }
+            };
 
             if views.len() > 0 {
                 seat.focus_view(views[0].clone(), views);
             } else {
                 seat.clear_focus();
-            }
-            with_handles!([(cursor: {cursor})] => {
-                seat.update_cursor_position(cursor, xcursor_manager, views, None);
-            }).unwrap();
-        }).unwrap();
+            };
+            @cursor = {cursor};
+            seat.update_cursor_position(cursor, xcursor_manager, views, None)
+        );
     }
 }
 

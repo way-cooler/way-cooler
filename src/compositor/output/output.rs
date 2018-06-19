@@ -3,7 +3,7 @@ use cairo_sys;
 use glib::translate::ToGlibPtr;
 use wlroots::utils::current_time;
 use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputHandler,
-              OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888};
+            OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888};
 
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
@@ -13,16 +13,16 @@ use std::rc::Rc;
 pub struct Output;
 
 impl OutputHandler for Output {
-    fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
-        with_handles!([(compositor: {compositor}), (output: {output})] => {
-            let state: &mut Server = compositor.data.downcast_mut().unwrap();
-            let Server { ref mut layout,
-                         ref mut views,
-                         ref mut seat,
-                         ref mut cursor,
-                         .. } = *state;
-            let renderer = compositor.renderer.as_mut().expect("gles2 disabled");
-            let mut renderer = renderer.render(output, None);
+fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
+    dehandle!(
+        @compositor = {compositor};
+        @output = {output};
+        let state: &mut Server = compositor.data.downcast_mut().unwrap();
+        let Server { ref mut layout,
+                        ref mut views,
+                        .. } = *state;
+        let renderer = compositor.renderer.as_mut().expect("gles2 disabled");
+        let mut renderer = renderer.render(output, None);
             renderer.clear([0.25, 0.25, 0.25, 1.0]);
             render_views(&mut renderer, layout, views);
             LUA.with(|lua| {
@@ -33,22 +33,7 @@ impl OutputHandler for Output {
                         warn!("Error rendering drawins: {:#?}", err);
                     }
                 }
-            });
-            let (lx, ly) = with_handles!([(cursor: {&cursor})] => {
-                let (lx, ly) = cursor.coords();
-                (lx as i32, ly as i32)
-            }).unwrap();
-            for drag_icon in &seat.drag_icons {
-                with_handles!([(drag_icon: {&drag_icon.handle})] => {
-                    let (sx, sy) = drag_icon.position();
-                    render_surface(&mut renderer,
-                                   layout,
-                                   &mut drag_icon.surface(),
-                                   lx + sx,
-                                   ly + sy);
-                }).unwrap();
-            }
-        }).unwrap();
+            }));
     }
 }
 
@@ -86,13 +71,29 @@ fn render_views(renderer: &mut Renderer,
                 views: &mut Vec<Rc<View>>) {
     for view in views.iter_mut().rev() {
         let origin = view.origin.get();
-        view.for_each_surface(&mut |mut surface: SurfaceHandle, sx, sy| {
-                                  render_surface(renderer,
-                                                 layout,
-                                                 &mut surface,
-                                                 origin.x + sx,
-                                                 origin.y + sy);
-                              });
+        view.for_each_surface(&mut |surface: SurfaceHandle, sx, sy| {
+            dehandle!(
+                @surface = {surface};
+                @layout = {&*layout};
+                let (width, height) = surface.current_state().size();
+                let (render_width, render_height) =
+                    (width * renderer.output.scale() as i32,
+                     height * renderer.output.scale() as i32);
+                let render_box = Area::new(Origin::new(origin.x + sx, origin.y + sy),
+                                           Size::new(render_width,
+                                                     render_height));
+
+                if layout.intersects(renderer.output, render_box) {
+                    let transform = renderer.output.get_transform().invert();
+                    let matrix = project_box(render_box,
+                                             transform,
+                                             0.0,
+                                             renderer.output
+                                             .transform_matrix());
+                    renderer.render_texture_with_matrix(&surface.texture(), matrix);
+                    surface.send_frame_done(current_time());
+                })
+        });
     }
 }
 
