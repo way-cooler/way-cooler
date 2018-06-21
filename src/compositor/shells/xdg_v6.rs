@@ -108,12 +108,13 @@ impl XdgV6ShellHandler for XdgV6 {
                    compositor: CompositorHandle,
                    _: SurfaceHandle,
                    shell_surface_handle: XdgV6ShellSurfaceHandle) {
-        dehandle!(
-            @shell_surface = {shell_surface_handle.clone()};
-            let is_toplevel = match shell_surface.state().unwrap() {
+        let is_toplevel = with_handles!([(shell_surface: {&shell_surface_handle})] => {
+            match shell_surface.state().unwrap() {
                 TopLevel(_) => true,
                 _ => false
-            };
+            }
+        }).unwrap();
+        dehandle!(
             @compositor = {compositor};
             let server: &mut Server = compositor.into();
             let Server { ref mut seat,
