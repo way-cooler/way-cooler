@@ -85,18 +85,27 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
     let package: Table = globals.get("package")?;
     let mut path = package.get::<_, String>("path")?;
     let mut cpath = package.get::<_, String>("cpath")?;
-    let mut xdg_data_path: PathBuf = env::var("XDG_DATA_DIRS").unwrap_or("/usr/share".into())
-                                                              .into();
-    xdg_data_path.push("awesome/lib");
-    path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua",
-                           xdg_data_path.as_os_str().to_string_lossy()));
+
+    for mut xdg_data_path in env::var("XDG_DATA_DIRS").unwrap_or("/usr/share".into())
+                                                      .split(':')
+                                                      .map(PathBuf::from)
+    {
+        xdg_data_path.push("awesome/lib");
+        path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua",
+                               xdg_data_path.as_os_str().to_string_lossy()));
+        cpath.push_str(&format!(";{}/?.so", xdg_data_path.into_os_string().to_string_lossy()));
+    }
+
+    for mut xdg_config_path in env::var("XDG_CONFIG_DIRS").unwrap_or("/etc/xdg".into())
+                                                          .split(':')
+                                                          .map(PathBuf::from)
+    {
+        xdg_config_path.push("awesome");
+        cpath.push_str(&format!(";{}/?.so",
+                                xdg_config_path.into_os_string().to_string_lossy()));
+    }
+
     package.set("path", path)?;
-    let mut xdg_config_path: PathBuf = env::var("XDG_CONFIG_DIRS").unwrap_or("/etc/xdg".into())
-                                                                  .into();
-    xdg_config_path.push("awesome");
-    cpath.push_str(&format!(";{}/?.so;{}/?.so",
-                            xdg_config_path.into_os_string().to_string_lossy(),
-                            xdg_data_path.into_os_string().to_string_lossy()));
     package.set("cpath", cpath)?;
 
     Ok(())
