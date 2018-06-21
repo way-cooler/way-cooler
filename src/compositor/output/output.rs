@@ -8,7 +8,7 @@ use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputH
 
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
-use rlua::{self, AnyUserData, Lua};
+use rlua::{self, AnyUserData, Lua, ToLua};
 use std::rc::Rc;
 
 pub struct Output;
@@ -98,18 +98,30 @@ fn render_views(renderer: &mut Renderer,
     }
 }
 
-/// Render all of the drawins provided by Lua.
-fn render_drawins(lua: &Lua, renderer: &mut Renderer) -> rlua::Result<()> {
-    let drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
-    error!("Drawins: {}", drawins.len());
-    for drawin in drawins {
-        let mut drawin = Drawin::cast(drawin.into())?;
+fn remove_old_drawins(lua: &Lua) -> rlua::Result<()> {
+    let mut drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
+    for drawin_obj in &mut drawins {
+        let mut drawin = Drawin::cast(drawin_obj.clone().into())?;
         if let Some(texture) = drawin.texture()?.take() {
             unsafe {
                 error!("Deleting {:p}", texture.as_ptr());
                 wlroots_sys::wlr_texture_destroy(texture.as_ptr());
             }
         }
+        *drawin_obj = match drawin.to_lua(lua)? {
+            rlua::Value::UserData(userdata) => userdata,
+            _ => unreachable!()
+        }
+    }
+    lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
+    Ok(())
+}
+
+/// Render all of the drawins provided by Lua.
+fn render_drawins(lua: &Lua, renderer: &mut Renderer) -> rlua::Result<()> {
+    let drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
+    for drawin in drawins {
+        let mut drawin = Drawin::cast(drawin.into())?;
         if !drawin.get_visible()? {
             continue
         }
