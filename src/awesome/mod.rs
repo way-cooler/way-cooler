@@ -2,10 +2,10 @@
 
 use wlroots;
 
+use awesome::lua::setup_lua;
 use rlua::{self, LightUserData, Lua, Table};
 use std::{env, mem, path::PathBuf};
 use xcb::{xkb, Connection};
-use awesome::lua::setup_lua;
 
 mod awesome;
 mod button;
@@ -26,7 +26,7 @@ pub mod signal;
 mod tag;
 mod xproperty;
 
-pub use self::lua::{NEXT_LUA, LUA};
+pub use self::lua::{LUA, NEXT_LUA};
 
 pub use self::drawin::{Drawin, DRAWINS_HANDLE};
 pub use self::key::Key;
@@ -41,24 +41,25 @@ use compositor::Server;
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 
-/// Called from `wayland_glib_interface.c` after every call back into the wayland event loop.
+/// Called from `wayland_glib_interface.c` after every call back into the
+/// wayland event loop.
 ///
 /// This restarts the Lua thread if there is a new one pending
 #[no_mangle]
 pub extern "C" fn refresh_awesome() {
     NEXT_LUA.with(|new_lua_check| {
-        if new_lua_check.get() {
-            new_lua_check.set(false);
-            LUA.with(|lua| {
-                let mut lua = lua.borrow_mut();
-                unsafe {
-                    *lua = rlua::Lua::new_with_debug();
-                }
-            });
-            let compositor = wlroots::compositor_handle().unwrap();
-            setup_lua(compositor);
-        }
-    });
+                      if new_lua_check.get() {
+                          new_lua_check.set(false);
+                          LUA.with(|lua| {
+                                       let mut lua = lua.borrow_mut();
+                                       unsafe {
+                                           *lua = rlua::Lua::new_with_debug();
+                                       }
+                                   });
+                          let compositor = wlroots::compositor_handle().unwrap();
+                          setup_lua(compositor);
+                      }
+                  });
 }
 
 pub fn init(lua: &Lua, server: &mut Server) -> rlua::Result<()> {
@@ -85,18 +86,28 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
     let package: Table = globals.get("package")?;
     let mut path = package.get::<_, String>("path")?;
     let mut cpath = package.get::<_, String>("cpath")?;
-    let mut xdg_data_path: PathBuf = env::var("XDG_DATA_DIRS").unwrap_or("/usr/share".into())
-                                                              .into();
-    xdg_data_path.push("awesome/lib");
-    path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua",
-                           xdg_data_path.as_os_str().to_string_lossy()));
+
+    for mut xdg_data_path in
+        env::var("XDG_DATA_DIRS").unwrap_or("/usr/local/share:/usr/share".into())
+                                 .split(':')
+                                 .map(PathBuf::from)
+    {
+        xdg_data_path.push("awesome/lib");
+        path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua",
+                               xdg_data_path.as_os_str().to_string_lossy()));
+        cpath.push_str(&format!(";{}/?.so", xdg_data_path.into_os_string().to_string_lossy()));
+    }
+
+    for mut xdg_config_path in env::var("XDG_CONFIG_DIRS").unwrap_or("/etc/xdg".into())
+                                                          .split(':')
+                                                          .map(PathBuf::from)
+    {
+        xdg_config_path.push("awesome");
+        cpath.push_str(&format!(";{}/?.so",
+                                xdg_config_path.into_os_string().to_string_lossy()));
+    }
+
     package.set("path", path)?;
-    let mut xdg_config_path: PathBuf = env::var("XDG_CONFIG_DIRS").unwrap_or("/etc/xdg".into())
-                                                                  .into();
-    xdg_config_path.push("awesome");
-    cpath.push_str(&format!(";{}/?.so;{}/?.so",
-                            xdg_config_path.into_os_string().to_string_lossy(),
-                            xdg_data_path.into_os_string().to_string_lossy()));
     package.set("cpath", cpath)?;
 
     Ok(())
