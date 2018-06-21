@@ -177,12 +177,12 @@ impl Seat {
                                     edges }) => {
                 self.focused = self.focused.take().map(|view| {
                     let (cursor_lx, cursor_ly) = cursor.coords();
-                    let Origin { x: mut offs_x,
-                                 y: mut offs_y } = offset;
+                    let Origin { x: offs_x,
+                                 y: offs_y } = offset;
                     let Origin { x: mut view_x,
                                  y: mut view_y } = start;
-                    let (mut dx, mut dy) =
-                        (cursor_lx as i32 - offs_x - view_x, cursor_ly as i32 - offs_y - view_y);
+                    let (dx, dy) = (cursor_lx as i32 - offs_x - view_x,
+                                    cursor_ly as i32 - offs_y - view_y);
                     let Size { mut width,
                                mut height } = original_size;
 

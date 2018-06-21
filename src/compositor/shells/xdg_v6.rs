@@ -75,10 +75,7 @@ impl XdgV6ShellHandler for XdgV6 {
         let surface = shell_surface.into();
         with_handles!([(compositor: {compositor})] => {
             let server: &mut Server = compositor.into();
-            let Server { ref mut seat,
-                         ref mut views,
-                         ref mut cursor,
-                         .. } = *server;
+            let Server { ref mut views, .. } = *server;
 
             if let Some(view) = views.iter().find(|view| view.shell == surface).cloned() {
                 if let Some(move_resize) = view.pending_move_resize.get() {
