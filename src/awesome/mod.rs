@@ -86,7 +86,7 @@ fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
     let mut path = package.get::<_, String>("path")?;
     let mut cpath = package.get::<_, String>("cpath")?;
 
-    for mut xdg_data_path in env::var("XDG_DATA_DIRS").unwrap_or("/usr/share".into())
+    for mut xdg_data_path in env::var("XDG_DATA_DIRS").unwrap_or("/usr/local/share:/usr/share".into())
                                                       .split(':')
                                                       .map(PathBuf::from)
     {
