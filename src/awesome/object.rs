@@ -89,7 +89,7 @@ impl<'lua> ObjectBuilder<'lua> {
 ///
 /// You can't do anything to the object until it has been converted into a
 /// canonical form using this trait.
-pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone + Send> {
+pub trait Objectable<'lua, T, S: UserData + Default + Display + Send> {
     fn cast(obj: Object<'lua>) -> rlua::Result<T> {
         if obj.object.is::<S>()? {
             Ok(Self::_wrap(obj))
@@ -106,14 +106,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone + Send> {
     /// Please do not use it outside of object.rs.
     fn _wrap(table: Object<'lua>) -> T;
 
-    fn state(&self) -> rlua::Result<S> {
-        Ok(self.get_object()?.clone())
-    }
-
-    /// Gets the internal state for the concrete object.
-    /// Used internally `state`, though there's nothing wrong with it being
-    /// used outside of internal object use.
-    fn get_object(&self) -> rlua::Result<S>;
+    fn state(&self) -> rlua::Result<::std::cell::Ref<S>>;
 
     /// Gets a mutable reference to the internal state for the concrete object.
     fn get_object_mut(&mut self) -> rlua::Result<::std::cell::RefMut<S>>;
@@ -139,7 +132,7 @@ pub trait Objectable<'lua, T, S: UserData + Default + Display + Clone + Send> {
         meta.set("__index", meta.clone())?;
         meta.set("__tostring",
                   lua.create_function(|_, data: AnyUserData| {
-                                           Ok(format!("{}", data.borrow::<S>()?.clone()))
+                                           Ok(format!("{}", data.borrow::<S>()?))
                                        })?)?;
         wrapper_table.set_metatable(Some(meta));
         object.set_user_value(wrapper_table)?;
