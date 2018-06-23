@@ -69,7 +69,6 @@ impl<'lua> Drawin<'lua> {
 
     pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture<'static>>>> {
         Ok(RefMut::map(self.get_object_mut()?, |state| &mut state.texture))
-        //Ok(&mut state.texture)
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
