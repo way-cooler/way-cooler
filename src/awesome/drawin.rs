@@ -16,7 +16,7 @@ use super::property::Property;
 
 pub const DRAWINS_HANDLE: &'static str = "__drawins";
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct DrawinState {
     // Note that the drawable is stored in Lua.
     // TODO WINDOW_OBJECT_HEADER??
@@ -25,7 +25,7 @@ pub struct DrawinState {
     cursor: String,
     geometry: Area,
     geometry_dirty: bool,
-    texture: Option<Texture>,
+    texture: Option<Texture<'static>>,
     surface: Option<ImageSurface>
 }
 
@@ -67,15 +67,16 @@ impl<'lua> Drawin<'lua> {
         Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())
     }
 
-    pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture>>> {
+    pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture<'static>>>> {
         Ok(RefMut::map(self.get_object_mut()?, |state| &mut state.texture))
         //Ok(&mut state.texture)
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
-        let mut state = self.state()?;
         let table = self.0.table()?;
-        let mut drawable = Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())?;
+        let user_data: AnyUserData = table.get::<_, AnyUserData>("drawable")?.clone();
+        let mut drawable = Drawable::cast(user_data.into())?;
+        let mut state = self.get_object_mut()?;
         if state.geometry_dirty {
             drawable.set_geometry(state.geometry)?;
             state.geometry_dirty = false;

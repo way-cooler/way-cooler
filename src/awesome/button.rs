@@ -56,7 +56,7 @@ impl<'lua> Button<'lua> {
 
     pub fn modifiers(&self) -> rlua::Result<Vec<Key>> {
         let button = self.state()?;
-        Ok(button.modifiers)
+        Ok(button.modifiers.clone())
     }
 
     pub fn set_modifiers(&mut self, mods: Table<'lua>) -> rlua::Result<()> {

@@ -2,9 +2,9 @@ use cairo::ImageSurface;
 use cairo_sys;
 use glib::translate::ToGlibPtr;
 use wlroots::utils::current_time;
-use wlroots::wlroots_sys;
 use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputHandler,
-            OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888};
+              OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888,
+              GenericRenderer};
 
 use awesome::{Drawin, Objectable, DRAWINS_HANDLE, LUA};
 use compositor::{Server, View};
@@ -98,16 +98,11 @@ fn render_views(renderer: &mut Renderer,
     }
 }
 
-fn remove_old_drawins(lua: &Lua) -> rlua::Result<()> {
+fn remove_old_drawins(lua: &Lua, renderer: &GenericRenderer) -> rlua::Result<()> {
     let mut drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
     for drawin_obj in &mut drawins {
         let mut drawin = Drawin::cast(drawin_obj.clone().into())?;
-        if let Some(texture) = drawin.texture()?.take() {
-            unsafe {
-                error!("Deleting {:p}", texture.as_ptr());
-                wlroots_sys::wlr_texture_destroy(texture.as_ptr());
-            }
-        }
+        drawin.texture()?.take().map(|texture| renderer.drop_texture(texture));
         *drawin_obj = match drawin.to_lua(lua)? {
             rlua::Value::UserData(userdata) => userdata,
             _ => unreachable!()
@@ -128,8 +123,8 @@ fn render_drawins(lua: &Lua, renderer: &mut Renderer) -> rlua::Result<()> {
         let geometry = drawin.get_geometry()?;
         let texture;
         {
-            let drawable = drawin.drawable()?;
-            let mut drawable_state = drawable.state()?;
+            let mut drawable = drawin.drawable()?;
+            let mut drawable_state = drawable.get_object_mut()?;
             let surface = match drawable_state.surface.as_mut() {
                 Some(surface) => surface,
                 None => continue
@@ -147,9 +142,6 @@ fn render_drawins(lua: &Lua, renderer: &mut Renderer) -> rlua::Result<()> {
             let inverted_transform = renderer.output.get_transform().invert();
             let matrix = project_box(geometry, inverted_transform, 0.0, transform_matrix);
             renderer.render_texture_with_matrix(&texture, matrix);
-        }
-        unsafe {
-            error!("Saving {:p}", texture.as_ptr());
         }
         *drawin.texture()? = Some(texture);
     }

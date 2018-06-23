@@ -18,8 +18,8 @@ macro_rules! impl_objectable {
                 $WrapperType(object)
             }
 
-            fn get_object(&self) -> $crate::rlua::Result<$StateType> {
-                Ok(self.0.object.borrow_mut::<$StateType>()?.clone())
+            fn state(&self) -> $crate::rlua::Result<::std::cell::Ref<$StateType>> {
+                Ok(self.0.object.borrow::<$StateType>()?)
             }
 
             fn get_object_mut(&mut self) -> $crate::rlua::Result<::std::cell::RefMut<$StateType>> {

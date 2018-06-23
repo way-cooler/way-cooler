@@ -10,7 +10,7 @@ authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticp
 build = "build.rs"
 
 [dependencies]
-wlroots = { path = "./wlroots-rs" }
+wlroots = { path = "../wlroots-rs" }
 lazy_static = "0.2"
 log = "0.3"
 env_logger = "0.3"

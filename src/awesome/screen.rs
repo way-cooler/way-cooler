@@ -191,7 +191,7 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
         Value::UserData(ref object) => {
             if let Ok(screen) = Screen::cast(object.clone().into()) {
                 screens.iter()
-                       .position(|t| t.state().unwrap() == screen.state().unwrap())
+                       .position(|t| *t.state().unwrap() == *screen.state().unwrap())
                        .unwrap_or(screens.len()) + 1
             } else {
                 panic!("Unexpected non-screen table in loop");
@@ -225,7 +225,7 @@ fn index<'lua>(lua: &'lua Lua,
             }
             for screen in screens.iter() {
                 let mut screen_state = screen.state()?;
-                for output in &mut screen_state.outputs {
+                for output in &screen_state.outputs {
                     let output_name = output.run(|output| output.name())
                                             .expect("Output handle was invalid");
                     if output_name.as_str() == string {
