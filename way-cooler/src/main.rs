@@ -10,7 +10,6 @@ extern crate cairo_sys;
 extern crate env_logger;
 extern crate gdk_pixbuf;
 extern crate getopts;
-extern crate glib;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -18,15 +17,29 @@ extern crate log;
 extern crate nix;
 extern crate rlua;
 #[macro_use]
-extern crate wlroots;
+pub(crate) extern crate wlroots;
 extern crate xcb;
 
-#[macro_use]
-mod macros;
-mod awesome;
-mod compositor;
+mod cursor;
+mod input;
+mod output;
+mod seat;
+mod shells;
+mod view;
+mod xwayland;
 
-pub use awesome::{refresh_awesome, lua};
+pub use self::cursor::*;
+pub use self::input::*;
+pub use self::output::*;
+pub use self::seat::*;
+pub use self::shells::*;
+pub use self::view::*;
+pub use self::xwayland::*;
+
+use wlroots::{Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandle,
+              OutputHandle, OutputLayout, OutputLayoutHandle, PointerHandle, XCursorManager};
+
+use std::rc::Rc;
 
 use std::{env, fs::File, io::{BufRead, BufReader}, os::raw::c_void, path::Path, process::exit};
 
@@ -37,6 +50,53 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 const DRIVER_MOD_PATH: &'static str = "/proc/modules";
 const DEVICE_MOD_PATH: &'static str = "/sys/firmware/devicetree/base/model";
+
+#[derive(Debug)]
+pub struct Server {
+    pub xcursor_manager: XCursorManager,
+    pub layout: OutputLayoutHandle,
+    pub seat: Seat,
+    pub cursor: CursorHandle,
+    pub keyboards: Vec<KeyboardHandle>,
+    pub pointers: Vec<PointerHandle>,
+    pub outputs: Vec<OutputHandle>,
+    pub views: Vec<Rc<View>>
+}
+
+impl Default for Server {
+    fn default() -> Server {
+        let xcursor_manager =
+            XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
+                                                                      manager");
+        xcursor_manager.load(1.0);
+        Server { xcursor_manager,
+                 layout: OutputLayoutHandle::default(),
+                 seat: Seat::default(),
+                 cursor: CursorHandle::default(),
+                 keyboards: Vec::default(),
+                 pointers: Vec::default(),
+                 outputs: Vec::default(),
+                 views: Vec::default() }
+    }
+}
+
+impl Server {
+    pub fn new(layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
+        let mut xcursor_manager =
+            XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
+                                                                      manager");
+        xcursor_manager.load(1.0);
+        cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c))
+              .unwrap();
+
+        Server { xcursor_manager,
+                 layout,
+                 cursor,
+                 ..Server::default() }
+    }
+}
+
+compositor_data!(Server);
 
 fn main() {
     let mut opts = getopts::Options::new();
@@ -70,16 +130,31 @@ fn main() {
     detect_proprietary();
     detect_raspi();
     ensure_good_env();
-    let compositor = compositor::init();
+    let compositor = setup_compositor();
     assert!(compositor.xwayland.is_some());
-    unsafe {
-        #[link(name = "wayland_glib_interface", kind = "static")]
-        extern "C" {
-            fn wayland_glib_interface_init(display: *mut c_void);
-        }
-        wayland_glib_interface_init(compositor.display as *mut c_void);
+    compositor.run();
+}
+
+pub fn setup_compositor() -> Compositor {
+    let layout = OutputLayout::create(Box::new(OutputLayoutManager::new()));
+    let cursor = Cursor::create(Box::new(CursorManager::new()));
+    let mut compositor = CompositorBuilder::new().gles2(true)
+                                                 .data_device(true)
+                                                 .output_manager(Box::new(OutputManager::new()))
+                                                 .input_manager(Box::new(InputManager::new()))
+                                                 .xwayland(Box::new(XWaylandManager::new()))
+                                                 .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
+                                                 .build_auto(Server::new(layout, cursor));
+    // NOTE We need to create this afterwards because it needs the compositor
+    // running to announce the seat.
+    let seat = wlroots::Seat::create(&mut compositor,
+                                     "seat0".into(),
+                                     Box::new(SeatManager::new()));
+    {
+        let server: &mut Server = (&mut compositor).into();
+        server.seat = Seat::new(seat);
     }
-    compositor.run_with(|_| awesome::lua::enter_glib_loop());
+    compositor
 }
 
 /// Formats the log strings properly
@@ -223,5 +298,4 @@ fn log_environment() {
 /// Handler for signals
 extern "C" fn sig_handle(_: nix::libc::c_int) {
     wlroots::terminate();
-    awesome::lua::terminate();
 }

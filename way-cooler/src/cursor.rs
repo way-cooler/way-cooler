@@ -1,4 +1,5 @@
 use wlroots::CursorHandler;
+
 #[derive(Debug, Default)]
 pub struct CursorManager;
 

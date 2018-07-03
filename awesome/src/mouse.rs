@@ -6,10 +6,7 @@ use wlroots;
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use awesome::screen::{Screen, SCREENS_HANDLE};
-use awesome::object::Objectable;
-
-use compositor::Server;
+use ::{object::Objectable, screen::{Screen, SCREENS_HANDLE}};
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
 const NEWINDEX_MISS_FUNCTION: &'static str = "__newindex_miss_function";
@@ -61,31 +58,8 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 fn coords<'lua>(lua: &'lua Lua,
                 (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
-    dehandle!(
-        @compositor = {wlroots::compositor_handle().unwrap()};
-        let server: &mut Server = compositor.into();
-        // TODO Update pointer as well?
-        @cursor = {&server.cursor};
-        match coords {
-            rlua::Value::Table(coords) => {
-                let (x, y): (i32, i32) = (coords.get("x")?, coords.get("y")?);
-                // TODO The ignore_enter is supposed to not send a send event to
-                // the client
-                cursor.warp(None, x as _, y as _);
-                Ok(coords)
-            }
-            _ => {
-                // get the coords
-                let (x, y) = cursor.coords();
-                let coords = lua.create_table()?;
-                coords.set("x", x as i32)?;
-                coords.set("y", y as i32)?;
-                // TODO It expects a table of what buttons were pressed.
-                coords.set("buttons", lua.create_table()?)?;
-                Ok(coords)
-            }
-        }
-    )
+                    // TODO Get Cords
+                    unimplemented!()
 }
 
 fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
@@ -111,18 +85,8 @@ fn index<'lua>(lua: &'lua Lua,
                 return obj_table.get(string)
             }
 
-            let output = dehandle!(
-                @compositor = {wlroots::compositor_handle().unwrap()};
-                let server: &mut Server = compositor.into();
-                let Server { ref mut cursor,
-                             ref mut layout,
-                             .. } = *server;
-
-                @cursor = {cursor};
-                @layout = {layout};
-                let (lx, ly) = cursor.coords();
-                layout.output_at(lx, ly)
-            );
+            // TODO Get output
+            let output = unimplemented!();
 
             let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
                 .into_iter()

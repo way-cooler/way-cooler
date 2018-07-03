@@ -3,7 +3,7 @@
 use wlroots::{events::key_events::Key, wlr_key_state, xkbcommon::xkb::keysym_get_name};
 
 use super::signal;
-use awesome::LUA;
+use ::LUA;
 use rlua::{self, Function, Lua, Table, Value};
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";

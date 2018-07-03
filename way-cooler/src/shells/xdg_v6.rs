@@ -1,4 +1,3 @@
-use compositor::{Action, Server, Shell, View};
 use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler, XdgV6ShellHandler,
               XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
 
@@ -23,8 +22,8 @@ impl XdgV6ShellHandler for XdgV6 {
                       shell_surface: XdgV6ShellSurfaceHandle,
                       event: &ResizeEvent) {
         with_handles!([(compositor: {compositor})] => {
-            let server: &mut Server = compositor.into();
-            let Server { ref mut seat,
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut seat,
                          ref mut views,
                          ref mut cursor,
                          .. } = *server;
@@ -42,12 +41,12 @@ impl XdgV6ShellHandler for XdgV6 {
                     shell_surface: XdgV6ShellSurfaceHandle,
                     _: &MoveEvent) {
         with_handles!([(compositor: {compositor})] => {
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             let ref mut seat = server.seat;
             let ref mut cursor = server.cursor;
 
             if let Some(ref mut view) = seat.focused {
-                let shell: Shell = shell_surface.into();
+                let shell: ::Shell = shell_surface.into();
                 let action = &mut seat.action;
                 if view.shell == shell {
                     with_handles!([(cursor: {cursor})] => {
@@ -55,7 +54,7 @@ impl XdgV6ShellHandler for XdgV6 {
                         let Origin { x: shell_x, y: shell_y } = view.origin.get();
                         let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
                         let start = Origin::new(view_sx as _, view_sy as _);
-                        *action = Some(Action::Moving { start: start });
+                        *action = Some(::Action::Moving { start: start });
                     }).unwrap();
                 }
             }
@@ -74,8 +73,8 @@ impl XdgV6ShellHandler for XdgV6 {
 
         let surface = shell_surface.into();
         with_handles!([(compositor: {compositor})] => {
-            let server: &mut Server = compositor.into();
-            let Server { ref mut views, .. } = *server;
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut views, .. } = *server;
 
             if let Some(view) = views.iter().find(|view| view.shell == surface).cloned() {
                 if let Some(move_resize) = view.pending_move_resize.get() {
@@ -113,14 +112,14 @@ impl XdgV6ShellHandler for XdgV6 {
         }).unwrap();
         dehandle!(
             @compositor = {compositor};
-            let server: &mut Server = compositor.into();
-            let Server { ref mut seat,
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut seat,
                          ref mut views,
                          ref cursor,
                          ref mut xcursor_manager,
                          .. } = *server;
             if is_toplevel {
-                let view = Rc::new(View::new(Shell::XdgV6(shell_surface_handle.into())));
+                let view = Rc::new(::View::new(::Shell::XdgV6(shell_surface_handle.into())));
                 views.push(view.clone());
                 seat.focus_view(view, views);
             };
@@ -135,8 +134,8 @@ impl XdgV6ShellHandler for XdgV6 {
                      shell_surface: XdgV6ShellSurfaceHandle) {
         dehandle!(
             @compositor = {compositor};
-            let server: &mut Server = compositor.into();
-            let Server { ref mut seat,
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut seat,
                          ref mut views,
                          ref cursor,
                          ref mut xcursor_manager,
@@ -164,6 +163,6 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                    _: CompositorHandle,
                    _: XdgV6ShellSurfaceHandle)
                    -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>) {
-        (Some(Box::new(XdgV6::new())), None)
+        (Some(Box::new(::XdgV6::new())), None)
     }
 }

@@ -1,6 +1,6 @@
 //! AwesomeWM Mousegrabber interface
 
-use awesome::LUA;
+use ::LUA;
 use rlua::{self, Function, Lua, Value};
 use wlroots::wlr_button_state;
 

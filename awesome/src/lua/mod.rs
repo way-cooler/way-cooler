@@ -16,7 +16,7 @@ use std::cell::RefCell;
 use std::io::Read;
 use std::cell::Cell;
 
-use awesome::signal;
+use ::signal;
 
 thread_local! {
     // NOTE The debug library does some powerful reflection that can do crazy things,

@@ -1,8 +1,6 @@
 use wlroots::{pointer_events::*, Capability, CompositorHandle, PointerHandle, PointerHandler,
               WLR_BUTTON_RELEASED};
 
-use compositor::{Seat, Server};
-
 #[derive(Debug, Default)]
 pub struct Pointer;
 
@@ -13,8 +11,8 @@ impl PointerHandler for Pointer {
                           event: &AbsoluteMotionEvent) {
         dehandle!(
             @compositor = {compositor};
-            let server: &mut Server = compositor.data.downcast_mut().unwrap();
-            let Server { ref cursor,
+            let server: &mut ::Server = compositor.data.downcast_mut().unwrap();
+            let ::Server { ref cursor,
                          ref mut xcursor_manager,
                          ref mut seat,
                          ref mut views,
@@ -31,8 +29,8 @@ impl PointerHandler for Pointer {
     fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
         dehandle!(
             @compositor = {compositor};
-            let server: &mut Server = compositor.into();
-            let Server { ref cursor,
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref cursor,
                          ref mut xcursor_manager,
                          ref mut seat,
                          ref mut views,
@@ -49,8 +47,8 @@ impl PointerHandler for Pointer {
     fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &ButtonEvent) {
         dehandle!(
             @compositor = {compositor};
-            let server: &mut Server = compositor.into();
-            let Server { ref cursor,
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref cursor,
                          ref mut views,
                          ref mut seat,
                          .. } = *server;
@@ -61,7 +59,7 @@ impl PointerHandler for Pointer {
                 return
             };
 
-            if let (Some(view), _, _, _) = Seat::view_at_pointer(views, cursor) {
+            if let (Some(view), _, _, _) = ::Seat::view_at_pointer(views, cursor) {
                 seat.focus_view(view.clone(), views);
 
                 let meta_held_down = seat.meta;
@@ -76,7 +74,7 @@ impl PointerHandler for Pointer {
 
     fn destroyed(&mut self, compositor: CompositorHandle, pointer: PointerHandle) {
         with_handles!([(compositor: {compositor}), (pointer: {pointer})] => {
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             let weak_reference = pointer.weak_reference();
             if let Some(index) = server.pointers.iter().position(|p| *p == weak_reference) {
                 server.pointers.remove(index);

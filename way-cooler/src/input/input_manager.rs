@@ -1,4 +1,3 @@
-use compositor::{self, Server};
 use wlroots::{Capability, CompositorHandle, InputManagerHandler, KeyboardHandle, KeyboardHandler,
               PointerHandle, PointerHandler};
 
@@ -18,7 +17,7 @@ impl InputManagerHandler for InputManager {
         dehandle!(
             @compositor = {compositor};
             @keyboard = {keyboard};
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             server.keyboards.push(keyboard.weak_reference());
             // Now that we have at least one keyboard, update the seat capabilities.
             @seat = {&server.seat.seat};
@@ -26,7 +25,7 @@ impl InputManagerHandler for InputManager {
             capabilities.insert(Capability::Keyboard);
             seat.set_capabilities(capabilities);
             seat.set_keyboard(keyboard.input_device()));
-        Some(Box::new(compositor::Keyboard))
+        Some(Box::new(::Keyboard))
     }
 
     fn pointer_added(&mut self,
@@ -36,7 +35,7 @@ impl InputManagerHandler for InputManager {
         dehandle!(
             @compositor = {compositor};
             @pointer = {pointer};
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             server.pointers.push(pointer.weak_reference());
             if server.pointers.len() == 1 {
                 // Now that we have at least one keyboard, update the seat capabilities.
@@ -50,6 +49,6 @@ impl InputManagerHandler for InputManager {
             @cursor = {&server.cursor};
             cursor.attach_input_device(pointer.input_device())
         );
-        Some(Box::new(compositor::Pointer))
+        Some(Box::new(::Pointer))
     }
 }

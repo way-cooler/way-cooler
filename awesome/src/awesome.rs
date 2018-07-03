@@ -2,7 +2,7 @@
 
 use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
 use super::{signal, XCB_CONNECTION_HANDLE};
-use awesome::lua::NEXT_LUA;
+use ::lua::NEXT_LUA;
 use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::{Pixbuf, PixbufExt};
 use glib::translate::{ToGlibPtr, FromGlibPtrNone};
@@ -290,7 +290,7 @@ fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
 
 fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
     ::wlroots::terminate();
-    ::awesome::lua::terminate();
+    ::lua::terminate();
     Ok(())
 }
 

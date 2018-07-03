@@ -1,13 +1,12 @@
 //! TODO Fill in
 
-use awesome::{class::{self, Class, ClassBuilder}, object::{self, Object, Objectable},
-              property::Property};
+use ::{class::{self, Class, ClassBuilder},
+       object::{self, Object, Objectable},
+       property::Property};
 use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 use wlroots::{Area, Origin, OutputHandle, Size};
-
-use compositor::Server;
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 
@@ -106,17 +105,18 @@ impl<'lua> Screen<'lua> {
     }
 }
 
-pub fn init<'lua>(lua: &'lua Lua, server: &mut Server) -> rlua::Result<Class<'lua>> {
+pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<'lua>> {
     let builder = Class::builder(lua, "screen", None)?;
     let res = property_setup(lua, method_setup(lua, builder)?)?.save_class("screen")?
                                                                .build()?;
     let screens: &mut Vec<Screen> = &mut vec![];
-    for output in server.outputs.iter() {
-        let mut screen = Screen::cast(Screen::new(lua)?)?;
-        screen.init_screens(output.clone(), vec![output.clone()])?;
-        // TODO Move to Screen impl like the others
-        screens.push(screen);
-    }
+    // TODO Get the list of outputs from Way Cooler
+    //for output in server.outputs.iter() {
+    //    let mut screen = Screen::cast(Screen::new(lua)?)?;
+    //    screen.init_screens(output.clone(), vec![output.clone()])?;
+    //    // TODO Move to Screen impl like the others
+    //    screens.push(screen);
+    //}
 
     // If no screens exist, fake one.
     if screens.is_empty() {

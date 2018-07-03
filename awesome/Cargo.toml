@@ -1,0 +1,33 @@
+[package]
+name = "awesome"
+description = "Wayland compositor that emulates AwesomeWM"
+version = "0.8.0"
+repository = "https://github.com/way-cooler/way-cooler/"
+keywords = ["Wayland", "compositor", "window", "manager", "wlroots", "awesome"]
+readme = "README.md"
+license = "MIT"
+authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
+
+[dependencies]
+wlroots = { path = "../wlroots-rs" }
+lazy_static = "0.2"
+log = "0.3"
+env_logger = "0.3"
+rlua = { version = "0.12.0", default-features = false }
+bitflags = "0.7"
+nix = "0.6"
+getopts = "0.2"
+cairo-rs = "0.4.1"
+cairo-sys-rs = "0.6.0"
+gdk-pixbuf = "0.4.*"
+glib = "0.5.0"
+xcb = { version = "0.8.1", features = ["xkb"] }
+
+[build-dependencies]
+gcc = "0.3.*"
+pkg-config = "0.3.*"
+
+
+[features]
+disable-debug = []
+builtin-lua= ["rlua/builtin-lua"]

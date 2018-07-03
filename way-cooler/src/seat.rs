@@ -1,4 +1,3 @@
-use compositor::{Server, Shell, View};
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Duration;
@@ -34,7 +33,7 @@ pub struct DragIcon {
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Seat {
     pub seat: SeatHandle,
-    pub focused: Option<Rc<View>>,
+    pub focused: Option<Rc<::View>>,
     pub action: Option<Action>,
     pub has_client_cursor: bool,
     pub meta: bool,
@@ -56,7 +55,7 @@ impl Seat {
                   seat.keyboard_clear_focus())
     }
 
-    pub fn focus_view(&mut self, view: Rc<View>, views: &mut Vec<Rc<View>>) {
+    pub fn focus_view(&mut self, view: Rc<::View>, views: &mut Vec<Rc<::View>>) {
         if let Some(ref focused) = self.focused {
             if *focused == view {
                 return
@@ -91,7 +90,7 @@ impl Seat {
             event.state() as u32));
     }
 
-    pub fn move_view<O>(&mut self, cursor: &mut Cursor, view: &View, start: O)
+    pub fn move_view<O>(&mut self, cursor: &mut Cursor, view: &::View, start: O)
         where O: Into<Option<Origin>>
     {
         let Origin { x: shell_x,
@@ -112,8 +111,8 @@ impl Seat {
 
     pub fn begin_resize(&mut self,
                         cursor: &mut CursorHandle,
-                        view: Rc<View>,
-                        views: &mut Vec<Rc<View>>,
+                        view: Rc<::View>,
+                        views: &mut Vec<Rc<::View>>,
                         edges: Edges) {
         self.focus_view(view.clone(), views);
         with_handles!([(cursor: {cursor})] => {
@@ -130,12 +129,12 @@ impl Seat {
         }).unwrap();
     }
 
-    pub fn view_at_pointer(views: &mut [Rc<View>],
+    pub fn view_at_pointer(views: &mut [Rc<::View>],
                            cursor: &mut Cursor)
-                           -> (Option<Rc<View>>, Option<SurfaceHandle>, f64, f64) {
+                           -> (Option<Rc<::View>>, Option<SurfaceHandle>, f64, f64) {
         for view in views {
             match view.shell {
-                Shell::XdgV6(ref shell) => {
+                ::Shell::XdgV6(ref shell) => {
                     let (mut sx, mut sy) = (0.0, 0.0);
                     let surface = dehandle!(
                         @shell = {shell};
@@ -156,7 +155,7 @@ impl Seat {
     pub fn update_cursor_position(&mut self,
                                   cursor: &mut Cursor,
                                   xcursor_manager: &mut XCursorManager,
-                                  views: &mut [Rc<View>],
+                                  views: &mut [Rc<::View>],
                                   time_msec: Option<u32>) {
         let time = if let Some(time_msec) = time_msec {
             Duration::from_millis(time_msec as u64)
@@ -246,7 +245,7 @@ impl wlroots::DragIconHandler for DragIconHandler {
 
     fn destroyed(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
         with_handles!([(compositor: {compositor})] => {
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             server.seat.drag_icons.remove(&DragIcon{ handle: drag_icon });
         }).unwrap();
     }
@@ -258,8 +257,8 @@ impl SeatHandler for SeatManager {
             dehandle!(
                 @compositor = {compositor};
                 @surface = {surface};
-                let server: &mut Server = compositor.into();
-                let Server { ref cursor,
+                let server: &mut ::Server = compositor.into();
+                let ::Server { ref cursor,
                              ref mut seat,
                 .. } = *server;
                 @cursor = {cursor};
@@ -277,8 +276,8 @@ impl SeatHandler for SeatManager {
                      drag_icon: DragIconHandle)
                      -> (Option<Box<wlroots::DragIconHandler>>, Option<Box<SurfaceHandler>>) {
         with_handles!([(compositor: {compositor})] => {
-            let server: &mut Server = compositor.into();
-            let Server { ref mut seat, .. } = *server;
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut seat, .. } = *server;
             seat.drag_icons.insert(DragIcon { handle: drag_icon });
         }).unwrap();
         (Some(Box::new(DragIconHandler)), None)

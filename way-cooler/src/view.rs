@@ -1,4 +1,3 @@
-use compositor::Shell;
 use std::cell::Cell;
 use wlroots::XdgV6ShellState::*;
 use wlroots::{Area, Origin, Size, SurfaceHandle};
@@ -13,13 +12,13 @@ pub struct PendingMoveResize {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct View {
-    pub shell: Shell,
+    pub shell: ::Shell,
     pub origin: Cell<Origin>,
     pub pending_move_resize: Cell<Option<PendingMoveResize>>
 }
 
 impl View {
-    pub fn new(shell: Shell) -> View {
+    pub fn new(shell: ::Shell) -> View {
         View { shell: shell,
                origin: Cell::new(Origin::default()),
                pending_move_resize: Cell::new(None) }
@@ -27,7 +26,7 @@ impl View {
 
     pub fn surface(&self) -> SurfaceHandle {
         match self.shell {
-            Shell::XdgV6(ref xdg_surface) => {
+            ::Shell::XdgV6(ref xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {
                     xdg_surface.surface()
                 }).unwrap()
@@ -37,7 +36,7 @@ impl View {
 
     pub fn activate(&self, activate: bool) {
         match self.shell {
-            Shell::XdgV6(ref xdg_surface) => {
+            ::Shell::XdgV6(ref xdg_surface) => {
                 dehandle! (
                     @xdg_surface = {xdg_surface};
                     match xdg_surface.state() {
@@ -53,7 +52,7 @@ impl View {
 
     pub fn get_size(&self) -> Size {
         match self.shell {
-            Shell::XdgV6(ref xdg_surface) => {
+            ::Shell::XdgV6(ref xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {
                     let Area { origin: _, size } = xdg_surface.geometry();
                     size
@@ -76,7 +75,7 @@ impl View {
         let mut serial = 0;
 
         match self.shell {
-            Shell::XdgV6(ref xdg_surface) => {
+            ::Shell::XdgV6(ref xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {
                     match xdg_surface.state() {
                         Some(&mut TopLevel(ref mut toplevel)) => {
@@ -102,7 +101,7 @@ impl View {
 
     pub fn for_each_surface(&self, f: &mut FnMut(SurfaceHandle, i32, i32)) {
         match self.shell {
-            Shell::XdgV6(ref xdg_surface) => {
+            ::Shell::XdgV6(ref xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {
                     xdg_surface.for_each_surface(f);
                 }).unwrap();

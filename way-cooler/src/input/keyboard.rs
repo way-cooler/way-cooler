@@ -3,9 +3,6 @@ use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KE
               keysym_get_name}, Capability, CompositorHandle, KeyboardHandle, KeyboardHandler,
               KeyboardModifier, WLR_KEY_PRESSED};
 
-use awesome::{self, emit_object_signal, Objectable, LUA, ROOT_KEYS_HANDLE};
-use compositor::Server;
-
 pub struct Keyboard;
 
 fn key_is_meta(key: u32) -> bool {
@@ -19,25 +16,24 @@ impl KeyboardHandler for Keyboard {
             @compositor = {compositor};
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
+                    // TODO Keep it hardcoded, make this configurable by awesome
                     if key == KEY_Escape {
-                        // NOTE No need to call awesome::lua::terminate.
-                        // that will be handled by wlroots.
                         ::wlroots::terminate();
                     }
                     if key_is_meta(key) {
-                        let server: &mut Server = compositor.into();
+                        let server: &mut ::Server = compositor.into();
                         server.seat.meta = true;
                     }
                 }
             } else {
                 for key in event.pressed_keys() {
                     if key_is_meta(key) {
-                        let server: &mut Server = compositor.into();
+                        let server: &mut ::Server = compositor.into();
                         server.seat.meta = false;
                     }
                 }
             };
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             @seat = {&server.seat.seat};
             @keyboard = {keyboard};
             seat.set_keyboard(keyboard.input_device());
@@ -47,18 +43,19 @@ impl KeyboardHandler for Keyboard {
             seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
             keyboard.get_modifiers()
         );
-        LUA.with(|lua| {
-                     let lua = lua.borrow();
-                     if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
-                         warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
-                     }
-                 });
+        // TODO
+        //LUA.with(|lua| {
+        //             let lua = lua.borrow();
+        //             if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
+        //                 warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
+        //             }
+        //         });
     }
 
     fn modifiers(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
         dehandle!(
             @compositor = {compositor};
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             @seat = {&server.seat.seat};
             @keyboard = {keyboard};
             seat.keyboard_notify_modifiers(&mut keyboard.get_modifier_masks())
@@ -67,7 +64,7 @@ impl KeyboardHandler for Keyboard {
 
     fn destroyed(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
         with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
-            let server: &mut Server = compositor.into();
+            let server: &mut ::Server = compositor.into();
             let weak_reference = keyboard.weak_reference();
             if let Some(index) = server.keyboards.iter().position(|k| *k == weak_reference) {
                 server.keyboards.remove(index);

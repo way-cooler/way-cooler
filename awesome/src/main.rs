@@ -1,12 +1,24 @@
 //! Awesome compatibility modules
 
-use wlroots;
+extern crate cairo;
+extern crate cairo_sys;
+extern crate env_logger;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate log;
+extern crate rlua;
+extern crate xcb;
+extern crate gdk_pixbuf;
+extern crate glib;
+extern crate nix;
 
-use awesome::lua::setup_lua;
-use rlua::{self, LightUserData, Lua, Table};
-use std::{env, mem, path::PathBuf};
-use xcb::{xkb, Connection};
+// TODO remove
+extern crate wlroots;
+use wlroots::{KeyboardModifier, key_events::KeyEvent, wlr_key_state::*};
 
+#[macro_use]
+mod macros;
 mod awesome;
 mod button;
 mod class;
@@ -26,6 +38,12 @@ pub mod signal;
 mod tag;
 mod xproperty;
 
+use std::{env, mem, path::PathBuf};
+
+use lua::setup_lua;
+use rlua::{LightUserData, Lua, Table};
+use xcb::{xkb, Connection};
+
 pub use self::lua::{LUA, NEXT_LUA};
 
 pub use self::drawin::{Drawin, DRAWINS_HANDLE};
@@ -35,8 +53,6 @@ pub use self::mousegrabber::mousegrabber_handle;
 pub use self::object::{Object, Objectable};
 pub use self::root::ROOT_KEYS_HANDLE;
 pub use self::signal::*;
-
-use compositor::Server;
 
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
@@ -62,7 +78,9 @@ pub extern "C" fn refresh_awesome() {
                   });
 }
 
-pub fn init(lua: &Lua, server: &mut Server) -> rlua::Result<()> {
+fn main() {/*TODO*/}
+
+pub fn init(lua: &Lua) -> rlua::Result<()> {
     setup_awesome_path(lua)?;
     setup_global_signals(lua)?;
     setup_xcb_connection(lua)?;
@@ -70,7 +88,7 @@ pub fn init(lua: &Lua, server: &mut Server) -> rlua::Result<()> {
     awesome::init(lua)?;
     key::init(lua)?;
     client::init(lua)?;
-    screen::init(lua, server)?;
+    screen::init(lua)?;
     keygrabber::init(lua)?;
     root::init(lua)?;
     mouse::init(lua)?;
@@ -149,5 +167,37 @@ fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
 }
 
 pub fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> {
+    Ok(())
+}
+
+/// Emits the Awesome keybindinsg.
+fn emit_awesome_keybindings(lua: &Lua,
+                            event: &KeyEvent,
+                            event_modifiers: KeyboardModifier)
+                            -> rlua::Result<()> {
+    let state_string = if event.key_state() == WLR_KEY_PRESSED {
+        "press"
+    } else {
+        "release"
+    };
+    // TODO Should also emit by current focused client so we can
+    // do client based rules.
+    let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>(ROOT_KEYS_HANDLE)?;
+    for event_keysym in event.pressed_keys() {
+        for binding in &keybindings {
+            let obj: Object = binding.clone().into();
+            let key = Key::cast(obj.clone()).unwrap();
+            let keycode = key.keycode()?;
+            let keysym = key.keysym()?;
+            let modifiers = key.modifiers()?;
+            let binding_match = (keysym != 0 && keysym == event_keysym
+                                 || keycode != 0 && keycode == event.keycode())
+                                && modifiers == 0
+                                || modifiers == event_modifiers.bits();
+            if binding_match {
+                emit_object_signal(&*lua, obj, state_string.into(), event_keysym)?;
+            }
+        }
+    }
     Ok(())
 }
