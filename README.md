@@ -10,6 +10,8 @@ To build Way Cooler, make sure init the submodules correctly:
 git submodule update --init --recursive --remote
 ```
 
+Then run `make build` and then `make run` (or simply `make` to do both steps). This will build and run both halves of Way Cooler.
+
 # Development
 
 Way Cooler is under very active development right now. Currently, master is not usable for production. There are old versions of Way Cooler that do work, however:
