@@ -103,12 +103,12 @@ fn emit_awesome_keybindings(lua: &Lua,
             let keycode = key.keycode()?;
             let keysym = key.keysym()?;
             let modifiers = key.modifiers()?;
-            let binding_match = (keysym != 0 && keysym == event_keysym
-                                 || keycode != 0 && keycode == event.keycode())
-                                && modifiers == 0
-                                || modifiers == event_modifiers.bits();
+            let binding_match = ((keysym != 0 && keysym == event_keysym)
+                                 || (keycode != 0 && keycode == event.keycode()))
+                                && (modifiers == 0
+                                || modifiers == event_modifiers.bits());
             if binding_match {
-                emit_object_signal(&*lua, obj, state_string.into(), event_keysym)?;
+                emit_object_signal(&*lua, obj, state_string.into(), ())?;
             }
         }
     }
