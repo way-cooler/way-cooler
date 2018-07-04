@@ -29,6 +29,24 @@ pub fn mods_to_lua<'lua>(lua: &'lua Lua, mods: &[Key]) -> rlua::Result<Table<'lu
     lua.create_table_from(mods_list.into_iter().enumerate())
 }
 
+/// Convert a single number to a modifier list.
+pub fn num_to_mods(modifiers: KeyboardModifier) -> Vec<Key> {
+    let mut res = vec![];
+    let mod_types = [(KeyboardModifier::WLR_MODIFIER_SHIFT, KEY_Shift_L),
+                     (KeyboardModifier::WLR_MODIFIER_CAPS, KEY_Caps_Lock),
+                     (KeyboardModifier::WLR_MODIFIER_CTRL, KEY_Control_L),
+                     (KeyboardModifier::WLR_MODIFIER_ALT, KEY_Alt_L),
+                     (KeyboardModifier::WLR_MODIFIER_MOD2, KEY_Meta_L),
+                     (KeyboardModifier::WLR_MODIFIER_LOGO, KEY_Super_L),
+                     (KeyboardModifier::WLR_MODIFIER_MOD5, KEY_Hyper_L)];
+    for (mod_km, mod_k) in mod_types.iter() {
+        if (mod_km.clone() & modifiers) != KeyboardModifier::empty() {
+            res.push(mod_k.clone());
+        }
+    };
+    res
+}
+
 /// Convert a modifier list to a single number.
 pub fn mods_to_num(modifiers: Table) -> rlua::Result<KeyboardModifier> {
     let mut res = KeyboardModifier::empty();
