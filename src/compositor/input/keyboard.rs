@@ -93,23 +93,18 @@ fn emit_awesome_keybindings(lua: &Lua,
     } else {
         "release"
     };
-    let mut res = Ok(());
     // If keygrabber is set, grab key
     // TODO check behavior when event.pressed_keys() isn't a singleton
-    if awesome::keygrabber::is_ok(&*lua) {
+    if awesome::keygrabber::is_keygrabber_set(&*lua) {
         for event_keysym in event.pressed_keys() {
-            let nres = awesome::keygrabber::call_keygrabber(&*lua, (
+            let res = awesome::keygrabber::call_keygrabber(&*lua, (
                     awesome::lua::mods_to_lua(&*lua,
                                               &awesome::lua::num_to_mods(event_modifiers))?,
                     keysym_get_name(event_keysym),
                     state_string.into()
             ));
-            if let Err(err) = nres {
-                if let Err(_) = res {
-                    warn!("Call to keygrabber failed for {}: {:?}", event_keysym, err);
-                } else {
-                    res = Err(err)
-                }
+            if let Err(err) = res {
+                warn!("Call to keygrabber failed for {}: {:?}", event_keysym, err);
             }
         }
     } else {
@@ -128,17 +123,12 @@ fn emit_awesome_keybindings(lua: &Lua,
                                     && (modifiers == 0
                                     || modifiers == event_modifiers.bits());
                 if binding_match {
-                    let nres = emit_object_signal(&*lua, obj, state_string.into(), ());
-                    if let Err(err) = nres {
-                        if let Err(_) = res {
-                            warn!("Could not emit the signal for {}: {:?}", keysym, err);
-                        } else {
-                            res = Err(err)
-                        }
+                    if let Err(err) = emit_object_signal(&*lua, obj, state_string.into(), ()) {
+                        warn!("Could not emit the signal for {}: {:?}", keysym, err);
                     }
                 }
             }
         }
     }
-    res
+    Ok(())
 }
