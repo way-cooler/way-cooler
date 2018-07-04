@@ -267,12 +267,13 @@ fn pixbuf_to_surface<'lua>(lua: &'lua Lua, pixbuf: LightUserData) -> rlua::Resul
 fn exec(_: &Lua, command: String) -> rlua::Result<()> {
     trace!("exec: \"{}\"", command);
     thread::Builder::new().name(command.clone())
-                          .spawn(|| {
-                                     Command::new(command).stdout(Stdio::null())
-                                                          .spawn()
-                                                          .expect("Could not spawn command")
-                                 })
-                          .expect("Unable to spawn thread");
+        .spawn(|| {
+            Command::new(command).stdout(Stdio::null())
+                .spawn()
+                .expect("Could not spawn command")
+                .wait()
+        })
+        .expect("Unable to spawn thread");
     Ok(())
 }
 
