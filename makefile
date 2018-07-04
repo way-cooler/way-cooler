@@ -1,7 +1,7 @@
 default: run
 
 build:
-	cargo build
+	cargo build --all
 
 run: build way_cooler awesome
 

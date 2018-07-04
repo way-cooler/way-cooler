@@ -1,6 +1,3 @@
-extern crate gcc;
-extern crate pkg_config;
-
 use std::{env, fs, io::Write, path::Path, process::Command};
 
 fn main() {

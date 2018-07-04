@@ -1,7 +1,6 @@
 //! TODO Fill in
 
 use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
-use wlroots;
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
@@ -58,8 +57,8 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 fn coords<'lua>(lua: &'lua Lua,
                 (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
-                    // TODO Get Cords
-                    unimplemented!()
+    // TODO Get Cords
+    unimplemented!()
 }
 
 fn set_index_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {

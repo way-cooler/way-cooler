@@ -64,18 +64,17 @@ pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 #[no_mangle]
 pub extern "C" fn refresh_awesome() {
     NEXT_LUA.with(|new_lua_check| {
-                      if new_lua_check.get() {
-                          new_lua_check.set(false);
-                          LUA.with(|lua| {
-                                       let mut lua = lua.borrow_mut();
-                                       unsafe {
-                                           *lua = rlua::Lua::new_with_debug();
-                                       }
-                                   });
-                          let compositor = wlroots::compositor_handle().unwrap();
-                          setup_lua(compositor);
-                      }
-                  });
+        if new_lua_check.get() {
+            new_lua_check.set(false);
+            LUA.with(|lua| {
+                let mut lua = lua.borrow_mut();
+                unsafe {
+                    *lua = rlua::Lua::new_with_debug();
+                }
+            });
+            setup_lua();
+        }
+    });
 }
 
 fn main() {/*TODO*/}

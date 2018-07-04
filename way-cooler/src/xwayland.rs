@@ -1,7 +1,6 @@
 //! This handles the XWayland server and any XWayland clients that connect to
 //! Way Cooler.
 
-use std::panic;
 use wlroots::{CompositorHandle, SurfaceHandler, XWaylandManagerHandler, XWaylandSurfaceHandle,
               XWaylandSurfaceHandler};
 
@@ -14,7 +13,7 @@ impl XWaylandManager {
 }
 
 impl XWaylandManagerHandler for XWaylandManager {
-    fn on_ready(&mut self, compositor: CompositorHandle) {}
+    fn on_ready(&mut self, _: CompositorHandle) {}
 
     // TODO
     fn new_surface(&mut self,

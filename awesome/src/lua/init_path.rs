@@ -4,17 +4,10 @@ use std::env;
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 
-use std::io::Result as IOResult;
-
 const INIT_FILE: &'static str = "rc.lua";
 const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/";
 
 pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
-
-#[inline]
-fn read_file<P: AsRef<Path>>(path: P) -> IOResult<File> {
-    OpenOptions::new().read(true).open(path)
-}
 
 pub fn get_config() -> Option<(PathBuf, File)> {
     let home_var = env::var("HOME").expect("HOME environment variable not defined!");

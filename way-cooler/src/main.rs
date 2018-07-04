@@ -5,17 +5,11 @@
 #![allow(non_upper_case_globals)]
 
 extern crate bitflags;
-extern crate cairo;
-extern crate cairo_sys;
 extern crate env_logger;
-extern crate gdk_pixbuf;
 extern crate getopts;
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate nix;
-extern crate rlua;
 #[macro_use]
 pub(crate) extern crate wlroots;
 extern crate xcb;
@@ -41,7 +35,7 @@ use wlroots::{Compositor, CompositorBuilder, Cursor, CursorHandle, KeyboardHandl
 
 use std::rc::Rc;
 
-use std::{env, fs::File, io::{BufRead, BufReader}, os::raw::c_void, path::Path, process::exit};
+use std::{env, fs::File, io::{BufRead, BufReader}, path::Path, process::exit};
 
 use log::LogLevel;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};

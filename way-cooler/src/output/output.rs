@@ -1,14 +1,10 @@
-use cairo::ImageSurface;
-use cairo_sys;
+use std::rc::Rc;
+
 use wlroots::utils::current_time;
 use wlroots::{project_box, Area, CompositorHandle, Origin, OutputHandle, OutputHandler,
-              OutputLayoutHandle, Renderer, Size, SurfaceHandle, WL_SHM_FORMAT_ARGB8888,
-              GenericRenderer};
+              OutputLayoutHandle, Renderer, Size, SurfaceHandle};
 
 use ::Server;
-
-use rlua::{self, AnyUserData, Lua, ToLua};
-use std::rc::Rc;
 
 pub struct Output;
 
