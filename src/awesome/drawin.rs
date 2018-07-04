@@ -201,6 +201,7 @@ fn object_setup<'lua>(lua: &'lua Lua,
     table.set("drawable", drawable_table)?;
     table.set("geometry", lua.create_function(drawin_geometry)?)?;
     table.set("struts", lua.create_function(drawin_struts)?)?;
+    table.set("buttons", lua.create_function(super::dummy)?)?;
     builder.add_to_meta(table)
 }
 

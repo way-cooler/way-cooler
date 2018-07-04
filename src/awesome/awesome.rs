@@ -110,6 +110,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("pixbuf_to_surface", lua.create_function(pixbuf_to_surface)?)?;
     awesome_table.set("sync", lua.create_function(sync)?)?;
     awesome_table.set("exec", lua.create_function(exec)?)?;
+    awesome_table.set("spawn", lua.create_function(super::dummy)?)?;
     awesome_table.set("kill", lua.create_function(kill)?)?;
     awesome_table.set("quit", lua.create_function(quit)?)
 }
