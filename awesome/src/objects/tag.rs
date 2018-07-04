@@ -1,12 +1,16 @@
-//! TODO Fill in
+//! A tag is similar to a workspace, except a client can be attached
+//! to multiple tags at once.
 
-use super::class::{self, Class, ClassBuilder};
-use super::object::{self, Object, Objectable};
-use super::property::Property;
-use super::signal;
-use rlua::{self, AnyUserData, Integer, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use rlua::{self, AnyUserData, Integer, Lua, Table, ToLua, UserData,
+           UserDataMethods, Value};
+
+use common::{class::{self, Class, ClassBuilder},
+             object::{self, Object, Objectable},
+             property::Property,
+             signal};
 
 pub const TAG_LIST: &'static str = "__tag_list";
 

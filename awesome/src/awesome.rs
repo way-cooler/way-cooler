@@ -1,22 +1,24 @@
-//! TODO Fill in
+//! A grab-bag of static Awesome API functions, including restart and shutdown.
 
-use super::xproperty::{XProperty, XPropertyType, PROPERTIES};
-use super::{signal, XCB_CONNECTION_HANDLE};
-use ::lua::NEXT_LUA;
-use cairo::{self, ImageSurface, ImageSurfaceData};
-use gdk_pixbuf::{Pixbuf, PixbufExt};
-use glib::translate::{ToGlibPtr, FromGlibPtrNone};
-use nix::{self, libc};
-use rlua::{self, AnyUserData, LightUserData, Lua, MetaMethod, Table, ToLua, UserData,
-           UserDataMethods, Value};
 use std::default::Default;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Display, Formatter};
 use std::process::{Command, Stdio};
-use std::thread;
-use std::{mem, ptr};
+use std::{mem, ptr, thread};
+
+use cairo::{self, ImageSurface, ImageSurfaceData};
+use gdk_pixbuf::{Pixbuf, PixbufExt};
+use glib::translate::{ToGlibPtr, FromGlibPtrNone};
+use nix::{self, libc};
+use rlua::{self, AnyUserData, LightUserData, Lua, MetaMethod,
+           Table, ToLua, UserData, UserDataMethods, Value};
 use xcb::ffi::{self, xproto};
 use xcb::{xkb, Connection};
+
+use ::XCB_CONNECTION_HANDLE;
+use ::lua::NEXT_LUA;
+use common::{xproperty::{XProperty, XPropertyType, PROPERTIES},
+             signal};
 
 // TODO FIXME
 // Often we are getting some raw pointers from the xcb replies

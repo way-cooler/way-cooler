@@ -1,16 +1,17 @@
-//! TODO Fill in
+//! A wrapper around a Cairo image surface.
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
-use rlua::{self, AnyUserData, LightUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{self, AnyUserData, LightUserData, Lua, Table, ToLua,
+           UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 
-use super::class::{self, Class};
-use super::object::{self, Object, Objectable};
-use super::property::Property;
+use common::{class::{self, Class},
+             object::{self, Object, Objectable},
+             property::Property};
 
 #[derive(Clone, Debug)]
 pub struct DrawableState {

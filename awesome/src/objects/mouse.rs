@@ -1,11 +1,16 @@
-//! TODO Fill in
-
-use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
+//! Represents a mouse that the user controls.
+//!
+//! We can request the compositor to do anything with the muose, including
+//! changing the cursor and selecting where it should be on the screen.
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use ::{object::Objectable, screen::{Screen, SCREENS_HANDLE}};
+use rlua::{self, AnyUserData, Lua, MetaMethod, Table,
+           ToLua, UserData, UserDataMethods, Value};
+
+use common::object::Objectable;
+use objects::screen::{Screen, SCREENS_HANDLE};
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
 const NEWINDEX_MISS_FUNCTION: &'static str = "__newindex_miss_function";

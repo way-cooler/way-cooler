@@ -1,14 +1,16 @@
-//! TODO Fill in
+//! A button that was pressed on a keyboard by a user.
+//!
+//! This is mostly used to define keybindings.
 
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use std::fmt::{self, Display, Formatter};
 
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use wlroots::{self, xkbcommon::xkb};
 
-use super::class::{self, Class, ClassBuilder};
-use super::lua::mods_to_num;
-use super::object::{self, Object, Objectable};
-use super::property::Property;
+use common::{class::{self, Class, ClassBuilder},
+             object::{self, Object, Objectable},
+             property::Property};
+use lua::mods_to_num;
 
 #[derive(Clone, Debug, Default)]
 pub struct KeyState {

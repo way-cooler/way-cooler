@@ -4,8 +4,10 @@
 //! Signals are stored with the object in its metatable,
 //! the methods defined here are just to make it easier to use.
 
-use super::{Object, GLOBAL_SIGNALS};
 use rlua::{self, Function, Lua, Table, ToLua, ToLuaMulti, Value};
+
+use ::GLOBAL_SIGNALS;
+use common::object::Object;
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.

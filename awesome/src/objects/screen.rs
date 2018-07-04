@@ -1,12 +1,18 @@
-//! TODO Fill in
+//! A screen as reported by the compositor.
+//!
+//! Note that there isn't a one-to-one mapping between number of outputs,
+//! screens, and the outputs as reported by Way Cooler.
 
-use ::{class::{self, Class, ClassBuilder},
-       object::{self, Object, Objectable},
-       property::Property};
-use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData,
+           UserDataMethods, Value};
 use wlroots::{Area, Origin, OutputHandle, Size};
+
+use common::{class::{self, Class, ClassBuilder},
+             object::{self, Object, Objectable},
+             property::Property};
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 
@@ -258,7 +264,7 @@ fn index<'lua>(lua: &'lua Lua,
     let table = obj.table()?;
     let meta = table.get_metatable().expect("screen had no metatable");
     match meta.get(index.clone()) {
-        Err(_) | Ok(Value::Nil) => super::object::default_index(lua, (data, index)),
+        Err(_) | Ok(Value::Nil) => object::default_index(lua, (data, index)),
         Ok(value) => Ok(value)
     }
 }

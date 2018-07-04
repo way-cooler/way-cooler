@@ -1,12 +1,18 @@
-use super::class::{self, Class};
-use super::object::{self, Object, Objectable};
-use super::property::Property;
-use super::signal;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+//! A button that was pressed on a mouse by a user.
+//!
+//! This is mostly used to define bindings.
+
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData,
+           UserDataMethods, Value};
 use wlroots::events::key_events::Key;
 use xcb::ffi::xproto::xcb_button_t;
+
+use common::{class::{self, Class},
+             object::{self, Object, Objectable},
+             property::Property, signal};
 
 #[derive(Clone, Debug)]
 pub struct ButtonState {

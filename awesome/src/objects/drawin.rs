@@ -1,18 +1,21 @@
+//! A wrapper around a drawable. This controls all the other state about
+//! the surface, such as the cursor used or where it on the screen.
+
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
 use std::fmt::{self, Display, Formatter};
-
 use std::cell::RefMut;
 
 use cairo::ImageSurface;
 use rlua::prelude::LuaInteger;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData,
+           UserDataMethods, Value};
 use wlroots::{Area, Origin, Size, Texture};
 
-use super::class::{self, Class, ClassBuilder};
-use super::drawable::Drawable;
-use super::object::{self, Object, ObjectBuilder, Objectable};
-use super::property::Property;
+use common::{class::{self, Class, ClassBuilder},
+             object::{self, Object, ObjectBuilder, Objectable},
+             property::Property};
+use objects::drawable::Drawable;
 
 pub const DRAWINS_HANDLE: &'static str = "__drawins";
 

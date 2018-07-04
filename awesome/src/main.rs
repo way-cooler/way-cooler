@@ -19,24 +19,15 @@ use wlroots::{KeyboardModifier, key_events::KeyEvent, wlr_key_state::*};
 
 #[macro_use]
 mod macros;
+
+mod objects;
+mod common;
+
 mod awesome;
-mod button;
-mod class;
-mod client;
-mod drawable;
-mod drawin;
-mod key;
-pub mod keygrabber;
-pub mod lua;
-mod mouse;
-pub mod mousegrabber;
-mod object;
-mod property;
+mod keygrabber;
+mod mousegrabber;
 mod root;
-mod screen;
-pub mod signal;
-mod tag;
-mod xproperty;
+mod lua;
 
 use std::{env, mem, path::PathBuf};
 
@@ -46,13 +37,9 @@ use xcb::{xkb, Connection};
 
 pub use self::lua::{LUA, NEXT_LUA};
 
-pub use self::drawin::{Drawin, DRAWINS_HANDLE};
-pub use self::key::Key;
-pub use self::keygrabber::keygrabber_handle;
-pub use self::mousegrabber::mousegrabber_handle;
-pub use self::object::{Object, Objectable};
-pub use self::root::ROOT_KEYS_HANDLE;
-pub use self::signal::*;
+use self::objects::key::Key;
+use self::common::{object::{Object, Objectable}, signal::*};
+use self::root::ROOT_KEYS_HANDLE;
 
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
@@ -80,6 +67,8 @@ pub extern "C" fn refresh_awesome() {
 fn main() {/*TODO*/}
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
+    use self::objects::*;
+    use self::*;
     setup_awesome_path(lua)?;
     setup_global_signals(lua)?;
     setup_xcb_connection(lua)?;
@@ -162,10 +151,6 @@ fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
     lua.set_named_registry_value(XCB_CONNECTION_HANDLE,
                                   LightUserData(con.get_raw_conn() as _))?;
     mem::forget(con);
-    Ok(())
-}
-
-pub fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> {
     Ok(())
 }
 

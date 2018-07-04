@@ -1,9 +1,13 @@
-//! TODO Fill in
-use super::class::{Class, ClassBuilder};
-use super::object::{Object, Objectable};
-use rlua::{self, Lua, Table, ToLua, UserData, Value};
+//! A client to the Wayland compositor. We control their position through tiling
+//! and other properties based on what kind of shell they are.
+
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use rlua::{self, Lua, Table, ToLua, UserData, Value};
+
+use common::{class::{Class, ClassBuilder},
+             object::{Object, Objectable}};
 
 #[derive(Clone, Debug)]
 pub struct ClientState {

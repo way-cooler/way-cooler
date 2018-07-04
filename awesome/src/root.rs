@@ -1,11 +1,15 @@
-//! TODO Fill in
+//! API for root resources, such as wallpapers and keybindings.
 
-use super::class::{Class, ClassBuilder};
-use super::object::{self, Object, Objectable};
-use cairo_sys::cairo_pattern_t;
-use rlua::{self, LightUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+
+use cairo_sys::cairo_pattern_t;
+use rlua::{self, LightUserData, Lua, Table, ToLua, UserData,
+           UserDataMethods, Value};
+
+use common::{class::{Class, ClassBuilder},
+             object::{self, Object, Objectable}};
+use objects::tag;
 
 /// Handle to the list of global key bindings
 pub const ROOT_KEYS_HANDLE: &'static str = "__ROOT_KEYS";
@@ -52,7 +56,7 @@ fn method_setup<'lua>(lua: &'lua Lua,
                       builder: ClassBuilder<'lua>)
                       -> rlua::Result<ClassBuilder<'lua>> {
     // TODO Do properly
-    use super::dummy;
+    use objects::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
            .method("buttons".into(), lua.create_function(dummy)?)?
            .method("wallpaper".into(), lua.create_function(wallpaper)?)?
@@ -88,7 +92,7 @@ fn set_wallpaper<'lua>(_: &'lua Lua, _pattern: *mut cairo_pattern_t) -> rlua::Re
 
 fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
     let table = lua.create_table()?;
-    let activated_tags = lua.named_registry_value::<Table>(super::tag::TAG_LIST)?;
+    let activated_tags = lua.named_registry_value::<Table>(tag::TAG_LIST)?;
     for pair in activated_tags.pairs::<Value, Value>() {
         let (key, value) = pair?;
         table.set(key, value)?;

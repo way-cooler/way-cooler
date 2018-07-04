@@ -1,10 +1,11 @@
 //! AwesomeWM Keygrabber interface
 
-use wlroots::{events::key_events::Key, wlr_key_state, xkbcommon::xkb::keysym_get_name};
-
-use super::signal;
-use ::LUA;
 use rlua::{self, Function, Lua, Table, Value};
+use wlroots::{events::key_events::Key, wlr_key_state,
+              xkbcommon::xkb::keysym_get_name};
+
+use ::LUA;
+use common::signal;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const KEYGRABBER_CALLBACK: &str = "__callback";
@@ -23,7 +24,6 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     globals.set(KEYGRABBER_TABLE, keygrabber_table)
 }
 
-#[allow(deprecated)]
 /// Given the current input, handle calling the Lua defined callback if it is
 /// defined with the input.
 pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua::Result<()> {
