@@ -48,18 +48,12 @@ static gboolean interface_check(GSource *base)
 static gboolean interface_dispatch(GSource *base, GSourceFunc callback,
 		gpointer data)
 {
-
-	// TODO I don't think wayland-rs releases the lock,
-	// so we can't do that here. Instead we need to do that in Rust land.
-	/*if (interface_source->queue == NULL) {
-		wl_display_roundtrip(interface_source->display);
-	} else {
-		wl_display_roundtrip_queue(interface_source->display, interface_source->queue);
-	}*/
+	struct InterfaceEventSource *interface_source
+		= (struct InterfaceEventSource *) base;
+	wl_display_roundtrip(interface_source->display);
 
 	refresh_awesome();
 
-	(void) base;
 	(void) callback;
 	(void) data;
 
