@@ -3,6 +3,7 @@
 extern crate cairo;
 extern crate cairo_sys;
 extern crate env_logger;
+extern crate exec;
 extern crate getopts;
 extern crate gdk_pixbuf;
 extern crate glib;
@@ -33,6 +34,7 @@ mod lua;
 
 use std::{env, mem, path::PathBuf, process::exit};
 
+use exec::Command;
 use lua::setup_lua;
 use rlua::{LightUserData, Lua, Table};
 use log::LogLevel;
@@ -63,13 +65,13 @@ pub extern "C" fn refresh_awesome() {
     NEXT_LUA.with(|new_lua_check| {
         if new_lua_check.get() {
             new_lua_check.set(false);
-            LUA.with(|lua| {
-                let mut lua = lua.borrow_mut();
-                unsafe {
-                    *lua = rlua::Lua::new_with_debug();
-                }
-            });
-            setup_lua();
+            let awesome = env::args().next().unwrap();
+            let args: Vec<_> = env::args().skip(1).collect();
+            let err = Command::new(awesome)
+                .args(args.as_slice())
+                .exec();
+            error!("error: {:?}", err);
+            panic!("Could not restart Awesome");
         }
     });
 }
@@ -260,4 +262,5 @@ fn init_logs() {
 /// Handler for SIGINT signal
 extern "C" fn sig_handle(_: nix::libc::c_int) {
     lua::terminate();
+    exit(130);
 }
