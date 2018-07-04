@@ -64,9 +64,30 @@ pub fn register_libraries(lua: &Lua) -> rlua::Result<()> {
     lua.exec::<()>(init_code, Some("init.lua"))?;
     let globals = lua.globals();
     globals.set("type", lua.create_function(type_override)?)?;
-    ::init(&lua).expect("Could not initialize awesome compatibility modules");
+    init_libs(&lua).expect("Could not initialize awesome compatibility modules");
     Ok(())
 }
+
+fn init_libs(lua: &Lua) -> rlua::Result<()> {
+    use ::{*, objects::*};
+    setup_awesome_path(lua)?;
+    setup_global_signals(lua)?;
+    setup_xcb_connection(lua)?;
+    button::init(lua)?;
+    awesome::init(lua)?;
+    key::init(lua)?;
+    client::init(lua)?;
+    screen::init(lua)?;
+    keygrabber::init(lua)?;
+    root::init(lua)?;
+    mouse::init(lua)?;
+    tag::init(lua)?;
+    drawin::init(lua)?;
+    drawable::init(lua)?;
+    mousegrabber::init(lua)?;
+    Ok(())
+}
+
 
 /// This function behaves just like Lua's built-in type() function, but also
 /// recognises classes and returns special names for them.

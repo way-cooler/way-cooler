@@ -23,6 +23,7 @@ cairo-sys-rs = "0.6.0"
 gdk-pixbuf = "0.4.*"
 glib = "0.5.0"
 xcb = { version = "0.8.1", features = ["xkb"] }
+wayland-client = "0.20.10"
 
 [build-dependencies]
 gcc = "0.3.*"

@@ -3,15 +3,17 @@
 extern crate cairo;
 extern crate cairo_sys;
 extern crate env_logger;
+extern crate getopts;
+extern crate gdk_pixbuf;
+extern crate glib;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate nix;
 extern crate rlua;
 extern crate xcb;
-extern crate gdk_pixbuf;
-extern crate glib;
-extern crate nix;
+extern crate wayland_client;
 
 // TODO remove
 extern crate wlroots;
@@ -29,18 +31,26 @@ mod mousegrabber;
 mod root;
 mod lua;
 
-use std::{env, mem, path::PathBuf};
+use std::{env, mem, path::PathBuf, process::exit};
 
 use lua::setup_lua;
 use rlua::{LightUserData, Lua, Table};
+use log::LogLevel;
+use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
+use wayland_client::{Display, GlobalManager};
+use wayland_client::protocol::wl_display::RequestsTrait;
+use wayland_client::sys::client::wl_display;
 
-pub use self::lua::{LUA, NEXT_LUA};
+use self::lua::{LUA, NEXT_LUA};
+
 
 use self::objects::key::Key;
 use self::common::{object::{Object, Objectable}, signal::*};
 use self::root::ROOT_KEYS_HANDLE;
 
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 
@@ -64,27 +74,51 @@ pub extern "C" fn refresh_awesome() {
     });
 }
 
-fn main() {/*TODO*/}
+fn main() {
+    let mut opts = getopts::Options::new();
+    opts.optflag("", "version", "show version information");
+    let matches = match opts.parse(env::args().skip(1)) {
+        Ok(m) => m,
+        Err(f) => {
+            eprintln!("{}", f.to_string());
+            exit(1);
+        }
+    };
+    if matches.opt_present("version") {
+        if !GIT_VERSION.is_empty() {
+            println!("Way Cooler {} @ {}", VERSION, GIT_VERSION);
+        } else {
+            println!("Way Cooler {}", VERSION);
+        }
+        return
+    }
+    init_logs();
+    let sig_action = SigAction::new(SigHandler::Handler(sig_handle),
+                                    SaFlags::empty(),
+                                    SigSet::empty());
+    unsafe {
+        signal::sigaction(signal::SIGINT, &sig_action).expect("Could not set SIGINT catcher");
+    }
+    init_wayland();
+    lua::setup_lua();
+    lua::enter_glib_loop();
+}
 
-pub fn init(lua: &Lua) -> rlua::Result<()> {
-    use self::objects::*;
-    use self::*;
-    setup_awesome_path(lua)?;
-    setup_global_signals(lua)?;
-    setup_xcb_connection(lua)?;
-    button::init(lua)?;
-    awesome::init(lua)?;
-    key::init(lua)?;
-    client::init(lua)?;
-    screen::init(lua)?;
-    keygrabber::init(lua)?;
-    root::init(lua)?;
-    mouse::init(lua)?;
-    tag::init(lua)?;
-    drawin::init(lua)?;
-    drawable::init(lua)?;
-    mousegrabber::init(lua)?;
-    Ok(())
+fn init_wayland() {
+    let (display, mut event_queue) = match Display::connect_to_env() {
+        Ok(res) => res,
+        Err(err) => {
+            error!("Could not connect to Wayland server. Is it running?");
+            exit(1);
+        }
+    };
+    unsafe {
+        #[link(name = "wayland_glib_interface", kind = "static")]
+        extern "C" {
+            fn wayland_glib_interface_init(display: *mut wl_display);
+        }
+        wayland_glib_interface_init(display.c_ptr() as *mut wl_display);
+    }
 }
 
 fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
@@ -184,4 +218,46 @@ fn emit_awesome_keybindings(lua: &Lua,
         }
     }
     Ok(())
+}
+
+/// Formats the log strings properly
+fn log_format(record: &log::LogRecord) -> String {
+    let color = match record.level() {
+        LogLevel::Info => "",
+        LogLevel::Trace => "\x1B[37m",
+        LogLevel::Debug => "\x1B[44m",
+        LogLevel::Warn => "\x1B[33m",
+        LogLevel::Error => "\x1B[31m"
+    };
+    let location = record.location();
+    let file = location.file();
+    let line = location.line();
+    let mut module_path = location.module_path();
+    if let Some(index) = module_path.find("way_cooler::") {
+        let index = index + "way_cooler::".len();
+        module_path = &module_path[index..];
+    }
+    format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
+            color,
+            record.level(),
+            module_path,
+            file,
+            line,
+            record.args())
+}
+
+fn init_logs() {
+    let mut builder = env_logger::LogBuilder::new();
+    builder.format(log_format);
+    builder.filter(None, log::LogLevelFilter::Trace);
+    if env::var("WAY_COOLER_LOG").is_ok() {
+        builder.parse(&env::var("WAY_COOLER_LOG").expect("WAY_COOLER_LOG not defined"));
+    }
+    builder.init().expect("Unable to initialize logging!");
+    info!("Logger initialized");
+}
+
+/// Handler for SIGINT signal
+extern "C" fn sig_handle(_: nix::libc::c_int) {
+    lua::terminate();
 }
