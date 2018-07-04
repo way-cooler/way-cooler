@@ -72,6 +72,12 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     method_setup(lua, &awesome_table)?;
     property_setup(lua, &awesome_table)?;
     let globals = lua.globals();
+    
+    // Fixups: Add string.wlen
+    let global_string: Table = globals.get("string")?;
+    global_string.set("wlen", lua.create_function(wlen)?)?;
+    // TODO Add the rest of fixups
+
     let awesome = lua.create_userdata(AwesomeState::default())?;
     awesome.set_user_value(awesome_table)?;
     globals.set("awesome", awesome)
@@ -104,6 +110,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("pixbuf_to_surface", lua.create_function(pixbuf_to_surface)?)?;
     awesome_table.set("sync", lua.create_function(sync)?)?;
     awesome_table.set("exec", lua.create_function(exec)?)?;
+    awesome_table.set("spawn", lua.create_function(super::dummy)?)?;
     awesome_table.set("kill", lua.create_function(kill)?)?;
     awesome_table.set("quit", lua.create_function(quit)?)
 }
@@ -386,4 +393,9 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
         }
     }
     surface
+}
+
+/// UTF-8 aware string length computing
+pub fn wlen<'lua>(_: &'lua Lua, cmd: String) -> rlua::Result<Value<'lua>> {
+    Ok(Value::Integer(cmd.chars().count() as i64))
 }

@@ -44,8 +44,13 @@ pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua
              })
 }
 
+/// Check is the Lua callback function is set
+pub fn is_keygrabber_set(lua: &Lua) -> bool {
+    lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK).is_ok()
+}
+
 /// Call the Lua callback function for when a key is pressed.
-fn call_keygrabber(lua: &Lua, (mods, key, event): (Table, String, String)) -> rlua::Result<()> {
+pub fn call_keygrabber(lua: &Lua, (mods, key, event): (Table, String, String)) -> rlua::Result<()> {
     let lua_callback = lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK)?;
     lua_callback.call((mods, key, event))
 }
