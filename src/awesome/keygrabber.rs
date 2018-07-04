@@ -45,7 +45,7 @@ pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua
 }
 
 /// Check is the Lua callback function is set
-pub fn is_keygrabber_set(lua: &Lua) -> bool {
+pub fn is_ok(lua: &Lua) -> bool {
     match lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK) {
         Ok(_) => true,
         _ => false

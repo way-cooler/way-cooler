@@ -138,7 +138,9 @@ fn set_key<'lua>(_: &'lua Lua,
     if key_name.starts_with('#') && key_name.len() >= 2 {
         let number = key_name[1..].parse::<xkb::Keycode>()
             .map_err(|err| rlua::Error::RuntimeError(format!("Parse error: {:?}", err)))?;
-        key.set_keycode(number-8 as xkb::Keycode)?;
+        // the - 8 is because of xcb conventions, where "#10" is the keysim for 1,
+        // and the keycode of 1 is 0x02 (obviously)
+        key.set_keycode(number - 8 as xkb::Keycode)?;
     } else {
         let keysym = xkb::keysym_from_name(key_name.as_str(), 0);
         key.set_keysym(keysym)?;
