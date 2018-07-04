@@ -134,13 +134,13 @@ fn get_key<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'
 fn set_key<'lua>(_: &'lua Lua,
                  (obj, key_name): (AnyUserData<'lua>, String))
                  -> rlua::Result<Value<'lua>> {
-    let keysym = xkb::keysym_from_name(key_name.as_str(), 0);
     let mut key = Key::cast(obj.clone().into())?;
     if key_name.starts_with('#') && key_name.len() >= 2 {
         let number = key_name[1..].parse::<xkb::Keycode>()
             .map_err(|err| rlua::Error::RuntimeError(format!("Parse error: {:?}", err)))?;
-        key.set_keycode(number as xkb::Keycode)?;
+        key.set_keycode(number-8 as xkb::Keycode)?;
     } else {
+        let keysym = xkb::keysym_from_name(key_name.as_str(), 0);
         key.set_keysym(keysym)?;
     }
     Ok(rlua::Value::Nil)
