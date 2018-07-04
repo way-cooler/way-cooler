@@ -396,5 +396,5 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
 
 /// UTF-8 aware string length computing
 pub fn wlen<'lua>(_: &'lua Lua, cmd: String) -> rlua::Result<Value<'lua>> {
-    Ok(Value::Integer(cmd.len() as i64))
+    Ok(Value::Integer(cmd.chars().count() as i64))
 }
