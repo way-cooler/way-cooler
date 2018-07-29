@@ -13,13 +13,14 @@ use wlroots::{Area, Origin, OutputHandle, Size};
 use common::{class::{self, Class, ClassBuilder},
              object::{self, Object, Objectable},
              property::Property};
+use wayland_obj::output::Output;
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 
 #[derive(Clone, Debug)]
 pub struct Screen<'lua>(Object<'lua>);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct ScreenState {
     // Is this screen still valid and may be used
     pub valid: bool,
@@ -28,8 +29,8 @@ pub struct ScreenState {
     // Screen workarea
     pub workarea: Area,
     // The screen outputs information
-    pub outputs: Vec<OutputHandle>,
-    // Some XID indetifying this screen
+    pub outputs: Vec<Output>,
+    // Some XID identifying this screen
     pub xid: u32
 }
 
@@ -42,6 +43,18 @@ impl Display for ScreenState {
         write!(f, "Screen: {:p}", self)
     }
 }
+
+impl PartialEq for ScreenState {
+    fn eq(&self, other: &ScreenState) -> bool {
+        self.valid == other.valid &&
+            self.geometry == other.geometry &&
+            self.workarea == other.workarea &&
+            self.xid == other.xid &&
+            self.outputs == other.outputs
+    }
+}
+
+impl Eq for ScreenState {}
 
 impl<'lua> ToLua<'lua> for Screen<'lua> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
@@ -73,12 +86,11 @@ impl<'lua> Screen<'lua> {
     }
 
     fn init_screens(&mut self,
-                    output: OutputHandle,
-                    outputs: Vec<OutputHandle>)
+                    output: Output,
+                    outputs: Vec<Output>)
                     -> rlua::Result<()> {
         let mut state = self.get_object_mut()?;
-        let (width, height) = output.run(|output| output.effective_resolution())
-                                    .expect("Output handle was invalid");
+        let (width, height) = output.resolution();
         let resolution = Size { width, height };
         state.outputs = outputs;
         state.geometry = state.geometry.with_size(resolution);
@@ -232,9 +244,7 @@ fn index<'lua>(lua: &'lua Lua,
             for screen in screens.iter() {
                 let mut screen_state = screen.state()?;
                 for output in &screen_state.outputs {
-                    let output_name = output.run(|output| output.name())
-                                            .expect("Output handle was invalid");
-                    if output_name.as_str() == string {
+                    if output.name() == string {
                         return screen.clone().to_lua(lua)
                     }
                 }

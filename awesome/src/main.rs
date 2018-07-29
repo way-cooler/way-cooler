@@ -14,6 +14,7 @@ extern crate log;
 extern crate nix;
 extern crate rlua;
 extern crate xcb;
+#[macro_use]
 extern crate wayland_client;
 
 // TODO remove
@@ -25,6 +26,7 @@ mod macros;
 
 mod objects;
 mod common;
+mod wayland_obj;
 
 mod awesome;
 mod keygrabber;
@@ -41,7 +43,7 @@ use log::LogLevel;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
 use wayland_client::{Display, GlobalManager};
-use wayland_client::protocol::wl_display::RequestsTrait;
+use wayland_client::protocol::{wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
 
 use self::lua::{LUA, NEXT_LUA};
@@ -121,6 +123,12 @@ fn init_wayland() {
         }
         wayland_glib_interface_init(display.c_ptr() as *mut wl_display);
     }
+    let _globals = GlobalManager::new_with_cb(
+        display.get_registry().unwrap(),
+        global_filter!(
+            [wl_output::WlOutput, 2, wayland_obj::Output::new]
+        ),
+    );
 }
 
 fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {

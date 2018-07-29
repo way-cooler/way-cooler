@@ -24,7 +24,8 @@ cairo-sys-rs = "0.6.0"
 gdk-pixbuf = "0.4.*"
 glib = "0.5.0"
 xcb = { version = "0.8.1", features = ["xkb"] }
-wayland-client = "0.20.10"
+# Todo use the version with my patch
+wayland-client = "0.20.11"
 
 [build-dependencies]
 gcc = "0.3.*"
