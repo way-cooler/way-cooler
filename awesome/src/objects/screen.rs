@@ -13,7 +13,7 @@ use wlroots::{Area, Origin, OutputHandle, Size};
 use common::{class::{self, Class, ClassBuilder},
              object::{self, Object, Objectable},
              property::Property};
-use wayland_obj::output::Output;
+use wayland_obj::Output;
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 

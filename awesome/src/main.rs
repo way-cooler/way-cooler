@@ -129,6 +129,10 @@ fn init_wayland() {
             [wl_output::WlOutput, 2, wayland_obj::Output::new]
         ),
     );
+    // TODO Remove
+    event_queue.sync_roundtrip().unwrap();
+    event_queue.sync_roundtrip().unwrap();
+    event_queue.sync_roundtrip().unwrap();
 }
 
 fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
