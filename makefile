@@ -3,7 +3,10 @@ default: run
 build:
 	cargo build --all
 
-run: build way_cooler awesome
+run: build
+	trap 'kill %1' SIGINT
+	./target/debug/way-cooler &
+	./target/debug/awesome
 
 awesome:
 	./target/debug/awesome
