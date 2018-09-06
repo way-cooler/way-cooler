@@ -87,7 +87,7 @@ pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 ///
 /// This restarts the Lua thread if there is a new one pending
 #[no_mangle]
-pub extern "C" fn refresh_awesome() {
+pub extern "C" fn awesome_refresh() {
     NEXT_LUA.with(|new_lua_check| {
         if new_lua_check.get() {
             new_lua_check.set(false);
@@ -129,8 +129,6 @@ fn main() {
                         .expect("Could not set SIGINT catcher");
     }
     init_wayland();
-    lua::setup_lua();
-    lua::enter_glib_loop();
 }
 
 fn init_wayland() {
@@ -155,7 +153,11 @@ fn init_wayland() {
         ),
     );
     // TODO Remove
-    let _ = event_queue.sync_roundtrip().unwrap();
+    event_queue.sync_roundtrip().unwrap();
+    event_queue.sync_roundtrip().unwrap();
+    event_queue.sync_roundtrip().unwrap();
+    lua::setup_lua();
+    lua::enter_glib_loop();
 }
 
 fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {

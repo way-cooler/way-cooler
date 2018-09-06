@@ -4,9 +4,9 @@ build:
 	cargo build --all
 
 run: build
+	sleep .1 && WAYLAND_DISPLAY=wayland-1 ./target/debug/awesome &
 	trap 'kill %1' SIGINT
-	./target/debug/way-cooler &
-	./target/debug/awesome
+	./target/debug/way-cooler
 
 awesome:
 	./target/debug/awesome

@@ -1,7 +1,8 @@
-#include <wayland-client-core.h>
+#include <stdlib.h>
 #include <glib.h>
+#include <wayland-client-core.h>
 
-void refresh_awesome(void);
+void awesome_refresh(void);
 
 /* Instance of an event source that we use to integrate the wayland event queue
  * with GLib's MainLoop.
@@ -9,7 +10,6 @@ void refresh_awesome(void);
 struct InterfaceEventSource {
 	GSource source;
 	struct wl_display *display;
-	struct wl_event_queue *queue;
 	gpointer fd_tag;
 };
 
@@ -50,9 +50,11 @@ static gboolean interface_dispatch(GSource *base, GSourceFunc callback,
 {
 	struct InterfaceEventSource *interface_source
 		= (struct InterfaceEventSource *) base;
-	wl_display_roundtrip(interface_source->display);
+	if (wl_display_roundtrip(interface_source->display) == -1) {
+		exit(0);
+	}
 
-	refresh_awesome();
+	awesome_refresh();
 
 	(void) callback;
 	(void) data;
@@ -69,15 +71,13 @@ static GSourceFuncs interface_funcs = {
 /* Initialise and register an event source with GLib. This event source
  * integrates the wayland event queue with the GLib main loop.
  */
-void wayland_glib_interface_init(struct wl_display *display,
-		struct wl_event_queue *queue)
+void wayland_glib_interface_init(struct wl_display *display)
 {
 	struct InterfaceEventSource *interface_source;
 	GSource *source = g_source_new(&interface_funcs, sizeof(*interface_source));
 
 	interface_source = (struct InterfaceEventSource *) source;
 	interface_source->display = display;
-	interface_source->queue = queue;
 	wl_display_roundtrip(interface_source->display);
 
 	interface_source->fd_tag =

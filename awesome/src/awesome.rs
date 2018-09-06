@@ -293,7 +293,6 @@ fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
 }
 
 fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
-    ::wlroots::terminate();
     ::lua::terminate();
     Ok(())
 }
