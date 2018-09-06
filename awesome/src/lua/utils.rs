@@ -44,6 +44,7 @@ pub fn mods_to_lua<'lua>(lua: &'lua Lua, mods: &[Key]) -> rlua::Result<Table<'lu
 }
 
 /// Convert a single number to a modifier list.
+#[allow(dead_code)]
 pub fn num_to_mods(modifiers: KeyboardModifier) -> Vec<Key> {
     let mut res = vec![];
     for (mod_km, mod_k) in MOD_TYPES.iter() {

@@ -5,11 +5,8 @@
 
 use std::default::Default;
 
-use rlua::{self, Lua, MetaMethod, Table, AnyUserData,
-           ToLua, UserData, UserDataMethods, Value};
-
-use objects::screen::{Screen, SCREENS_HANDLE};
-use wayland_obj::Output;
+use rlua::{self, AnyUserData, Lua, MetaMethod, Table,
+           UserData, UserDataMethods, Value};
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
 const NEWINDEX_MISS_FUNCTION: &'static str = "__newindex_miss_function";
@@ -71,11 +68,7 @@ fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
     table.set(NEWINDEX_MISS_FUNCTION, func)
 }
 
-fn get_output() -> Option<Output> {
-    unimplemented!();
-}
-
-fn index<'lua>(lua: &'lua Lua,
+fn index<'lua>(_lua: &'lua Lua,
                (mouse, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
     let obj_table = mouse.get_user_value::<Table>()?;
@@ -83,9 +76,13 @@ fn index<'lua>(lua: &'lua Lua,
         if string.to_str()? == "screen" {
 
             // TODO Get output
-            let output = get_output();
+            let _output = unimplemented!();
 
-            let mut screens = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?;
+            /*let mut screens: Vec<Screen> = lua
+                .named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
+                .into_iter()
+                .map(|obj| Screen::cast(obj.into()).unwrap())
+                .collect();
 
             if let Some(output) = output {
                 for screen in &screens {
@@ -98,7 +95,7 @@ fn index<'lua>(lua: &'lua Lua,
                 return screens[0].clone().to_lua(lua)
             }
 
-            return Ok(Value::Nil)
+            return Ok(Value::Nil)*/
         }
     }
     return obj_table.get(index)

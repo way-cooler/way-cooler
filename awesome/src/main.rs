@@ -134,8 +134,9 @@ fn main() {
 fn init_wayland() {
     let (display, mut event_queue) = match Display::connect_to_env() {
         Ok(res) => res,
-        Err(_) => {
+        Err(err) => {
             error!("Could not connect to Wayland server. Is it running?");
+            error!("{:?}", err);
             exit(1);
         }
     };
