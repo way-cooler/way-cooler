@@ -31,6 +31,8 @@
        unused_qualifications,
        unused_results))]
 
+#[macro_use]
+extern crate bitflags;
 extern crate cairo;
 extern crate cairo_sys;
 extern crate env_logger;
@@ -43,26 +45,27 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate nix;
+extern crate libc;
 extern crate rlua;
 extern crate xcb;
 #[macro_use]
 extern crate wayland_client;
+extern crate wayland_sys;
 
 // TODO remove
 extern crate wlroots;
 
 #[macro_use]
 mod macros;
-
 mod objects;
 mod common;
 mod wayland_obj;
-
 mod awesome;
 mod keygrabber;
 mod mousegrabber;
 mod root;
 mod lua;
+mod wayland_protocols;
 
 use std::{env, mem, path::PathBuf, process::exit, io::{self, Write}};
 
