@@ -50,7 +50,7 @@ impl<'lua> Tag<'lua> {
                                    .collect::<HashSet<_>>();
             let new_clients = clients.iter().cloned()
                                      .collect::<HashSet<_>>();
-                
+
             for _client in new_clients.difference(&prev_clients) {
                 // emit signal
             };
@@ -95,9 +95,11 @@ impl UserData for TagState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<TagState>> {
     lua.set_named_registry_value(TAG_LIST, lua.create_table()?)?;
-    method_setup(lua, Class::builder(lua, "tag", None)?)?.save_class("tag")
+    method_setup(lua, Class::builder(lua, "tag", None)?)?
+        .save_class("tag")?
+        .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,

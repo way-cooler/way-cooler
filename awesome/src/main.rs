@@ -74,23 +74,45 @@ use rlua::{LightUserData, Lua, Table};
 use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
-use wayland_client::{Display, GlobalManager};
+use wayland_client::{Display, GlobalManager, EventQueue};
 use wayland_client::protocol::{wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
 
 use self::lua::{LUA, NEXT_LUA};
+
+use self::objects::key::Key;
+use self::common::{object::Object, signal::*};
+use self::root::ROOT_KEYS_HANDLE;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 
+/// The state passed into C to store it during the glib loop.
+///
+/// It's passed back to us when Awesome needs a refresh so we can
+/// construct any Wayland objects.
+#[repr(C)]
+struct WaylandState {
+    pub display: Display,
+    pub event_queue: EventQueue
+}
+
 /// Called from `wayland_glib_interface.c` after every call back into the
 /// wayland event loop.
 ///
 /// This restarts the Lua thread if there is a new one pending
 #[no_mangle]
-pub extern "C" fn awesome_refresh() {
+pub extern "C" fn awesome_refresh(wayland_state: *mut libc::c_void) {
+    // NOTE
+    // This is safe because it's way back up the stack where we can't access it.
+    //
+    // The moment that stack is accessible this pointer will be lost.
+    //
+    // The only way it's unsafe is if we destructure `WaylandState`,
+    // which we can't do because it's borrowed.
+    let wayland_state = unsafe { &mut *(wayland_state as *mut WaylandState) };
     NEXT_LUA.with(|new_lua_check| {
         if new_lua_check.get() {
             new_lua_check.set(false);
@@ -143,23 +165,25 @@ fn init_wayland() {
             exit(1);
         }
     };
-    unsafe {
-        #[link(name = "wayland_glib_interface", kind = "static")]
-        extern "C" {
-            fn wayland_glib_interface_init(display: *mut wl_display);
-        }
-        wayland_glib_interface_init(display.c_ptr() as *mut wl_display);
-    }
+    let display_ptr = display.c_ptr() as *mut wl_display;
     let _globals = GlobalManager::new_with_cb(
         display.get_registry().unwrap(),
         global_filter!(
             [wl_output::WlOutput, 2, wayland_obj::Output::new]
         ),
     );
-    // TODO Remove
     event_queue.sync_roundtrip().unwrap();
     event_queue.sync_roundtrip().unwrap();
-    event_queue.sync_roundtrip().unwrap();
+    let mut wayland_state = WaylandState { display, event_queue };
+    unsafe {
+        #[link(name = "wayland_glib_interface", kind = "static")]
+        extern "C" {
+            fn wayland_glib_interface_init(display: *mut wl_display,
+                                           wayland_state: *mut libc::c_void);
+        }
+        wayland_glib_interface_init(display_ptr,
+                                    &mut wayland_state as *mut _ as _);
+    }
     lua::setup_lua();
     lua::enter_glib_loop();
 }

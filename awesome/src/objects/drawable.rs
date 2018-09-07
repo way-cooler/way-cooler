@@ -101,14 +101,15 @@ impl UserData for DrawableState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<DrawableState>> {
     Class::<DrawableState>::builder(lua, "drawable", None)?
         .method("geometry".into(), lua.create_function(geometry)?)?
         .property(Property::new("surface".into(),
                                 None,
                                 Some(lua.create_function(get_surface)?),
                                 None))?
-        .save_class("drawable")
+        .save_class("drawable")?
+        .build()
 }
 
 fn get_surface<'lua>(_: &'lua Lua, drawable: Drawable<'lua>) -> rlua::Result<Value<'lua>> {

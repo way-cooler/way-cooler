@@ -2,7 +2,7 @@
 
 use rlua::{self, Function, Lua, Table, Value};
 use wlroots::{events::key_events::Key, wlr_key_state,
-              xkbcommon::xkb::keysym_get_name};
+              xkbcommon::xkb::keysym_get_name, WLR_KEY_PRESSED};
 
 use ::LUA;
 use common::signal;

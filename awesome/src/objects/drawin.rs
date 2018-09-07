@@ -134,11 +134,12 @@ impl<'lua> Drawin<'lua> {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<DrawinState>> {
     let drawins: Vec<Drawin> = Vec::new();
     lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
     property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None)?)?)?
-        .save_class("drawin")
+        .save_class("drawin")?
+        .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
