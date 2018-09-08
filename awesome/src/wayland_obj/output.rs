@@ -40,21 +40,29 @@ impl Output {
             LUA.with(|lua| {
                 let lua = lua.borrow();
                 let lua = &*lua;
-                let mut screen = screen::get_screen(lua, output)
-                    .expect("Got screen state for screen that doesn't exist");
                 match event {
                     Event::Geometry { make, model,  .. } => {
                         state.name = format!("{} ({})", make, model);
                     },
                     Event::Mode { width, height, .. } => {
+                        state.resolution = (width, height);
                         let geometry = Area { origin: Origin { x: 0, y: 0 },
                                               size: Size { width, height }
                         };
-                        screen.set_geometry(geometry)
-                            .expect("could not set geometry");
-                        screen.set_workarea(geometry)
-                            .expect("could not set workarea ");
-                        state.resolution = (width, height);
+                        if let Ok(mut screen) = screen::get_screen(lua, output) {
+                            screen.set_geometry(geometry)
+                                .expect("could not set geometry");
+                            screen.set_workarea(geometry)
+                                .expect("could not set workarea ");
+                        }
+                    }
+                    Event::Done => {
+                        let mut screen = Screen::new(lua)
+                            .expect("Could not allocate new screen");
+                        screen.init_screens(output.clone(), vec![output])
+                            .expect("Could not initilize new output with a screen");
+                        screen::add_screen(lua, screen)
+                            .expect("Could not add screen to the list of screens");
                     }
                     _ => {/* TODO */}
                 }
