@@ -57,6 +57,8 @@ impl Output {
                         }
                     }
                     Event::Done => {
+                        // TODO We may not always want to add a new screen
+                        // see how awesome does it and fix this.
                         let mut screen = Screen::new(lua)
                             .expect("Could not allocate new screen");
                         screen.init_screens(output.clone(), vec![output])
