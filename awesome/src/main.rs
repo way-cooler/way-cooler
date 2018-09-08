@@ -153,6 +153,7 @@ fn main() {
         let _ = signal::sigaction(signal::SIGINT, &sig_action)
                         .expect("Could not set SIGINT catcher");
     }
+    lua::init_awesome();
     init_wayland();
 }
 
@@ -184,7 +185,6 @@ fn init_wayland() {
         wayland_glib_interface_init(display_ptr,
                                     &mut wayland_state as *mut _ as _);
     }
-    lua::setup_lua();
     lua::enter_glib_loop();
 }
 

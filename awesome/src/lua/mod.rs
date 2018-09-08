@@ -29,7 +29,7 @@ thread_local! {
 }
 
 /// Sets up the Lua environment before running the compositor.
-pub fn setup_lua() {
+pub fn init_awesome() {
     LUA.with(|lua| {
         register_libraries(&*lua.borrow())
             .expect("Could not register lua libraries");
