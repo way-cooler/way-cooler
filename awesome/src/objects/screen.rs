@@ -5,7 +5,7 @@
 
 use std::default::Default;
 
-use rlua::{self, Lua, MetaMethod, Table, ToLua, UserData,
+use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData,
            UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 
@@ -64,13 +64,12 @@ impl UserData for ScreenState {
 }
 
 impl<'lua> Screen<'lua> {
-    fn new(lua: &Lua) -> rlua::Result<Screen> {
+    pub fn new(lua: &Lua) -> rlua::Result<Screen> {
         let class = class::class_setup(lua, "screen")?;
         Ok(Screen::allocate(lua, class)?.build())
     }
 
-    #[allow(dead_code)]
-    fn init_screens(&mut self,
+    pub fn init_screens(&mut self,
                     output: Output,
                     outputs: Vec<Output>)
                     -> rlua::Result<()> {
@@ -83,7 +82,21 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    fn get_geometry(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
+    pub fn set_geometry(&mut self, geometry: Area)
+                        -> rlua::Result<()> {
+        let mut state = self.state_mut()?;
+        state.geometry = geometry;
+        Ok(())
+    }
+
+    pub fn set_workarea(&mut self, geometry: Area)
+                    -> rlua::Result<()> {
+        let mut state = self.state_mut()?;
+        state.workarea = geometry;
+        Ok(())
+    }
+
+    pub fn get_geometry(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
         let Origin { x, y } = state.geometry.origin;
         let Size { width, height } = state.geometry.size;
@@ -95,7 +108,7 @@ impl<'lua> Screen<'lua> {
         Ok(table)
     }
 
-    fn get_workarea(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
+    pub fn get_workarea(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
         let Origin { x, y } = state.workarea.origin;
         let Size { width, height } = state.workarea.size;
@@ -108,9 +121,32 @@ impl<'lua> Screen<'lua> {
     }
 }
 
-pub fn init<'lua>(lua: &Lua) -> rlua::Result<()> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, "screen", None)?)?)?
-        .save_class("screen")?;
+/// Adds a screen to the list of screens.
+pub fn add_screen(lua: &Lua, screen: Screen) -> rlua::Result<()> {
+    let mut screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
+    screens.push(screen.into());
+    lua.set_named_registry_value(SCREENS_HANDLE, screens.to_lua(lua)?)?;
+    Ok(())
+}
+
+/// Find a screen based on the output.
+pub fn get_screen(lua: &Lua, output: Output) -> rlua::Result<Screen> {
+    lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
+        .into_iter()
+        .map(|obj| Screen::cast(obj.into()).unwrap())
+        // TODO Can there be multiple screens the output is associated with?
+        // Will need to handle that case
+        .find(|screen| {
+            let state = screen.state().expect("Could not get screen state");
+            state.outputs.iter().any(|cur_output| *cur_output == output)
+        })
+        .ok_or(rlua::Error::RuntimeError(format!("No screen with output {:?}", output)))
+}
+
+pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<ScreenState>> {
+    let builder = Class::builder(lua, "screen", None)?;
+    let res = property_setup(lua, method_setup(lua, builder)?)?.save_class("screen")?
+                                                               .build()?;
     let screens: &mut Vec<Screen> = &mut vec![];
     // TODO Get the list of outputs from Way Cooler
     //for output in server.outputs.iter() {
@@ -131,7 +167,8 @@ pub fn init<'lua>(lua: &Lua) -> rlua::Result<()> {
         screens.push(screen);
     }
 
-    lua.set_named_registry_value(SCREENS_HANDLE, screens.clone().to_lua(lua)?)
+    lua.set_named_registry_value(SCREENS_HANDLE, screens.clone().to_lua(lua)?)?;
+    Ok(res)
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
