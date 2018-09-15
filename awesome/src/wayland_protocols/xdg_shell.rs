@@ -1,5 +1,5 @@
 /// Generated modules from the XML protocol spec.
-pub use self::generated::client;
+pub use self::generated::client::*;
 
 mod generated {
     // Generated code generally doesn't follow standards

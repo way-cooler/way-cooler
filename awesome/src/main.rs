@@ -75,14 +75,14 @@ use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
 use wayland_client::{Display, GlobalManager, EventQueue};
-use wayland_client::protocol::{wl_output, wl_display::RequestsTrait};
+use wayland_client::protocol::{wl_compositor, wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
 
 use self::lua::{LUA, NEXT_LUA};
-
 use self::objects::key::Key;
 use self::common::{object::Object, signal::*};
 use self::root::ROOT_KEYS_HANDLE;
+use wayland_protocols::xdg_shell::xdg_wm_base;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
@@ -170,7 +170,9 @@ fn init_wayland() {
     let _globals = GlobalManager::new_with_cb(
         display.get_registry().unwrap(),
         global_filter!(
-            [wl_output::WlOutput, 2, wayland_obj::Output::new]
+            [wl_output::WlOutput, 2, wayland_obj::Output::new],
+            [wl_compositor::WlCompositor, 2, wayland_obj::wl_compositor_init],
+            [xdg_wm_base::XdgWmBase, 1, wayland_obj::xdg_shell_init]
         ),
     );
     event_queue.sync_roundtrip().unwrap();
