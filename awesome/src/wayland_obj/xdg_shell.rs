@@ -1,6 +1,6 @@
 //! Wrappers around a xdg_surface and xdg_shell setup code.
 
-use std::os::unix::io::RawFd;
+use std::os::unix::io::AsRawFd;
 use std::cell::RefCell;
 use std::fmt;
 
@@ -86,8 +86,14 @@ impl XdgToplevel {
         unwrap_state(&self.proxy).xdg_surface.set_window_geometry(0, 0, width, height);
     }
 
-    pub fn set_surface(&mut self, fd: RawFd, size: Size) -> Result<(), ()> {
-        let buffer = wayland_obj::create_buffer(fd, size)?;
+    // TODO Better interface than RawFd. T: AsRawFd?
+    /// Set the backing storage of the xdg shell surface.
+    ///
+    /// The contents will not be sent until a wl_surface commit, due to
+    /// Wayland surfaces being double buffered.
+    pub fn set_surface<FD>(&mut self, fd: &FD, size: Size) -> Result<(), ()>
+    where FD: AsRawFd {
+        let buffer = wayland_obj::create_buffer(fd.as_raw_fd(), size)?;
         let state = unwrap_state_mut(&mut self.proxy);
         state.wl_surface.attach(Some(&buffer), 0, 0);
         state.size = size;

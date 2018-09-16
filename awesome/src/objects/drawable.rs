@@ -1,6 +1,6 @@
 //! A wrapper around a Cairo image surface.
 
-use std::os::unix::io::AsRawFd;
+use std::io::Write;
 use std::fs::File;
 use std::default::Default;
 
@@ -89,9 +89,6 @@ impl<'lua> Drawable<'lua> {
         if size_changed {
             drawable.refreshed = false;
             drawable.surface = None;
-            drawable.temp_file = tempfile::tempfile()
-                .expect("Could not make new temp file");
-            let raw_fd = drawable.temp_file.as_raw_fd();
             let size: Size = geometry.size;
 
 
@@ -111,13 +108,18 @@ impl<'lua> Drawable<'lua> {
 
 
             if size.width > 0 && size.height > 0 {
-                //drawable.temp_file.set_len(size.width as u64 * size.height as u64 * 4);
+                let temp_file = tempfile::tempfile()
+                    .expect("Could not make new temp file");
+                temp_file.set_len(size.width as u64 * size.height as u64 * 4)
+                    .expect("Could not set file length");
                 drawable.surface = Some(ImageSurface::create(Format::ARgb32,
                                                              size.width,
                                                              size.height)
                     .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?);
                 drawable.wayland_shell.set_size(size);
-                drawable.wayland_shell.set_surface(raw_fd, size);
+                drawable.wayland_shell.set_surface(&temp_file, size)
+                    .map_err(|_| RuntimeError(format!("Could not set surface for drawable")))?;
+                drawable.temp_file = temp_file;
                 // TODO emity property::surface
             }
         }
