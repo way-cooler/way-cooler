@@ -90,6 +90,10 @@ impl<'lua> Drawable<'lua> {
         if size_changed {
             drawable.refreshed = false;
             drawable.surface = None;
+            // TODO The first one we create is useless.
+            // How do we ensure we don't have that overhead? Option<>?
+            drawable.wayland_shell = wayland_obj::create_xdg_toplevel(None)
+                .expect("Could not construct an xdg toplevel for a drawable");
             let size: Size = geometry.size;
 
             if size.width > 0 && size.height > 0 {
