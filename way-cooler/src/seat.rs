@@ -133,8 +133,21 @@ impl Seat {
                            cursor: &mut Cursor)
                            -> (Option<Rc<::View>>, Option<SurfaceHandle>, f64, f64) {
         for view in views {
-            match view.shell {
-                ::Shell::XdgV6(ref shell) => {
+            match view.shell.clone() {
+                ::Shell::XdgV6(mut shell) => {
+                    let (mut sx, mut sy) = (0.0, 0.0);
+                    let surface = dehandle!(
+                        @shell = {shell};
+                        let (lx, ly) = cursor.coords();
+                        let Origin {x: shell_x, y: shell_y} = view.origin.get();
+                        let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
+                        shell.surface_at(view_sx, view_sy, &mut sx, &mut sy)
+                    );
+                    if surface.is_some() {
+                        return (Some(view.clone()), surface, sx, sy)
+                    }
+                },
+                ::Shell::Xdg(mut shell) => {
                     let (mut sx, mut sy) = (0.0, 0.0);
                     let surface = dehandle!(
                         @shell = {shell};

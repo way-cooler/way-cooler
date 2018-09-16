@@ -1,5 +1,5 @@
 use std::cell::Cell;
-use wlroots::XdgV6ShellState::*;
+use wlroots::{XdgShellState, XdgV6ShellState};
 use wlroots::{Area, Origin, Size, SurfaceHandle};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -25,23 +25,28 @@ impl View {
     }
 
     pub fn surface(&self) -> SurfaceHandle {
-        match self.shell {
-            ::Shell::XdgV6(ref xdg_surface) => {
-                with_handles!([(xdg_surface: {xdg_surface})] => {
-                    xdg_surface.surface()
-                }).unwrap()
-            }
-        }
+        self.shell.surface()
     }
 
     pub fn activate(&self, activate: bool) {
-        match self.shell {
-            ::Shell::XdgV6(ref xdg_surface) => {
+        match self.shell.clone() {
+            ::Shell::XdgV6(xdg_surface) => {
                 dehandle! (
                     @xdg_surface = {xdg_surface};
                     match xdg_surface.state() {
-                        Some(&mut TopLevel(ref mut toplevel)) => {
-                            let _ = toplevel.set_activated(activate);
+                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                            toplevel.set_activated(activate);
+                        },
+                        _ => unimplemented!()
+                    }
+                );
+            },
+            ::Shell::Xdg(xdg_surface) => {
+                dehandle! (
+                    @xdg_surface = {xdg_surface};
+                    match xdg_surface.state() {
+                        Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
+                            toplevel.set_activated(activate);
                         },
                         _ => unimplemented!()
                     }
@@ -51,8 +56,14 @@ impl View {
     }
 
     pub fn get_size(&self) -> Size {
-        match self.shell {
-            ::Shell::XdgV6(ref xdg_surface) => {
+        match self.shell.clone() {
+            ::Shell::XdgV6(xdg_surface) => {
+                with_handles!([(xdg_surface: {xdg_surface})] => {
+                    let Area { origin: _, size } = xdg_surface.geometry();
+                    size
+                }).unwrap()
+            },
+            ::Shell::Xdg(xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {
                     let Area { origin: _, size } = xdg_surface.geometry();
                     size
@@ -74,11 +85,22 @@ impl View {
         let update_y = y != view_y;
         let mut serial = 0;
 
-        match self.shell {
-            ::Shell::XdgV6(ref xdg_surface) => {
+        match self.shell.clone() {
+            ::Shell::XdgV6(xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {
                     match xdg_surface.state() {
-                        Some(&mut TopLevel(ref mut toplevel)) => {
+                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                            // TODO apply size constraints
+                            serial = toplevel.set_size(width, height);
+                        },
+                        _ => unimplemented!()
+                    }
+                }).unwrap();
+            },
+            ::Shell::Xdg(xdg_surface) => {
+                with_handles!([(xdg_surface: {xdg_surface})] => {
+                    match xdg_surface.state() {
+                        Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
                             // TODO apply size constraints
                             serial = toplevel.set_size(width, height);
                         },
@@ -100,8 +122,13 @@ impl View {
     }
 
     pub fn for_each_surface(&self, f: &mut FnMut(SurfaceHandle, i32, i32)) {
-        match self.shell {
-            ::Shell::XdgV6(ref xdg_surface) => {
+        match self.shell.clone() {
+            ::Shell::XdgV6(xdg_v6_surface) => {
+                with_handles!([(xdg_v6_surface: {xdg_v6_surface})] => {
+                    xdg_v6_surface.for_each_surface(f);
+                }).unwrap();
+            },
+            ::Shell::Xdg(xdg_surface) => {
                 with_handles!([(xdg_surface: {xdg_surface})] => {
                     xdg_surface.for_each_surface(f);
                 }).unwrap();
