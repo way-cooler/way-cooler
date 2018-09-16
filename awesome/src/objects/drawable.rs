@@ -16,6 +16,7 @@ use common::{class::{self, Class},
              object::{self, Object},
              property::Property};
 use wayland_obj::{self, XdgToplevel};
+use common::signal::emit_object_signal;
 
 #[derive(Debug)]
 pub struct DrawableState {
@@ -81,8 +82,9 @@ impl<'lua> Drawable<'lua> {
     }
 
     /// Sets the geometry, and allocates a new surface.
-    pub fn set_geometry(&mut self, geometry: Area) -> rlua::Result<()> {
+    pub fn set_geometry(&mut self, lua: &Lua, geometry: Area) -> rlua::Result<()> {
         use rlua::Error::RuntimeError;
+        let obj_clone = self.clone();
         let mut drawable = self.state_mut()?;
         let size_changed = drawable.geo != geometry;
         drawable.geo = geometry;
@@ -104,7 +106,7 @@ impl<'lua> Drawable<'lua> {
                 drawable.wayland_shell.set_surface(&temp_file, size)
                     .map_err(|_| RuntimeError(format!("Could not set surface for drawable")))?;
                 drawable.temp_file = temp_file;
-                // TODO emity property::surface
+                emit_object_signal(lua, obj_clone.into(), "property::surface".into(), ())?;
             }
         }
         Ok(())

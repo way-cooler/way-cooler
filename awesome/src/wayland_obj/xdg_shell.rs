@@ -108,6 +108,7 @@ impl XdgToplevel {
 
 impl Drop for XdgToplevel {
     fn drop(&mut self) {
+        self.proxy.destroy();
         unsafe {
             let user_data = self.proxy.get_user_data() as *mut XdgToplevelState;
             if !user_data.is_null() {
