@@ -91,22 +91,6 @@ impl<'lua> Drawable<'lua> {
             drawable.surface = None;
             let size: Size = geometry.size;
 
-
-            // TODO REMOVE
-            use std::cmp::*;
-            let (width, height): (u32, u32) = (size.width as u32, size.height as u32);
-            for i in 0..(width * height) {
-                let x = (i % width) as u32;
-                let y = (i / width) as u32;
-                let r: u32 = min(((width - x) * 0xFF) / width, ((height  - y) * 0xFF) / height);
-                let g: u32 = min((x * 0xFF) / width, ((height  - y) * 0xFF) / height);
-                let b: u32 = min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
-                drawable.temp_file.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b).unwrap();
-                }
-
-
-
-
             if size.width > 0 && size.height > 0 {
                 let temp_file = tempfile::tempfile()
                     .expect("Could not make new temp file");
@@ -129,7 +113,14 @@ impl<'lua> Drawable<'lua> {
     /// Signals that the drawable's surface was updated.
     pub fn refresh(&mut self) -> rlua::Result<()> {
         let mut drawable = self.state_mut()?;
-        drawable.refreshed = true;
+        let drawable = &mut *drawable;
+        if let Some(data) = drawable.surface.as_mut().map(get_data) {
+            drawable.temp_file.write(&*data)
+                .expect("Could not write data to buffer");
+            drawable.temp_file.flush()
+                .expect("Could not flush buffer");
+            drawable.refreshed = true;
+        }
         Ok(())
     }
 }
@@ -169,4 +160,18 @@ fn geometry<'lua>(lua: &'lua Lua, drawable: Drawable<'lua>) -> rlua::Result<Tabl
 
 fn refresh<'lua>(_: &'lua Lua, mut drawable: Drawable<'lua>) -> rlua::Result<()> {
     drawable.refresh()
+}
+
+/// Get the data associated with the ImageSurface.
+fn get_data(surface: &mut ImageSurface) -> &[u8] {
+    // NOTE This is safe to do because there's one thread.
+    //
+    // We know Lua is not modifying it because it's not running.
+    use std::slice;
+    use cairo_sys;
+    unsafe {
+        let len = surface.get_stride() as usize * surface.get_height() as usize;
+        let surface = surface.to_glib_none().0;
+        slice::from_raw_parts(cairo_sys::cairo_image_surface_get_data(surface as _), len)
+    }
 }
