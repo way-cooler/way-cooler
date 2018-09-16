@@ -48,7 +48,6 @@ extern crate nix;
 extern crate libc;
 extern crate rlua;
 extern crate tempfile;
-extern crate byteorder;
 extern crate xcb;
 #[macro_use]
 extern crate wayland_client;

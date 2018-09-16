@@ -7,8 +7,7 @@ use wayland_client::{Proxy, NewProxy};
 use wayland_client::protocol::wl_shm::{self,
                                        WlShm,
                                        RequestsTrait as WlShmTrait};
-use wayland_client::protocol::wl_shm_pool::{WlShmPool,
-                                            RequestsTrait as WlShmPoolTrait};
+use wayland_client::protocol::wl_shm_pool::RequestsTrait as WlShmPoolTrait;
 use wayland_client::protocol::wl_buffer::WlBuffer;
 
 use wlroots::Size;

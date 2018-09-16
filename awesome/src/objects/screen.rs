@@ -10,6 +10,7 @@ use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData,
 use wlroots::{Area, Origin, Size};
 
 use common::{class::{self, Class, ClassBuilder},
+             signal::emit_object_signal,
              object::{self, Object},
              property::Property};
 use wayland_obj::Output;
@@ -82,16 +83,35 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn set_geometry(&mut self, geometry: Area)
+    pub fn set_geometry(&mut self, lua: &Lua, geometry: Area)
                         -> rlua::Result<()> {
+        let obj_clone = self.clone();
         let mut state = self.state_mut()?;
-        state.geometry = geometry;
+        if state.geometry != geometry {
+            let old_area = lua.create_table()?;
+            old_area.set("x", state.geometry.origin.x)?;
+            old_area.set("y", state.geometry.origin.y)?;
+            old_area.set("width", state.geometry.size.width)?;
+            old_area.set("height", state.geometry.size.height)?;
+            state.geometry = geometry;
+            emit_object_signal(lua, obj_clone.into(), "property::geometry".into(), old_area)?;
+        }
         Ok(())
     }
 
-    pub fn set_workarea(&mut self, geometry: Area)
+    pub fn set_workarea(&mut self, lua: &Lua, geometry: Area)
                     -> rlua::Result<()> {
+        let obj_clone = self.clone();
         let mut state = self.state_mut()?;
+        if state.workarea != geometry {
+            let old_area = lua.create_table()?;
+            old_area.set("x", state.geometry.origin.x)?;
+            old_area.set("y", state.geometry.origin.y)?;
+            old_area.set("width", state.geometry.size.width)?;
+            old_area.set("height", state.geometry.size.height)?;
+            state.geometry = geometry;
+            emit_object_signal(lua, obj_clone.into(), "property::workarea".into(), old_area)?;
+        }
         state.workarea = geometry;
         Ok(())
     }

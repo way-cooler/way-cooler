@@ -10,7 +10,6 @@ use rlua::{self, LightUserData, Lua, Table,
            UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 use tempfile;
-use byteorder::{NativeEndian, WriteBytesExt};
 
 use common::{class::{self, Class},
              object::{self, Object},

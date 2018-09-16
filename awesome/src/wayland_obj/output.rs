@@ -40,18 +40,18 @@ impl Output {
                     Event::Geometry { make, model,  .. } => {
                         state.name = format!("{} ({})", make, model);
                     },
-                    Event::Mode { width, height, .. } => {
+                    Event::Mode { width, height,  .. } => {
                         state.resolution = (width, height);
                         let geometry = Area { origin: Origin { x: 0, y: 0 },
                                               size: Size { width, height }
                         };
                         if let Ok(mut screen) = screen::get_screen(lua, output) {
-                            screen.set_geometry(geometry)
+                            screen.set_geometry(lua, geometry)
                                 .expect("could not set geometry");
-                            screen.set_workarea(geometry)
+                            screen.set_workarea(lua, geometry)
                                 .expect("could not set workarea ");
                         }
-                    }
+                    },
                     Event::Done => {
                         // TODO We may not always want to add a new screen
                         // see how awesome does it and fix this.
@@ -61,7 +61,7 @@ impl Output {
                             .expect("Could not initilize new output with a screen");
                         screen::add_screen(lua, screen)
                             .expect("Could not add screen to the list of screens");
-                    }
+                    },
                     _ => {/* TODO */}
                 }
             });

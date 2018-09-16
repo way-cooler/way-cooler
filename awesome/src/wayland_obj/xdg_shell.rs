@@ -61,7 +61,7 @@ impl XdgToplevel {
         let proxy = xdg_proxy.implement(|event, proxy: Proxy<xdg_toplevel::XdgToplevel>| {
             use self::xdg_toplevel::Event;
             match event {
-                Event::Configure { width, height, .. } => {
+                Event::Configure { .. } => {
                     // TODO Fill in
                     let state = unwrap_state(&proxy);
                     state.xdg_surface.set_window_geometry(0, 0, state.size.width, state.size.height);
