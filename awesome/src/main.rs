@@ -153,8 +153,9 @@ fn main() {
         let _ = signal::sigaction(signal::SIGINT, &sig_action)
                         .expect("Could not set SIGINT catcher");
     }
-    lua::init_awesome();
+    lua::init_awesome_libraries();
     init_wayland();
+    lua::run_awesome();
 }
 
 fn init_wayland() {
@@ -166,18 +167,18 @@ fn init_wayland() {
             exit(1);
         }
     };
-    let display_ptr = display.c_ptr() as *mut wl_display;
-    let _globals = GlobalManager::new_with_cb(
+    let globals = GlobalManager::new_with_cb(
         display.get_registry().unwrap(),
         global_filter!(
             [wl_output::WlOutput, 2, wayland_obj::Output::new],
-            [wl_compositor::WlCompositor, 2, wayland_obj::wl_compositor_init],
-            [xdg_wm_base::XdgWmBase, 1, wayland_obj::xdg_shell_init]
+            [wl_compositor::WlCompositor, 3, wayland_obj::wl_compositor_init],
+            [xdg_wm_base::XdgWmBase, 2, wayland_obj::xdg_shell_init]
         ),
     );
     event_queue.sync_roundtrip().unwrap();
     event_queue.sync_roundtrip().unwrap();
     let mut wayland_state = WaylandState { display, event_queue };
+    let display_ptr = wayland_state.display.c_ptr() as *mut wl_display;
     unsafe {
         #[link(name = "wayland_glib_interface", kind = "static")]
         extern "C" {
@@ -186,8 +187,9 @@ fn init_wayland() {
         }
         wayland_glib_interface_init(display_ptr,
                                     &mut wayland_state as *mut _ as _);
+        ::std::mem::forget(wayland_state);
+        ::std::mem::forget(globals);
     }
-    lua::enter_glib_loop();
 }
 
 fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {

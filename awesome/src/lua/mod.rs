@@ -28,14 +28,27 @@ thread_local! {
     static MAIN_LOOP: RefCell<MainLoop> = RefCell::new(MainLoop::new(None, false));
 }
 
-/// Sets up the Lua environment before running the compositor.
-pub fn init_awesome() {
+/// Sets up the Lua environment for the user code.
+///
+/// This environment is also necessary for some Wayland callbacks,
+/// so it should be called as soon as possible.
+pub fn init_awesome_libraries() {
+    info!("Setting up Awesome libraries");
     LUA.with(|lua| {
         register_libraries(&*lua.borrow())
             .expect("Could not register lua libraries");
-        info!("Initializing lua...");
+    });
+}
+
+/// Runs user code from the config through the awesome compatibility layer.
+///
+/// It then enters the glib/wayland main loop to listen for events.
+pub fn run_awesome() {
+    LUA.with(|lua| {
+        info!("Loading Awesome configuration...");
         load_config(&mut *lua.borrow_mut());
     });
+    enter_glib_loop();
 }
 
 fn emit_refresh(lua: &Lua) {

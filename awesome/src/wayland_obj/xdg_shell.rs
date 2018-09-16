@@ -1,12 +1,13 @@
 //! Wrappers around a xdg_surface and xdg_shell setup code.
 
 use std::cell::RefCell;
+use std::fmt;
 
 use wayland_client::{Proxy, NewProxy};
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_protocols::xdg_shell::{xdg_wm_base::{XdgWmBase,
                                                  RequestsTrait as XdgwmBaseTrait},
-                                   xdg_toplevel::XdgToplevel,
+                                   xdg_toplevel,
                                    xdg_surface::{self,
                                                  XdgSurface,
                                                  RequestsTrait as XdgSurfaceTrait}};
@@ -19,6 +20,62 @@ thread_local! {
     ///
     /// This should remain local to just this module.
     static XDG_SHELL_CREATOR: RefCell<Option<Proxy<XdgWmBase>>> = RefCell::new(None);
+}
+
+/// A wrapper around `xdg_toplevel::Xdgtoplevel` that keeps track of the changes to the
+/// internal state of the `xdg_toplevel`, `xdg_surface, and `wl_surface`.
+///
+/// This should be used instead of using a xdg_toplevel directly as
+/// otherwise you need to roll your own caching scheme.
+#[derive(Clone, Eq, PartialEq)]
+pub struct XdgToplevel {
+    proxy: Proxy<xdg_toplevel::XdgToplevel>
+}
+
+/// The cached state for the 'XdgToplevel. Cached state about the `xdg_surface`
+/// and the `wl_surface` is also stored in here.
+///
+/// This needs to be stored as the user data in the `XdgToplevel` so that it
+/// can be accessed anywhere.
+#[derive(Clone, Eq, PartialEq)]
+struct XdgToplevelState {
+    // TODO These should have wrappers around the proxies as well,
+    // so that their cached state is transparent to this cached state.
+    surface: Proxy<WlSurface>,
+    xdg_surface: Proxy<XdgSurface>,
+}
+
+impl XdgToplevel {
+    fn new(surface: Proxy<WlSurface>,
+           xdg_surface: Proxy<XdgSurface>,
+           xdg_proxy: NewProxy<xdg_toplevel::XdgToplevel>) -> Self {
+        let proxy = xdg_proxy.implement(|event, proxy: Proxy<xdg_toplevel::XdgToplevel>| {
+            use self::xdg_toplevel::Event;
+            match event {
+                Event::Configure { width, height, .. } => {
+                    // TODO Fill in
+                    warn!("Got request for geo : ({}, {})", width, height);
+                },
+                Event::Close => {
+                    // TODO We should probably do what the compositor wants here.
+                }
+            }
+        });
+        let cached_state = Box::new(XdgToplevelState { surface, xdg_surface });
+        proxy.set_user_data(Box::into_raw(cached_state) as _);
+        XdgToplevel { proxy }
+    }
+}
+
+impl Drop for XdgToplevel {
+    fn drop(&mut self) {
+        unsafe {
+            let user_data = self.proxy.get_user_data() as *mut XdgToplevelState;
+            if !user_data.is_null() {
+                Box::from_raw(user_data);
+            }
+        }
+    }
 }
 
 pub fn xdg_shell_init(new_proxy: Result<NewProxy<XdgWmBase>, u32>, _: ()) {
@@ -35,7 +92,7 @@ pub fn xdg_shell_init(new_proxy: Result<NewProxy<XdgWmBase>, u32>, _: ()) {
 }
 
 pub fn create_xdg_toplevel<G>(geometry: G)
-                              -> Result<NewProxy<XdgToplevel>, ()>
+                              -> Result<XdgToplevel, ()>
 where G: Into<Option<Area>> {
     let surface = wayland_obj::create_surface()?;
     let xdg_surface = create_xdg_surface(&surface)?;
@@ -45,6 +102,7 @@ where G: Into<Option<Area>> {
         xdg_surface.set_window_geometry(x, y, width, height);
     }
     xdg_surface.get_toplevel()
+        .map(|toplevel| XdgToplevel::new(surface, xdg_surface, toplevel))
 }
 
 fn create_xdg_surface(surface: &Proxy<WlSurface>)
@@ -61,4 +119,32 @@ fn create_xdg_surface(surface: &Proxy<WlSurface>)
                 }
             }))
     })
+}
+
+impl fmt::Debug for XdgToplevel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.proxy.c_ptr())
+    }
+}
+
+fn unwrap_state_mut<'this>(proxy: &'this mut Proxy<xdg_toplevel::XdgToplevel>)
+                           -> &'this mut XdgToplevelState {
+    unsafe {
+        let user_data = proxy.get_user_data() as *mut XdgToplevelState;
+        if user_data.is_null() {
+            panic!("User data has not been set yet");
+        }
+        &mut *user_data
+    }
+}
+
+fn unwrap_state<'this>(proxy: &'this Proxy<xdg_toplevel::XdgToplevel>)
+                           -> &'this XdgToplevelState {
+    unsafe {
+        let user_data = proxy.get_user_data() as *const XdgToplevelState;
+        if user_data.is_null() {
+            panic!("User data has not been set yet");
+        }
+        &*user_data
+    }
 }

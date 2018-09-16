@@ -22,13 +22,6 @@ struct OutputState {
     resolution: (i32, i32)
 }
 
-impl <'this> Into<&'this Proxy<WlOutput>> for &'this Output {
-    fn into(self) -> &'this Proxy<WlOutput> {
-        &self.proxy
-    }
-}
-
-
 impl Output {
     pub fn new(new_proxy: Result<NewProxy<WlOutput>, u32>, _: ()) {
         let new_proxy = new_proxy.expect("Could not create WlOutput");
@@ -98,6 +91,13 @@ impl fmt::Debug for Output {
         write!(f, "{:?}", self.proxy.c_ptr())
     }
 }
+
+impl <'this> Into<&'this Proxy<WlOutput>> for &'this Output {
+    fn into(self) -> &'this Proxy<WlOutput> {
+        &self.proxy
+    }
+}
+
 
 fn unwrap_state_mut<'this, I: Into<&'this mut Proxy<WlOutput>>>(proxy: I) -> &'this mut OutputState {
     unsafe {

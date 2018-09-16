@@ -11,9 +11,11 @@ use wlroots::{Area, Origin, Size};
 use common::{class::{self, Class},
              object::{self, Object},
              property::Property};
+use wayland_obj::{self, XdgToplevel};
 
 #[derive(Clone, Debug)]
 pub struct DrawableState {
+    wayland_shell: XdgToplevel,
     pub surface: Option<ImageSurface>,
     geo: Area,
     // TODO Use this to determine whether we draw this or not
@@ -24,7 +26,10 @@ pub type Drawable<'lua> = Object<'lua, DrawableState>;
 
 impl Default for DrawableState {
     fn default() -> Self {
-        DrawableState { surface: None,
+        let wayland_shell = wayland_obj::create_xdg_toplevel(None)
+            .expect("Could not construct an xdg toplevel for a drawable");
+        DrawableState { wayland_shell,
+                        surface: None,
                         geo: Area::default(),
                         refreshed: false }
     }

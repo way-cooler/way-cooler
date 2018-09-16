@@ -18,8 +18,6 @@ pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
 ///
 /// If a configuration file could not be found, the pre-compiled version is used.
 pub fn load_config(mut lua: &mut Lua) {
-    info!("Loading way-cooler libraries...");
-
     let maybe_init_file = get_config();
     match maybe_init_file {
         Some((init_dir, mut init_file)) => {
