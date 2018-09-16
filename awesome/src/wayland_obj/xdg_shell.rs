@@ -1,16 +1,20 @@
 //! Wrappers around a xdg_surface and xdg_shell setup code.
 
+use std::os::unix::io::RawFd;
 use std::cell::RefCell;
 use std::fmt;
 
 use wayland_client::{Proxy, NewProxy};
-use wayland_client::protocol::wl_surface::WlSurface;
+use wayland_client::protocol::wl_surface::{WlSurface,
+                                           RequestsTrait as WlSurfaceTrait};
 use wayland_protocols::xdg_shell::{xdg_wm_base::{XdgWmBase,
-                                                 RequestsTrait as XdgwmBaseTrait},
-                                   xdg_toplevel,
+                                                 RequestsTrait as XdgWmBaseTrait},
+                                   xdg_toplevel::{self,
+                                                  RequestsTrait as XdgToplevelTrait},
                                    xdg_surface::{self,
                                                  XdgSurface,
                                                  RequestsTrait as XdgSurfaceTrait}};
+use wayland_client::protocol::wl_buffer::WlBuffer;
 use wlroots::{Area, Origin, Size};
 
 use wayland_obj;
@@ -44,12 +48,14 @@ pub struct XdgToplevel {
 struct XdgToplevelState {
     // TODO These should have wrappers around the proxies as well,
     // so that their cached state is transparent to this cached state.
-    surface: Proxy<WlSurface>,
+    wl_surface: Proxy<WlSurface>,
     xdg_surface: Proxy<XdgSurface>,
+    buffer: Option<Proxy<WlBuffer>>,
+    size: Size
 }
 
 impl XdgToplevel {
-    fn new(surface: Proxy<WlSurface>,
+    fn new(wl_surface: Proxy<WlSurface>,
            xdg_surface: Proxy<XdgSurface>,
            xdg_proxy: NewProxy<xdg_toplevel::XdgToplevel>) -> Self {
         let proxy = xdg_proxy.implement(|event, proxy: Proxy<xdg_toplevel::XdgToplevel>| {
@@ -57,16 +63,42 @@ impl XdgToplevel {
             match event {
                 Event::Configure { width, height, .. } => {
                     // TODO Fill in
-                    warn!("Got request for geo : ({}, {})", width, height);
+                    error!("Got request for geo : ({}, {})", width, height);
+                    let state = unwrap_state(&proxy);
+                    state.xdg_surface.set_window_geometry(0, 0, state.size.width, state.size.height);
                 },
                 Event::Close => {
                     // TODO We should probably do what the compositor wants here.
                 }
             }
         });
-        let cached_state = Box::new(XdgToplevelState { surface, xdg_surface });
+        error!("COMMITING IN XDG SHELL");
+        wl_surface.commit();
+        let cached_state = Box::new(XdgToplevelState { wl_surface,
+                                                       xdg_surface,
+                                                       buffer: None,
+                                                       size: Size::default() });
         proxy.set_user_data(Box::into_raw(cached_state) as _);
         XdgToplevel { proxy }
+    }
+
+    pub fn set_size(&self, size: Size) {
+        let Size { width, height } = size;
+        // TODO Is there ever a need for us to set the x and y?
+        unwrap_state(&self.proxy).xdg_surface.set_window_geometry(0, 0, width, height);
+    }
+
+    pub fn set_surface(&mut self, fd: RawFd, size: Size) -> Result<(), ()> {
+        let buffer = wayland_obj::create_buffer(fd, size)?;
+        let state = unwrap_state_mut(&mut self.proxy);
+        state.wl_surface.attach(Some(&buffer), 0, 0);
+        state.size = size;
+        state.buffer = Some(buffer);
+        Ok(())
+    }
+
+    pub fn commit(&self) {
+        unwrap_state(&self.proxy).wl_surface.commit();
     }
 }
 
@@ -110,15 +142,21 @@ where G: Into<Option<Area>> {
 
 fn create_xdg_surface(surface: &Proxy<WlSurface>)
                       -> Result<Proxy<XdgSurface>, ()> {
+    error!("Creating an xdg surface");
     XDG_SHELL_CREATOR.with(|shell_creator| {
         let shell_creator = shell_creator.borrow();
         let shell_creator = shell_creator.as_ref()
             .expect("XDG Shell creator not initilized");
+        let surface_ = surface.clone();
         shell_creator.get_xdg_surface(surface)
             .map(|new_proxy| new_proxy.implement(move |event, proxy: Proxy<XdgSurface>| {
                 use self::xdg_surface::Event;
                 match event {
-                    Event::Configure { serial } => proxy.ack_configure(serial)
+                    Event::Configure { serial } => {
+                        error!("Get configure request");
+                        proxy.ack_configure(serial);
+                        surface_.commit();
+                    }
                 }
             }))
     })

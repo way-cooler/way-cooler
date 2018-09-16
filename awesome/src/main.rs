@@ -47,6 +47,8 @@ extern crate log;
 extern crate nix;
 extern crate libc;
 extern crate rlua;
+extern crate tempfile;
+extern crate byteorder;
 extern crate xcb;
 #[macro_use]
 extern crate wayland_client;
@@ -75,7 +77,7 @@ use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
 use wayland_client::{Display, GlobalManager, EventQueue, GlobalError};
-use wayland_client::protocol::{wl_compositor, wl_output, wl_display::RequestsTrait};
+use wayland_client::protocol::{wl_compositor, wl_shm, wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
 
 use self::lua::{LUA, NEXT_LUA};
@@ -179,6 +181,11 @@ fn init_wayland() {
                 wl_compositor::WlCompositor,
                 wayland_obj::WL_COMPOSITOR_VERSION,
                 wayland_obj::wl_compositor_init
+            ],
+            [
+                wl_shm::WlShm,
+                wayland_obj::WL_SHM_VERSION,
+                wayland_obj::wl_shm_init
             ]
         ),
     );

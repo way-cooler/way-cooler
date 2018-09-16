@@ -24,6 +24,8 @@ cairo-sys-rs = "0.6.0"
 gdk-pixbuf = "0.4.*"
 libc = "0.2.*"
 glib = "0.5.0"
+tempfile = "3.0.*"
+byteorder = "1.2.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 # Todo use the version with my patch
 wayland-client = "0.20.12"

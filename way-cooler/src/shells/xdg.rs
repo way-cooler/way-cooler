@@ -1,6 +1,8 @@
-use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler,
-              XdgShellSurfaceHandle, XdgShellHandler, XdgShellManagerHandler};
+use std::rc::Rc;
 
+use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler,
+              XdgShellSurfaceHandle, XdgShellHandler, XdgShellManagerHandler,
+              XdgShellState};
 use wlroots::xdg_shell_events::{MoveEvent, ResizeEvent};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -98,15 +100,44 @@ impl XdgShellHandler for Xdg {
             }
         }).unwrap();
     }
+
+    fn destroyed(&mut self,
+                 compositor: CompositorHandle,
+                 shell_surface: XdgShellSurfaceHandle) {
+        let surface = shell_surface.into();
+        dehandle!(
+            @compositor = {compositor};
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut views, .. } = *server;
+            if let Some(index) = views.iter().position(|view| view.shell == surface) {
+                views.remove(index);
+            }
+        );
+    }
 }
 
 pub struct XdgShellManager;
 
 impl XdgShellManagerHandler for XdgShellManager {
     fn new_surface(&mut self,
-                   _: CompositorHandle,
-                   _: XdgShellSurfaceHandle)
+                   compositor: CompositorHandle,
+                   xdg_surface: XdgShellSurfaceHandle)
                    -> (Option<Box<XdgShellHandler>>, Option<Box<SurfaceHandler>>) {
+        dehandle!(
+            @compositor = {compositor};
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut views, .. } = *server;
+            views.push(Rc::new(::View::new(::Shell::Xdg(xdg_surface.clone().into()))));
+            @xdg_surface = {xdg_surface};
+            match xdg_surface.state().unwrap() {
+                XdgShellState::TopLevel(toplevel) => {
+                    error!("CLIENT PENDING: {:#?}", toplevel.client_pending_state());
+                    warn!("SERVER PENDING: {:#?}", toplevel.server_pending_state());
+                },
+                _ => unimplemented!()
+            }
+        );
+        error!("Added this mother fucker");
         (Some(Box::new(::Xdg::new())), None)
     }
 }

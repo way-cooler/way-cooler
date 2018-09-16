@@ -1,7 +1,8 @@
+use std::rc::Rc;
+
 use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler, XdgV6ShellHandler,
               XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
 
-use std::rc::Rc;
 use wlroots::xdg_shell_v6_events::{MoveEvent, ResizeEvent};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

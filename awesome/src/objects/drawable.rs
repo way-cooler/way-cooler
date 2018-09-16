@@ -1,5 +1,7 @@
 //! A wrapper around a Cairo image surface.
 
+use std::os::unix::io::AsRawFd;
+use std::fs::File;
 use std::default::Default;
 
 use cairo::{Format, ImageSurface};
@@ -7,14 +9,17 @@ use glib::translate::ToGlibPtr;
 use rlua::{self, LightUserData, Lua, Table,
            UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
+use tempfile;
+use byteorder::{NativeEndian, WriteBytesExt};
 
 use common::{class::{self, Class},
              object::{self, Object},
              property::Property};
 use wayland_obj::{self, XdgToplevel};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct DrawableState {
+    temp_file: File,
     wayland_shell: XdgToplevel,
     pub surface: Option<ImageSurface>,
     geo: Area,
@@ -28,7 +33,11 @@ impl Default for DrawableState {
     fn default() -> Self {
         let wayland_shell = wayland_obj::create_xdg_toplevel(None)
             .expect("Could not construct an xdg toplevel for a drawable");
-        DrawableState { wayland_shell,
+        // TODO Is a temp file really the best way to do this?
+        let temp_file = tempfile::tempfile()
+            .expect("Could not make a temp file for the buffer");
+        DrawableState { temp_file,
+                        wayland_shell,
                         surface: None,
                         geo: Area::default(),
                         refreshed: false }
@@ -80,12 +89,37 @@ impl<'lua> Drawable<'lua> {
         if size_changed {
             drawable.refreshed = false;
             drawable.surface = None;
+            drawable.temp_file = tempfile::tempfile()
+                .expect("Could not make new temp file");
+            let raw_fd = drawable.temp_file.as_raw_fd();
             let size: Size = geometry.size;
+
+
+            // TODO REMOVE
+            use std::cmp::*;
+            let (width, height): (u32, u32) = (size.width as u32, size.height as u32);
+            for i in 0..(width * height) {
+                let x = (i % width) as u32;
+                let y = (i / width) as u32;
+                let r: u32 = min(((width - x) * 0xFF) / width, ((height  - y) * 0xFF) / height);
+                let g: u32 = min((x * 0xFF) / width, ((height  - y) * 0xFF) / height);
+                let b: u32 = min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
+                drawable.temp_file.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b).unwrap();
+                }
+
+
+
+
             if size.width > 0 && size.height > 0 {
+                //drawable.temp_file.set_len(size.width as u64 * size.height as u64 * 4);
                 drawable.surface = Some(ImageSurface::create(Format::ARgb32,
-                                                        size.width,
-                                                        size.height)
+                                                             size.width,
+                                                             size.height)
                     .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?);
+                drawable.wayland_shell.set_size(size);
+                drawable.wayland_shell.set_surface(raw_fd, size);
+                error!("COMMITING IN DRAWABLE");
+                //drawable.wayland_shell.commit();
                 // TODO emity property::surface
             }
         }
