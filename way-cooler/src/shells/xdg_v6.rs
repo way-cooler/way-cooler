@@ -137,10 +137,10 @@ impl XdgV6ShellHandler for XdgV6 {
             @compositor = {compositor};
             let server: &mut ::Server = compositor.into();
             let ::Server { ref mut seat,
-                         ref mut views,
-                         ref cursor,
-                         ref mut xcursor_manager,
-                         .. } = *server;
+                           ref mut views,
+                           ref cursor,
+                           ref mut xcursor_manager,
+                           .. } = *server;
             let destroyed_shell = shell_surface.into();
             views.retain(|view| view.shell != destroyed_shell);
 
@@ -152,6 +152,20 @@ impl XdgV6ShellHandler for XdgV6 {
             @cursor = {cursor};
             seat.update_cursor_position(cursor, xcursor_manager, views, None)
         );
+    }
+
+    fn destroyed(&mut self,
+                 compositor: CompositorHandle,
+                 shell_surface: XdgV6ShellSurfaceHandle) {
+        let surface = shell_surface.into();
+        dehandle!(
+            @compositor = {compositor};
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut views, .. } = *server;
+            if let Some(index) = views.iter().position(|view| view.shell == surface) {
+                views.remove(index);
+            }
+        )
     }
 }
 
