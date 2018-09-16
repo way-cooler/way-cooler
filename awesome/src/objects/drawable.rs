@@ -118,8 +118,6 @@ impl<'lua> Drawable<'lua> {
                     .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?);
                 drawable.wayland_shell.set_size(size);
                 drawable.wayland_shell.set_surface(raw_fd, size);
-                error!("COMMITING IN DRAWABLE");
-                //drawable.wayland_shell.commit();
                 // TODO emity property::surface
             }
         }

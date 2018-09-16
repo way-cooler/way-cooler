@@ -127,17 +127,9 @@ impl XdgShellManagerHandler for XdgShellManager {
             @compositor = {compositor};
             let server: &mut ::Server = compositor.into();
             let ::Server { ref mut views, .. } = *server;
-            views.push(Rc::new(::View::new(::Shell::Xdg(xdg_surface.clone().into()))));
-            @xdg_surface = {xdg_surface};
-            match xdg_surface.state().unwrap() {
-                XdgShellState::TopLevel(toplevel) => {
-                    error!("CLIENT PENDING: {:#?}", toplevel.client_pending_state());
-                    warn!("SERVER PENDING: {:#?}", toplevel.server_pending_state());
-                },
-                _ => unimplemented!()
-            }
+            // TODO We should only push it once it's mapped.
+            views.push(Rc::new(::View::new(::Shell::Xdg(xdg_surface.clone().into()))))
         );
-        error!("Added this mother fucker");
         (Some(Box::new(::Xdg::new())), None)
     }
 }

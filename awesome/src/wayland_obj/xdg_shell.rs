@@ -63,7 +63,6 @@ impl XdgToplevel {
             match event {
                 Event::Configure { width, height, .. } => {
                     // TODO Fill in
-                    error!("Got request for geo : ({}, {})", width, height);
                     let state = unwrap_state(&proxy);
                     state.xdg_surface.set_window_geometry(0, 0, state.size.width, state.size.height);
                 },
@@ -72,7 +71,6 @@ impl XdgToplevel {
                 }
             }
         });
-        error!("COMMITING IN XDG SHELL");
         wl_surface.commit();
         let cached_state = Box::new(XdgToplevelState { wl_surface,
                                                        xdg_surface,
@@ -142,7 +140,6 @@ where G: Into<Option<Area>> {
 
 fn create_xdg_surface(surface: &Proxy<WlSurface>)
                       -> Result<Proxy<XdgSurface>, ()> {
-    error!("Creating an xdg surface");
     XDG_SHELL_CREATOR.with(|shell_creator| {
         let shell_creator = shell_creator.borrow();
         let shell_creator = shell_creator.as_ref()
@@ -153,7 +150,6 @@ fn create_xdg_surface(surface: &Proxy<WlSurface>)
                 use self::xdg_surface::Event;
                 match event {
                     Event::Configure { serial } => {
-                        error!("Get configure request");
                         proxy.ack_configure(serial);
                         surface_.commit();
                     }
