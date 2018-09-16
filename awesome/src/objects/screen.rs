@@ -86,15 +86,15 @@ impl<'lua> Screen<'lua> {
     pub fn set_geometry(&mut self, lua: &Lua, geometry: Area)
                         -> rlua::Result<()> {
         let obj_clone = self.clone();
-        let mut state = self.state_mut()?;
-        if state.geometry != geometry {
+        if self.state()?.geometry != geometry {
+            let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
-            old_area.set("x", state.geometry.origin.x)?;
-            old_area.set("y", state.geometry.origin.y)?;
-            old_area.set("width", state.geometry.size.width)?;
-            old_area.set("height", state.geometry.size.height)?;
-            state.geometry = geometry;
-            emit_object_signal(lua, obj_clone.into(), "property::geometry".into(), old_area)?;
+            old_area.set("x", geometry.origin.x)?;
+            old_area.set("y", geometry.origin.y)?;
+            old_area.set("width", geometry.size.width)?;
+            old_area.set("height", geometry.size.height)?;
+            self.state_mut()?.geometry = geometry;
+            emit_object_signal(lua, self.clone().into(), "property::geometry".into(), old_area)?;
         }
         Ok(())
     }
@@ -102,17 +102,16 @@ impl<'lua> Screen<'lua> {
     pub fn set_workarea(&mut self, lua: &Lua, geometry: Area)
                     -> rlua::Result<()> {
         let obj_clone = self.clone();
-        let mut state = self.state_mut()?;
-        if state.workarea != geometry {
+        if self.state()?.workarea != geometry {
+            let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
-            old_area.set("x", state.geometry.origin.x)?;
-            old_area.set("y", state.geometry.origin.y)?;
-            old_area.set("width", state.geometry.size.width)?;
-            old_area.set("height", state.geometry.size.height)?;
-            state.geometry = geometry;
-            emit_object_signal(lua, obj_clone.into(), "property::workarea".into(), old_area)?;
+            old_area.set("x", geometry.origin.x)?;
+            old_area.set("y", geometry.origin.y)?;
+            old_area.set("width", geometry.size.width)?;
+            old_area.set("height", geometry.size.height)?;
+            self.state_mut()?.workarea = geometry;
+            emit_object_signal(lua, self.clone().into(), "property::workarea".into(), old_area)?;
         }
-        state.workarea = geometry;
         Ok(())
     }
 
