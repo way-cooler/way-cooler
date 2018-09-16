@@ -15,6 +15,9 @@ use wlroots::{Area, Origin, Size};
 
 use wayland_obj;
 
+/// The minimum version of the xdg_wm_base global to bind to.
+pub const XDG_WM_BASE_VERSION: u32 = 2;
+
 thread_local! {
     /// The XDG surface creator.
     ///

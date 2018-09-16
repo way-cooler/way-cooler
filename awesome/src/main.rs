@@ -74,7 +74,7 @@ use rlua::{LightUserData, Lua, Table};
 use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
-use wayland_client::{Display, GlobalManager, EventQueue};
+use wayland_client::{Display, GlobalManager, EventQueue, GlobalError};
 use wayland_client::protocol::{wl_compositor, wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
 
@@ -171,11 +171,30 @@ fn init_wayland() {
         display.get_registry().unwrap(),
         global_filter!(
             [wl_output::WlOutput, 2, wayland_obj::Output::new],
-            [wl_compositor::WlCompositor, 3, wayland_obj::wl_compositor_init],
-            [xdg_wm_base::XdgWmBase, 2, wayland_obj::xdg_shell_init]
+            [wl_compositor::WlCompositor, 3, wayland_obj::wl_compositor_init]
         ),
     );
     event_queue.sync_roundtrip().unwrap();
+    let xwm_base_proxy = match globals.instantiate_exact::
+    <xdg_wm_base::XdgWmBase>(wayland_obj::XDG_WM_BASE_VERSION) {
+        Err(GlobalError::Missing) => {
+            error!("Missing xdg_wm_base global (version {})",
+                   wayland_obj::XDG_WM_BASE_VERSION);
+            error!("Your compositor doesn't support the xdg shell protocol");
+            error!("This protocol is necessary for Awesome to function");
+            exit(1);
+        },
+        Err(GlobalError::VersionTooLow(version)) => {
+            error!("Got xdg_wm_base version {}, expected version {}",
+                   version, wayland_obj::XDG_WM_BASE_VERSION);
+            error!("Your compositor doesn't support version {} \
+                    of the xdg shell protocol", wayland_obj::XDG_WM_BASE_VERSION);
+            error!("Ensure your compositor is up to date");
+            exit(1);
+        },
+        Ok(proxy) => Ok(proxy)
+    };
+    wayland_obj::xdg_shell_init(xwm_base_proxy, ());
     event_queue.sync_roundtrip().unwrap();
     let mut wayland_state = WaylandState { display, event_queue };
     let display_ptr = wayland_state.display.c_ptr() as *mut wl_display;
