@@ -9,6 +9,9 @@ use wayland_client::{Proxy, NewProxy};
 use lua::LUA;
 use objects::screen::{self, Screen};
 
+/// The minimum version of the wl_output global to bind to.
+pub const WL_OUTPUT_VERSION: u32 = 2;
+
 /// Wrapper around WlOutput.
 #[derive(Clone, Eq, PartialEq)]
 pub struct Output {

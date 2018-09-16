@@ -7,6 +7,9 @@ use wayland_client::protocol::wl_compositor::{WlCompositor,
                                               RequestsTrait as WlCompositorTrait};
 use wayland_client::protocol::wl_surface::WlSurface;
 
+/// The minimum version of the wl_compositor global to bind to.
+pub const WL_COMPOSITOR_VERSION: u32 = 3;
+
 thread_local! {
     static WL_COMPOSITOR: RefCell<Option<Proxy<WlCompositor>>> =
         RefCell::new(None)

@@ -170,8 +170,16 @@ fn init_wayland() {
     let globals = GlobalManager::new_with_cb(
         display.get_registry().unwrap(),
         global_filter!(
-            [wl_output::WlOutput, 2, wayland_obj::Output::new],
-            [wl_compositor::WlCompositor, 3, wayland_obj::wl_compositor_init]
+            [
+                wl_output::WlOutput,
+                wayland_obj::WL_OUTPUT_VERSION,
+                wayland_obj::Output::new
+            ],
+            [
+                wl_compositor::WlCompositor,
+                wayland_obj::WL_COMPOSITOR_VERSION,
+                wayland_obj::wl_compositor_init
+            ]
         ),
     );
     event_queue.sync_roundtrip().unwrap();
