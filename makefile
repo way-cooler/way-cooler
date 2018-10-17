@@ -10,3 +10,11 @@ awesome:
 
 way_cooler:
 	./target/debug/way-cooler
+
+man:
+	./makedocs.sh -m manpages target/man
+
+html:
+	./makedocs.sh -h manpages target/html
+
+docs: man html
