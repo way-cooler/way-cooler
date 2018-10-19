@@ -135,9 +135,8 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value<'lua>) -> rlua::Result
 
 #[cfg(test)]
 mod test {
-    use super::super::root;
-    use super::super::tag;
-    use super::super::key;
+    use ::root;
+    use ::objects::{tag, key};
     use rlua::Lua;
 
     #[test]
