@@ -2,7 +2,7 @@ awesome(1)
 ==========
 NOMBRE
 ----
-awesome - Controlador Lua para Way-Cooler
+awesome - un clon de AwesomeWM como cliente Wayland
 
 SINOPSIS
 --------
@@ -11,7 +11,7 @@ SINOPSIS
 DESCRIPCION
 -----------
 
-*way-cooler* es un gestor de ventanas tipo mosaico para WayLand basado en AwesomeWM.
+*way-cooler* es un gestor de ventanas tipo mosaico para Wayland basado en AwesomeWM.
 
 *awesome* controla el comportamiento de *way-cooler* exponiendo APIs de Lua y DBUS. Al iniciar, lee un archivo RC y configura *way-cooler* consecuentemente.
 
