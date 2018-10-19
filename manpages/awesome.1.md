@@ -4,7 +4,7 @@ awesome(1)
 NAME
 ----
 
-awesome - Lua controller for Way-Cooler
+awesome - a clone of AwesomeWM as a Wayland client.
 
 SYNOPSIS
 --------
@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-*way-cooler* is a tiling window manager for WayLand based on AwesomeWM.
+*way-cooler* is a tiling window manager for Wayland based on AwesomeWM.
 
 *awesome* controls *way-cooler*'s behavior by exposing Lua and DBUS APIs. At startup, it reads an RC file and configure *way-cooler* accordingly.
 

@@ -4,7 +4,7 @@ awesome(1)
 NOM
 ----
 
-awesome - Gestionnaire de Way-Cooler
+awesome - client Wayland clone de AwesomeWM.
 
 SYNOPSIS
 --------
@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-*way-cooler* est un gestionnaire de fenêtres par tuile pour WayLand basé sur AwesomeWM.
+*way-cooler* est un gestionnaire de fenêtres par tuile pour Wayland basé sur AwesomeWM.
 
 *awesome* contrôle *way-cooler* en exposant des APIs Lua et DBUS. Lors du lancement, il exécute son fichier de configuration et configure du même coup *way-cooler*.
 
