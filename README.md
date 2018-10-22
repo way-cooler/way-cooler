@@ -7,10 +7,12 @@ Way Cooler is the spiritual successor of [AwesomeWM][] for [Wayland][]. It is wr
 To build Way Cooler, make sure init the submodules correctly:
 
 ```bash
-git submodule update --init --recursive --remote
+git submodule update --init --recursive
 ```
 
 Then run `make build` and then `make run` (or simply `make` to do both steps). This will build and run both halves of Way Cooler.
+
+To get the docs, run `make docs`. Man pages will be in `target/man` and web pages in `target/html`
 
 # Development
 
