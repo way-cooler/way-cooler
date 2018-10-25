@@ -1,4 +1,5 @@
 //! API for root resources, such as wallpapers and keybindings.
+//! Awesome's equivalent of globalconf's properties are accessible via registry keys
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
@@ -14,60 +15,22 @@ use objects::tag;
 /// Handle to the list of global key bindings
 pub const ROOT_KEYS_HANDLE: &'static str = "__ROOT_KEYS";
 
-#[derive(Clone, Debug)]
-pub struct RootState {
-    // TODO Fill in
-    dummy: i32
-}
-
-pub struct Root<'lua>(Object<'lua>);
-
-impl Default for RootState {
-    fn default() -> Self {
-        RootState { dummy: 0 }
-    }
-}
-
-impl Display for RootState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Root: {:p}", self)
-    }
-}
-
-impl<'lua> ToLua<'lua> for Root<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
-impl UserData for RootState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
-        object::default_add_methods(methods);
-    }
-}
-
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
-    // FIXME: In awesome there is no root class
-    method_setup(lua, Class::builder(lua, "FIXME", None)?)?.save_class("root")?
-                                                           .build()
-}
-
-fn method_setup<'lua>(lua: &'lua Lua,
-                      builder: ClassBuilder<'lua>)
-                      -> rlua::Result<ClassBuilder<'lua>> {
+pub fn init(lua: &Lua) -> rlua::Result<()> {
     // TODO Do properly
     use objects::dummy;
-    builder.method("connect_signal".into(), lua.create_function(dummy)?)?
-           .method("buttons".into(), lua.create_function(dummy)?)?
-           .method("wallpaper".into(), lua.create_function(wallpaper)?)?
-           .method("tags".into(), lua.create_function(tags)?)?
-           .method("keys".into(), lua.create_function(root_keys)?)?
-           .method("size".into(), lua.create_function(dummy_double)?)?
-           .method("size_mm".into(), lua.create_function(dummy_double)?)?
-           .method("cursor".into(), lua.create_function(dummy)?)
-}
 
-impl_objectable!(Root, RootState);
+    let root = lua.create_table()?;
+    root.set("connect_signal", lua.create_function(dummy)?)?;
+    root.set("buttons", lua.create_function(dummy)?)?;
+    root.set("wallpaper", lua.create_function(wallpaper)?)?;
+    root.set("tags", lua.create_function(tags)?)?;
+    root.set("keys", lua.create_function(root_keys)?)?;
+    root.set("size", lua.create_function(dummy_double)?)?;
+    root.set("size_mm", lua.create_function(dummy_double)?)?;
+    root.set("cursor", lua.create_function(dummy)?)?;
+
+    lua.globals().set("root", root)
+}
 
 fn dummy_double<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<(i32, i32)> {
     Ok((0, 0))
