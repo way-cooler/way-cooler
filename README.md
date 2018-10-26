@@ -4,7 +4,7 @@ Way Cooler is the spiritual successor of [AwesomeWM][] for [Wayland][]. It is wr
 
 
 # Building
-To build Way Cooler, make sure init the submodules correctly:
+To build Way Cooler, make sure to init the submodules correctly:
 
 ```bash
 git submodule update --init --recursive
