@@ -4,14 +4,13 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use rlua::{self, AnyUserData, Integer, Lua, Table, ToLua, UserData,
+use rlua::{self, AnyUserData, Integer, Lua, Table, FromLua, ToLua, UserData,
            UserDataMethods, Value};
 
 use common::{class::{self, Class, ClassBuilder},
              object::{self, Object, ObjectBuilder, Objectable},
              property::Property,
              signal};
-
 use objects::client::{ClientState, Client};
 
 pub const TAG_LIST: &'static str = "__tag_list";
@@ -41,11 +40,11 @@ impl<'lua> Tag<'lua> {
                 .build())
     }
 
-    pub fn get_clients(&self) -> rlua::Result<Table<'lua>> {
+    pub fn get_clients(&self) -> rlua::Result<Vec<AnyUserData<'lua>>> {
         self.0.table()?.get("__clients")
     }
 
-    pub fn set_clients(&mut self, clients: rlua::Table) -> rlua::Result<Value> {
+    pub fn set_clients(&mut self, clients: Vec<AnyUserData>) -> rlua::Result<Value> {
         // TODO: this is a really inefficient solution ( O(n*m) for the search )
         //   Since it does not generally treat big arrays, this may be acceptable,
         //   However a faster algorithm would not hurt if someone finds one
@@ -53,25 +52,21 @@ impl<'lua> Tag<'lua> {
         let prev_clients = self.get_clients()?;
 
         // Indexes refering to prev_clients
-        let mut not_common_clients: Vec<u32> = (1..(prev_clients.len()? + 1) as u32)
+        let mut not_common_clients: Vec<u32> = (1..=prev_clients.len() as u32)
                                                     .collect();
         let mut num_common_clients = 0;
             
-        for client in clients.clone().sequence_values::<AnyUserData>() {
-            let mut idx = -1;
-            let client = Client::cast(client?.clone().into())?;
-            let self_ref = &*client.state()? as *const _;
+        for client in clients.iter() {
+            let client = Client::cast((*client).clone().into())?;
+            let state_ref = &*client.state()? as *const _;
 
-            for pair in prev_clients.clone().pairs::<Integer, AnyUserData>() {
-                let (i, c) = pair?;
-                if &*c.borrow::<ClientState>()? as *const _ == self_ref {
-                    idx = i;
-                    num_common_clients += 1;
-                    not_common_clients.remove((i - num_common_clients) as usize);
-                    break;
-                }
-            }
-            if idx != -1 {
+            let idx = prev_clients.clone().iter().position(|ref c| {
+                &*c.borrow::<ClientState>().unwrap() as *const _ == state_ref
+            });
+            if let Some(i) = idx {
+                num_common_clients += 1;
+                not_common_clients.remove((i - num_common_clients) as usize);
+            } else {
                 // TODO: emit signal
             }
         }
@@ -83,40 +78,42 @@ impl<'lua> Tag<'lua> {
         Ok(Value::Nil)
     }
 
-    pub fn client_index(&self, client: &Client) -> rlua::Result<Integer> {
-        let clients = self.get_clients()?;
-        let self_ref = &*client.state()? as *const _;
-        for pair in clients.pairs::<Integer, AnyUserData<'lua>>() {
-            let (i, c) = pair?;
-            if &*c.borrow::<ClientState>()? as *const _ == self_ref {
-                return Ok(i);
+    pub fn client_index(&self, client: &Client) -> Option<usize> {
+        if let Ok(state) = client.state() {
+            if let Ok(clients) = self.get_clients() {
+                return clients.iter().position(|ref c| {
+                    let state_ref = &*state as *const _;
+
+                    &*c.borrow::<ClientState>().unwrap() as *const _ == state_ref
+                })
             }
         }
-        Err(rlua::Error::RuntimeError("Client not found".to_string()))
+        None
     }
 
     pub fn tag_client(&mut self, obj: AnyUserData<'lua>) -> rlua::Result<Value> {
         let client = Client::cast(obj.clone().into())?;
-        if let Ok(_) = self.client_index(&client) {
+        if let Some(_) = self.client_index(&client) { // if it is already part of the clients
             return Ok(Value::Nil);
         }
-        let clients = self.get_clients()?;
-        clients.set(clients.len()? + 1, obj)?;
-        self.set_clients(clients)?;
+        let mut clients: Vec<AnyUserData> = self.0.table()?.get("__clients")?;
+        clients.push(obj);
+        self.0.table()?.set("__clients", clients)?;
         Ok(Value::Nil)
     }
 
     pub fn untag_client(&mut self, obj: AnyUserData<'lua>) -> rlua::Result<Value> {
         let client = Client::cast(obj.clone().into())?;
-        let index = self.client_index(&client)?;
-        let clients = self.get_clients()?;
+        let mut clients: Vec<AnyUserData> = self.0.table()?.get("__clients")?;
 
-        for i in index..clients.len()? {
-            clients.set(i, clients.get::<_, Value>(i + 1)?)?;
+        match self.client_index(&client) {
+            Some(index) => {
+                clients.remove(index);
+                self.0.table()?.set("__clients", clients)?;
+                Ok(Value::Nil)
+            }
+            None => Err(rlua::Error::RuntimeError("Client to untag was not tagged".into()))
         }
-        clients.set(clients.len()?, Value::Nil)?;
-        self.set_clients(clients)?;
-        Ok(Value::Nil)
     }
 }
 
@@ -167,6 +164,10 @@ fn method_setup<'lua>(lua: &'lua Lua,
            .property(Property::new("clients".into(),
                                    Some(lua.create_function(get_clients)?),
                                    Some(lua.create_function(|lua, _: Value| {
+                                        // TODO:
+                                        // - Right now this is a property that
+                                        //    returns a function. Can we get
+                                        //    rid of some of this indirection?
                                     Ok(Value::Function(lua.create_function(get_clients)?))
                                    })?),
                                    None))
@@ -262,15 +263,11 @@ fn get_activated<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Val
     Ok(Value::Boolean(obj.borrow::<TagState>()?.activated))
 }
 
-fn get_clients<'lua>(_lua: &'lua Lua,  (obj, val): (AnyUserData<'lua>, Value<'lua>)) -> rlua::Result<Table<'lua>> {
-    // TODO:
-    // - Right now this is a property that returns a function. Can we get rid of
-    // some of this indirection?
+fn get_clients<'lua>(lua: &'lua Lua,  (obj, val): (AnyUserData<'lua>, Value<'lua>)) -> rlua::Result<Vec<AnyUserData<'lua>>> {
     let mut tag = Tag(obj.into());
-    match val {
-        Value::Table(clients) => tag.set_clients(clients),
-        _ => Ok(Value::Nil),
-    }?;
+    if let Value::Table(_) = val {
+        tag.set_clients(Vec::from_lua(val, &lua)?)?;
+    };
     tag.get_clients()
 }
 
@@ -278,7 +275,7 @@ fn get_clients<'lua>(_lua: &'lua Lua,  (obj, val): (AnyUserData<'lua>, Value<'lu
 mod test {
     use super::super::{tag::{self, Tag}, client::{self, Client}};
     use common::object::Objectable;
-    use rlua::{Lua, Value, ToLua};
+    use rlua::{Lua, Value, ToLua, AnyUserData};
 
     #[test]
     fn tag_name_empty() {
@@ -453,6 +450,32 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
     }
 
     #[test]
+    fn tag_reference() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        client::init(&lua).unwrap();
+        let globals = lua.globals();
+
+        let client = Client::new(&lua, lua.create_table().unwrap()).unwrap().to_lua(&lua).unwrap();
+        if let Value::UserData(c) = client {
+            let mut t = Tag::cast(Tag::new(&lua, lua.create_table().unwrap()).unwrap().into()).unwrap();
+            t.tag_client(c.clone()).unwrap();
+            globals.set("t", t).unwrap();
+            globals.set("c", c).unwrap();
+            lua.eval::<()>(r#"
+                assert(#t:clients() == 1, "Clients are not tagged")
+            "#, None).unwrap();
+
+            let mut t = Tag::cast(globals.get::<_, AnyUserData>("t").unwrap().into()).unwrap();
+            let c = globals.get::<_, AnyUserData>("c").unwrap();
+            t.untag_client(c).unwrap();
+            lua.eval(r#"
+                assert(#t:clients() == 0, "Tags are not passed by reference")
+            "#, None).unwrap()
+        }
+    }
+
+    #[test]
     fn tag_share_client() {
         let lua = Lua::new();
         tag::init(&lua).unwrap();
@@ -495,6 +518,34 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
     }
 
     #[test]
+    fn tag_client_reference() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        client::init(&lua).unwrap();
+        let globals = lua.globals();
+
+        let client = Client::new(&lua, lua.create_table().unwrap()).unwrap().to_lua(&lua).unwrap();
+        if let Value::UserData(c) = client {
+            let mut t = Tag::cast(Tag::new(&lua, lua.create_table().unwrap()).unwrap().into()).unwrap();
+            t.tag_client(c.clone()).unwrap();
+            globals.set("t", t).unwrap();
+            globals.set("c", c).unwrap();
+            lua.eval::<()>(r#"
+                assert(#t:clients() == 1, "Clients are not tagged")
+            "#, None).unwrap();
+
+            let mut c = Client::cast(globals.get::<_, AnyUserData>("c").unwrap().into()).unwrap();
+            c.get_object_mut().unwrap().dummy = 1;
+            lua.eval::<()>(r#"
+                assert(t:clients()[1] == c, "Tags are not passed by reference")
+            "#, None).unwrap();
+
+            let mut c = Client::cast(globals.get::<_, AnyUserData>("c").unwrap().into()).unwrap();
+            assert!(c.get_object_mut().unwrap().dummy == 1)
+        }
+    }
+
+    #[test]
     fn tag_tag_client() {
         let lua = Lua::new();
         let globals = lua.globals();
@@ -533,7 +584,7 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
             lua.eval(
                  r#"
     assert(c, "client doesn't exists")
-    assert(#t:clients() == 0, "Client are not untagged")
+    assert(#t:clients() == 0, "Clients are not untagged")
     "#,
                  None
             ).unwrap()

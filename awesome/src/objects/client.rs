@@ -12,7 +12,7 @@ use common::{class::{self, Class, ClassBuilder},
 #[derive(Clone, Debug)]
 pub struct ClientState {
     // TODO Fill in
-    dummy: i32
+    pub dummy: i32
 }
 
 pub struct Client<'lua>(Object<'lua>);
