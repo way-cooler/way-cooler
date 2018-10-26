@@ -50,15 +50,14 @@ impl<'lua> Tag<'lua> {
         //   Since it does not generally treat big arrays, this may be acceptable,
         //   However a faster algorithm would not hurt if someone finds one
 
-        let prev_clients: HashSet<_> = self.get_clients()?
-                                           .iter()
-                                           .map(|obj| Client::cast(obj.clone().into())
-                                                              .unwrap())
-                                           .collect();
-        let clients: HashSet<_> = clients.iter()
-                                         .map(|obj| Client::cast(obj.clone().into())
-                                                            .unwrap())
-                                         .collect();
+        let prev_clients = self.get_clients()?
+                               .iter()
+                               .map(|obj| Client::cast(obj.clone().into()))
+                               .collect::<rlua::Result<HashSet<_>>>()?;
+        let clients = clients.iter()
+                             .map(|obj| Client::cast(obj.clone().into()))
+                             .collect::<rlua::Result<HashSet<_>>>()?;
+
             
         for client in clients.difference(&prev_clients) {
             // emit signal
@@ -68,23 +67,23 @@ impl<'lua> Tag<'lua> {
             // TODO: emit signal and garbage if not referenced anymore
         };
 
-        let new_clients: Vec<_> = clients
-                            .difference(&prev_clients)
-                            .cloned()
-                            .collect();
-        self.0.table()?.set("__clients", new_clients)?;
+        self.0.table()?.set("__clients", clients.into_iter().collect::<Vec<_>>())?;
         Ok(Value::Nil)
     }
 
-    pub fn client_index(&self, client: &Client) -> Option<usize> {
-        self.get_clients().unwrap().iter().position(|c| {
-            Client::cast(c.clone().into()).unwrap() == *client
-        })
+    pub fn client_index(&self, client: &Client) -> rlua::Result<Option<usize>> {
+        // TODO: remove the chaining of collect and into_iter
+        Ok(self.get_clients()?
+                          .iter()
+                          .map(|obj| Client::cast(obj.clone().into()))
+                          .collect::<rlua::Result<Vec<Client>>>()?
+                          .into_iter()
+                          .position(|c| c == *client))
     }
 
     pub fn tag_client(&mut self, obj: AnyUserData<'lua>) -> rlua::Result<Value> {
         let client = Client::cast(obj.clone().into())?;
-        if let Some(_) = self.client_index(&client) { // if it is already part of the clients
+        if let Some(_) = self.client_index(&client)? { // if it is already part of the clients
             return Ok(Value::Nil);
         }
         let mut clients: Vec<AnyUserData> = self.0.table()?.get("__clients")?;
@@ -97,7 +96,7 @@ impl<'lua> Tag<'lua> {
         let client = Client::cast(obj.clone().into())?;
         let mut clients: Vec<AnyUserData> = self.0.table()?.get("__clients")?;
 
-        match self.client_index(&client) {
+        match self.client_index(&client)? {
             Some(index) => {
                 clients.remove(index);
                 self.0.table()?.set("__clients", clients)?;
@@ -431,6 +430,25 @@ assert(#t:clients() == 0, "Cannot get the clients")
              r#"
 local c = client{}
 local t = tag{}
+t:clients({ c })
+assert(c, "client doesn't exists")
+assert(#t:clients() == 1, "Tag doesn't have the clients")
+assert(t:clients()[1] == c, "Pass by value, not by reference")
+"#,
+             None
+        ).unwrap()
+    }
+
+    #[test]
+    fn tag_set_client_double() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        client::init(&lua).unwrap();
+        lua.eval(
+             r#"
+local c = client{}
+local t = tag{}
+t:clients({ c })
 t:clients({ c })
 assert(c, "client doesn't exists")
 assert(#t:clients() == 1, "Tag doesn't have the clients")

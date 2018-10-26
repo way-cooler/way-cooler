@@ -10,7 +10,7 @@ use rlua::{self, Lua, Table, ToLua, UserData, Value};
 use common::{class::{self, Class, ClassBuilder},
              object::{Object, Objectable}};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Hash)]
 pub struct ClientState {
     // TODO Fill in
     pub dummy: i32
@@ -27,7 +27,7 @@ impl Default for ClientState {
 
 impl<'lua> PartialEq for Client<'lua> {
     fn eq(&self, other: &Self) -> bool {
-        *self.state().unwrap() == *other.state().unwrap()
+        &*self.state().unwrap() as *const _ == &*other.state().unwrap() as *const _
     }
 }
 
