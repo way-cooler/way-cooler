@@ -3,23 +3,39 @@
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+use std::hash::{Hash, Hasher};
 
 use rlua::{self, Lua, Table, ToLua, UserData, Value};
 
 use common::{class::{self, Class, ClassBuilder},
              object::{Object, Objectable}};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ClientState {
     // TODO Fill in
     pub dummy: i32
 }
 
+#[derive(Clone)]
 pub struct Client<'lua>(Object<'lua>);
 
 impl Default for ClientState {
     fn default() -> Self {
         ClientState { dummy: 0 }
+    }
+}
+
+impl<'lua> PartialEq for Client<'lua> {
+    fn eq(&self, other: &Self) -> bool {
+        *self.state().unwrap() == *other.state().unwrap()
+    }
+}
+
+impl<'lua> Eq for Client<'lua> {}
+
+impl<'lua> Hash for Client<'lua> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.state().unwrap().hash(state);
     }
 }
 

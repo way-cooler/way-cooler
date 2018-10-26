@@ -3,6 +3,7 @@
 
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
+use std::collections::HashSet;
 
 use rlua::{self, AnyUserData, Integer, Lua, Table, FromLua, ToLua, UserData,
            UserDataMethods, Value};
@@ -49,46 +50,36 @@ impl<'lua> Tag<'lua> {
         //   Since it does not generally treat big arrays, this may be acceptable,
         //   However a faster algorithm would not hurt if someone finds one
 
-        let prev_clients = self.get_clients()?;
-
-        // Indexes refering to prev_clients
-        let mut not_common_clients: Vec<u32> = (1..=prev_clients.len() as u32)
-                                                    .collect();
-        let mut num_common_clients = 0;
+        let prev_clients: HashSet<_> = self.get_clients()?
+                                           .iter()
+                                           .map(|obj| Client::cast(obj.clone().into())
+                                                              .unwrap())
+                                           .collect();
+        let clients: HashSet<_> = clients.iter()
+                                         .map(|obj| Client::cast(obj.clone().into())
+                                                            .unwrap())
+                                         .collect();
             
-        for client in clients.iter() {
-            let client = Client::cast((*client).clone().into())?;
-            let state_ref = &*client.state()? as *const _;
+        for client in clients.difference(&prev_clients) {
+            // emit signal
+        };
 
-            let idx = prev_clients.clone().iter().position(|ref c| {
-                &*c.borrow::<ClientState>().unwrap() as *const _ == state_ref
-            });
-            if let Some(i) = idx {
-                num_common_clients += 1;
-                not_common_clients.remove((i - num_common_clients) as usize);
-            } else {
-                // TODO: emit signal
-            }
-        }
-        for idx in not_common_clients.iter() {
-            // prev_clients.get::<Integer, ClientState>(idx)?
+        for client in prev_clients.difference(&clients) {
             // TODO: emit signal and garbage if not referenced anymore
-        }
-        self.0.table()?.set("__clients", clients)?;
+        };
+
+        let new_clients: Vec<_> = clients
+                            .difference(&prev_clients)
+                            .cloned()
+                            .collect();
+        self.0.table()?.set("__clients", new_clients)?;
         Ok(Value::Nil)
     }
 
     pub fn client_index(&self, client: &Client) -> Option<usize> {
-        if let Ok(state) = client.state() {
-            if let Ok(clients) = self.get_clients() {
-                return clients.iter().position(|ref c| {
-                    let state_ref = &*state as *const _;
-
-                    &*c.borrow::<ClientState>().unwrap() as *const _ == state_ref
-                })
-            }
-        }
-        None
+        self.get_clients().unwrap().iter().position(|c| {
+            Client::cast(c.clone().into()).unwrap() == *client
+        })
     }
 
     pub fn tag_client(&mut self, obj: AnyUserData<'lua>) -> rlua::Result<Value> {
