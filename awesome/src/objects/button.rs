@@ -11,7 +11,7 @@ use wlroots::events::key_events::Key;
 use xcb::ffi::xproto::xcb_button_t;
 
 use common::{class::{self, Class},
-             object::{self, Object, Objectable},
+             object::{self, Object},
              property::Property, signal};
 
 #[derive(Clone, Debug)]
@@ -20,8 +20,7 @@ pub struct ButtonState {
     modifiers: Vec<Key>
 }
 
-#[derive(Clone, Debug)]
-pub struct Button<'lua>(Object<'lua>);
+pub type Button<'lua> = Object<'lua, ButtonState>;
 
 impl Display for ButtonState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -43,7 +42,7 @@ impl UserData for ButtonState {
 }
 
 impl<'lua> Button<'lua> {
-    fn new(lua: &'lua Lua, args: rlua::Table) -> rlua::Result<Object<'lua>> {
+    fn new(lua: &'lua Lua, args: rlua::Table) -> rlua::Result<Button<'lua>> {
         let class = class::class_setup(lua, "button")?;
         Ok(Button::allocate(lua, class)?.handle_constructor_argument(args)?
                                         .build())
@@ -73,15 +72,7 @@ impl<'lua> Button<'lua> {
     }
 }
 
-impl<'lua> ToLua<'lua> for Button<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
-impl_objectable!(Button, ButtonState);
-
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
     Class::builder(lua, "button", None)?
         .method("__call".into(),
                 lua.create_function(|lua, args: rlua::Table|
@@ -102,13 +93,13 @@ fn set_button<'lua>(lua: &'lua Lua,
                     (obj, val): (AnyUserData<'lua>, Value<'lua>))
                     -> rlua::Result<Value<'lua>> {
     use rlua::Value::*;
-    let mut button = Button::cast(obj.clone().into())?;
+    let mut button = Button::cast(obj)?;
     match val {
         Number(num) => button.set_button(num as _)?,
         Integer(num) => button.set_button(num as _)?,
         _ => button.set_button(xcb_button_t::default())?
     }
-    signal::emit_object_signal(lua, obj.into(), "property::button".into(), val)?;
+    signal::emit_object_signal(lua, button, "property::button".into(), val)?;
     Ok(Value::Nil)
 }
 
@@ -119,9 +110,9 @@ fn get_button<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<
 fn set_modifiers<'lua>(lua: &'lua Lua,
                        (obj, modifiers): (AnyUserData<'lua>, Table<'lua>))
                        -> rlua::Result<()> {
-    let mut button = Button::cast(obj.clone().into())?;
+    let mut button = Button::cast(obj)?;
     button.set_modifiers(modifiers.clone())?;
-    signal::emit_object_signal(lua, obj.into(), "property::modifiers".into(), modifiers)?;
+    signal::emit_object_signal(lua, button, "property::modifiers".into(), modifiers)?;
     Ok(())
 }
 

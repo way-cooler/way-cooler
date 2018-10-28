@@ -4,11 +4,11 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use rlua::{self, AnyUserData, Integer, Lua, Table, ToLua, UserData,
+use rlua::{self, AnyUserData, Integer, Lua, Table, UserData,
            UserDataMethods, Value};
 
 use common::{class::{self, Class, ClassBuilder},
-             object::{self, Object, Objectable},
+             object::{self, Object},
              property::Property,
              signal};
 
@@ -21,7 +21,7 @@ pub struct TagState {
     activated: bool
 }
 
-pub struct Tag<'lua>(Object<'lua>);
+pub type Tag<'lua> = Object<'lua, TagState>;
 
 impl Default for TagState {
     fn default() -> Self {
@@ -32,7 +32,7 @@ impl Default for TagState {
 }
 
 impl<'lua> Tag<'lua> {
-    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Tag<'lua>> {
         let class = class::class_setup(lua, "tag")?;
         Ok(Tag::allocate(lua, class)?.handle_constructor_argument(args)?
                                      .build())
@@ -45,27 +45,21 @@ impl Display for TagState {
     }
 }
 
-impl<'lua> ToLua<'lua> for Tag<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
 impl UserData for TagState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         object::default_add_methods(methods);
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<TagState>> {
     lua.set_named_registry_value(TAG_LIST, lua.create_table()?)?;
     method_setup(lua, Class::builder(lua, "tag", None)?)?.save_class("tag")?
                                                          .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
-                      builder: ClassBuilder<'lua>)
-                      -> rlua::Result<ClassBuilder<'lua>> {
+                      builder: ClassBuilder<'lua, TagState>)
+                      -> rlua::Result<ClassBuilder<'lua, TagState>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
@@ -89,14 +83,11 @@ fn method_setup<'lua>(lua: &'lua Lua,
                                    None))
 }
 
-impl_objectable!(Tag, TagState);
-
 fn set_name<'lua>(lua: &'lua Lua,
-                  (obj, val): (AnyUserData<'lua>, String))
+                  (mut tag, val): (Tag<'lua>, String))
                   -> rlua::Result<Value<'lua>> {
-    let mut tag = Tag::cast(obj.clone().into())?;
     tag.get_object_mut()?.name = Some(val.clone());
-    signal::emit_object_signal(lua, obj.into(), "property::name".into(), ())?;
+    signal::emit_object_signal(lua, tag, "property::name".into(), ())?;
     Ok(Value::Nil)
 }
 
@@ -108,9 +99,8 @@ fn get_name<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<
 }
 
 fn set_selected<'lua>(lua: &'lua Lua,
-                      (obj, val): (AnyUserData<'lua>, bool))
+                      (mut tag, val): (Tag<'lua>, bool))
                       -> rlua::Result<Value<'lua>> {
-    let mut tag = Tag::cast(obj.clone().into())?;
     {
         let mut tag = tag.get_object_mut()?;
         if tag.selected == val {
@@ -118,7 +108,7 @@ fn set_selected<'lua>(lua: &'lua Lua,
         }
         tag.selected = val;
     }
-    signal::emit_object_signal(lua, obj.into(), "property::selected".into(), ())?;
+    signal::emit_object_signal(lua, tag, "property::selected".into(), ())?;
     Ok(Value::Nil)
 }
 
@@ -127,9 +117,8 @@ fn get_selected<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Valu
 }
 
 fn set_activated<'lua>(lua: &'lua Lua,
-                       (obj, val): (AnyUserData<'lua>, bool))
+                       (mut tag, val): (Tag<'lua>, bool))
                        -> rlua::Result<Value<'lua>> {
-    let mut tag = Tag::cast(obj.clone().into())?;
     {
         let mut tag = tag.get_object_mut()?;
         if tag.activated == val {
@@ -141,11 +130,11 @@ fn set_activated<'lua>(lua: &'lua Lua,
     let activated_tags_count = activated_tags.len()?;
     if val {
         let index = activated_tags_count + 1;
-        activated_tags.set(index, obj.clone())?;
+        activated_tags.set(index, tag.clone())?;
     } else {
         // Find and remove the tag in/from the list of tags
         {
-            let tag_ref = &*obj.borrow::<TagState>()? as *const _;
+            let tag_ref = &*tag.state()? as *const _;
             let mut found = false;
             for pair in activated_tags.clone().pairs::<Integer, AnyUserData>() {
                 let (key, value) = pair?;
@@ -161,14 +150,14 @@ fn set_activated<'lua>(lua: &'lua Lua,
             }
             assert!(found);
         }
-        set_selected(lua, (obj.clone(), false))?;
+        set_selected(lua, (tag.clone(), false))?;
     }
-    signal::emit_object_signal(lua, obj.into(), "property::activated".into(), ())?;
+    signal::emit_object_signal(lua, tag, "property::activated".into(), ())?;
     Ok(Value::Nil)
 }
 
-fn get_activated<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
-    Ok(Value::Boolean(obj.borrow::<TagState>()?.activated))
+fn get_activated<'lua>(_: &'lua Lua, tag: Tag<'lua>) -> rlua::Result<Value<'lua>> {
+    Ok(Value::Boolean(tag.state()?.activated))
 }
 
 fn get_clients<'lua>(lua: &'lua Lua, _obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {

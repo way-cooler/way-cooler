@@ -50,7 +50,7 @@ use self::lua::{LUA, NEXT_LUA};
 
 
 use self::objects::key::Key;
-use self::common::{object::{Object, Objectable}, signal::*};
+use self::common::{object::Object, signal::*};
 use self::root::ROOT_KEYS_HANDLE;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -217,8 +217,7 @@ fn emit_awesome_keybindings(lua: &Lua,
     let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>(ROOT_KEYS_HANDLE)?;
     for event_keysym in event.pressed_keys() {
         for binding in &keybindings {
-            let obj: Object = binding.clone().into();
-            let key = Key::cast(obj.clone()).unwrap();
+            let key = Key::cast(binding.clone().into()).unwrap();
             let keycode = key.keycode()?;
             let keysym = key.keysym()?;
             let modifiers = key.modifiers()?;
@@ -227,7 +226,7 @@ fn emit_awesome_keybindings(lua: &Lua,
                                 && modifiers == 0
                                 || modifiers == event_modifiers.bits();
             if binding_match {
-                emit_object_signal(&*lua, obj, state_string.into(), event_keysym)?;
+                emit_object_signal(&*lua, key, state_string.into(), event_keysym)?;
             }
         }
     }

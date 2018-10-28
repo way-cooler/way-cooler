@@ -9,7 +9,6 @@ use std::fmt::{self, Display, Formatter};
 use rlua::{self, AnyUserData, Lua, MetaMethod, Table,
            ToLua, UserData, UserDataMethods, Value};
 
-use common::object::Objectable;
 use objects::screen::{Screen, SCREENS_HANDLE};
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";

@@ -9,7 +9,7 @@ use rlua::{self, LightUserData, Lua, Table, ToLua, UserData,
            UserDataMethods, Value};
 
 use common::{class::{Class, ClassBuilder},
-             object::{self, Object, Objectable}};
+             object::{self, Object}};
 use objects::tag;
 
 /// Handle to the list of global key bindings

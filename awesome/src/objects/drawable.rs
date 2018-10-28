@@ -10,7 +10,7 @@ use rlua::{self, AnyUserData, LightUserData, Lua, Table, ToLua,
 use wlroots::{Area, Origin, Size};
 
 use common::{class::{self, Class},
-             object::{self, Object, Objectable},
+             object::{self, Object},
              property::Property};
 
 #[derive(Clone, Debug)]
@@ -21,9 +21,7 @@ pub struct DrawableState {
     refreshed: bool
 }
 
-pub struct Drawable<'lua>(Object<'lua>);
-
-impl_objectable!(Drawable, DrawableState);
+pub type Drawable<'lua> = Object<'lua, DrawableState>;
 
 impl Default for DrawableState {
     fn default() -> Self {
@@ -34,7 +32,7 @@ impl Default for DrawableState {
 }
 
 impl<'lua> Drawable<'lua> {
-    pub fn new(lua: &Lua) -> rlua::Result<Object> {
+    pub fn new(lua: &Lua) -> rlua::Result<Drawable> {
         let class = class::class_setup(lua, "drawable")?;
         let builder = Drawable::allocate(lua, class)?;
         // TODO Do properly
@@ -104,19 +102,13 @@ impl Display for DrawableState {
     }
 }
 
-impl<'lua> ToLua<'lua> for Drawable<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
 impl UserData for DrawableState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         object::default_add_methods(methods);
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<DrawableState>> {
     Class::builder(lua, "drawable", None)?
         .method("geometry".into(), lua.create_function(geometry)?)?
         .property(Property::new("surface".into(),

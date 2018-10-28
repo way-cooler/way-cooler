@@ -8,7 +8,7 @@ use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Valu
 use wlroots::{self, xkbcommon::xkb};
 
 use common::{class::{self, Class, ClassBuilder},
-             object::{self, Object, Objectable},
+             object::{self, Object},
              property::Property};
 use lua::mods_to_num;
 
@@ -19,10 +19,10 @@ pub struct KeyState {
     keycode: xkb::Keycode
 }
 
-pub struct Key<'lua>(Object<'lua>);
+pub type Key<'lua> = Object<'lua, KeyState>;
 
 impl<'lua> Key<'lua> {
-    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Key<'lua>> {
         // TODO FIXME
         let class = class::class_setup(lua, "key")?;
         Ok(Key::allocate(lua, class)?.handle_constructor_argument(args)?
@@ -69,34 +69,28 @@ impl Display for KeyState {
     }
 }
 
-impl<'lua> ToLua<'lua> for Key<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
 impl UserData for KeyState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         object::default_add_methods(methods);
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<KeyState>> {
     property_setup(lua, method_setup(lua, Class::builder(lua, "key", None)?)?)?.save_class("key")?
                                                                                .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
-                      builder: ClassBuilder<'lua>)
-                      -> rlua::Result<ClassBuilder<'lua>> {
+                      builder: ClassBuilder<'lua, KeyState>)
+                      -> rlua::Result<ClassBuilder<'lua, KeyState>> {
     // TODO Do properly
     builder.method("__call".into(),
                    lua.create_function(|lua, args: Table| Key::new(lua, args))?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua,
-                        builder: ClassBuilder<'lua>)
-                        -> rlua::Result<ClassBuilder<'lua>> {
+                        builder: ClassBuilder<'lua, KeyState>)
+                        -> rlua::Result<ClassBuilder<'lua, KeyState>> {
     // TODO Do properly
     builder.property(Property::new("key".into(),
                                    Some(lua.create_function(set_key)?),
@@ -149,5 +143,3 @@ fn set_key<'lua>(_: &'lua Lua,
     }
     Ok(rlua::Value::Nil)
 }
-
-impl_objectable!(Key, KeyState);

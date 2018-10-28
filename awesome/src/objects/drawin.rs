@@ -13,7 +13,7 @@ use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData,
 use wlroots::{Area, Origin, Size, Texture};
 
 use common::{class::{self, Class, ClassBuilder},
-             object::{self, Object, ObjectBuilder, Objectable},
+             object::{self, Object, ObjectBuilder},
              property::Property};
 use objects::drawable::Drawable;
 
@@ -34,8 +34,7 @@ pub struct DrawinState {
 
 unsafe impl Send for DrawinState {}
 
-#[derive(Clone, Debug)]
-pub struct Drawin<'lua>(Object<'lua>);
+pub type Drawin<'lua> = Object<'lua, DrawinState>;
 
 impl UserData for DrawinState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
@@ -50,13 +49,13 @@ impl Display for DrawinState {
 }
 
 impl<'lua> Drawin<'lua> {
-    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Drawin<'lua>> {
         let class = class::class_setup(lua, "drawin")?;
         let mut drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
         let drawin =
             object_setup(lua, Drawin::allocate(lua, class)?)?.handle_constructor_argument(args)?
                                                              .build();
-        let cloned_drawin = drawin.clone().object;
+        let cloned_drawin = drawin.clone().obj;
         drawins.push(cloned_drawin);
         lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
         Ok(drawin)
@@ -66,7 +65,7 @@ impl<'lua> Drawin<'lua> {
     ///
     /// It has the surface that is needed to render to the screen.
     pub fn drawable(&mut self) -> rlua::Result<Drawable> {
-        let table = self.0.table()?;
+        let table = self.table()?;
         Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())
     }
 
@@ -75,7 +74,7 @@ impl<'lua> Drawin<'lua> {
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
-        let table = self.0.table()?;
+        let table = self.table()?;
         let user_data: AnyUserData = table.get::<_, AnyUserData>("drawable")?.clone();
         let mut drawable = Drawable::cast(user_data.into())?;
         let mut state = self.get_object_mut()?;
@@ -143,15 +142,7 @@ impl<'lua> Drawin<'lua> {
     }
 }
 
-impl<'lua> ToLua<'lua> for Drawin<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
-impl_objectable!(Drawin, DrawinState);
-
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<DrawinState>> {
     let drawins: Vec<Drawin> = Vec::new();
     lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
     property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None)?)?)?
@@ -160,8 +151,8 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
-                      builder: ClassBuilder<'lua>)
-                      -> rlua::Result<ClassBuilder<'lua>> {
+                      builder: ClassBuilder<'lua, DrawinState>)
+                      -> rlua::Result<ClassBuilder<'lua, DrawinState>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
@@ -171,8 +162,8 @@ fn method_setup<'lua>(lua: &'lua Lua,
 }
 
 fn property_setup<'lua>(lua: &'lua Lua,
-                        builder: ClassBuilder<'lua>)
-                        -> rlua::Result<ClassBuilder<'lua>> {
+                        builder: ClassBuilder<'lua, DrawinState>)
+                        -> rlua::Result<ClassBuilder<'lua, DrawinState>> {
     builder.property(Property::new("x".into(),
                                    Some(lua.create_function(set_x)?),
                                    Some(lua.create_function(get_x)?),
@@ -196,8 +187,8 @@ fn property_setup<'lua>(lua: &'lua Lua,
 }
 
 fn object_setup<'lua>(lua: &'lua Lua,
-                      builder: ObjectBuilder<'lua>)
-                      -> rlua::Result<ObjectBuilder<'lua>> {
+                      builder: ObjectBuilder<'lua, DrawinState>)
+                      -> rlua::Result<ObjectBuilder<'lua, DrawinState>> {
     // TODO Do properly
     let table = lua.create_table()?;
     let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
