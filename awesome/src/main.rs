@@ -202,38 +202,6 @@ fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
     Ok(())
 }
 
-/// Emits the Awesome keybindinsg.
-fn emit_awesome_keybindings(lua: &Lua,
-                            event: &KeyEvent,
-                            event_modifiers: KeyboardModifier)
-                            -> rlua::Result<()> {
-    let state_string = if event.key_state() == WLR_KEY_PRESSED {
-        "press"
-    } else {
-        "release"
-    };
-    // TODO Should also emit by current focused client so we can
-    // do client based rules.
-    let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>(ROOT_KEYS_HANDLE)?;
-    for event_keysym in event.pressed_keys() {
-        for binding in &keybindings {
-            let obj: Object = binding.clone().into();
-            let key = Key::cast(obj.clone()).unwrap();
-            let keycode = key.keycode()?;
-            let keysym = key.keysym()?;
-            let modifiers = key.modifiers()?;
-            let binding_match = (keysym != 0 && keysym == event_keysym
-                                 || keycode != 0 && keycode == event.keycode())
-                                && modifiers == 0
-                                || modifiers == event_modifiers.bits();
-            if binding_match {
-                emit_object_signal(&*lua, obj, state_string.into(), event_keysym)?;
-            }
-        }
-    }
-    Ok(())
-}
-
 /// Formats the log strings properly
 fn log_format(record: &log::LogRecord) -> String {
     let color = match record.level() {
