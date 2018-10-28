@@ -147,6 +147,7 @@ fn set_index_miss_handler<'lua>(_: &'lua Lua,
     meta.set("__index_miss_handler", func)?;
     Ok(())
 }
+
 fn set_newindex_miss_handler<'lua>(_: &'lua Lua,
                                    (class, func): (AnyUserData, Function))
                                    -> rlua::Result<()> {

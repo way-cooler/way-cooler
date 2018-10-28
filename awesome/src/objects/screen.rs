@@ -6,7 +6,7 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData,
+use rlua::{self, Lua, MetaMethod, Table, ToLua, UserData,
            UserDataMethods, Value};
 use wlroots::{Area, Origin, OutputHandle, Size};
 
@@ -166,18 +166,16 @@ fn property_setup<'lua>(lua: &'lua Lua,
                                    None))
 }
 
-fn get_geometry<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
-    let screen = Screen::cast(object.into())?;
+fn get_geometry<'lua>(lua: &'lua Lua, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
     screen.get_geometry(lua)
 }
 
-fn get_workarea<'lua>(lua: &'lua Lua, object: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
-    let screen = Screen::cast(object.into())?;
+fn get_workarea<'lua>(lua: &'lua Lua, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
     screen.get_workarea(lua)
 }
 
 fn count<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
-    let screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
+    let screens = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?;
     Ok(Value::Integer(screens.len() as _))
 }
 
@@ -191,10 +189,8 @@ fn count<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
 fn iterate_over_screens<'lua>(lua: &'lua Lua,
                               (_, prev): (Value<'lua>, Value<'lua>))
                               -> rlua::Result<Value<'lua>> {
-    let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
-                                      .into_iter()
-                                      .map(|obj| Screen::cast(obj.into()).unwrap())
-                                      .collect();
+    let mut screens = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?;
+
     let index = match prev {
         Value::Nil => 0,
         Value::UserData(ref object) => {

@@ -5,7 +5,7 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use rlua::{self, AnyUserData, Lua, Table, UserData, UserDataMethods, Value};
+use rlua::{self, Lua, Table, UserData, UserDataMethods, Value};
 use wlroots::events::key_events::Key;
 use xcb::ffi::xproto::xcb_button_t;
 
@@ -101,20 +101,19 @@ fn set_button<'lua>(lua: &'lua Lua,
     Ok(Value::Nil)
 }
 
-fn get_button<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
-    Button::cast(obj.into())?.button()
+fn get_button<'lua>(_: &'lua Lua, mut button: Button<'lua>) -> rlua::Result<Value<'lua>> {
+    button.button()
 }
 
 fn set_modifiers<'lua>(lua: &'lua Lua,
-                       (obj, modifiers): (AnyUserData<'lua>, Table<'lua>))
+                       (mut button, modifiers): (Button<'lua>, Table<'lua>))
                        -> rlua::Result<()> {
-    let mut button = Button::cast(obj)?;
     button.set_modifiers(modifiers.clone())?;
     signal::emit_object_signal(lua, button, "property::modifiers".into(), modifiers)?;
     Ok(())
 }
 
-fn get_modifiers<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_modifiers<'lua>(lua: &'lua Lua, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
     use lua::mods_to_lua;
-    mods_to_lua(lua, &Button::cast(obj.into())?.modifiers()?).map(Value::Table)
+    mods_to_lua(lua, &button.modifiers()?).map(Value::Table)
 }

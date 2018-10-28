@@ -6,7 +6,7 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use rlua::{self, AnyUserData, Lua, MetaMethod, Table,
+use rlua::{self, Lua, MetaMethod, Table, AnyUserData,
            ToLua, UserData, UserDataMethods, Value};
 
 use objects::screen::{Screen, SCREENS_HANDLE};
@@ -91,7 +91,7 @@ fn index<'lua>(lua: &'lua Lua,
             // TODO Get output
             let output = unimplemented!();
 
-            let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
+            let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?
                 .into_iter()
                 .map(|obj| Screen::cast(obj.into()).unwrap())
                 .collect();

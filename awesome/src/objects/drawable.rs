@@ -5,7 +5,7 @@ use std::fmt::{self, Display, Formatter};
 
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
-use rlua::{self, AnyUserData, LightUserData, Lua, Table,
+use rlua::{self, LightUserData, Lua, Table,
            UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 
@@ -119,13 +119,11 @@ pub fn init(lua: &Lua) -> rlua::Result<Class<DrawableState>> {
         .build()
 }
 
-fn get_surface<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
-    let drawable = Drawable::cast(obj.into())?;
+fn get_surface<'lua>(_: &'lua Lua, drawable: Drawable<'lua>) -> rlua::Result<Value<'lua>> {
     drawable.get_surface()
 }
 
-fn geometry<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
-    let drawable = Drawable::cast(obj.into())?;
+fn geometry<'lua>(lua: &'lua Lua, drawable: Drawable<'lua>) -> rlua::Result<Table<'lua>> {
     let geometry = drawable.get_geometry()?;
     let Origin { x, y } = geometry.origin;
     let Size { width, height } = geometry.size;
@@ -137,6 +135,6 @@ fn geometry<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Table<
     Ok(table)
 }
 
-fn refresh<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<()> {
-    Drawable::cast(obj.into())?.refresh()
+fn refresh<'lua>(_: &'lua Lua, mut drawable: Drawable<'lua>) -> rlua::Result<()> {
+    drawable.refresh()
 }

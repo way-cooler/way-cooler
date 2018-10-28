@@ -1,14 +1,16 @@
 //! Utility methods and constructors for Lua objects
 
+use std::convert::From;
+use std::fmt::{self, Display, Formatter};
+use std::cell;
+use std::marker::PhantomData;
+
+use rlua::{self, AnyUserData, FromLua, Function, Lua, MetaMethod, Table, ToLua, UserData,
+           UserDataMethods, Value};
+
 use super::class::Class;
 use super::property::Property;
 use super::signal;
-use rlua::{self, AnyUserData, FromLua, Function, Lua, MetaMethod, Table, ToLua, UserData,
-           UserDataMethods, Value};
-use std::convert::From;
-use std::fmt::Display;
-use std::cell;
-use std::marker::PhantomData;
 
 /// Define the traits for states
 pub trait State: UserData + Default + Display + Send {}
@@ -36,6 +38,12 @@ impl<'lua, S: State> From<AnyUserData<'lua>> for Object<'lua, S> {
 impl<'lua, S: State> Into<AnyUserData<'lua>> for Object<'lua, S> {
     fn into(self) -> AnyUserData<'lua> {
         self.obj
+    }
+}
+
+impl<'lua, S: State> Display for Object<'lua, S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Object: {:p}", self)
     }
 }
 
@@ -155,8 +163,8 @@ impl<'lua, S: State> Object<'lua, S> {
         meta.set("emit_signal", lua.create_function(emit_signal::<S>)?)?;
         meta.set("__index", meta.clone())?;
         meta.set("__tostring",
-                  lua.create_function(|_, data: AnyUserData| {
-                                           Ok(format!("{}", data.borrow::<S>()?))
+                  lua.create_function(|_, obj: Object<S>| {
+                                           Ok(format!("{}", obj))
                                        })?)?;
         wrapper_table.set_metatable(Some(meta));
         obj.set_user_value(wrapper_table)?;
@@ -289,9 +297,9 @@ pub fn default_newindex<'lua, S: State>(
     Ok(Value::Nil)
 }
 
-pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<String>
+pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: Object<'lua, S>)
+        -> rlua::Result<String>
         where S: State {
-    let obj: Object<'lua, S> = obj.into();
     let obj_table = obj.table()?;
     if let Some(meta) = obj_table.get_metatable() {
         let class = meta.get::<_, AnyUserData>("__class")?;
