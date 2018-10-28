@@ -33,6 +33,12 @@ impl<'lua, S: State> From<AnyUserData<'lua>> for Object<'lua, S> {
     }
 }
 
+impl<'lua, S: State> Into<AnyUserData<'lua>> for Object<'lua, S> {
+    fn into(self) -> AnyUserData<'lua> {
+        self.obj
+    }
+}
+
 /// Construct a new object, used when using the default Objectable::new.
 pub struct ObjectBuilder<'lua, S: State> {
     lua: &'lua Lua,

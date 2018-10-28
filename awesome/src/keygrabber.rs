@@ -5,7 +5,7 @@ use wlroots::{events::key_events::{Key, KeyEvent}, wlr_key_state,
               xkbcommon::xkb::keysym_get_name, KeyboardModifier, WLR_KEY_PRESSED};
 
 use ::{LUA, lua, root::ROOT_KEYS_HANDLE};
-use common::{object::Object, signal};
+use common::signal;
 use objects::key;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";

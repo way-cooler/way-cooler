@@ -5,8 +5,7 @@
 use std::default::Default;
 use std::fmt::{self, Display, Formatter};
 
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData,
-           UserDataMethods, Value};
+use rlua::{self, AnyUserData, Lua, Table, UserData, UserDataMethods, Value};
 use wlroots::events::key_events::Key;
 use xcb::ffi::xproto::xcb_button_t;
 
@@ -90,10 +89,9 @@ pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
 }
 
 fn set_button<'lua>(lua: &'lua Lua,
-                    (obj, val): (AnyUserData<'lua>, Value<'lua>))
+                    (mut button, val): (Button<'lua>, Value<'lua>))
                     -> rlua::Result<Value<'lua>> {
     use rlua::Value::*;
-    let mut button = Button::cast(obj)?;
     match val {
         Number(num) => button.set_button(num as _)?,
         Integer(num) => button.set_button(num as _)?,

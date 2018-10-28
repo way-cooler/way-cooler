@@ -8,8 +8,7 @@ use std::cell::RefMut;
 
 use cairo::ImageSurface;
 use rlua::prelude::LuaInteger;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData,
-           UserDataMethods, Value};
+use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods};
 use wlroots::{Area, Origin, Size, Texture};
 
 use common::{class::{self, Class, ClassBuilder},

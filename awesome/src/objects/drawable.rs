@@ -5,7 +5,7 @@ use std::fmt::{self, Display, Formatter};
 
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
-use rlua::{self, AnyUserData, LightUserData, Lua, Table, ToLua,
+use rlua::{self, AnyUserData, LightUserData, Lua, Table,
            UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 
