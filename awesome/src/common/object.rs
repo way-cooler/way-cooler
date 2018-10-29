@@ -305,7 +305,7 @@ pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: Object<'lua, S>)
         let class = meta.get::<_, AnyUserData>("__class")?;
         let class_table = class.get_user_value::<Table>()?;
         let name = class_table.get::<_, String>("name")?;
-        return Ok(format!("{}: {:p}", name, &obj.obj as *const _))
+        return Ok(format!("{}: {:p}", name, &*obj.state()?))
     }
     Err(rlua::Error::UserDataTypeMismatch)
 }
