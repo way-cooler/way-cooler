@@ -53,7 +53,7 @@ impl<'lua> Button<'lua> {
     }
 
     pub fn set_button(&mut self, new_val: xcb_button_t) -> rlua::Result<()> {
-        let mut button = self.get_object_mut()?;
+        let mut button = self.state_mut()?;
         button.button = new_val;
         Ok(())
     }
@@ -65,7 +65,7 @@ impl<'lua> Button<'lua> {
 
     pub fn set_modifiers(&mut self, mods: Table<'lua>) -> rlua::Result<()> {
         use lua::mods_to_rust;
-        let mut button = self.get_object_mut()?;
+        let mut button = self.state_mut()?;
         button.modifiers = mods_to_rust(mods)?;
         Ok(())
     }
@@ -101,7 +101,7 @@ fn set_button<'lua>(lua: &'lua Lua,
     Ok(Value::Nil)
 }
 
-fn get_button<'lua>(_: &'lua Lua, mut button: Button<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_button<'lua>(_: &'lua Lua, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
     button.button()
 }
 

@@ -30,7 +30,7 @@ impl<'lua> Key<'lua> {
     }
 
     pub fn set_modifiers(&mut self, modifiers: u32) -> rlua::Result<()> {
-        let mut state = self.get_object_mut()?;
+        let mut state = self.state_mut()?;
         state.modifiers = modifiers;
         Ok(())
     }
@@ -41,7 +41,7 @@ impl<'lua> Key<'lua> {
     }
 
     pub fn set_keysym(&mut self, keysym: wlroots::Key) -> rlua::Result<()> {
-        let mut state = self.get_object_mut()?;
+        let mut state = self.state_mut()?;
         state.keysym = keysym;
         Ok(())
     }
@@ -52,7 +52,7 @@ impl<'lua> Key<'lua> {
     }
 
     pub fn set_keycode(&mut self, keycode: xkb::Keycode) -> rlua::Result<()> {
-        let mut state = self.get_object_mut()?;
+        let mut state = self.state_mut()?;
         state.keycode = keycode;
         Ok(())
     }

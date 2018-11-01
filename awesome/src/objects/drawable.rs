@@ -70,7 +70,7 @@ impl<'lua> Drawable<'lua> {
     /// Sets the geometry, and allocates a new surface.
     pub fn set_geometry(&mut self, geometry: Area) -> rlua::Result<()> {
         use rlua::Error::RuntimeError;
-        let mut drawable = self.get_object_mut()?;
+        let mut drawable = self.state_mut()?;
         let size_changed = drawable.geo != geometry;
         drawable.geo = geometry;
         if size_changed {
@@ -90,7 +90,7 @@ impl<'lua> Drawable<'lua> {
 
     /// Signals that the drawable's surface was updated.
     pub fn refresh(&mut self) -> rlua::Result<()> {
-        let mut drawable = self.get_object_mut()?;
+        let mut drawable = self.state_mut()?;
         drawable.refreshed = true;
         Ok(())
     }

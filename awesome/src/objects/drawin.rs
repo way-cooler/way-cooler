@@ -63,25 +63,24 @@ impl<'lua> Drawin<'lua> {
     ///
     /// It has the surface that is needed to render to the screen.
     pub fn drawable(&mut self) -> rlua::Result<Drawable> {
-        let table = self.table()?;
-        Drawable::cast(table.get::<_, Drawable>("drawable")?.into())
+        self.get_associated_data::<Drawable>("drawable")
     }
 
     pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture<'static>>>> {
-        Ok(RefMut::map(self.get_object_mut()?, |state| &mut state.texture))
+        Ok(RefMut::map(self.state_mut()?, |state| &mut state.texture))
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
-        let table = self.table()?;
-        let user_data = table.get::<_, Drawable>("drawable")?.clone();
-        let mut drawable = Drawable::cast(user_data.into())?;
-        let mut state = self.get_object_mut()?;
-        if state.geometry_dirty {
-            drawable.set_geometry(state.geometry)?;
-            state.geometry_dirty = false;
+        let mut drawable = self.get_associated_data::<Drawable>("drawable")?.clone();
+        {
+            let mut state = self.state_mut()?;
+            if state.geometry_dirty {
+                drawable.set_geometry(state.geometry)?;
+                state.geometry_dirty = false;
+            }
+            state.surface = drawable.state()?.surface.clone();
         }
-        state.surface = drawable.state()?.surface.clone();
-        table.raw_set("drawable", drawable)?;
+        self.set_associated_data("drawable", drawable)?;
         Ok(())
     }
 
@@ -92,7 +91,7 @@ impl<'lua> Drawin<'lua> {
 
     fn set_visible(&mut self, val: bool) -> rlua::Result<()> {
         {
-            let mut drawin = self.get_object_mut()?;
+            let mut drawin = self.state_mut()?;
             drawin.visible = val;
         }
         if val {
@@ -119,7 +118,7 @@ impl<'lua> Drawin<'lua> {
 
     fn resize(&mut self, geometry: Area) -> rlua::Result<()> {
         {
-            let mut state = self.get_object_mut()?;
+            let mut state = self.state_mut()?;
             let old_geometry = state.geometry;
             state.geometry = geometry;
             {

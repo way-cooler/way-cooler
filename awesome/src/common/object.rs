@@ -55,15 +55,13 @@ pub struct ObjectBuilder<'lua, S: State> {
 
 impl<'lua, S: State> ObjectBuilder<'lua, S> {
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
-        let meta = self.object
-                       .table()?
-                       .get_metatable()
+        let meta = self.object.get_metatable()?
                        .expect("Object had no meta table");
         for entry in new_meta.pairs::<rlua::Value, rlua::Value>() {
             let (key, value) = entry?;
             meta.set(key, value)?;
         }
-        self.object.table()?.set_metatable(Some(meta));
+        self.object.set_metatable(meta)?;
         Ok(self)
     }
 
@@ -75,8 +73,7 @@ impl<'lua, S: State> ObjectBuilder<'lua, S> {
 
     pub fn handle_constructor_argument(self, args: Table) -> rlua::Result<Self> {
         let meta = self.object
-                       .table()?
-                       .get_metatable()
+                       .get_metatable()?
                        .expect("Object had no meta table");
         let class = meta.get::<_, AnyUserData>("__class")?;
         let class_table = class.get_user_value::<Table>()?;
@@ -109,13 +106,11 @@ impl<'lua, S: State> ObjectBuilder<'lua, S> {
     }
 }
 
-/// Trait implemented by all objects that represent OO lua objects.
+/// Objects that represent OO lua objects.
 ///
-/// This trait allows casting an object gotten back from the Lua runtime
+/// Allows casting an object gotten back from the Lua runtime
 /// into a concrete object so that Rust can do things with it.
 ///
-/// You can't do anything to the object until it has been converted into a
-/// canonical form using this trait.
 impl<'lua, S: State> Object<'lua, S> {
     pub fn cast(obj: AnyUserData<'lua>) -> rlua::Result<Self> {
         if obj.is::<S>()? {
@@ -126,21 +121,36 @@ impl<'lua, S: State> Object<'lua, S> {
         }
     }
 
+    /// Gets a reference to the internal state for the concrete object.
     pub fn state(&self) -> rlua::Result<cell::Ref<S>> {
         Ok(self.obj.borrow::<S>()?)
     }
 
     /// Gets a mutable reference to the internal state for the concrete object.
-    pub fn get_object_mut(&mut self) -> rlua::Result<cell::RefMut<S>> {
+    pub fn state_mut(&mut self) -> rlua::Result<cell::RefMut<S>> {
         Ok(self.obj.borrow_mut::<S>()?)
     }
 
+    /// Get the signals of the for this object
     pub fn signals(&self) -> rlua::Result<rlua::Table<'lua>> {
-        self.table()?.get::<_, Table>("signals")
+        self.get_associated_data::<Table>("signals")
     }
 
-    pub fn table(&self) -> rlua::Result<Table<'lua>> {
-        self.obj.get_user_value::<Table<'lua>>()
+    pub fn set_associated_data<D: ToLua<'lua> + fmt::Debug>(&self, key: &str, value: D) -> rlua::Result<()> {
+        self.obj.get_user_value::<Table<'lua>>()?.set::<_, D>(key, value)
+    }
+
+    pub fn get_associated_data<D: FromLua<'lua> + fmt::Debug>(&self, key: &str) -> rlua::Result<D> {
+        self.obj.get_user_value::<Table<'lua>>()?.get::<_, D>(key)
+    }
+
+    pub fn get_metatable(&self) -> rlua::Result<Option<Table<'lua>>> {
+        Ok(self.obj.get_user_value::<Table<'lua>>()?.get_metatable())
+    }
+
+    pub fn set_metatable(&self, meta: Table<'lua>) -> rlua::Result<()> {
+         self.obj.get_user_value::<Table<'lua>>()?.set_metatable(Some(meta));
+         Ok(())
     }
 
     /// Lua objects in Way Cooler are just how they are in Awesome:
@@ -208,8 +218,7 @@ pub fn default_index<'lua, S: State>(lua: &'lua Lua,
                                     (obj, index): (Object<'lua, S>, Value<'lua>))
                                     -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
-    let obj_table = obj.table()?;
-    let meta = obj_table.get_metatable().expect("Object had no metatable");
+    let meta = obj.get_metatable()?.expect("Object had no metatable");
     if meta.get::<_, AnyUserData>("__class").is_ok() {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
@@ -231,7 +240,7 @@ pub fn default_index<'lua, S: State>(lua: &'lua Lua,
                                   false
                               }))
         }
-        "data" => obj_table.to_lua(lua),
+        "data" => obj.obj.get_user_value(),
         index => {
             // Try see if there is a property of the class with the name
             if let Ok(class) = meta.get::<_, AnyUserData>("__class") {
@@ -267,8 +276,7 @@ pub fn default_newindex<'lua, S: State>(
                 (obj, index, val): (Object<'lua, S>, String, Value<'lua>))
                 -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
-    let obj_table = obj.table()?;
-    if let Some(meta) = obj_table.get_metatable() {
+    if let Some(meta) = obj.get_metatable()? {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
                 Value::Nil => {}
@@ -292,7 +300,7 @@ pub fn default_newindex<'lua, S: State>(
                 Err(_) => {}
             }
         }
-        // TODO property miss handler if index doesn't exst
+        // TODO property miss handler if index doesn't exist
     }
     Ok(Value::Nil)
 }
@@ -300,8 +308,7 @@ pub fn default_newindex<'lua, S: State>(
 pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: Object<'lua, S>)
         -> rlua::Result<String>
         where S: State {
-    let obj_table = obj.table()?;
-    if let Some(meta) = obj_table.get_metatable() {
+    if let Some(meta) = obj.get_metatable()? {
         let class = meta.get::<_, AnyUserData>("__class")?;
         let class_table = class.get_user_value::<Table>()?;
         let name = class_table.get::<_, String>("name")?;

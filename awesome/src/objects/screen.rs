@@ -80,7 +80,7 @@ impl<'lua> Screen<'lua> {
                     output: Output,
                     outputs: Vec<Output>)
                     -> rlua::Result<()> {
-        let mut state = self.get_object_mut()?;
+        let mut state = self.state_mut()?;
         let (width, height) = output.resolution();
         let resolution = Size { width, height };
         state.outputs = outputs;
@@ -131,7 +131,7 @@ pub fn init<'lua>(lua: &Lua) -> rlua::Result<Class<ScreenState>> {
     if screens.is_empty() {
         let mut screen = Screen::new(lua)?;
         {
-            let mut obj = screen.get_object_mut()?;
+            let mut obj = screen.state_mut()?;
             obj.geometry = Size::new(1024, 768).into();
             obj.workarea = obj.geometry;
         }
@@ -254,8 +254,7 @@ fn index<'lua>(lua: &'lua Lua,
         _ => {}
     }
     // TODO checkudata
-    let table = obj.table()?;
-    let meta = table.get_metatable().expect("screen had no metatable");
+    let meta = obj.get_metatable()?.expect("screen had no metatable");
     match meta.get(index.clone()) {
         Err(_) | Ok(Value::Nil) => object::default_index(lua, (obj, index)),
         Ok(value) => Ok(value)
