@@ -27,7 +27,7 @@ impl<'lua, S: State> From<AnyUserData<'lua>> for Class<'lua, S> {
 #[derive(Clone)]
 pub struct ClassState<S: State> {
     // NOTE That this is missing fields from the C version.
-    // They stored in the meta table instead, to not have unsafety.
+    // They are stored in the meta table instead, to not have unsafety.
     // They are fetchable using getters.
     checker: Option<Checker<S>>,
     instances: u32

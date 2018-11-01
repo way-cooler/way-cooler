@@ -12,9 +12,11 @@ use super::class::Class;
 use super::property::Property;
 use super::signal;
 
-/// Define the traits for states
-pub trait State: UserData + Default + Display + Send {}
-impl<T> State for T where T: UserData + Default + Display + Send {}
+/// The State trait is used to constrain the generic data types in the Object and Class structs.
+/// They can be transferred to and from Lua user data and force type checking
+pub trait State: UserData + Default + Send {}
+
+impl<T> State for T where T: UserData + Default + Send {}
 
 /// All Lua objects can be cast to this.
 #[derive(Debug)]
@@ -136,18 +138,25 @@ impl<'lua, S: State> Object<'lua, S> {
         self.get_associated_data::<Table>("signals")
     }
 
+    /// Set a value to keep inside lua associate with the object, but
+    ///     which should not be transfered to Rust for various reason
+    ///     (e.g. reference to other objects which cause GC problems)
     pub fn set_associated_data<D: ToLua<'lua> + fmt::Debug>(&self, key: &str, value: D) -> rlua::Result<()> {
         self.obj.get_user_value::<Table<'lua>>()?.set::<_, D>(key, value)
     }
 
+
+    /// Get a value to keep inside lua associate with the object
     pub fn get_associated_data<D: FromLua<'lua> + fmt::Debug>(&self, key: &str) -> rlua::Result<D> {
         self.obj.get_user_value::<Table<'lua>>()?.get::<_, D>(key)
     }
 
+    /// Get the metatable for this object
     pub fn get_metatable(&self) -> rlua::Result<Option<Table<'lua>>> {
         Ok(self.obj.get_user_value::<Table<'lua>>()?.get_metatable())
     }
 
+    /// Set the metatable for this object
     pub fn set_metatable(&self, meta: Table<'lua>) -> rlua::Result<()> {
          self.obj.get_user_value::<Table<'lua>>()?.set_metatable(Some(meta));
          Ok(())
