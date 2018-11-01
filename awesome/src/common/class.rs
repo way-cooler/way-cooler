@@ -7,25 +7,25 @@ use std::marker::PhantomData;
 use rlua::{self, AnyUserData, Function, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods,
            Value};
 
-use super::object::{self, Object, State};
+use super::object::{self, Object, ObjectStateType};
 use super::property::Property;
 
 pub type Checker<S> = Arc<Fn(Object<S>) -> bool + Send + Sync>;
 
 #[derive(Clone, Debug)]
-pub struct Class<'lua, S: State> {
+pub struct Class<'lua, S: ObjectStateType> {
     class: AnyUserData<'lua>,
     kind: PhantomData<S>,
 }
 
-impl<'lua, S: State> From<AnyUserData<'lua>> for Class<'lua, S> {
+impl<'lua, S: ObjectStateType> From<AnyUserData<'lua>> for Class<'lua, S> {
     fn from(class: AnyUserData<'lua>) -> Self {
         Class { class, kind: PhantomData }
     }
 }
 
 #[derive(Clone)]
-pub struct ClassState<S: State> {
+pub struct ClassState<S: ObjectStateType> {
     // NOTE That this is missing fields from the C version.
     // They are stored in the meta table instead, to not have unsafety.
     // They are fetchable using getters.
@@ -33,12 +33,12 @@ pub struct ClassState<S: State> {
     instances: u32
 }
 
-pub struct ClassBuilder<'lua, S: State> {
+pub struct ClassBuilder<'lua, S: ObjectStateType> {
     lua: &'lua Lua,
     class: Class<'lua, S>
 }
 
-impl<'lua, S: State> ClassBuilder<'lua, S> {
+impl<'lua, S: ObjectStateType> ClassBuilder<'lua, S> {
     pub fn method(self, name: String, meth: rlua::Function) -> rlua::Result<Self> {
         let table = self.class.class.get_user_value::<Table>()?;
         let meta = table.get_metatable().expect("Class had no meta table!");
@@ -72,20 +72,20 @@ impl<'lua, S: State> ClassBuilder<'lua, S> {
     }
 }
 
-impl<'lua, S: State> ToLua<'lua> for Class<'lua, S> {
+impl<'lua, S: ObjectStateType> ToLua<'lua> for Class<'lua, S> {
     fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
         self.class.to_lua(lua)
     }
 }
 
-impl<S: State> Default for ClassState<S> {
+impl<S: ObjectStateType> Default for ClassState<S> {
     fn default() -> Self {
         ClassState { checker: Option::default(),
                      instances: 0 }
     }
 }
 
-impl<S: State> UserData for ClassState<S> {
+impl<S: ObjectStateType> UserData for ClassState<S> {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         methods.add_meta_function(MetaMethod::Index, class_index);
         // TODO Class new index?
@@ -106,7 +106,7 @@ impl<S: State> UserData for ClassState<S> {
     }
 }
 
-impl<'lua, S: State> Class<'lua, S> {
+impl<'lua, S: ObjectStateType> Class<'lua, S> {
     pub fn builder(lua: &'lua Lua,
                    name: &str,
                    checker: Option<Checker<S>>)
@@ -157,7 +157,7 @@ fn set_newindex_miss_handler<'lua>(_: &'lua Lua,
     Ok(())
 }
 
-pub fn class_setup<'lua, S: State>(lua: &'lua Lua,
+pub fn class_setup<'lua, S: ObjectStateType>(lua: &'lua Lua,
                                    name: &str)
                                    -> rlua::Result<Class<'lua, S>> {
     let class = lua.globals()

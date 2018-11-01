@@ -7,11 +7,11 @@
 use rlua::{self, Function, Lua, Table, ToLua, ToLuaMulti, Value};
 
 use ::GLOBAL_SIGNALS;
-use common::object::{Object, State};
+use common::object::{Object, ObjectStateType};
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
-pub fn connect_signal<S: State>(lua: &Lua,
+pub fn connect_signal<S: ObjectStateType>(lua: &Lua,
                                 obj: Object<S>,
                                 name: String,
                                 funcs: &[Function])
@@ -41,7 +41,7 @@ fn connect_signals<'lua>(lua: &'lua Lua,
     }
 }
 
-pub fn disconnect_signal<S: State>(lua: &Lua,
+pub fn disconnect_signal<S: ObjectStateType>(lua: &Lua,
                                    obj: Object<S>,
                                    name: String)
                                    -> rlua::Result<()> {
@@ -60,7 +60,7 @@ pub fn emit_object_signal<'lua, A, S>(lua: &'lua Lua,
                                       args: A)
                                       -> rlua::Result<()>
     where A: ToLuaMulti<'lua> + Clone,
-          S: State
+          S: ObjectStateType
 {
     let signals = obj.signals()?;
     let mut args = args.to_lua_multi(lua)?;

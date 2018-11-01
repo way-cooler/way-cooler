@@ -12,50 +12,50 @@ use super::class::Class;
 use super::property::Property;
 use super::signal;
 
-/// The State trait is used to constrain the generic data types in the Object and Class structs.
+/// The ObjectStateType trait is used to constrain the generic data types in the Object and Class structs.
 /// They can be transferred to and from Lua user data and force type checking
-pub trait State: UserData + Default + Send {}
+pub trait ObjectStateType: UserData + Default + Send {}
 
-impl<T> State for T where T: UserData + Default + Send {}
+impl<T> ObjectStateType for T where T: UserData + Default + Send {}
 
 /// All Lua objects can be cast to this.
 #[derive(Debug)]
-pub struct Object<'lua, S: State>{
+pub struct Object<'lua, S: ObjectStateType>{
     pub obj: AnyUserData<'lua>,
     state: PhantomData<S>,
 }
 
-impl<'lua, S: State> Clone for Object<'lua, S> {
+impl<'lua, S: ObjectStateType> Clone for Object<'lua, S> {
     fn clone(&self) -> Self {
         Object { obj: self.obj.clone(), state: PhantomData }
     }
 }
 
-impl<'lua, S: State> From<AnyUserData<'lua>> for Object<'lua, S> {
+impl<'lua, S: ObjectStateType> From<AnyUserData<'lua>> for Object<'lua, S> {
     fn from(obj: AnyUserData<'lua>) -> Self {
         Object { obj, state: PhantomData }
     }
 }
 
-impl<'lua, S: State> Into<AnyUserData<'lua>> for Object<'lua, S> {
+impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
     fn into(self) -> AnyUserData<'lua> {
         self.obj
     }
 }
 
-impl<'lua, S: State> Display for Object<'lua, S> {
+impl<'lua, S: ObjectStateType> Display for Object<'lua, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Object: {:p}", self)
     }
 }
 
 /// Construct a new object, used when using the default Objectable::new.
-pub struct ObjectBuilder<'lua, S: State> {
+pub struct ObjectBuilder<'lua, S: ObjectStateType> {
     lua: &'lua Lua,
     object: Object<'lua, S>
 }
 
-impl<'lua, S: State> ObjectBuilder<'lua, S> {
+impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
         let meta = self.object.get_metatable()?
                        .expect("Object had no meta table");
@@ -113,7 +113,7 @@ impl<'lua, S: State> ObjectBuilder<'lua, S> {
 /// Allows casting an object gotten back from the Lua runtime
 /// into a concrete object so that Rust can do things with it.
 ///
-impl<'lua, S: State> Object<'lua, S> {
+impl<'lua, S: ObjectStateType> Object<'lua, S> {
     pub fn cast(obj: AnyUserData<'lua>) -> rlua::Result<Self> {
         if obj.is::<S>()? {
             Ok(obj.into())
@@ -164,7 +164,7 @@ impl<'lua, S: State> Object<'lua, S> {
 
     /// Lua objects in Way Cooler are just how they are in Awesome:
     /// * We expose the user data directly.
-    /// * State for the object is stored using set_user_value in a "wrapper"
+    /// * ObjectStateType for the object is stored using set_user_value in a "wrapper"
     /// table. * The wrapper table has a data field which hosts the data.
     /// * Class methods/attributes are on the meta table of the wrapper table.
     pub fn allocate(lua: &'lua Lua, class: Class<S>) -> rlua::Result<ObjectBuilder<'lua, S>> {
@@ -193,13 +193,13 @@ impl<'lua, S: State> Object<'lua, S> {
     }
 }
 
-impl<'lua, S: State> ToLua<'lua> for Object<'lua, S> {
+impl<'lua, S: ObjectStateType> ToLua<'lua> for Object<'lua, S> {
     fn to_lua(self, _: &'lua Lua) -> rlua::Result<Value<'lua>> {
         Ok(Value::UserData(self.obj))
     }
 }
 
-impl<'lua, S: State> FromLua<'lua> for Object<'lua, S> {
+impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
     fn from_lua(val: Value<'lua>, _lua: &'lua Lua) -> rlua::Result<Self> {
         if let Value::UserData(obj) = val {
             Object::cast(obj)
@@ -212,7 +212,7 @@ impl<'lua, S: State> FromLua<'lua> for Object<'lua, S> {
 /// Can be used for implementing UserData for Lua objects. This provides some
 /// default metafunctions.
 pub fn default_add_methods<S>(methods: &mut UserDataMethods<S>)
-    where S: State
+    where S: ObjectStateType
 {
     methods.add_meta_function(MetaMethod::Index, default_index::<S>);
     methods.add_meta_function(MetaMethod::NewIndex, default_newindex::<S>);
@@ -223,7 +223,7 @@ pub fn default_add_methods<S>(methods: &mut UserDataMethods<S>)
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
-pub fn default_index<'lua, S: State>(lua: &'lua Lua,
+pub fn default_index<'lua, S: ObjectStateType>(lua: &'lua Lua,
                                     (obj, index): (Object<'lua, S>, Value<'lua>))
                                     -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
@@ -280,7 +280,7 @@ pub fn default_index<'lua, S: State>(lua: &'lua Lua,
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
-pub fn default_newindex<'lua, S: State>(
+pub fn default_newindex<'lua, S: ObjectStateType>(
                 _: &'lua Lua,
                 (obj, index, val): (Object<'lua, S>, String, Value<'lua>))
                 -> rlua::Result<Value<'lua>> {
@@ -316,7 +316,7 @@ pub fn default_newindex<'lua, S: State>(
 
 pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: Object<'lua, S>)
         -> rlua::Result<String>
-        where S: State {
+        where S: ObjectStateType {
     if let Some(meta) = obj.get_metatable()? {
         let class = meta.get::<_, AnyUserData>("__class")?;
         let class_table = class.get_user_value::<Table>()?;
@@ -326,19 +326,19 @@ pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: Object<'lua, S>)
     Err(rlua::Error::UserDataTypeMismatch)
 }
 
-fn connect_signal<S: State>(lua: &Lua,
+fn connect_signal<S: ObjectStateType>(lua: &Lua,
                             (obj, signal, func): (Object<S>, String, Function))
                             -> rlua::Result<()> {
     signal::connect_signal(lua, obj.into(), signal, &[func])
 }
 
-fn disconnect_signal<S: State>(lua: &Lua,
+fn disconnect_signal<S: ObjectStateType>(lua: &Lua,
                                (obj, signal): (Object<S>, String))
                                -> rlua::Result<()> {
     signal::disconnect_signal(lua, obj.into(), signal)
 }
 
-fn emit_signal<S: State>(lua: &Lua,
+fn emit_signal<S: ObjectStateType>(lua: &Lua,
                         (obj, signal, args): (Object<S>, String, Value))
                         -> rlua::Result<()> {
     signal::emit_object_signal(lua, obj.into(), signal, args)
