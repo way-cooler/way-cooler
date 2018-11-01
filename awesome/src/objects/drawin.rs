@@ -3,7 +3,6 @@
 
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
-use std::fmt::{self, Display, Formatter};
 use std::cell::RefMut;
 
 use cairo::ImageSurface;
@@ -38,12 +37,6 @@ pub type Drawin<'lua> = Object<'lua, DrawinState>;
 impl UserData for DrawinState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         object::default_add_methods(methods);
-    }
-}
-
-impl Display for DrawinState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Drawin: {:p}", self)
     }
 }
 

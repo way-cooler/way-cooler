@@ -3,7 +3,6 @@
 //! This is mostly used to define bindings.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 
 use rlua::{self, Lua, Table, UserData, UserDataMethods, Value};
 use wlroots::events::key_events::Key;
@@ -20,12 +19,6 @@ pub struct ButtonState {
 }
 
 pub type Button<'lua> = Object<'lua, ButtonState>;
-
-impl Display for ButtonState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Button: {:p}", self)
-    }
-}
 
 impl Default for ButtonState {
     fn default() -> Self {

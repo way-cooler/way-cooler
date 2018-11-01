@@ -1,7 +1,6 @@
 //! Utility methods and constructors for Lua objects
 
 use std::convert::From;
-use std::fmt::{self, Display, Formatter};
 use std::cell;
 use std::marker::PhantomData;
 
@@ -40,12 +39,6 @@ impl<'lua, S: ObjectStateType> From<AnyUserData<'lua>> for Object<'lua, S> {
 impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
     fn into(self) -> AnyUserData<'lua> {
         self.obj
-    }
-}
-
-impl<'lua, S: ObjectStateType> Display for Object<'lua, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Object: {:p}", self)
     }
 }
 
@@ -141,13 +134,13 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
     /// Set a value to keep inside lua associate with the object, but
     ///     which should not be transfered to Rust for various reason
     ///     (e.g. reference to other objects which cause GC problems)
-    pub fn set_associated_data<D: ToLua<'lua> + fmt::Debug>(&self, key: &str, value: D) -> rlua::Result<()> {
+    pub fn set_associated_data<D: ToLua<'lua>>(&self, key: &str, value: D) -> rlua::Result<()> {
         self.obj.get_user_value::<Table<'lua>>()?.set::<_, D>(key, value)
     }
 
 
     /// Get a value to keep inside lua associate with the object
-    pub fn get_associated_data<D: FromLua<'lua> + fmt::Debug>(&self, key: &str) -> rlua::Result<D> {
+    pub fn get_associated_data<D: FromLua<'lua>>(&self, key: &str) -> rlua::Result<D> {
         self.obj.get_user_value::<Table<'lua>>()?.get::<_, D>(key)
     }
 
@@ -181,10 +174,7 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         meta.set("disconnect_signal", lua.create_function(disconnect_signal::<S>)?)?;
         meta.set("emit_signal", lua.create_function(emit_signal::<S>)?)?;
         meta.set("__index", meta.clone())?;
-        meta.set("__tostring",
-                  lua.create_function(|_, obj: Object<S>| {
-                                           Ok(format!("{}", obj))
-                                       })?)?;
+        meta.set("__tostring", lua.create_function(default_tostring::<S>)?)?;
         wrapper_table.set_metatable(Some(meta));
         obj.set_user_value(wrapper_table)?;
         // TODO Emit new signal event

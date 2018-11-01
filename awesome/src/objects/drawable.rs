@@ -1,7 +1,6 @@
 //! A wrapper around a Cairo image surface.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
@@ -93,12 +92,6 @@ impl<'lua> Drawable<'lua> {
         let mut drawable = self.state_mut()?;
         drawable.refreshed = true;
         Ok(())
-    }
-}
-
-impl Display for DrawableState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Drawable: {:p}", self)
     }
 }
 

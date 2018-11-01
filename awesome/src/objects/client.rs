@@ -2,7 +2,6 @@
 //! and other properties based on what kind of shell they are.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
 use rlua::{self, Lua, Table, UserData};
@@ -45,12 +44,6 @@ impl <'lua> Client<'lua> {
         let class = class::class_setup(lua, "client")?;
         Ok(Client::allocate(lua, class)?.handle_constructor_argument(args)?
                                         .build())
-    }
-}
-
-impl Display for ClientState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Client: {:p}", self)
     }
 }
 

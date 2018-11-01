@@ -2,7 +2,6 @@
 //! to multiple tags at once.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 use std::collections::HashSet;
 
 use rlua::{self, Integer, Lua, Table, FromLua, UserData,
@@ -93,12 +92,6 @@ impl<'lua> Tag<'lua> {
             }
             None => Err(rlua::Error::RuntimeError("Client to untag was not tagged".into()))
         }
-    }
-}
-
-impl Display for TagState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Tag: {:p}", self)
     }
 }
 

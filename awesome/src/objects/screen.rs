@@ -4,7 +4,6 @@
 //! screens, and the outputs as reported by Way Cooler.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 
 use rlua::{self, Lua, MetaMethod, Table, ToLua, UserData,
            UserDataMethods, Value};
@@ -34,12 +33,6 @@ pub struct ScreenState {
 }
 
 unsafe impl Send for ScreenState {}
-
-impl Display for ScreenState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Screen: {:p}", self)
-    }
-}
 
 impl PartialEq for ScreenState {
     fn eq(&self, other: &ScreenState) -> bool {

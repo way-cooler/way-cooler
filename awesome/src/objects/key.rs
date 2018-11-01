@@ -2,8 +2,6 @@
 //!
 //! This is mostly used to define keybindings.
 
-use std::fmt::{self, Display, Formatter};
-
 use rlua::{self, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use wlroots::{self, xkbcommon::xkb};
 
@@ -60,12 +58,6 @@ impl<'lua> Key<'lua> {
     pub fn keycode(&self) -> rlua::Result<xkb::Keycode> {
         let state = self.state()?;
         Ok(state.keycode)
-    }
-}
-
-impl Display for KeyState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Key: {:p}", self)
     }
 }
 

@@ -4,7 +4,6 @@
 //! changing the cursor and selecting where it should be on the screen.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 
 use rlua::{self, Lua, MetaMethod, Table, AnyUserData,
            ToLua, UserData, UserDataMethods, Value};
@@ -23,12 +22,6 @@ pub struct MouseState {
 impl Default for MouseState {
     fn default() -> Self {
         MouseState { dummy: 0 }
-    }
-}
-
-impl Display for MouseState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Mouse: {:p}", self)
     }
 }
 
