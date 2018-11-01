@@ -1,15 +1,9 @@
 //! API for root resources, such as wallpapers and keybindings.
 //! Awesome's equivalent of globalconf's properties are accessible via registry keys
 
-use std::default::Default;
-use std::fmt::{self, Display, Formatter};
-
 use cairo_sys::cairo_pattern_t;
-use rlua::{self, LightUserData, Lua, Table, ToLua, UserData,
-           UserDataMethods, Value};
+use rlua::{self, LightUserData, Lua, Table, ToLua, Value};
 
-use common::{class::{Class, ClassBuilder},
-             object::{self, Object}};
 use objects::tag;
 
 /// Handle to the list of global key bindings
