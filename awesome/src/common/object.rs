@@ -20,7 +20,7 @@ impl<T> ObjectStateType for T where T: UserData + Default + Send {}
 /// All Lua objects can be cast to this.
 #[derive(Debug)]
 pub struct Object<'lua, S: ObjectStateType>{
-    pub obj: AnyUserData<'lua>,
+    obj: AnyUserData<'lua>,
     state: PhantomData<S>,
 }
 
@@ -135,13 +135,17 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
     ///     which should not be transfered to Rust for various reason
     ///     (e.g. reference to other objects which cause GC problems)
     pub fn set_associated_data<D: ToLua<'lua>>(&self, key: &str, value: D) -> rlua::Result<()> {
-        self.obj.get_user_value::<Table<'lua>>()?.set::<_, D>(key, value)
+        self.obj
+            .get_user_value::<Table<'lua>>()?
+            .set::<_, D>(key, value)
     }
 
 
     /// Get a value to keep inside lua associate with the object
     pub fn get_associated_data<D: FromLua<'lua>>(&self, key: &str) -> rlua::Result<D> {
-        self.obj.get_user_value::<Table<'lua>>()?.get::<_, D>(key)
+        self.obj
+            .get_user_value::<Table<'lua>>()?
+            .get::<_, D>(key)
     }
 
     /// Get the metatable for this object
