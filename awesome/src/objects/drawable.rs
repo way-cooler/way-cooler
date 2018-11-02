@@ -1,16 +1,15 @@
 //! A wrapper around a Cairo image surface.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
-use rlua::{self, AnyUserData, LightUserData, Lua, Table, ToLua,
+use rlua::{self, LightUserData, Lua, Table,
            UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 
 use common::{class::{self, Class},
-             object::{self, Object, Objectable},
+             object::{self, Object},
              property::Property};
 
 #[derive(Clone, Debug)]
@@ -21,9 +20,7 @@ pub struct DrawableState {
     refreshed: bool
 }
 
-pub struct Drawable<'lua>(Object<'lua>);
-
-impl_objectable!(Drawable, DrawableState);
+pub type Drawable<'lua> = Object<'lua, DrawableState>;
 
 impl Default for DrawableState {
     fn default() -> Self {
@@ -34,7 +31,7 @@ impl Default for DrawableState {
 }
 
 impl<'lua> Drawable<'lua> {
-    pub fn new(lua: &Lua) -> rlua::Result<Object> {
+    pub fn new(lua: &Lua) -> rlua::Result<Drawable> {
         let class = class::class_setup(lua, "drawable")?;
         let builder = Drawable::allocate(lua, class)?;
         // TODO Do properly
@@ -72,7 +69,7 @@ impl<'lua> Drawable<'lua> {
     /// Sets the geometry, and allocates a new surface.
     pub fn set_geometry(&mut self, geometry: Area) -> rlua::Result<()> {
         use rlua::Error::RuntimeError;
-        let mut drawable = self.get_object_mut()?;
+        let mut drawable = self.state_mut()?;
         let size_changed = drawable.geo != geometry;
         drawable.geo = geometry;
         if size_changed {
@@ -92,21 +89,9 @@ impl<'lua> Drawable<'lua> {
 
     /// Signals that the drawable's surface was updated.
     pub fn refresh(&mut self) -> rlua::Result<()> {
-        let mut drawable = self.get_object_mut()?;
+        let mut drawable = self.state_mut()?;
         drawable.refreshed = true;
         Ok(())
-    }
-}
-
-impl Display for DrawableState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Drawable: {:p}", self)
-    }
-}
-
-impl<'lua> ToLua<'lua> for Drawable<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
     }
 }
 
@@ -116,7 +101,7 @@ impl UserData for DrawableState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<DrawableState>> {
     Class::builder(lua, "drawable", None)?
         .method("geometry".into(), lua.create_function(geometry)?)?
         .property(Property::new("surface".into(),
@@ -127,13 +112,11 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
         .build()
 }
 
-fn get_surface<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
-    let drawable = Drawable::cast(obj.into())?;
+fn get_surface<'lua>(_: &'lua Lua, drawable: Drawable<'lua>) -> rlua::Result<Value<'lua>> {
     drawable.get_surface()
 }
 
-fn geometry<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
-    let drawable = Drawable::cast(obj.into())?;
+fn geometry<'lua>(lua: &'lua Lua, drawable: Drawable<'lua>) -> rlua::Result<Table<'lua>> {
     let geometry = drawable.get_geometry()?;
     let Origin { x, y } = geometry.origin;
     let Size { width, height } = geometry.size;
@@ -145,6 +128,6 @@ fn geometry<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Table<
     Ok(table)
 }
 
-fn refresh<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<()> {
-    Drawable::cast(obj.into())?.refresh()
+fn refresh<'lua>(_: &'lua Lua, mut drawable: Drawable<'lua>) -> rlua::Result<()> {
+    drawable.refresh()
 }

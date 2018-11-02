@@ -2,13 +2,11 @@
 //!
 //! This is mostly used to define keybindings.
 
-use std::fmt::{self, Display, Formatter};
-
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{self, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use wlroots::{self, xkbcommon::xkb};
 
 use common::{class::{self, Class, ClassBuilder},
-             object::{self, Object, Objectable},
+             object::{self, Object},
              property::Property};
 use lua::mods_to_num;
 
@@ -19,10 +17,10 @@ pub struct KeyState {
     keycode: xkb::Keycode
 }
 
-pub struct Key<'lua>(Object<'lua>);
+pub type Key<'lua> = Object<'lua, KeyState>;
 
 impl<'lua> Key<'lua> {
-    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Key<'lua>> {
         // TODO FIXME
         let class = class::class_setup(lua, "key")?;
         Ok(Key::allocate(lua, class)?.handle_constructor_argument(args)?
@@ -30,7 +28,7 @@ impl<'lua> Key<'lua> {
     }
 
     pub fn set_modifiers(&mut self, modifiers: u32) -> rlua::Result<()> {
-        let mut state = self.get_object_mut()?;
+        let mut state = self.state_mut()?;
         state.modifiers = modifiers;
         Ok(())
     }
@@ -41,7 +39,7 @@ impl<'lua> Key<'lua> {
     }
 
     pub fn set_keysym(&mut self, keysym: wlroots::Key) -> rlua::Result<()> {
-        let mut state = self.get_object_mut()?;
+        let mut state = self.state_mut()?;
         state.keysym = keysym;
         Ok(())
     }
@@ -52,7 +50,7 @@ impl<'lua> Key<'lua> {
     }
 
     pub fn set_keycode(&mut self, keycode: xkb::Keycode) -> rlua::Result<()> {
-        let mut state = self.get_object_mut()?;
+        let mut state = self.state_mut()?;
         state.keycode = keycode;
         Ok(())
     }
@@ -63,40 +61,28 @@ impl<'lua> Key<'lua> {
     }
 }
 
-impl Display for KeyState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Key: {:p}", self)
-    }
-}
-
-impl<'lua> ToLua<'lua> for Key<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
 impl UserData for KeyState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         object::default_add_methods(methods);
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<KeyState>> {
     property_setup(lua, method_setup(lua, Class::builder(lua, "key", None)?)?)?.save_class("key")?
                                                                                .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
-                      builder: ClassBuilder<'lua>)
-                      -> rlua::Result<ClassBuilder<'lua>> {
+                      builder: ClassBuilder<'lua, KeyState>)
+                      -> rlua::Result<ClassBuilder<'lua, KeyState>> {
     // TODO Do properly
     builder.method("__call".into(),
                    lua.create_function(|lua, args: Table| Key::new(lua, args))?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua,
-                        builder: ClassBuilder<'lua>)
-                        -> rlua::Result<ClassBuilder<'lua>> {
+                        builder: ClassBuilder<'lua, KeyState>)
+                        -> rlua::Result<ClassBuilder<'lua, KeyState>> {
     // TODO Do properly
     builder.property(Property::new("key".into(),
                                    Some(lua.create_function(set_key)?),
@@ -112,31 +98,28 @@ fn property_setup<'lua>(lua: &'lua Lua,
                                    Some(lua.create_function(set_modifiers)?)))
 }
 
-fn get_modifiers<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<u32> {
-    Key::cast(obj.into())?.modifiers()
+fn get_modifiers<'lua>(_: &'lua Lua, key: Key<'lua>) -> rlua::Result<u32> {
+    key.modifiers()
 }
 
 fn set_modifiers<'lua>(_: &'lua Lua,
-                       (obj, mods): (AnyUserData<'lua>, Table<'lua>))
+                       (mut key, mods): (Key<'lua>, Table<'lua>))
                        -> rlua::Result<()> {
-    let mut key = Key::cast(obj.into())?;
     key.set_modifiers(mods_to_num(mods)?.bits())
 }
 
-fn get_keysym<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
-    let key = Key::cast(obj.into())?;
+fn get_keysym<'lua>(lua: &'lua Lua, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
     // TODO Shouldn't this be able to fail?
     xkb::keysym_get_name(key.keysym()?).to_lua(lua)
 }
 
-fn get_key<'lua>(lua: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<Value<'lua>> {
-    Key::cast(obj.into())?.keysym()?.to_lua(lua)
+fn get_key<'lua>(lua: &'lua Lua, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
+    key.keysym()?.to_lua(lua)
 }
 
 fn set_key<'lua>(_: &'lua Lua,
-                 (obj, key_name): (AnyUserData<'lua>, String))
+                 (mut key, key_name): (Key<'lua>, String))
                  -> rlua::Result<Value<'lua>> {
-    let mut key = Key::cast(obj.clone().into())?;
     if key_name.starts_with('#') && key_name.len() >= 2 {
         let number = key_name[1..].parse::<xkb::Keycode>()
             .map_err(|err| rlua::Error::RuntimeError(format!("Parse error: {:?}", err)))?;
@@ -149,5 +132,3 @@ fn set_key<'lua>(_: &'lua Lua,
     }
     Ok(rlua::Value::Nil)
 }
-
-impl_objectable!(Key, KeyState);

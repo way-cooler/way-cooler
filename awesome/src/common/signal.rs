@@ -7,15 +7,15 @@
 use rlua::{self, Function, Lua, Table, ToLua, ToLuaMulti, Value};
 
 use ::GLOBAL_SIGNALS;
-use common::object::Object;
+use common::object::{Object, ObjectStateType};
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
-pub fn connect_signal(lua: &Lua,
-                      obj: Object,
-                      name: String,
-                      funcs: &[Function])
-                      -> rlua::Result<()> {
+pub fn connect_signal<S: ObjectStateType>(lua: &Lua,
+                                obj: Object<S>,
+                                name: String,
+                                funcs: &[Function])
+                                -> rlua::Result<()> {
     let signals = obj.signals()?;
     connect_signals(lua, signals, name, funcs)
 }
@@ -41,7 +41,10 @@ fn connect_signals<'lua>(lua: &'lua Lua,
     }
 }
 
-pub fn disconnect_signal(lua: &Lua, obj: Object, name: String) -> rlua::Result<()> {
+pub fn disconnect_signal<S: ObjectStateType>(lua: &Lua,
+                                   obj: Object<S>,
+                                   name: String)
+                                   -> rlua::Result<()> {
     let signals = obj.signals()?;
     disconnect_signals(lua, signals, name)
 }
@@ -51,12 +54,13 @@ fn disconnect_signals(_: &Lua, signals: Table, name: String) -> rlua::Result<()>
 }
 
 /// Evaluate the functions associated with a signal.
-pub fn emit_object_signal<'lua, A>(lua: &'lua Lua,
-                                   obj: Object<'lua>,
-                                   name: String,
-                                   args: A)
-                                   -> rlua::Result<()>
-    where A: ToLuaMulti<'lua> + Clone
+pub fn emit_object_signal<'lua, A, S>(lua: &'lua Lua,
+                                      obj: Object<'lua, S>,
+                                      name: String,
+                                      args: A)
+                                      -> rlua::Result<()>
+    where A: ToLuaMulti<'lua> + Clone,
+          S: ObjectStateType
 {
     let signals = obj.signals()?;
     let mut args = args.to_lua_multi(lua)?;

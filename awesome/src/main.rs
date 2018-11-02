@@ -50,7 +50,7 @@ use self::lua::{LUA, NEXT_LUA};
 
 
 use self::objects::key::Key;
-use self::common::{object::{Object, Objectable}, signal::*};
+use self::common::{object::Object, signal::*};
 use self::root::ROOT_KEYS_HANDLE;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");

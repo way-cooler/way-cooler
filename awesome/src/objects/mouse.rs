@@ -4,12 +4,10 @@
 //! changing the cursor and selecting where it should be on the screen.
 
 use std::default::Default;
-use std::fmt::{self, Display, Formatter};
 
-use rlua::{self, AnyUserData, Lua, MetaMethod, Table,
+use rlua::{self, Lua, MetaMethod, Table, AnyUserData,
            ToLua, UserData, UserDataMethods, Value};
 
-use common::object::Objectable;
 use objects::screen::{Screen, SCREENS_HANDLE};
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
@@ -24,12 +22,6 @@ pub struct MouseState {
 impl Default for MouseState {
     fn default() -> Self {
         MouseState { dummy: 0 }
-    }
-}
-
-impl Display for MouseState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Mouse: {:p}", self)
     }
 }
 
@@ -92,7 +84,7 @@ fn index<'lua>(lua: &'lua Lua,
             // TODO Get output
             let output = unimplemented!();
 
-            let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
+            let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?
                 .into_iter()
                 .map(|obj| Screen::cast(obj.into()).unwrap())
                 .collect();

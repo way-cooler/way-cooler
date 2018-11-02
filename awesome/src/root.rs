@@ -97,6 +97,20 @@ mod test {
     use rlua::Lua;
 
     #[test]
+    fn tags_print() {
+        let lua = Lua::new();
+        tag::init(&lua).unwrap();
+        root::init(&lua).unwrap();
+        lua.eval(
+                 r#"
+local first, second = tag{}, tag{}
+assert(tostring(first) ~= tostring(second))
+"#,
+                 None
+        ).unwrap()
+    }
+
+    #[test]
     fn tags_none() {
         let lua = Lua::new();
         tag::init(&lua).unwrap();

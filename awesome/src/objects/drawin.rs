@@ -3,17 +3,15 @@
 
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
-use std::fmt::{self, Display, Formatter};
 use std::cell::RefMut;
 
 use cairo::ImageSurface;
 use rlua::prelude::LuaInteger;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData,
-           UserDataMethods, Value};
+use rlua::{self, Lua, Table, ToLua, UserData, UserDataMethods};
 use wlroots::{Area, Origin, Size, Texture};
 
 use common::{class::{self, Class, ClassBuilder},
-             object::{self, Object, ObjectBuilder, Objectable},
+             object::{self, Object, ObjectBuilder},
              property::Property};
 use objects::drawable::Drawable;
 
@@ -34,8 +32,7 @@ pub struct DrawinState {
 
 unsafe impl Send for DrawinState {}
 
-#[derive(Clone, Debug)]
-pub struct Drawin<'lua>(Object<'lua>);
+pub type Drawin<'lua> = Object<'lua, DrawinState>;
 
 impl UserData for DrawinState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
@@ -43,21 +40,14 @@ impl UserData for DrawinState {
     }
 }
 
-impl Display for DrawinState {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Drawin: {:p}", self)
-    }
-}
-
 impl<'lua> Drawin<'lua> {
-    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Object<'lua>> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Drawin<'lua>> {
         let class = class::class_setup(lua, "drawin")?;
-        let mut drawins = lua.named_registry_value::<Vec<AnyUserData>>(DRAWINS_HANDLE)?;
+        let mut drawins = lua.named_registry_value::<Vec<Drawin>>(DRAWINS_HANDLE)?;
         let drawin =
             object_setup(lua, Drawin::allocate(lua, class)?)?.handle_constructor_argument(args)?
                                                              .build();
-        let cloned_drawin = drawin.clone().object;
-        drawins.push(cloned_drawin);
+        drawins.push(drawin.clone());
         lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
         Ok(drawin)
     }
@@ -66,25 +56,24 @@ impl<'lua> Drawin<'lua> {
     ///
     /// It has the surface that is needed to render to the screen.
     pub fn drawable(&mut self) -> rlua::Result<Drawable> {
-        let table = self.0.table()?;
-        Drawable::cast(table.get::<_, AnyUserData>("drawable")?.into())
+        self.get_associated_data::<Drawable>("drawable")
     }
 
     pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture<'static>>>> {
-        Ok(RefMut::map(self.get_object_mut()?, |state| &mut state.texture))
+        Ok(RefMut::map(self.state_mut()?, |state| &mut state.texture))
     }
 
     fn update_drawing(&mut self) -> rlua::Result<()> {
-        let table = self.0.table()?;
-        let user_data: AnyUserData = table.get::<_, AnyUserData>("drawable")?.clone();
-        let mut drawable = Drawable::cast(user_data.into())?;
-        let mut state = self.get_object_mut()?;
-        if state.geometry_dirty {
-            drawable.set_geometry(state.geometry)?;
-            state.geometry_dirty = false;
+        let mut drawable = self.get_associated_data::<Drawable>("drawable")?.clone();
+        {
+            let mut state = self.state_mut()?;
+            if state.geometry_dirty {
+                drawable.set_geometry(state.geometry)?;
+                state.geometry_dirty = false;
+            }
+            state.surface = drawable.state()?.surface.clone();
         }
-        state.surface = drawable.state()?.surface.clone();
-        table.raw_set("drawable", drawable)?;
+        self.set_associated_data("drawable", drawable)?;
         Ok(())
     }
 
@@ -95,7 +84,7 @@ impl<'lua> Drawin<'lua> {
 
     fn set_visible(&mut self, val: bool) -> rlua::Result<()> {
         {
-            let mut drawin = self.get_object_mut()?;
+            let mut drawin = self.state_mut()?;
             drawin.visible = val;
         }
         if val {
@@ -122,7 +111,7 @@ impl<'lua> Drawin<'lua> {
 
     fn resize(&mut self, geometry: Area) -> rlua::Result<()> {
         {
-            let mut state = self.get_object_mut()?;
+            let mut state = self.state_mut()?;
             let old_geometry = state.geometry;
             state.geometry = geometry;
             {
@@ -143,15 +132,7 @@ impl<'lua> Drawin<'lua> {
     }
 }
 
-impl<'lua> ToLua<'lua> for Drawin<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
-        self.0.to_lua(lua)
-    }
-}
-
-impl_objectable!(Drawin, DrawinState);
-
-pub fn init(lua: &Lua) -> rlua::Result<Class> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<DrawinState>> {
     let drawins: Vec<Drawin> = Vec::new();
     lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
     property_setup(lua, method_setup(lua, Class::builder(lua, "drawin", None)?)?)?
@@ -160,8 +141,8 @@ pub fn init(lua: &Lua) -> rlua::Result<Class> {
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
-                      builder: ClassBuilder<'lua>)
-                      -> rlua::Result<ClassBuilder<'lua>> {
+                      builder: ClassBuilder<'lua, DrawinState>)
+                      -> rlua::Result<ClassBuilder<'lua, DrawinState>> {
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
@@ -171,8 +152,8 @@ fn method_setup<'lua>(lua: &'lua Lua,
 }
 
 fn property_setup<'lua>(lua: &'lua Lua,
-                        builder: ClassBuilder<'lua>)
-                        -> rlua::Result<ClassBuilder<'lua>> {
+                        builder: ClassBuilder<'lua, DrawinState>)
+                        -> rlua::Result<ClassBuilder<'lua, DrawinState>> {
     builder.property(Property::new("x".into(),
                                    Some(lua.create_function(set_x)?),
                                    Some(lua.create_function(get_x)?),
@@ -196,8 +177,8 @@ fn property_setup<'lua>(lua: &'lua Lua,
 }
 
 fn object_setup<'lua>(lua: &'lua Lua,
-                      builder: ObjectBuilder<'lua>)
-                      -> rlua::Result<ObjectBuilder<'lua>> {
+                      builder: ObjectBuilder<'lua, DrawinState>)
+                      -> rlua::Result<ObjectBuilder<'lua, DrawinState>> {
     // TODO Do properly
     let table = lua.create_table()?;
     let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
@@ -208,22 +189,19 @@ fn object_setup<'lua>(lua: &'lua Lua,
     builder.add_to_meta(table)
 }
 
-fn set_visible<'lua>(_: &'lua Lua, (obj, visible): (AnyUserData<'lua>, bool)) -> rlua::Result<()> {
-    let mut drawin = Drawin::cast(obj.into())?;
+fn set_visible<'lua>(_: &'lua Lua, (mut drawin, visible): (Drawin<'lua>, bool)) -> rlua::Result<()> {
     drawin.set_visible(visible)
     // TODO signal
 }
 
-fn get_visible<'lua>(_: &'lua Lua, obj: AnyUserData<'lua>) -> rlua::Result<bool> {
-    let mut drawin = Drawin::cast(obj.into())?;
+fn get_visible<'lua>(_: &'lua Lua, mut drawin: Drawin<'lua>) -> rlua::Result<bool> {
     drawin.get_visible()
     // TODO signal
 }
 
 fn drawin_geometry<'lua>(lua: &'lua Lua,
-                         (drawin, geometry): (AnyUserData<'lua>, Option<Table<'lua>>))
+                         (mut drawin, geometry): (Drawin<'lua>, Option<Table<'lua>>))
                          -> rlua::Result<Table<'lua>> {
-    let mut drawin = Drawin::cast(drawin.into())?;
     if let Some(geometry) = geometry {
         let width = geometry.get::<_, i32>("width")?;
         let height = geometry.get::<_, i32>("height")?;
@@ -245,44 +223,38 @@ fn drawin_geometry<'lua>(lua: &'lua Lua,
     Ok(res)
 }
 
-fn get_x<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
-    let drawin = Drawin::cast(drawin.into())?;
+fn get_x<'lua>(_: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaInteger> {
     let Origin { x, .. } = drawin.get_geometry()?.origin;
     Ok(x as LuaInteger)
 }
 
-fn set_x<'lua>(_: &'lua Lua, (drawin, x): (AnyUserData<'lua>, LuaInteger)) -> rlua::Result<()> {
-    let mut drawin = Drawin::cast(drawin.into())?;
+fn set_x<'lua>(_: &'lua Lua, (mut drawin, x): (Drawin<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut geo = drawin.get_geometry()?;
     geo.origin.x = x as i32;
     drawin.resize(geo)?;
     Ok(())
 }
 
-fn get_y<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
-    let drawin = Drawin::cast(drawin.into())?;
+fn get_y<'lua>(_: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaInteger> {
     let Origin { y, .. } = drawin.get_geometry()?.origin;
     Ok(y as LuaInteger)
 }
 
-fn set_y<'lua>(_: &'lua Lua, (drawin, y): (AnyUserData<'lua>, LuaInteger)) -> rlua::Result<()> {
-    let mut drawin = Drawin::cast(drawin.into())?;
+fn set_y<'lua>(_: &'lua Lua, (mut drawin, y): (Drawin<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut geo = drawin.get_geometry()?;
     geo.origin.y = y as i32;
     drawin.resize(geo)?;
     Ok(())
 }
 
-fn get_width<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
-    let drawin = Drawin::cast(drawin.into())?;
+fn get_width<'lua>(_: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaInteger> {
     let Size { width, .. } = drawin.get_geometry()?.size;
     Ok(width as LuaInteger)
 }
 
 fn set_width<'lua>(_: &'lua Lua,
-                   (drawin, width): (AnyUserData<'lua>, LuaInteger))
+                   (mut drawin, width): (Drawin<'lua>, LuaInteger))
                    -> rlua::Result<()> {
-    let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
     if width > 0 {
         geo.size.width = width as i32;
@@ -291,16 +263,14 @@ fn set_width<'lua>(_: &'lua Lua,
     Ok(())
 }
 
-fn get_height<'lua>(_: &'lua Lua, drawin: AnyUserData<'lua>) -> rlua::Result<LuaInteger> {
-    let drawin = Drawin::cast(drawin.into())?;
+fn get_height<'lua>(_: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaInteger> {
     let Size { height, .. } = drawin.get_geometry()?.size;
     Ok(height as LuaInteger)
 }
 
 fn set_height<'lua>(_: &'lua Lua,
-                    (drawin, height): (AnyUserData<'lua>, LuaInteger))
+                    (mut drawin, height): (Drawin<'lua>, LuaInteger))
                     -> rlua::Result<()> {
-    let mut drawin = Drawin::cast(drawin.into())?;
     let mut geo = drawin.get_geometry()?;
     if height > 0 {
         geo.size.height = height as i32;
@@ -309,7 +279,7 @@ fn set_height<'lua>(_: &'lua Lua,
     Ok(())
 }
 
-fn drawin_struts<'lua>(lua: &'lua Lua, _drawin: AnyUserData<'lua>) -> rlua::Result<Table<'lua>> {
+fn drawin_struts<'lua>(lua: &'lua Lua, _drawin: Drawin<'lua>) -> rlua::Result<Table<'lua>> {
     // TODO: Implement this properly. Struts means this drawin reserves some space
     // on the screen that it is visible on, shrinking the workarea in the
     // specified directions.

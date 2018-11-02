@@ -5,7 +5,7 @@ use wlroots::{events::key_events::{Key, KeyEvent}, wlr_key_state,
               xkbcommon::xkb::keysym_get_name, KeyboardModifier, WLR_KEY_PRESSED};
 
 use ::{LUA, lua, root::ROOT_KEYS_HANDLE};
-use common::{object::{Object, Objectable}, signal};
+use common::signal;
 use objects::key;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
@@ -111,11 +111,9 @@ fn emit_awesome_keybindings(lua: &Lua,
     } else {
         // TODO Should also emit by current focused client so we can
         // do client based rules.
-        let keybindings = lua.named_registry_value::<Vec<rlua::AnyUserData>>(ROOT_KEYS_HANDLE)?;
+        let keybindings = lua.named_registry_value::<Vec<key::Key>>(ROOT_KEYS_HANDLE)?;
         for event_keysym in event.pressed_keys() {
-            for binding in &keybindings {
-                let obj: Object = binding.clone().into();
-                let key = key::Key::cast(obj.clone()).unwrap();
+            for key in &keybindings {
                 let keycode = key.keycode()?;
                 let keysym = key.keysym()?;
                 let modifiers = key.modifiers()?;
@@ -124,7 +122,7 @@ fn emit_awesome_keybindings(lua: &Lua,
                                     && (modifiers == 0
                                     || modifiers == event_modifiers.bits());
                 if binding_match {
-                    if let Err(err) = signal::emit_object_signal(&*lua, obj, state_string.into(), ()) {
+                    if let Err(err) = signal::emit_object_signal(&*lua, key.clone(), state_string.into(), ()) {
                         warn!("Could not emit the signal for {}: {:?}", keysym, err);
                     }
                 }
