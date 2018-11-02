@@ -27,6 +27,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 
 /// Given the current input, handle calling the Lua defined callback if it is
 /// defined with the input.
+#[allow(dead_code)]
 pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua::Result<()> {
     LUA.with(|lua| {
                  let lua = lua.borrow();
@@ -46,11 +47,13 @@ pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua
 }
 
 /// Check is the Lua callback function is set
+#[allow(dead_code)]
 pub fn is_keygrabber_set(lua: &Lua) -> bool {
     lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK).is_ok()
 }
 
 /// Call the Lua callback function for when a key is pressed.
+#[allow(dead_code)]
 pub fn call_keygrabber(lua: &Lua, (mods, key, event): (Table, String, String)) -> rlua::Result<()> {
     let lua_callback = lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK)?;
     lua_callback.call((mods, key, event))
@@ -86,6 +89,7 @@ fn new_index(lua: &Lua, args: Value) -> rlua::Result<()> {
 
 
 /// Emits the Awesome keybindinsg.
+#[allow(dead_code)]
 fn emit_awesome_keybindings(lua: &Lua,
                             event: &KeyEvent,
                             event_modifiers: KeyboardModifier)

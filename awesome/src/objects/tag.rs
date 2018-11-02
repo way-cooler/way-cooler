@@ -51,11 +51,11 @@ impl<'lua> Tag<'lua> {
             let new_clients = clients.iter().cloned()
                                      .collect::<HashSet<_>>();
                 
-            for client in new_clients.difference(&prev_clients) {
+            for _client in new_clients.difference(&prev_clients) {
                 // emit signal
             };
 
-            for client in prev_clients.difference(&new_clients) {
+            for _client in prev_clients.difference(&new_clients) {
                 // TODO: emit signal and garbage if not referenced anymore
             };
         };
@@ -234,7 +234,7 @@ fn get_clients<'lua>(lua: &'lua Lua,  (mut tag, val): (Tag<'lua>, Value<'lua>)) 
 #[cfg(test)]
 mod test {
     use super::super::{tag::{self, Tag}, client::{self, Client}};
-    use rlua::{Lua, Value, ToLua};
+    use rlua::Lua;
 
     #[test]
     fn tag_name_empty() {

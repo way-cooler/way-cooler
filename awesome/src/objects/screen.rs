@@ -7,7 +7,7 @@ use std::default::Default;
 
 use rlua::{self, Lua, MetaMethod, Table, ToLua, UserData,
            UserDataMethods, Value};
-use wlroots::{Area, Origin, OutputHandle, Size};
+use wlroots::{Area, Origin, Size};
 
 use common::{class::{self, Class, ClassBuilder},
              object::{self, Object},
@@ -69,6 +69,7 @@ impl<'lua> Screen<'lua> {
         Ok(Screen::allocate(lua, class)?.build())
     }
 
+    #[allow(dead_code)]
     fn init_screens(&mut self,
                     output: Output,
                     outputs: Vec<Output>)

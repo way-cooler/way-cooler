@@ -55,6 +55,7 @@ impl<'lua, S: ObjectStateType> ClassBuilder<'lua, S> {
     }
 
     // TODO remove, do right
+    #[allow(dead_code)]
     pub fn dummy_property(self, key: String, val: rlua::Value<'lua>) -> rlua::Result<Self> {
         let table = self.class.class.get_user_value::<Table>()?;
         let meta = table.get_metatable().expect("Class had no meta table!");
