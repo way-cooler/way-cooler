@@ -8,10 +8,13 @@ use wlroots::{events::{key_events::Key,
 use rlua::{self, Error::RuntimeError, Lua, Table, Value};
 
 /// Human readable versions of the standard modifier keys.
+#[allow(dead_code)]
 const MOD_NAMES: [&str; 8] = ["Shift", "Caps", "Control", "Alt", "Mod2", "Mod3", "Mod4", "Mod5"];
 /// Keycodes corresponding to various button events.
+#[allow(dead_code)]
 const MOUSE_EVENTS: [u32; 5] = [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, BTN_SIDE, BTN_EXTRA];
 
+#[allow(dead_code)]
 const MOD_TYPES: [(KeyboardModifier, Key); 7] = [
     (KeyboardModifier::WLR_MODIFIER_SHIFT, KEY_Shift_L),
     (KeyboardModifier::WLR_MODIFIER_CAPS,  KEY_Caps_Lock),

@@ -19,7 +19,6 @@ extern crate wayland_client;
 
 // TODO remove
 extern crate wlroots;
-use wlroots::{KeyboardModifier, key_events::KeyEvent, wlr_key_state::*};
 
 #[macro_use]
 mod macros;
@@ -37,7 +36,6 @@ mod lua;
 use std::{env, mem, path::PathBuf, process::exit};
 
 use exec::Command;
-use lua::setup_lua;
 use rlua::{LightUserData, Lua, Table};
 use log::LogLevel;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
@@ -47,11 +45,6 @@ use wayland_client::protocol::{wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
 
 use self::lua::{LUA, NEXT_LUA};
-
-
-use self::objects::key::Key;
-use self::common::{object::Object, signal::*};
-use self::root::ROOT_KEYS_HANDLE;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
@@ -111,7 +104,7 @@ fn main() {
 fn init_wayland() {
     let (display, mut event_queue) = match Display::connect_to_env() {
         Ok(res) => res,
-        Err(err) => {
+        Err(_) => {
             error!("Could not connect to Wayland server. Is it running?");
             exit(1);
         }

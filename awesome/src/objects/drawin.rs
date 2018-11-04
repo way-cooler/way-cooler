@@ -55,10 +55,12 @@ impl<'lua> Drawin<'lua> {
     /// Get the drawable associated with this drawin.
     ///
     /// It has the surface that is needed to render to the screen.
+    #[allow(dead_code)]
     pub fn drawable(&mut self) -> rlua::Result<Drawable> {
         self.get_associated_data::<Drawable>("drawable")
     }
 
+    #[allow(dead_code)]
     pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture<'static>>>> {
         Ok(RefMut::map(self.state_mut()?, |state| &mut state.texture))
     }

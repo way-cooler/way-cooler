@@ -55,6 +55,7 @@ impl<'lua> Key<'lua> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn keycode(&self) -> rlua::Result<xkb::Keycode> {
         let state = self.state()?;
         Ok(state.keycode)

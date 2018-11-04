@@ -9,6 +9,7 @@ use rlua::{self, Lua, MetaMethod, Table, AnyUserData,
            ToLua, UserData, UserDataMethods, Value};
 
 use objects::screen::{Screen, SCREENS_HANDLE};
+use wayland_obj::Output;
 
 const INDEX_MISS_FUNCTION: &'static str = "__index_miss_function";
 const NEWINDEX_MISS_FUNCTION: &'static str = "__newindex_miss_function";
@@ -51,8 +52,8 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
     Ok(())
 }
 
-fn coords<'lua>(lua: &'lua Lua,
-                (coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
+fn coords<'lua>(_lua: &'lua Lua,
+                (_coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
     // TODO Get Cords
     unimplemented!()
@@ -70,29 +71,25 @@ fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
     table.set(NEWINDEX_MISS_FUNCTION, func)
 }
 
+fn get_output() -> Option<Output> {
+    unimplemented!();
+}
+
 fn index<'lua>(lua: &'lua Lua,
                (mouse, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
     let obj_table = mouse.get_user_value::<Table>()?;
-    match index {
-        Value::String(ref string) => {
-            let string = string.to_str()?;
-            if string != "screen" {
-                return obj_table.get(string)
-            }
+    if let Value::String(ref string) = index {
+        if string.to_str()? == "screen" {
 
             // TODO Get output
-            let output = unimplemented!();
+            let output = get_output();
 
-            let mut screens: Vec<Screen> = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?
-                .into_iter()
-                .map(|obj| Screen::cast(obj.into()).unwrap())
-                .collect();
+            let mut screens = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?;
 
             if let Some(output) = output {
                 for screen in &screens {
-                    let state = screen.state()?;
-                    if state.outputs.contains(&output) {
+                    if screen.state()?.outputs.contains(&output) {
                         return screen.clone().to_lua(lua);
                     }
                 }
@@ -103,7 +100,6 @@ fn index<'lua>(lua: &'lua Lua,
 
             return Ok(Value::Nil)
         }
-        _ => {}
     }
     return obj_table.get(index)
 }

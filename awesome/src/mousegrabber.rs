@@ -18,6 +18,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     globals.set(MOUSEGRABBER_TABLE, mousegrabber_table)
 }
 
+#[allow(dead_code)]
 pub fn mousegrabber_handle(x: i32,
                            y: i32,
                            button: Option<(u32, wlr_button_state)>)
@@ -33,6 +34,7 @@ pub fn mousegrabber_handle(x: i32,
              })
 }
 
+#[allow(dead_code)]
 fn call_mousegrabber(lua: &Lua, (x, y, button_events): (i32, i32, Vec<bool>)) -> rlua::Result<()> {
     let lua_callback = match lua.named_registry_value::<Function>(MOUSEGRABBER_CALLBACK) {
         Ok(function) => function,
