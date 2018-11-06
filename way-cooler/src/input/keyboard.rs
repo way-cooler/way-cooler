@@ -1,6 +1,5 @@
-use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R,
-              keysym_get_name}, Capability, CompositorHandle, KeyboardHandle, KeyboardHandler,
-              KeyboardModifier, WLR_KEY_PRESSED};
+use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
+              Capability, CompositorHandle, KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
 
 pub struct Keyboard;
 
@@ -11,7 +10,7 @@ fn key_is_meta(key: u32) -> bool {
 
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle, event: &KeyEvent) {
-        let modifiers = dehandle!(
+        let _modifiers = dehandle!(
             @compositor = {compositor};
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {

@@ -1,5 +1,38 @@
 //! Awesome compatibility modules
 
+#![cfg_attr(test, deny(bad_style,
+       const_err,
+       dead_code,
+       improper_ctypes,
+       legacy_directory_ownership,
+       non_shorthand_field_patterns,
+       no_mangle_generic_items,
+       overflowing_literals,
+       path_statements ,
+       patterns_in_fns_without_body,
+       plugin_as_library,
+       private_in_public,
+       private_no_mangle_fns,
+       private_no_mangle_statics,
+       safe_extern_statics,
+       unconditional_recursion,
+       unions_with_drop_fields,
+       unused,
+       unused_allocation,
+       unused_comparisons,
+       unused_parens,
+       while_true))]
+
+// Allowed by default
+#![cfg_attr(test, deny(missing_docs,
+       trivial_numeric_casts,
+       unused_extern_crates,
+       unused_import_braces,
+       unused_qualifications))]
+
+// May be good to add
+// #![cfg_attr(test, warn(unused_results))]
+
 extern crate cairo;
 extern crate cairo_sys;
 extern crate env_logger;

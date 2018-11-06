@@ -53,7 +53,7 @@ fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
 }
 
 fn coords<'lua>(_lua: &'lua Lua,
-                (_coords, _ignore_enter): (rlua::Value<'lua>, rlua::Value<'lua>))
+                (_coords, _ignore_enter): (Value<'lua>, Value<'lua>))
                 -> rlua::Result<Table<'lua>> {
     // TODO Get Cords
     unimplemented!()

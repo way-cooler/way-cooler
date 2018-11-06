@@ -1,4 +1,4 @@
-extern crate gcc;
+extern crate cc;
 extern crate pkg_config;
 
 use std::{env, fs, io::Write, path::Path, process::Command};
@@ -49,7 +49,7 @@ fn in_release_commit() -> bool {
 /// Build the wayland-glib interface as a static library
 fn build_wayland_glib_interface() {
     let lib = pkg_config::Config::new().probe("glib-2.0").unwrap();
-    let mut builder = gcc::Build::new();
+    let mut builder = cc::Build::new();
 
     for i in &lib.include_paths {
         builder.include(i);

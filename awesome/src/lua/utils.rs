@@ -98,7 +98,7 @@ pub fn mods_to_rust(mods_table: Table) -> rlua::Result<Vec<Key>> {
 }
 
 /// Convert a mouse event from Wayland to the representation Lua expcets
-pub fn mouse_events_to_lua(_: &rlua::Lua,
+pub fn mouse_events_to_lua(_: &Lua,
                            button: u32,
                            button_state: wlr_button_state)
                            -> rlua::Result<Vec<bool>> {

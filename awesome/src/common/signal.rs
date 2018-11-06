@@ -92,7 +92,7 @@ fn emit_signals<'lua, A>(_: &'lua Lua,
 
 /// Connect the function to the named signal in the global signal list.
 pub fn global_connect_signal<'lua>(lua: &'lua Lua,
-                                   (name, func): (String, rlua::Function<'lua>))
+                                   (name, func): (String, Function<'lua>))
                                    -> rlua::Result<()> {
     let global_signals = lua.named_registry_value::<Table>(GLOBAL_SIGNALS)?;
     connect_signals(lua, global_signals, name, &[func])

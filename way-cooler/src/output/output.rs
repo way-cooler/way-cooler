@@ -25,6 +25,7 @@ impl OutputHandler for Output {
     }
 }
 
+#[allow(dead_code)]
 fn render_surface(renderer: &mut Renderer,
                   layout: &mut OutputLayoutHandle,
                   surface: &mut SurfaceHandle,

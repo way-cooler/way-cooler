@@ -31,7 +31,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua::Result<()> {
     LUA.with(|lua| {
                  let lua = lua.borrow();
-                 let lua_state = if state == wlr_key_state::WLR_KEY_PRESSED {
+                 let lua_state = if state == WLR_KEY_PRESSED {
                                      "press"
                                  } else {
                                      "release"
@@ -59,7 +59,7 @@ pub fn call_keygrabber(lua: &Lua, (mods, key, event): (Table, String, String)) -
     lua_callback.call((mods, key, event))
 }
 
-fn run(lua: &Lua, function: rlua::Function) -> rlua::Result<()> {
+fn run(lua: &Lua, function: Function) -> rlua::Result<()> {
     match lua.named_registry_value::<Value>(KEYGRABBER_CALLBACK)? {
         Value::Function(_) => {
             Err(rlua::Error::RuntimeError("keygrabber callback already set!".into()))

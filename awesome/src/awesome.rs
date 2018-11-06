@@ -61,7 +61,7 @@ impl UserData for AwesomeState {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
         fn index<'lua>(_: &'lua Lua,
                        (awesome, index): (AnyUserData<'lua>, Value<'lua>))
-                       -> rlua::Result<rlua::Value<'lua>> {
+                       -> rlua::Result<Value<'lua>> {
             let table = awesome.get_user_value::<Table>()?;
             table.get::<_, Value>(index)
         };
@@ -248,7 +248,7 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
     // surface.
     let surface_ptr = surface.to_glib_none().0;
     ::std::mem::forget(surface);
-    rlua::LightUserData(surface_ptr as _).to_lua(lua)
+    LightUserData(surface_ptr as _).to_lua(lua)
 }
 
 /// Convert a pixbuf to a cairo image surface.
@@ -261,7 +261,7 @@ fn pixbuf_to_surface<'lua>(lua: &'lua Lua, pixbuf: LightUserData) -> rlua::Resul
     // surface.
     let surface_ptr = surface.to_glib_none().0;
     ::std::mem::forget(surface);
-    rlua::LightUserData(surface_ptr as _).to_lua(lua)
+    LightUserData(surface_ptr as _).to_lua(lua)
 }
 
 fn exec(_: &Lua, command: String) -> rlua::Result<()> {
