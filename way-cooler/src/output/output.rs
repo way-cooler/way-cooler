@@ -47,7 +47,9 @@ fn render_surface(renderer: &mut Renderer,
                                      0.0,
                                      renderer.output
                                      .transform_matrix());
-            renderer.render_texture_with_matrix(&surface.texture(), matrix);
+            if !renderer.render_texture_with_matrix(&surface.texture(), matrix) {
+              warn!("Could not render a surface");
+            }
             surface.send_frame_done(current_time());
         }
 
@@ -79,7 +81,9 @@ fn render_views(renderer: &mut Renderer,
                                              0.0,
                                              renderer.output
                                              .transform_matrix());
-                    renderer.render_texture_with_matrix(&surface.texture(), matrix);
+                    if !renderer.render_texture_with_matrix(&surface.texture(), matrix) {
+                      warn!("Could not render a surface");
+                    }
                     surface.send_frame_done(current_time());
                 })
         });

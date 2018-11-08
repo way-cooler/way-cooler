@@ -41,7 +41,7 @@ impl View {
                     @xdg_surface = {xdg_surface};
                     match xdg_surface.state() {
                         Some(&mut TopLevel(ref mut toplevel)) => {
-                            toplevel.set_activated(activate);
+                            let _ = toplevel.set_activated(activate);
                         },
                         _ => unimplemented!()
                     }

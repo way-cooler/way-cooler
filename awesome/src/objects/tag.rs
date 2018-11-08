@@ -44,7 +44,7 @@ impl<'lua> Tag<'lua> {
         self.get_associated_data::<Vec<Client>>("__clients")
     }
 
-    pub fn set_clients(&mut self, clients: Vec<Client>) -> rlua::Result<Value> {
+    pub fn set_clients(&mut self, clients: Vec<Client>) -> rlua::Result<()> {
         {
             let prev_clients = self.clients()?.into_iter()
                                    .collect::<HashSet<_>>();
@@ -60,7 +60,7 @@ impl<'lua> Tag<'lua> {
             };
         };
         self.set_associated_data("__clients", clients)?;
-        Ok(Value::Nil)
+        Ok(())
     }
 
     pub fn client_index(&self, client: &Client) -> rlua::Result<Option<usize>> {
@@ -69,29 +69,23 @@ impl<'lua> Tag<'lua> {
                           .position(|c| *c == *client))
     }
 
-    pub fn tag_client(&mut self, obj: Client<'lua>) -> rlua::Result<Value> {
-        let client = Client::cast(obj.clone().into())?;
+    pub fn tag_client(&mut self, client: Client<'lua>) -> rlua::Result<()> {
         if let Some(_) = self.client_index(&client)? { // if it is already part of the clients
-            return Ok(Value::Nil);
+            return Ok(());
         }
         let mut clients = self.clients()?;
-        clients.push(obj);
+        clients.push(client);
         self.set_associated_data("__clients", clients)?;
-        Ok(Value::Nil)
+        Ok(())
     }
 
-    pub fn untag_client(&mut self, obj: Client<'lua>) -> rlua::Result<Value> {
-        let client = Client::cast(obj.clone().into())?;
-        let mut clients = self.clients()?;
-
-        match self.client_index(&client)? {
-            Some(index) => {
-                clients.remove(index);
-                self.set_associated_data("__clients", clients)?;
-                Ok(Value::Nil)
-            }
-            None => Err(rlua::Error::RuntimeError("Client to untag was not tagged".into()))
-        }
+    pub fn untag_client(&mut self, client: Client<'lua>) -> rlua::Result<()> {
+        let clients: Vec<_> = self.clients()?
+                              .into_iter()
+                              .filter(|c| *c != client)
+                              .collect();
+        self.set_associated_data("__clients", clients)?;
+        Ok(())
     }
 }
 
@@ -101,10 +95,9 @@ impl UserData for TagState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<TagState>> {
+pub fn init(lua: &Lua) -> rlua::Result<()> {
     lua.set_named_registry_value(TAG_LIST, lua.create_table()?)?;
-    method_setup(lua, Class::builder(lua, "tag", None)?)?.save_class("tag")?
-                                                         .build()
+    method_setup(lua, Class::builder(lua, "tag", None)?)?.save_class("tag")
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
@@ -164,20 +157,20 @@ fn get_name<'lua>(lua: &'lua Lua, tag: Tag<'lua>) -> rlua::Result<Value<'lua>> {
 
 fn set_selected<'lua>(lua: &'lua Lua,
                       (mut tag, val): (Tag<'lua>, bool))
-                      -> rlua::Result<Value<'lua>> {
+                      -> rlua::Result<()> {
     {
         let mut tag = tag.state_mut()?;
         if tag.selected == val {
-            return Ok(Value::Nil)
+            return Ok(())
         }
         tag.selected = val;
     }
     signal::emit_object_signal(lua, tag, "property::selected".into(), ())?;
-    Ok(Value::Nil)
+    Ok(())
 }
 
-fn get_selected<'lua>(_: &'lua Lua, tag: Tag<'lua>) -> rlua::Result<Value<'lua>> {
-    Ok(Value::Boolean(tag.state()?.selected))
+fn get_selected<'lua>(_: &'lua Lua, tag: Tag<'lua>) -> rlua::Result<bool> {
+    Ok(tag.state()?.selected)
 }
 
 fn set_activated<'lua>(lua: &'lua Lua,
@@ -237,34 +230,34 @@ mod test {
     use rlua::Lua;
 
     #[test]
-    fn tag_name_empty() {
+    fn tag_name_empty() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
+        tag::init(&lua)?;
         lua.eval(
                  r#"
 assert(type(tag{}.name) == "nil")
 "#,
                  None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_name_change() {
+    fn tag_name_change() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
+        tag::init(&lua)?;
         lua.eval(
                  r#"
 local t = tag{ name = "a very cool tag" }
 assert(t.name == "a very cool tag")
 "#,
                  None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_name_signal() {
+    fn tag_name_signal() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
+        tag::init(&lua)?;
         lua.eval(
                  r#"
 local t = tag{}
@@ -280,13 +273,13 @@ assert(t.name == "bye")
 assert(called == 1)
 "#,
                  None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_selected() {
+    fn tag_selected() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
+        tag::init(&lua)?;
         lua.eval(
                  r#"
 local t = tag{}
@@ -314,13 +307,13 @@ assert(t.selected == false)
 assert(called == 2)
 "#,
                  None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_activated() {
+    fn tag_activated() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
+        tag::init(&lua)?;
         lua.eval(
                  r#"
 local t = tag{}
@@ -348,13 +341,13 @@ assert(t.activated == false)
 assert(called == 2)
 "#,
                  None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_activated_selected() {
+    fn tag_activated_selected() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
+        tag::init(&lua)?;
         lua.eval(
                  r#"
 local t = tag{selected = true, activated = true}
@@ -374,27 +367,27 @@ assert(called_activated == 1)
 assert(called_selected == 1)
 "#,
                  None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_client() {
+    fn tag_client() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
+        tag::init(&lua)?;
         lua.eval(
              r#"
 local t = tag{}
 assert(#t:clients() == 0, "Cannot get the clients")
 "#,
              None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_set_client() {
+    fn tag_set_client() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
         lua.eval(
              r#"
 local c = client{}
@@ -405,14 +398,14 @@ assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
              None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_set_client_double() {
+    fn tag_set_client_double() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
         lua.eval(
              r#"
 local c = client{}
@@ -424,38 +417,38 @@ assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
              None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_reference() {
+    fn tag_reference() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
         let globals = lua.globals();
 
-        let c = Client::new(&lua, lua.create_table().unwrap()).unwrap();
-        let mut t = Tag::new(&lua, lua.create_table().unwrap()).unwrap();
-        t.tag_client(c.clone()).unwrap();
-        globals.set("t", t).unwrap();
-        globals.set("c", c).unwrap();
+        let c = Client::new(&lua, lua.create_table()?)?;
+        let mut t = Tag::new(&lua, lua.create_table()?)?;
+        t.tag_client(c.clone())?;
+        globals.set("t", t)?;
+        globals.set("c", c)?;
         lua.eval::<()>(r#"
             assert(#t:clients() == 1, "Clients are not tagged")
-        "#, None).unwrap();
+        "#, None)?;
 
-        let mut t = Tag::cast(globals.get::<_, Tag>("t").unwrap().into()).unwrap();
-        let c = globals.get::<_, Client>("c").unwrap();
-        t.untag_client(c).unwrap();
+        let mut t = globals.get::<_, Tag>("t")?;
+        let c = globals.get::<_, Client>("c")?;
+        t.untag_client(c)?;
         lua.eval(r#"
             assert(#t:clients() == 0, "Tags are not passed by reference")
-        "#, None).unwrap()
+        "#, None)
     }
 
     #[test]
-    fn tag_share_client() {
+    fn tag_share_client() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
         lua.eval(
              r#"
 local c = client{}
@@ -473,14 +466,14 @@ assert(t2:clients()[1] == c, "Pass by value, not by reference")
 assert(t2:clients()[1] == t:clients()[1], "Tags does not share the clients")
 "#,
              None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_new_client() {
+    fn tag_new_client() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
         lua.eval(
              r#"
 local c = client{}
@@ -490,46 +483,47 @@ assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
              None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_client_reference() {
+    fn tag_client_reference() -> rlua::Result<()> {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
         let globals = lua.globals();
 
-        let c = Client::new(&lua, lua.create_table().unwrap()).unwrap();
-        let mut t = Tag::new(&lua, lua.create_table().unwrap()).unwrap();
-        t.tag_client(c.clone()).unwrap();
-        globals.set("t", t).unwrap();
-        globals.set("c", c).unwrap();
+        let c = Client::new(&lua, lua.create_table()?)?;
+        let mut t = Tag::new(&lua, lua.create_table()?)?;
+        t.tag_client(c.clone())?;
+        globals.set("t", t)?;
+        globals.set("c", c)?;
         lua.eval::<()>(r#"
             assert(#t:clients() == 1, "Clients are not tagged")
-        "#, None).unwrap();
+        "#, None)?;
 
-        let mut c = Client::cast(globals.get::<_, Client>("c").unwrap().into()).unwrap();
-        c.state_mut().unwrap().dummy = 1;
+        let mut c = globals.get::<_, Client>("c")?;
+        c.state_mut()?.dummy = 1;
         lua.eval::<()>(r#"
             assert(t:clients()[1] == c, "Tags are not passed by reference")
-        "#, None).unwrap();
+        "#, None)?;
 
-        let mut c = Client::cast(globals.get::<_, Client>("c").unwrap().into()).unwrap();
-        assert!(c.state_mut().unwrap().dummy == 1)
+        let mut c = globals.get::<_, Client>("c")?;
+        assert!(c.state_mut()?.dummy == 1);
+        Ok(())
     }
 
     #[test]
-    fn tag_tag_client() {
+    fn tag_tag_client() -> rlua::Result<()> {
         let lua = Lua::new();
         let globals = lua.globals();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
-        let c = Client::new(&lua, lua.create_table().unwrap()).unwrap();
-        let mut t = Tag::new(&lua, lua.create_table().unwrap()).unwrap();
-        t.tag_client(c.clone()).unwrap();
-        globals.set("t", t).unwrap();
-        globals.set("c", c).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
+        let c = Client::new(&lua, lua.create_table()?)?;
+        let mut t = Tag::new(&lua, lua.create_table()?)?;
+        t.tag_client(c.clone())?;
+        globals.set("t", t)?;
+        globals.set("c", c)?;
         lua.eval(
              r#"
 assert(c, "client doesn't exists")
@@ -537,27 +531,27 @@ assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
              None
-        ).unwrap()
+        )
     }
 
     #[test]
-    fn tag_untag_client() {
+    fn tag_untag_client() -> rlua::Result<()> {
         let lua = Lua::new();
         let globals = lua.globals();
-        tag::init(&lua).unwrap();
-        client::init(&lua).unwrap();
-        let c = Client::new(&lua, lua.create_table().unwrap()).unwrap();
-        let mut t = Tag::new(&lua, lua.create_table().unwrap()).unwrap();
-        t.tag_client(c.clone()).unwrap();
-        t.untag_client(c.clone()).unwrap();
-        globals.set("t", t).unwrap();
-        globals.set("c", c).unwrap();
+        tag::init(&lua)?;
+        client::init(&lua)?;
+        let c = Client::new(&lua, lua.create_table()?)?;
+        let mut t = Tag::new(&lua, lua.create_table()?)?;
+        t.tag_client(c.clone())?;
+        t.untag_client(c.clone())?;
+        globals.set("t", t)?;
+        globals.set("c", c)?;
         lua.eval(
              r#"
 assert(c, "client doesn't exists")
 assert(#t:clients() == 0, "Clients are not untagged")
 "#,
              None
-        ).unwrap()
+        )
     }
 }

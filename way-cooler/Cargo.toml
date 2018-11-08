@@ -12,8 +12,8 @@ publish = false
 
 [dependencies]
 wlroots = { path = "../wlroots-rs" }
-log = "0.3"
-env_logger = "0.3"
+log = "0.4"
+env_logger = "0.5"
 bitflags = "0.7"
 nix = "0.6"
 getopts = "0.2"

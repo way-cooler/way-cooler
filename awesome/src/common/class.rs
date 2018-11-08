@@ -63,13 +63,8 @@ impl<'lua, S: ObjectStateType> ClassBuilder<'lua, S> {
         Ok(self)
     }
 
-    pub fn save_class(self, name: &str) -> rlua::Result<Self> {
-        self.lua.globals().set(name, self.class.class.clone())?;
-        Ok(self)
-    }
-
-    pub fn build(self) -> rlua::Result<Class<'lua, S>> {
-        Ok(self.class)
+    pub fn save_class(self, name: &str) -> rlua::Result<()> {
+        self.lua.globals().set(name, self.class.class.clone())
     }
 }
 

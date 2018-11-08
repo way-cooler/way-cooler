@@ -64,15 +64,13 @@ impl KeyboardHandler for Keyboard {
         with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
             let server: &mut ::Server = compositor.into();
             let weak_reference = keyboard.weak_reference();
-            if let Some(index) = server.keyboards.iter().position(|k| *k == weak_reference) {
-                server.keyboards.remove(index);
-                if server.keyboards.len() == 0 {
-                    with_handles!([(seat: {&mut server.seat.seat})] => {
-                        let mut capabilities = seat.capabilities();
-                        capabilities.remove(Capability::Keyboard);
-                        seat.set_capabilities(capabilities);
-                    }).expect("Seat was destroyed")
-                }
+            server.keyboards.retain(|k| *k != weak_reference);
+            if server.keyboards.is_empty() {
+                with_handles!([(seat: {&mut server.seat.seat})] => {
+                    let mut capabilities = seat.capabilities();
+                    capabilities.remove(Capability::Keyboard);
+                    seat.set_capabilities(capabilities);
+                }).expect("Seat was destroyed")
             }
         }).unwrap();
     }

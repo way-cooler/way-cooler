@@ -141,9 +141,7 @@ impl XdgV6ShellHandler for XdgV6 {
                          ref mut xcursor_manager,
                          .. } = *server;
             let destroyed_shell = shell_surface.into();
-            if let Some(pos) = views.iter().position(|view| view.shell == destroyed_shell) {
-                views.remove(pos);
-            };
+            views.retain(|view| view.shell != destroyed_shell);
 
             if views.len() > 0 {
                 seat.focus_view(views[0].clone(), views);

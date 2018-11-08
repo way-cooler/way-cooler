@@ -64,8 +64,8 @@ impl<'lua> Button<'lua> {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
-    Class::builder(lua, "button", None)?
+pub fn init(lua: &Lua) -> rlua::Result<()> {
+    Class::<ButtonState>::builder(lua, "button", None)?
         .method("__call".into(),
                 lua.create_function(|lua, args: Table|
                                     Button::new(lua, args))?)?
@@ -77,8 +77,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
                                 Some(lua.create_function(set_modifiers)?),
                                 Some(lua.create_function(get_modifiers)?),
                                 Some(lua.create_function(set_modifiers)?)))?
-        .save_class("button")?
-        .build()
+        .save_class("button")
 }
 
 fn set_button<'lua>(lua: &'lua Lua,

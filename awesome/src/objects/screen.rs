@@ -108,14 +108,13 @@ impl<'lua> Screen<'lua> {
     }
 }
 
-pub fn init<'lua>(lua: &Lua) -> rlua::Result<Class<ScreenState>> {
-    let builder = Class::builder(lua, "screen", None)?;
-    let res = property_setup(lua, method_setup(lua, builder)?)?.save_class("screen")?
-                                                               .build()?;
+pub fn init<'lua>(lua: &Lua) -> rlua::Result<()> {
+    property_setup(lua, method_setup(lua, Class::builder(lua, "screen", None)?)?)?
+        .save_class("screen")?;
     let screens: &mut Vec<Screen> = &mut vec![];
     // TODO Get the list of outputs from Way Cooler
     //for output in server.outputs.iter() {
-    //    let mut screen = Screen::cast(Screen::new(lua)?)?;
+    //    let mut screen = Screen::new(lua)?;
     //    screen.init_screens(output.clone(), vec![output.clone()])?;
     //    // TODO Move to Screen impl like the others
     //    screens.push(screen);
@@ -132,8 +131,7 @@ pub fn init<'lua>(lua: &Lua) -> rlua::Result<Class<ScreenState>> {
         screens.push(screen);
     }
 
-    lua.set_named_registry_value(SCREENS_HANDLE, screens.clone().to_lua(lua)?)?;
-    Ok(res)
+    lua.set_named_registry_value(SCREENS_HANDLE, screens.clone().to_lua(lua)?)
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,

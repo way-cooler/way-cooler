@@ -28,10 +28,8 @@
        trivial_numeric_casts,
        unused_extern_crates,
        unused_import_braces,
-       unused_qualifications))]
-
-// May be good to add
-// #![cfg_attr(test, warn(unused_results))]
+       unused_qualifications,
+       unused_results))]
 
 extern crate cairo;
 extern crate cairo_sys;
@@ -66,11 +64,11 @@ mod mousegrabber;
 mod root;
 mod lua;
 
-use std::{env, mem, path::PathBuf, process::exit};
+use std::{env, mem, path::PathBuf, process::exit, io::{self, Write}};
 
 use exec::Command;
 use rlua::{LightUserData, Lua, Table};
-use log::LogLevel;
+use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
 use wayland_client::{Display, GlobalManager};
@@ -106,8 +104,8 @@ pub extern "C" fn refresh_awesome() {
 
 fn main() {
     let mut opts = getopts::Options::new();
-    opts.optflag("", "version", "show version information");
-    let matches = match opts.parse(env::args().skip(1)) {
+    let matches = match opts.optflag("", "version", "show version information")
+                            .parse(env::args().skip(1)) {
         Ok(m) => m,
         Err(f) => {
             eprintln!("{}", f.to_string());
@@ -127,7 +125,8 @@ fn main() {
                                     SaFlags::empty(),
                                     SigSet::empty());
     unsafe {
-        signal::sigaction(signal::SIGINT, &sig_action).expect("Could not set SIGINT catcher");
+        let _ = signal::sigaction(signal::SIGINT, &sig_action)
+                        .expect("Could not set SIGINT catcher");
     }
     init_wayland();
     lua::setup_lua();
@@ -156,9 +155,7 @@ fn init_wayland() {
         ),
     );
     // TODO Remove
-    event_queue.sync_roundtrip().unwrap();
-    event_queue.sync_roundtrip().unwrap();
-    event_queue.sync_roundtrip().unwrap();
+    let _ = event_queue.sync_roundtrip().unwrap();
 }
 
 fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
@@ -229,39 +226,34 @@ fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
 }
 
 /// Formats the log strings properly
-fn log_format(record: &log::LogRecord) -> String {
+fn log_format(buf: &mut env_logger::fmt::Formatter, record: &log::Record) -> Result<(), io::Error> {
     let color = match record.level() {
-        LogLevel::Info => "",
-        LogLevel::Trace => "\x1B[37m",
-        LogLevel::Debug => "\x1B[44m",
-        LogLevel::Warn => "\x1B[33m",
-        LogLevel::Error => "\x1B[31m"
+        Level::Info => "",
+        Level::Trace => "\x1B[37m",
+        Level::Debug => "\x1B[44m",
+        Level::Warn => "\x1B[33m",
+        Level::Error => "\x1B[31m"
     };
-    let location = record.location();
-    let file = location.file();
-    let line = location.line();
-    let mut module_path = location.module_path();
+    let mut module_path = record.module_path().unwrap_or("?");
     if let Some(index) = module_path.find("way_cooler::") {
         let index = index + "way_cooler::".len();
         module_path = &module_path[index..];
     }
-    format!("{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
+    writeln!(buf, "{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
             color,
             record.level(),
             module_path,
-            file,
-            line,
+            record.file().unwrap_or("?"),
+            record.line().unwrap_or(0),
             record.args())
 }
 
 fn init_logs() {
-    let mut builder = env_logger::LogBuilder::new();
-    builder.format(log_format);
-    builder.filter(None, log::LogLevelFilter::Trace);
-    if env::var("WAY_COOLER_LOG").is_ok() {
-        builder.parse(&env::var("WAY_COOLER_LOG").expect("WAY_COOLER_LOG not defined"));
-    }
-    builder.init().expect("Unable to initialize logging!");
+    let env = env_logger::Env::default()
+        .filter_or("WAY_COOLER_LOG", "trace");
+    let _ = env_logger::Builder::from_env(env)
+                .format(log_format)
+                .init();
     info!("Logger initialized");
 }
 

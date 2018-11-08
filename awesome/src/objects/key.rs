@@ -68,9 +68,9 @@ impl UserData for KeyState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<KeyState>> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, "key", None)?)?)?.save_class("key")?
-                                                                               .build()
+pub fn init(lua: &Lua) -> rlua::Result<()> {
+    property_setup(lua, method_setup(lua, Class::builder(lua, "key", None)?)?)?
+      .save_class("key")
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
