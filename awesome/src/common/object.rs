@@ -52,7 +52,7 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
         let meta = self.object.get_metatable()?
                        .expect("Object had no meta table");
-        for entry in new_meta.pairs::<rlua::Value, rlua::Value>() {
+        for entry in new_meta.pairs::<Value, Value>() {
             let (key, value) = entry?;
             meta.set(key, value)?;
         }
@@ -61,7 +61,7 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
     }
 
     #[allow(dead_code)]
-    pub fn add_to_signals(self, name: String, func: rlua::Function) -> rlua::Result<Self> {
+    pub fn add_to_signals(self, name: String, func: Function) -> rlua::Result<Self> {
         signal::connect_signal(self.lua, self.object.clone(), name, &[func])?;
         Ok(self)
     }
@@ -127,7 +127,7 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
     }
 
     /// Get the signals of the for this object
-    pub fn signals(&self) -> rlua::Result<rlua::Table<'lua>> {
+    pub fn signals(&self) -> rlua::Result<Table<'lua>> {
         self.get_associated_data::<Table>("signals")
     }
 

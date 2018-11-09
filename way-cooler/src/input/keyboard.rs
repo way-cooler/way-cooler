@@ -1,6 +1,5 @@
-use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R,
-              keysym_get_name}, Capability, CompositorHandle, KeyboardHandle, KeyboardHandler,
-              KeyboardModifier, WLR_KEY_PRESSED};
+use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
+              Capability, CompositorHandle, KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
 
 pub struct Keyboard;
 
@@ -11,7 +10,7 @@ fn key_is_meta(key: u32) -> bool {
 
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle, event: &KeyEvent) {
-        let modifiers = dehandle!(
+        let _modifiers = dehandle!(
             @compositor = {compositor};
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {
@@ -65,15 +64,13 @@ impl KeyboardHandler for Keyboard {
         with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
             let server: &mut ::Server = compositor.into();
             let weak_reference = keyboard.weak_reference();
-            if let Some(index) = server.keyboards.iter().position(|k| *k == weak_reference) {
-                server.keyboards.remove(index);
-                if server.keyboards.len() == 0 {
-                    with_handles!([(seat: {&mut server.seat.seat})] => {
-                        let mut capabilities = seat.capabilities();
-                        capabilities.remove(Capability::Keyboard);
-                        seat.set_capabilities(capabilities);
-                    }).expect("Seat was destroyed")
-                }
+            server.keyboards.retain(|k| *k != weak_reference);
+            if server.keyboards.is_empty() {
+                with_handles!([(seat: {&mut server.seat.seat})] => {
+                    let mut capabilities = seat.capabilities();
+                    capabilities.remove(Capability::Keyboard);
+                    seat.set_capabilities(capabilities);
+                }).expect("Seat was destroyed")
             }
         }).unwrap();
     }

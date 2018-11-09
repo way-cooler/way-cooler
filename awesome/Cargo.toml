@@ -12,8 +12,8 @@ publish = false
 [dependencies]
 wlroots = { path = "../wlroots-rs" }
 lazy_static = "0.2"
-log = "0.3"
-env_logger = "0.3"
+log = "0.4"
+env_logger = "0.5"
 exec = "0.3"
 rlua = { version = "0.12.0", default-features = false }
 bitflags = "0.7"
@@ -28,7 +28,7 @@ xcb = { version = "0.8.1", features = ["xkb"] }
 wayland-client = "0.20.11"
 
 [build-dependencies]
-gcc = "0.3.*"
+cc = { version = "1.0", features = ["parallel"] }
 pkg-config = "0.3.*"
 
 

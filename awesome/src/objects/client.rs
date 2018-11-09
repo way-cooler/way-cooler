@@ -49,9 +49,8 @@ impl <'lua> Client<'lua> {
 
 impl UserData for ClientState {}
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<ClientState>> {
-    method_setup(lua, Class::builder(lua, "client", None)?)?.save_class("client")?
-                                                            .build()
+pub fn init(lua: &Lua) -> rlua::Result<()> {
+    method_setup(lua, Class::builder(lua, "client", None)?)?.save_class("client")
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,

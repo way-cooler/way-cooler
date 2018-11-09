@@ -39,7 +39,7 @@ pub struct ClassBuilder<'lua, S: ObjectStateType> {
 }
 
 impl<'lua, S: ObjectStateType> ClassBuilder<'lua, S> {
-    pub fn method(self, name: String, meth: rlua::Function) -> rlua::Result<Self> {
+    pub fn method(self, name: String, meth: Function) -> rlua::Result<Self> {
         let table = self.class.class.get_user_value::<Table>()?;
         let meta = table.get_metatable().expect("Class had no meta table!");
         meta.set(name, meth)?;
@@ -56,20 +56,15 @@ impl<'lua, S: ObjectStateType> ClassBuilder<'lua, S> {
 
     // TODO remove, do right
     #[allow(dead_code)]
-    pub fn dummy_property(self, key: String, val: rlua::Value<'lua>) -> rlua::Result<Self> {
+    pub fn dummy_property(self, key: String, val: Value<'lua>) -> rlua::Result<Self> {
         let table = self.class.class.get_user_value::<Table>()?;
         let meta = table.get_metatable().expect("Class had no meta table!");
         meta.set(key, val)?;
         Ok(self)
     }
 
-    pub fn save_class(self, name: &str) -> rlua::Result<Self> {
-        self.lua.globals().set(name, self.class.class.clone())?;
-        Ok(self)
-    }
-
-    pub fn build(self) -> rlua::Result<Class<'lua, S>> {
-        Ok(self.class)
+    pub fn save_class(self, name: &str) -> rlua::Result<()> {
+        self.lua.globals().set(name, self.class.class.clone())
     }
 }
 

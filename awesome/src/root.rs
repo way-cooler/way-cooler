@@ -26,7 +26,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     lua.globals().set("root", root)
 }
 
-fn dummy_double<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<(i32, i32)> {
+fn dummy_double<'lua>(_: &'lua Lua, _: Value) -> rlua::Result<(i32, i32)> {
     Ok((0, 0))
 }
 
@@ -60,7 +60,7 @@ fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
 /// Get or set global key bindings.
 ///
 /// These bindings will be available when you press keys on the root window.
-fn root_keys<'lua>(lua: &'lua Lua, key_array: rlua::Value<'lua>) -> rlua::Result<rlua::Value<'lua>> {
+fn root_keys<'lua>(lua: &'lua Lua, key_array: Value<'lua>) -> rlua::Result<Value<'lua>> {
     match key_array {
         // Set the global keys
         Value::Table(key_array) => {

@@ -59,7 +59,7 @@ impl<'lua> Drawable<'lua> {
                 //
                 // If there's a bug, worst case scenario there's a memory leak.
                 unsafe {
-                    ::cairo_sys::cairo_surface_reference(ptr);
+                    let _ = ::cairo_sys::cairo_surface_reference(ptr);
                 }
                 Value::LightUserData(LightUserData(ptr as _))
             }
@@ -101,15 +101,14 @@ impl UserData for DrawableState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<DrawableState>> {
-    Class::builder(lua, "drawable", None)?
+pub fn init(lua: &Lua) -> rlua::Result<()> {
+    Class::<DrawableState>::builder(lua, "drawable", None)?
         .method("geometry".into(), lua.create_function(geometry)?)?
         .property(Property::new("surface".into(),
                                 None,
                                 Some(lua.create_function(get_surface)?),
                                 None))?
-        .save_class("drawable")?
-        .build()
+        .save_class("drawable")
 }
 
 fn get_surface<'lua>(_: &'lua Lua, drawable: Drawable<'lua>) -> rlua::Result<Value<'lua>> {

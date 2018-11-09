@@ -34,7 +34,7 @@ impl UserData for ButtonState {
 }
 
 impl<'lua> Button<'lua> {
-    fn new(lua: &'lua Lua, args: rlua::Table) -> rlua::Result<Button<'lua>> {
+    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Button<'lua>> {
         let class = class::class_setup(lua, "button")?;
         Ok(Button::allocate(lua, class)?.handle_constructor_argument(args)?
                                         .build())
@@ -64,10 +64,10 @@ impl<'lua> Button<'lua> {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
-    Class::builder(lua, "button", None)?
+pub fn init(lua: &Lua) -> rlua::Result<()> {
+    Class::<ButtonState>::builder(lua, "button", None)?
         .method("__call".into(),
-                lua.create_function(|lua, args: rlua::Table|
+                lua.create_function(|lua, args: Table|
                                     Button::new(lua, args))?)?
         .property(Property::new("button".into(),
                                 Some(lua.create_function(set_button)?),
@@ -77,8 +77,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
                                 Some(lua.create_function(set_modifiers)?),
                                 Some(lua.create_function(get_modifiers)?),
                                 Some(lua.create_function(set_modifiers)?)))?
-        .save_class("button")?
-        .build()
+        .save_class("button")
 }
 
 fn set_button<'lua>(lua: &'lua Lua,
@@ -91,7 +90,7 @@ fn set_button<'lua>(lua: &'lua Lua,
         _ => button.set_button(xcb_button_t::default())?
     }
     signal::emit_object_signal(lua, button, "property::button".into(), val)?;
-    Ok(Value::Nil)
+    Ok(Nil)
 }
 
 fn get_button<'lua>(_: &'lua Lua, button: Button<'lua>) -> rlua::Result<Value<'lua>> {

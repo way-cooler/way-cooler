@@ -33,5 +33,4 @@ tasks:
       git submodule update --init --recursive
   - build: |
       cd way-cooler
-      cargo build --all --verbose
-      cargo test --all --verbose
+      cargo test --verbose

@@ -76,15 +76,13 @@ impl PointerHandler for Pointer {
         with_handles!([(compositor: {compositor}), (pointer: {pointer})] => {
             let server: &mut ::Server = compositor.into();
             let weak_reference = pointer.weak_reference();
-            if let Some(index) = server.pointers.iter().position(|p| *p == weak_reference) {
-                server.pointers.remove(index);
-                if server.pointers.len() == 0 {
-                    with_handles!([(seat: {&mut server.seat.seat})] => {
-                        let mut capabilities = seat.capabilities();
-                        capabilities.remove(Capability::Pointer);
-                        seat.set_capabilities(capabilities);
-                    }).expect("Seat was destroyed")
-                }
+            server.pointers.retain(|p| *p != weak_reference);
+            if server.pointers.is_empty() {
+                with_handles!([(seat: {&mut server.seat.seat})] => {
+                    let mut capabilities = seat.capabilities();
+                    capabilities.remove(Capability::Pointer);
+                    seat.set_capabilities(capabilities);
+                }).expect("Seat was destroyed")
             }
             // TODO Double check this isn't a safety hole actually,
             // because if it isn't then we may not have to do this here...

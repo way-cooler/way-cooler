@@ -38,8 +38,8 @@ pub fn load_config(mut lua: &mut Lua) {
                     .expect("Failed to set package.path");
             }
             let mut init_contents = String::new();
-            init_file.read_to_string(&mut init_contents)
-                .expect("Could not read contents");
+            let _ = init_file.read_to_string(&mut init_contents)
+                             .expect("Could not read contents");
             lua.exec(init_contents.as_str(), Some("init.lua".into()))
                 .map(|_:()| info!("Read init.lua successfully"))
                 .or_else(|err| {
