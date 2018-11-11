@@ -196,7 +196,7 @@ impl<'lua, S: ObjectStateType> ToLua<'lua> for Object<'lua, S> {
 impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
     fn from_lua(val: Value<'lua>, _lua: &'lua Lua) -> rlua::Result<Self> {
         if let Value::UserData(obj) = val {
-            Object::cast(obj)
+            Ok(obj.into())
         } else {
             Err(rlua::Error::RuntimeError("Invalid data supplied".into()))
         }
