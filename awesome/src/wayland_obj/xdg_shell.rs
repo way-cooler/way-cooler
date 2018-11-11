@@ -86,7 +86,6 @@ impl XdgToplevel {
         unwrap_state(&self.proxy).xdg_surface.set_window_geometry(0, 0, width, height);
     }
 
-    // TODO Better interface than RawFd. T: AsRawFd?
     /// Set the backing storage of the xdg shell surface.
     ///
     /// The contents will not be sent until a wl_surface commit, due to
