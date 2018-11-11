@@ -104,7 +104,7 @@ impl Seat {
             }
             Some(start) => {
                 let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
-                let _ = view.origin.replace(pos);
+                view.origin.replace(pos);
             }
         };
     }
@@ -259,7 +259,7 @@ impl wlroots::DragIconHandler for DragIconHandler {
     fn destroyed(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut ::Server = compositor.into();
-            let _ = server.seat.drag_icons.remove(&DragIcon{ handle: drag_icon });
+            server.seat.drag_icons.remove(&DragIcon{ handle: drag_icon });
         }).unwrap();
     }
 }
@@ -291,7 +291,7 @@ impl SeatHandler for SeatManager {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut ::Server = compositor.into();
             let ::Server { ref mut seat, .. } = *server;
-            let _ = seat.drag_icons.insert(DragIcon { handle: drag_icon });
+            seat.drag_icons.insert(DragIcon { handle: drag_icon });
         }).unwrap();
         (Some(Box::new(DragIconHandler)), None)
     }

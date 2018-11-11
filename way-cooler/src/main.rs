@@ -146,8 +146,8 @@ fn main() {
                                     SaFlags::empty(),
                                     SigSet::empty());
     unsafe {
-        let _ = signal::sigaction(signal::SIGINT, &sig_action)
-                      .expect("Could not set SIGINT catcher");
+         signal::sigaction(signal::SIGINT, &sig_action)
+            .expect("Could not set SIGINT catcher");
     }
 
     init_logs();
@@ -304,9 +304,9 @@ pub fn init_logs() {
     wlroots::utils::init_logging(wlroots::utils::WLR_DEBUG, None);
     let env = env_logger::Env::default()
         .filter_or("WAY_COOLER_LOG", "trace");
-    let _ = env_logger::Builder::from_env(env)
-                .format(log_format)
-                .init();
+     env_logger::Builder::from_env(env)
+        .format(log_format)
+        .init();
     info!("Logger initialized");
 }
 

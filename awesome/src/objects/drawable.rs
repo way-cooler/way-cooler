@@ -73,7 +73,7 @@ impl<'lua> Drawable<'lua> {
                 //
                 // If there's a bug, worst case scenario there's a memory leak.
                 unsafe {
-                    let _ = ::cairo_sys::cairo_surface_reference(ptr);
+                    ::cairo_sys::cairo_surface_reference(ptr);
                 }
                 Value::LightUserData(LightUserData(ptr as _))
             }
