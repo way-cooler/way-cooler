@@ -29,8 +29,7 @@
        trivial_numeric_casts,
        unused_extern_crates,
        unused_import_braces,
-       unused_qualifications,
-       unused_results))]
+       unused_qualifications))]
 
 extern crate env_logger;
 extern crate getopts;
@@ -90,7 +89,7 @@ impl Default for Server {
         if xcursor_manager.load(1.0) {
             warn!("Cursor did not load");
         }
-        
+
         Server { xcursor_manager,
                  layout: OutputLayoutHandle::default(),
                  seat: Seat::default(),

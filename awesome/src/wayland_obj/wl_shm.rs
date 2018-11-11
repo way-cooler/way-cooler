@@ -39,7 +39,7 @@ pub fn create_buffer(fd: RawFd, size: Size) -> Result<Proxy<WlBuffer>, ()> {
             .expect("WL_SHM was not initilized");
         let pool = wl_shm.create_pool(fd, width * height * 4)?.implement(|_,_|{});
         // TODO ARb32 instead
-        Ok(pool.create_buffer(0, width, height, (width * 4) as i32, wl_shm::Format::Argb8888)?
+        Ok(pool.create_buffer(0, width, height, width * 4, wl_shm::Format::Argb8888)?
            .implement(|_,_| {}))
     })
 }

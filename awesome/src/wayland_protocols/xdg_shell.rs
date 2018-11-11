@@ -4,7 +4,7 @@ pub use self::generated::client::*;
 mod generated {
     // Generated code generally doesn't follow standards
     #![allow(dead_code,non_camel_case_types,unused_unsafe,unused_variables)]
-    #![allow(non_upper_case_globals,non_snake_case,unused_imports)]
+    #![allow(non_upper_case_globals,non_snake_case,unused_imports, unused_qualifications)]
 
     pub mod c_interfaces {
         use wayland_client::sys::common::*;

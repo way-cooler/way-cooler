@@ -101,6 +101,7 @@ impl XdgToplevel {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn commit(&self) {
         unwrap_state(&self.proxy).wl_surface.commit();
     }

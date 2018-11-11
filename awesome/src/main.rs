@@ -28,8 +28,7 @@
        trivial_numeric_casts,
        unused_extern_crates,
        unused_import_braces,
-       unused_qualifications,
-       unused_results))]
+       unused_qualifications))]
 
 #[macro_use]
 extern crate bitflags;
@@ -80,9 +79,6 @@ use wayland_client::protocol::{wl_compositor, wl_shm, wl_output, wl_display::Req
 use wayland_client::sys::client::wl_display;
 
 use self::lua::{LUA, NEXT_LUA};
-use self::objects::key::Key;
-use self::common::{object::Object, signal::*};
-use self::root::ROOT_KEYS_HANDLE;
 use wayland_protocols::xdg_shell::xdg_wm_base;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -113,7 +109,7 @@ pub extern "C" fn awesome_refresh(wayland_state: *mut libc::c_void) {
     //
     // The only way it's unsafe is if we destructure `WaylandState`,
     // which we can't do because it's borrowed.
-    let wayland_state = unsafe { &mut *(wayland_state as *mut WaylandState) };
+    let _wayland_state = unsafe { &mut *(wayland_state as *mut WaylandState) };
     NEXT_LUA.with(|new_lua_check| {
         if new_lua_check.get() {
             new_lua_check.set(false);

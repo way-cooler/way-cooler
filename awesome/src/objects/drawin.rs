@@ -7,7 +7,7 @@ use std::cell::RefMut;
 
 use cairo::ImageSurface;
 use rlua::prelude::LuaInteger;
-use rlua::{self, AnyUserData, Lua, Table, ToLua, UserData, UserDataMethods};
+use rlua::{self, Lua, Table, ToLua, UserData, UserDataMethods};
 use wlroots::{Area, Origin, Size, Texture};
 
 use common::{class::{self, Class, ClassBuilder},
@@ -264,7 +264,7 @@ fn set_width<'lua>(lua: &'lua Lua,
     Ok(())
 }
 
-fn get_height<'lua>(lua: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaInteger> {
+fn get_height<'lua>(_lua: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaInteger> {
     let Size { height, .. } = drawin.get_geometry()?.size;
     Ok(height as LuaInteger)
 }

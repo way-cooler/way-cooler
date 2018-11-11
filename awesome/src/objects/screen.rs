@@ -85,7 +85,6 @@ impl<'lua> Screen<'lua> {
 
     pub fn set_geometry(&mut self, lua: &Lua, geometry: Area)
                         -> rlua::Result<()> {
-        let obj_clone = self.clone();
         if self.state()?.geometry != geometry {
             let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
@@ -101,7 +100,6 @@ impl<'lua> Screen<'lua> {
 
     pub fn set_workarea(&mut self, lua: &Lua, geometry: Area)
                     -> rlua::Result<()> {
-        let obj_clone = self.clone();
         if self.state()?.workarea != geometry {
             let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
