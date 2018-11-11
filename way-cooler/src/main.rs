@@ -301,7 +301,7 @@ fn detect_raspi() {
 
 /// Initializes the logging system.
 pub fn init_logs() {
-    wlroots::utils::init_logging(wlroots::utils::L_DEBUG, None);
+    wlroots::utils::init_logging(wlroots::utils::WLR_DEBUG, None);
     let env = env_logger::Env::default()
         .filter_or("WAY_COOLER_LOG", "trace");
     let _ = env_logger::Builder::from_env(env)
