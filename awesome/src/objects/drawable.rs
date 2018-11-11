@@ -20,7 +20,7 @@ use common::signal::emit_object_signal;
 #[derive(Debug)]
 pub struct DrawableState {
     temp_file: File,
-    wayland_shell: XdgToplevel,
+    wayland_shell: Option<XdgToplevel>,
     pub surface: Option<ImageSurface>,
     geo: Area,
     // TODO Use this to determine whether we draw this or not
@@ -31,13 +31,10 @@ pub type Drawable<'lua> = Object<'lua, DrawableState>;
 
 impl Default for DrawableState {
     fn default() -> Self {
-        let wayland_shell = wayland_obj::create_xdg_toplevel(None)
-            .expect("Could not construct an xdg toplevel for a drawable");
-        // TODO Is a temp file really the best way to do this?
         let temp_file = tempfile::tempfile()
             .expect("Could not make a temp file for the buffer");
         DrawableState { temp_file,
-                        wayland_shell,
+                        wayland_shell: None,
                         surface: None,
                         geo: Area::default(),
                         refreshed: false }
@@ -90,10 +87,8 @@ impl<'lua> Drawable<'lua> {
         if size_changed {
             drawable.refreshed = false;
             drawable.surface = None;
-            // TODO The first one we create is useless.
-            // How do we ensure we don't have that overhead? Option<>?
-            drawable.wayland_shell = wayland_obj::create_xdg_toplevel(None)
-                .expect("Could not construct an xdg toplevel for a drawable");
+            drawable.wayland_shell = Some(wayland_obj::create_xdg_toplevel(None)
+                .expect("Could not construct an xdg toplevel for a drawable"));
             let size: Size = geometry.size;
 
             if size.width > 0 && size.height > 0 {
@@ -105,9 +100,12 @@ impl<'lua> Drawable<'lua> {
                                                              size.width,
                                                              size.height)
                     .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?);
-                drawable.wayland_shell.set_size(size);
-                drawable.wayland_shell.set_surface(&temp_file, size)
-                    .map_err(|_| RuntimeError(format!("Could not set surface for drawable")))?;
+                {
+                    let shell = drawable.wayland_shell.as_mut().unwrap();
+                    shell.set_size(size);
+                    shell.set_surface(&temp_file, size)
+                        .map_err(|_| RuntimeError(format!("Could not set surface for drawable")))?;
+                }
                 drawable.temp_file = temp_file;
                 emit_object_signal(lua, obj_clone.into(), "property::surface".into(), ())?;
             }
