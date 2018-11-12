@@ -21,7 +21,7 @@ impl Shell {
                 shell.run(|shell| shell.surface())
                      .expect("An xdg v6 client did not provide us a surface")
             },
-            Shell::Xdg(mut shell) => {
+            Shell::Xdg(shell) => {
                 shell.run(|shell| shell.surface())
                     .expect("An xdg client did not provide us a surface")
             }
