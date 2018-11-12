@@ -258,7 +258,7 @@ fn iterate_over_screens<'lua>(lua: &'lua Lua,
 }
 
 fn index<'lua>(lua: &'lua Lua,
-               (obj, index): (Screen<'lua>, Value<'lua>))
+               (obj, index): (AnyUserData<'lua>, Value<'lua>))
                -> rlua::Result<Value<'lua>> {
     let screens: Vec<Screen> = lua.named_registry_value(SCREENS_HANDLE)?;
     match index {
@@ -300,9 +300,10 @@ fn index<'lua>(lua: &'lua Lua,
         _ => {}
     }
     // TODO checkudata
-    let meta = obj.get_metatable()?.expect("screen had no metatable");
+    let table: Table = obj.get_user_value()?;
+    let meta = table.get_metatable().expect("screen had no metatable");
     match meta.get(index.clone()) {
-        Err(_) | Ok(Value::Nil) => object::default_index(lua, (obj, index)),
+        Err(_) | Ok(Value::Nil) => object::default_index(lua, (Screen::cast(obj)?, index)),
         Ok(value) => Ok(value)
     }
 }
