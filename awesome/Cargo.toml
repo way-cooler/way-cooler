@@ -16,20 +16,24 @@ log = "0.4"
 env_logger = "0.5"
 exec = "0.3"
 rlua = { version = "0.12.0", default-features = false }
-bitflags = "0.7"
+bitflags = "1.0"
 nix = "0.6"
 getopts = "0.2"
 cairo-rs = "0.4.1"
 cairo-sys-rs = "0.6.0"
 gdk-pixbuf = "0.4.*"
+libc = "0.2.*"
 glib = "0.5.0"
+tempfile = "3.0.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 # Todo use the version with my patch
-wayland-client = "0.20.11"
+wayland-client = "0.20.12"
+wayland-sys = "0.20.12"
 
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }
 pkg-config = "0.3.*"
+wayland-scanner = "0.20.12"
 
 
 [features]

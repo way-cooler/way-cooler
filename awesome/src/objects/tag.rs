@@ -50,7 +50,7 @@ impl<'lua> Tag<'lua> {
                                    .collect::<HashSet<_>>();
             let new_clients = clients.iter().cloned()
                                      .collect::<HashSet<_>>();
-                
+
             for _client in new_clients.difference(&prev_clients) {
                 // emit signal
             };
@@ -63,12 +63,14 @@ impl<'lua> Tag<'lua> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn client_index(&self, client: &Client) -> rlua::Result<Option<usize>> {
         // TODO: remove the chaining of collect and into_iter
         Ok(self.clients()?.iter()
                           .position(|c| *c == *client))
     }
 
+    #[allow(dead_code)]
     pub fn tag_client(&mut self, client: Client<'lua>) -> rlua::Result<()> {
         if let Some(_) = self.client_index(&client)? { // if it is already part of the clients
             return Ok(());
@@ -79,6 +81,7 @@ impl<'lua> Tag<'lua> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn untag_client(&mut self, client: Client<'lua>) -> rlua::Result<()> {
         let clients: Vec<_> = self.clients()?
                               .into_iter()
@@ -95,9 +98,11 @@ impl UserData for TagState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init(lua: &Lua) -> rlua::Result<Class<TagState>> {
     lua.set_named_registry_value(TAG_LIST, lua.create_table()?)?;
-    method_setup(lua, Class::builder(lua, "tag", None)?)?.save_class("tag")
+    method_setup(lua, Class::builder(lua, "tag", None)?)?
+        .save_class("tag")?
+        .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
@@ -227,7 +232,7 @@ fn get_clients<'lua>(lua: &'lua Lua,  (mut tag, val): (Tag<'lua>, Value<'lua>)) 
 #[cfg(test)]
 mod test {
     use super::super::{tag::{self, Tag}, client::{self, Client}};
-    use rlua::Lua;
+    use rlua::{self, Lua};
 
     #[test]
     fn tag_name_empty() -> rlua::Result<()> {

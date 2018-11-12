@@ -18,8 +18,6 @@ pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
 ///
 /// If a configuration file could not be found, the pre-compiled version is used.
 pub fn load_config(mut lua: &mut Lua) {
-    info!("Loading way-cooler libraries...");
-
     let maybe_init_file = get_config();
     match maybe_init_file {
         Some((init_dir, mut init_file)) => {
@@ -38,7 +36,7 @@ pub fn load_config(mut lua: &mut Lua) {
                     .expect("Failed to set package.path");
             }
             let mut init_contents = String::new();
-            let _ = init_file.read_to_string(&mut init_contents)
+            init_file.read_to_string(&mut init_contents)
                              .expect("Could not read contents");
             lua.exec(init_contents.as_str(), Some("init.lua".into()))
                 .map(|_:()| info!("Read init.lua successfully"))

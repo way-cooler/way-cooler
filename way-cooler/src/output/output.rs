@@ -14,14 +14,12 @@ impl OutputHandler for Output {
             @compositor = {compositor};
             @output = {output};
             let state: &mut Server = compositor.data.downcast_mut().unwrap();
-            let Server { ref mut layout,
-            ref mut views,
-            .. } = *state;
+            let Server { ref mut layout, ref mut views, .. } = *state;
             let renderer = compositor.renderer.as_mut().expect("gles2 disabled");
             let mut renderer = renderer.render(output, None);
             renderer.clear([0.25, 0.25, 0.25, 1.0]);
             render_views(&mut renderer, layout, views)
-            )
+        )
     }
 }
 

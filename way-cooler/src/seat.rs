@@ -104,7 +104,7 @@ impl Seat {
             }
             Some(start) => {
                 let pos = Origin::new(lx as i32 - start.x, ly as i32 - start.y);
-                let _ = view.origin.replace(pos);
+                view.origin.replace(pos);
             }
         };
     }
@@ -133,8 +133,21 @@ impl Seat {
                            cursor: &mut Cursor)
                            -> (Option<Rc<::View>>, Option<SurfaceHandle>, f64, f64) {
         for view in views {
-            match view.shell {
-                ::Shell::XdgV6(ref shell) => {
+            match view.shell.clone() {
+                ::Shell::XdgV6(mut shell) => {
+                    let (mut sx, mut sy) = (0.0, 0.0);
+                    let surface = dehandle!(
+                        @shell = {shell};
+                        let (lx, ly) = cursor.coords();
+                        let Origin {x: shell_x, y: shell_y} = view.origin.get();
+                        let (view_sx, view_sy) = (lx - shell_x as f64, ly - shell_y as f64);
+                        shell.surface_at(view_sx, view_sy, &mut sx, &mut sy)
+                    );
+                    if surface.is_some() {
+                        return (Some(view.clone()), surface, sx, sy)
+                    }
+                },
+                ::Shell::Xdg(mut shell) => {
                     let (mut sx, mut sy) = (0.0, 0.0);
                     let surface = dehandle!(
                         @shell = {shell};
@@ -246,7 +259,7 @@ impl wlroots::DragIconHandler for DragIconHandler {
     fn destroyed(&mut self, compositor: CompositorHandle, drag_icon: DragIconHandle) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut ::Server = compositor.into();
-            let _ = server.seat.drag_icons.remove(&DragIcon{ handle: drag_icon });
+            server.seat.drag_icons.remove(&DragIcon{ handle: drag_icon });
         }).unwrap();
     }
 }
@@ -278,7 +291,7 @@ impl SeatHandler for SeatManager {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut ::Server = compositor.into();
             let ::Server { ref mut seat, .. } = *server;
-            let _ = seat.drag_icons.insert(DragIcon { handle: drag_icon });
+            seat.drag_icons.insert(DragIcon { handle: drag_icon });
         }).unwrap();
         (Some(Box::new(DragIconHandler)), None)
     }

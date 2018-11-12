@@ -200,16 +200,16 @@ fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>>
         }
         let mut names_list: ffi::xkb::xcb_xkb_get_names_value_list_t = mem::uninitialized();
 
-        let _ = xcb_xkb_get_names_value_list_unpack(buffer,
-                                                    (*names_r_ptr).nTypes,
-                                                    (*names_r_ptr).indicators,
-                                                    (*names_r_ptr).virtualMods,
-                                                    (*names_r_ptr).groupNames,
-                                                    (*names_r_ptr).nKeys,
-                                                    (*names_r_ptr).nKeyAliases,
-                                                    (*names_r_ptr).nRadioGroups,
-                                                    (*names_r_ptr).which,
-                                                    &mut names_list);
+        xcb_xkb_get_names_value_list_unpack(buffer,
+                                            (*names_r_ptr).nTypes,
+                                            (*names_r_ptr).indicators,
+                                            (*names_r_ptr).virtualMods,
+                                            (*names_r_ptr).groupNames,
+                                            (*names_r_ptr).nKeys,
+                                            (*names_r_ptr).nKeyAliases,
+                                            (*names_r_ptr).nRadioGroups,
+                                            (*names_r_ptr).which,
+                                            &mut names_list);
         let atom_name_c = ffi::xproto::xcb_get_atom_name_unchecked(raw_con, names_list.symbolsName);
         let atom_name_r =
             ffi::xproto::xcb_get_atom_name_reply(raw_con, atom_name_c, ptr::null_mut());
@@ -267,14 +267,14 @@ fn pixbuf_to_surface<'lua>(lua: &'lua Lua, pixbuf: LightUserData) -> rlua::Resul
 
 fn exec(_: &Lua, command: String) -> rlua::Result<()> {
     trace!("exec: \"{}\"", command);
-    let _ = thread::Builder::new().name(command.clone())
-            .spawn(|| {
-                Command::new(command).stdout(Stdio::null())
-                    .spawn()
-                    .expect("Could not spawn command")
-                    .wait()
-            })
-            .expect("Unable to spawn thread");
+    thread::Builder::new().name(command.clone())
+        .spawn(|| {
+            Command::new(command).stdout(Stdio::null())
+                .spawn()
+                .expect("Could not spawn command")
+                .wait()
+        })
+        .expect("Unable to spawn thread");
     Ok(())
 }
 
@@ -293,7 +293,6 @@ fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
 }
 
 fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
-    ::wlroots::terminate();
     ::lua::terminate();
     Ok(())
 }

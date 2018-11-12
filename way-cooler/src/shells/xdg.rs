@@ -1,26 +1,25 @@
 use std::rc::Rc;
 
-use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler, XdgV6ShellHandler,
-              XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
-
-use wlroots::xdg_shell_v6_events::{MoveEvent, ResizeEvent};
+use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler,
+              XdgShellSurfaceHandle, XdgShellHandler, XdgShellManagerHandler};
+use wlroots::xdg_shell_events::{MoveEvent, ResizeEvent};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct XdgV6 {
-    shell_surface: XdgV6ShellSurfaceHandle
+pub struct Xdg {
+    shell_surface: XdgShellSurfaceHandle
 }
 
-impl XdgV6 {
+impl Xdg {
     pub fn new() -> Self {
-        XdgV6 { ..XdgV6::default() }
+        Xdg { .. Xdg::default()}
     }
 }
 
-impl XdgV6ShellHandler for XdgV6 {
+impl XdgShellHandler for Xdg {
     fn resize_request(&mut self,
                       compositor: CompositorHandle,
                       _: SurfaceHandle,
-                      shell_surface: XdgV6ShellSurfaceHandle,
+                      shell_surface: XdgShellSurfaceHandle,
                       event: &ResizeEvent) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut ::Server = compositor.into();
@@ -39,7 +38,7 @@ impl XdgV6ShellHandler for XdgV6 {
     fn move_request(&mut self,
                     compositor: CompositorHandle,
                     _: SurfaceHandle,
-                    shell_surface: XdgV6ShellSurfaceHandle,
+                    shell_surface: XdgShellSurfaceHandle,
                     _: &MoveEvent) {
         with_handles!([(compositor: {compositor})] => {
             let server: &mut ::Server = compositor.into();
@@ -65,7 +64,7 @@ impl XdgV6ShellHandler for XdgV6 {
     fn on_commit(&mut self,
                  compositor: CompositorHandle,
                  _: SurfaceHandle,
-                 shell_surface: XdgV6ShellSurfaceHandle) {
+                 shell_surface: XdgShellSurfaceHandle) {
         let configure_serial = {
             with_handles!([(shell_surface: {shell_surface.clone()})] => {
                 shell_surface.configure_serial()
@@ -101,62 +100,9 @@ impl XdgV6ShellHandler for XdgV6 {
         }).unwrap();
     }
 
-    fn map_request(&mut self,
-                   compositor: CompositorHandle,
-                   _: SurfaceHandle,
-                   shell_surface_handle: XdgV6ShellSurfaceHandle) {
-        let is_toplevel = with_handles!([(shell_surface: {&shell_surface_handle})] => {
-            match shell_surface.state().unwrap() {
-                TopLevel(_) => true,
-                _ => false
-            }
-        }).unwrap();
-        dehandle!(
-            @compositor = {compositor};
-            let server: &mut ::Server = compositor.into();
-            let ::Server { ref mut seat,
-                         ref mut views,
-                         ref cursor,
-                         ref mut xcursor_manager,
-                         .. } = *server;
-            if is_toplevel {
-                let view = Rc::new(::View::new(::Shell::XdgV6(shell_surface_handle.into())));
-                views.push(view.clone());
-                seat.focus_view(view, views);
-            };
-            @cursor = {cursor};
-            seat.update_cursor_position(cursor, xcursor_manager, views, None)
-        );
-    }
-
-    fn unmap_request(&mut self,
-                     compositor: CompositorHandle,
-                     _: SurfaceHandle,
-                     shell_surface: XdgV6ShellSurfaceHandle) {
-        dehandle!(
-            @compositor = {compositor};
-            let server: &mut ::Server = compositor.into();
-            let ::Server { ref mut seat,
-                           ref mut views,
-                           ref cursor,
-                           ref mut xcursor_manager,
-                           .. } = *server;
-            let destroyed_shell = shell_surface.into();
-            views.retain(|view| view.shell != destroyed_shell);
-
-            if views.len() > 0 {
-                seat.focus_view(views[0].clone(), views);
-            } else {
-                seat.clear_focus();
-            };
-            @cursor = {cursor};
-            seat.update_cursor_position(cursor, xcursor_manager, views, None)
-        );
-    }
-
     fn destroyed(&mut self,
                  compositor: CompositorHandle,
-                 shell_surface: XdgV6ShellSurfaceHandle) {
+                 shell_surface: XdgShellSurfaceHandle) {
         let surface = shell_surface.into();
         dehandle!(
             @compositor = {compositor};
@@ -165,17 +111,24 @@ impl XdgV6ShellHandler for XdgV6 {
             if let Some(index) = views.iter().position(|view| view.shell == surface) {
                 views.remove(index);
             }
-        )
+        );
     }
 }
 
-pub struct XdgV6ShellManager;
+pub struct XdgShellManager;
 
-impl XdgV6ShellManagerHandler for XdgV6ShellManager {
+impl XdgShellManagerHandler for XdgShellManager {
     fn new_surface(&mut self,
-                   _: CompositorHandle,
-                   _: XdgV6ShellSurfaceHandle)
-                   -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>) {
-        (Some(Box::new(::XdgV6::new())), None)
+                   compositor: CompositorHandle,
+                   xdg_surface: XdgShellSurfaceHandle)
+                   -> (Option<Box<XdgShellHandler>>, Option<Box<SurfaceHandler>>) {
+        dehandle!(
+            @compositor = {compositor};
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut views, .. } = *server;
+            // TODO We should only push it once it's mapped.
+            views.push(Rc::new(::View::new(::Shell::Xdg(xdg_surface.clone().into()))))
+        );
+        (Some(Box::new(::Xdg::new())), None)
     }
 }

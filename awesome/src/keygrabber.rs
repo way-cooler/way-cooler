@@ -1,12 +1,11 @@
 //! AwesomeWM Keygrabber interface
 
 use rlua::{self, Function, Lua, Table, Value};
-use wlroots::{events::key_events::{Key, KeyEvent}, wlr_key_state,
-              xkbcommon::xkb::keysym_get_name, KeyboardModifier, WLR_KEY_PRESSED};
+use wlroots::{events::key_events::Key, wlr_key_state,
+              xkbcommon::xkb::keysym_get_name, WLR_KEY_PRESSED};
 
-use ::{LUA, lua, root::ROOT_KEYS_HANDLE};
+use ::LUA;
 use common::signal;
-use objects::key;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const KEYGRABBER_CALLBACK: &str = "__callback";
@@ -85,53 +84,4 @@ fn index(lua: &Lua, args: Value) -> rlua::Result<()> {
 
 fn new_index(lua: &Lua, args: Value) -> rlua::Result<()> {
     signal::global_emit_signal(lua, ("debug::newindex::miss".into(), args))
-}
-
-
-/// Emits the Awesome keybindinsg.
-#[allow(dead_code)]
-fn emit_awesome_keybindings(lua: &Lua,
-                            event: &KeyEvent,
-                            event_modifiers: KeyboardModifier)
-                            -> rlua::Result<()> {
-    let state_string = if event.key_state() == WLR_KEY_PRESSED {
-        "press"
-    } else {
-        "release"
-    };
-    // If keygrabber is set, grab key
-    // TODO check behavior when event.pressed_keys() isn't a singleton
-    if is_keygrabber_set(&*lua) {
-        for event_keysym in event.pressed_keys() {
-            let res = call_keygrabber(&*lua, (
-                    lua::mods_to_lua(&*lua, &lua::num_to_mods(event_modifiers))?,
-                    keysym_get_name(event_keysym),
-                    state_string.into()
-            ));
-            if let Err(err) = res {
-                warn!("Call to keygrabber failed for {}: {:?}", event_keysym, err);
-            }
-        }
-    } else {
-        // TODO Should also emit by current focused client so we can
-        // do client based rules.
-        let keybindings = lua.named_registry_value::<Vec<key::Key>>(ROOT_KEYS_HANDLE)?;
-        for event_keysym in event.pressed_keys() {
-            for key in &keybindings {
-                let keycode = key.keycode()?;
-                let keysym = key.keysym()?;
-                let modifiers = key.modifiers()?;
-                let binding_match = ((keysym != 0 && keysym == event_keysym)
-                                     || (keycode != 0 && keycode == event.keycode()))
-                                    && (modifiers == 0
-                                    || modifiers == event_modifiers.bits());
-                if binding_match {
-                    if let Err(err) = signal::emit_object_signal(&*lua, key.clone(), state_string.into(), ()) {
-                        warn!("Could not emit the signal for {}: {:?}", keysym, err);
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
 }

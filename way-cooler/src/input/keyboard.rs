@@ -10,7 +10,7 @@ fn key_is_meta(key: u32) -> bool {
 
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle, event: &KeyEvent) {
-        let _modifiers = dehandle!(
+        dehandle!(
             @compositor = {compositor};
             if event.key_state() == WLR_KEY_PRESSED {
                 for key in event.pressed_keys() {

@@ -29,8 +29,7 @@
        trivial_numeric_casts,
        unused_extern_crates,
        unused_import_braces,
-       unused_qualifications,
-       unused_results))]
+       unused_qualifications))]
 
 extern crate env_logger;
 extern crate getopts;
@@ -90,7 +89,7 @@ impl Default for Server {
         if xcursor_manager.load(1.0) {
             warn!("Cursor did not load");
         }
-        
+
         Server { xcursor_manager,
                  layout: OutputLayoutHandle::default(),
                  seat: Seat::default(),
@@ -147,8 +146,8 @@ fn main() {
                                     SaFlags::empty(),
                                     SigSet::empty());
     unsafe {
-        let _ = signal::sigaction(signal::SIGINT, &sig_action)
-                      .expect("Could not set SIGINT catcher");
+         signal::sigaction(signal::SIGINT, &sig_action)
+            .expect("Could not set SIGINT catcher");
     }
 
     init_logs();
@@ -170,6 +169,7 @@ pub fn setup_compositor() -> Compositor {
                                                  .input_manager(Box::new(InputManager::new()))
                                                  .xwayland(Box::new(XWaylandManager::new()))
                                                  .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
+                                                 .xdg_shell_manager(Box::new(XdgShellManager))
                                                  .build_auto(Server::new(layout, cursor));
     // NOTE We need to create this afterwards because it needs the compositor
     // running to announce the seat.
@@ -304,9 +304,9 @@ pub fn init_logs() {
     wlroots::utils::init_logging(wlroots::utils::WLR_DEBUG, None);
     let env = env_logger::Env::default()
         .filter_or("WAY_COOLER_LOG", "trace");
-    let _ = env_logger::Builder::from_env(env)
-                .format(log_format)
-                .init();
+     env_logger::Builder::from_env(env)
+        .format(log_format)
+        .init();
     info!("Logger initialized");
 }
 
