@@ -74,7 +74,7 @@ use rlua::{LightUserData, Lua, Table};
 use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use xcb::{xkb, Connection};
-use wayland_client::{Display, GlobalManager, EventQueue, GlobalError};
+use wayland_client::{Display, GlobalManager, EventQueue, GlobalError, ConnectError};
 use wayland_client::protocol::{wl_compositor, wl_shm, wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
 
@@ -159,8 +159,17 @@ fn init_wayland() {
     let (display, mut event_queue) = match Display::connect_to_env() {
         Ok(res) => res,
         Err(err) => {
-            error!("Could not connect to Wayland server. Is it running?");
-            error!("{:?}", err);
+            match err {
+                ConnectError::NoWaylandLib =>
+                    error!("Could not find Wayland library, is it installed and in PATH?"),
+                ConnectError::NoCompositorListening => {
+                    error!("Could not connect to Wayland server. Is it running?");
+                    error!("WAYLAND_DISPLAY={}", env::var("WAYLAND_DISPLAY")
+                           .unwrap_or_else(|_| "".into()));
+                },
+                ConnectError::InvalidName =>
+                    error!("Invalid socket name provided")
+            }
             exit(1);
         }
     };
