@@ -10,7 +10,11 @@ To build Way Cooler, make sure to init the submodules correctly:
 git submodule update --init --recursive
 ```
 
-Then run `make build` and then `make run` (or simply `make` to do both steps). This will build and run both halves of Way Cooler.
+To build a debug build use `make`. `make run` will run a debug version of `way-cooler` and `awesome`. 
+
+Use `make release` to build a release version and `make run_release` to run the release version of Way Cooler.
+
+To run the Awesome tests use `make test`.
 
 To get the docs, run `make docs`. Man pages will be in `target/man` and web pages in `target/html`
 
