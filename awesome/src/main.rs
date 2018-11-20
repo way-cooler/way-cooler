@@ -51,6 +51,7 @@ extern crate xcb;
 #[macro_use]
 extern crate wayland_client;
 extern crate wayland_sys;
+extern crate dbus as dbus_rs;
 
 // TODO remove
 extern crate wlroots;
@@ -66,17 +67,22 @@ mod mousegrabber;
 mod root;
 mod lua;
 mod wayland_protocols;
+mod dbus;
 
-use std::{env, mem, path::PathBuf, process::exit, io::{self, Write}};
+use std::{env, mem, path::PathBuf, process::exit, io::{self, Write},
+          os::unix::io::RawFd};
 
 use exec::Command;
 use rlua::{LightUserData, Lua, Table};
 use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
-use xcb::{xkb, Connection};
+use xcb::xkb;
 use wayland_client::{Display, GlobalManager, EventQueue, GlobalError, ConnectError};
 use wayland_client::protocol::{wl_compositor, wl_shm, wl_output, wl_display::RequestsTrait};
 use wayland_client::sys::client::wl_display;
+
+// So the C code can link to these Rust functions.
+pub use dbus::{dbus_session_refresh, dbus_system_refresh};
 
 use self::lua::{LUA, NEXT_LUA};
 use wayland_protocols::xdg_shell::xdg_wm_base;
@@ -152,7 +158,9 @@ fn main() {
     }
     lua::init_awesome_libraries();
     let (display, event_queue, _globals) = init_wayland();
-    init_glib(display, event_queue);
+    let (session_fd, system_fd) = dbus::connect()
+        .expect("Could not set up dbus connection");
+    init_glib(display, event_queue, session_fd, system_fd);
     lua::run_awesome();
 }
 
@@ -219,17 +227,27 @@ fn init_wayland() -> (Display, EventQueue, GlobalManager) {
     (display, event_queue, globals)
 }
 
-/// Init the glib main loop.
-fn init_glib(display: Display, event_queue: EventQueue) {
+/// Sets up the glib main loop to call back into Rust whenever the
+/// Wayland triggers an event.
+///
+/// Note this doesn't actually start it yet, see `lua::run_awesome` for that.
+fn init_glib(display: Display,
+             event_queue: EventQueue,
+             session_fd: RawFd,
+             system_fd: RawFd) {
     let mut wayland_state = WaylandState { display, event_queue };
     let display_ptr = wayland_state.display.c_ptr() as *mut wl_display;
     unsafe {
         #[link(name = "wayland_glib_interface", kind = "static")]
         extern "C" {
             fn wayland_glib_interface_init(display: *mut wl_display,
+                                           session_fd: RawFd,
+                                           system_fd: RawFd,
                                            wayland_state: *mut libc::c_void);
         }
         wayland_glib_interface_init(display_ptr,
+                                    session_fd,
+                                    system_fd,
                                     &mut wayland_state as *mut _ as _);
         ::std::mem::forget(wayland_state);
     }
@@ -276,7 +294,7 @@ fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
 
 /// Sets up the xcb connection and stores it in Lua (for us to access it later)
 fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
-    let con = match Connection::connect(None) {
+    let con = match xcb::Connection::connect(None) {
         Err(err) => {
             error!("Way Cooler requires XWayland in order to function");
             error!("However, xcb could not connect to it. Is it running?");

@@ -54,15 +54,19 @@ fn in_release_commit() -> bool {
 
 /// Build the wayland-glib interface as a static library
 fn build_wayland_glib_interface() {
-    let lib = pkg_config::Config::new().probe("glib-2.0").unwrap();
+    let glib = pkg_config::probe_library("glib-2.0").unwrap();
+    let dbus = pkg_config::probe_library("dbus-1").unwrap();
     let mut builder = cc::Build::new();
 
-    for i in &lib.include_paths {
-        builder.include(i);
+    let include_paths = glib.include_paths.iter()
+        .chain(dbus.include_paths.iter());
+
+    for path in include_paths  {
+        builder.include(path);
     }
 
     builder.file("src/wayland_glib_interface.c")
-           .compile("wayland_glib_interface");
+        .compile("wayland_glib_interface");
 }
 
 /// Build the wayland protcols that Awesome will use to talk to Way Cooler.

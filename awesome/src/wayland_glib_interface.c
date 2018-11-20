@@ -1,8 +1,15 @@
 #include <stdlib.h>
+#include <fcntl.h>
 #include <glib.h>
+#include <dbus/dbus.h>
 #include <wayland-client-core.h>
 
+static GSource *session_source = NULL;
+static GSource *system_source = NULL;
+
 void awesome_refresh(void* wayland_state);
+gboolean dbus_session_refresh(void* data);
+gboolean dbus_system_refresh(void* data);
 
 /* Instance of an event source that we use to integrate the wayland event queue
  * with GLib's MainLoop.
@@ -63,6 +70,17 @@ static gboolean interface_dispatch(GSource *base, GSourceFunc callback,
 	return G_SOURCE_CONTINUE;
 }
 
+
+static void setup_dbus_callback(int fd, GSourceFunc cb, GSource **source) {
+	GIOChannel *channel = g_io_channel_unix_new(fd);
+	*source = g_io_create_watch(channel, G_IO_IN);
+	g_io_channel_unref(channel);
+	g_source_set_callback(*source, cb, NULL, NULL);
+	g_source_attach(*source, NULL);
+
+	fcntl(fd, F_SETFD, FD_CLOEXEC);
+}
+
 static GSourceFuncs interface_funcs = {
 	.prepare  = interface_prepare,
 	.check    = interface_check,
@@ -72,7 +90,8 @@ static GSourceFuncs interface_funcs = {
 /* Initialise and register an event source with GLib. This event source
  * integrates the wayland event queue with the GLib main loop.
  */
-void wayland_glib_interface_init(struct wl_display *display, void *wayland_state)
+void wayland_glib_interface_init(struct wl_display *display,
+		int session_fd, int system_fd, void *wayland_state)
 {
 	struct InterfaceEventSource *interface_source;
 	GSource *source = g_source_new(&interface_funcs, sizeof(*interface_source));
@@ -86,6 +105,9 @@ void wayland_glib_interface_init(struct wl_display *display, void *wayland_state
 		g_source_add_unix_fd(source, wl_display_get_fd(display),
 			G_IO_IN | G_IO_ERR | G_IO_HUP);
 	g_source_set_can_recurse(source, TRUE);
+
+	setup_dbus_callback(session_fd, dbus_session_refresh, &session_source);
+	setup_dbus_callback(system_fd, dbus_system_refresh, &system_source);
 
 	g_source_attach(source, NULL);
 }

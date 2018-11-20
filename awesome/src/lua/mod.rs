@@ -98,6 +98,7 @@ fn init_libs(lua: &Lua) -> rlua::Result<()> {
     drawin::init(lua)?;
     drawable::init(lua)?;
     mousegrabber::init(lua)?;
+    dbus::lua_init(lua)?;
     Ok(())
 }
 
