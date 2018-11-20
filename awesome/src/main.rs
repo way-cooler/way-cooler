@@ -151,11 +151,12 @@ fn main() {
             .expect("Could not set SIGINT catcher");
     }
     lua::init_awesome_libraries();
-    init_wayland();
+    let (display, event_queue, _globals) = init_wayland();
+    init_glib(display, event_queue);
     lua::run_awesome();
 }
 
-fn init_wayland() {
+fn init_wayland() -> (Display, EventQueue, GlobalManager) {
     let (display, mut event_queue) = match Display::connect_to_env() {
         Ok(res) => res,
         Err(err) => {
@@ -215,6 +216,11 @@ fn init_wayland() {
     };
     wayland_obj::xdg_shell_init(xwm_base_proxy, ());
     event_queue.sync_roundtrip().unwrap();
+    (display, event_queue, globals)
+}
+
+/// Init the glib main loop.
+fn init_glib(display: Display, event_queue: EventQueue) {
     let mut wayland_state = WaylandState { display, event_queue };
     let display_ptr = wayland_state.display.c_ptr() as *mut wl_display;
     unsafe {
@@ -226,7 +232,6 @@ fn init_wayland() {
         wayland_glib_interface_init(display_ptr,
                                     &mut wayland_state as *mut _ as _);
         ::std::mem::forget(wayland_state);
-        ::std::mem::forget(globals);
     }
 }
 
