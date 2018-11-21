@@ -1,14 +1,21 @@
 //! Sets up the dbus interface for Awesome.
 
-use std::{cell::RefCell, os::unix::io::RawFd};
+use std::{cell::RefCell, os::unix::io::RawFd, thread::LocalKey};
 
-use dbus_rs::{BusType, Connection, Message, MsgHandler, MsgHandlerType,
-              MsgHandlerResult};
-use rlua::{self, Lua};
+use dbus_rs::{BusType, Connection, Message, MessageItem, MsgHandler,
+              MsgHandlerType, MsgHandlerResult};
+use rlua::{self, Lua, Table, Value, ToLua, ToLuaMulti, MultiValue,
+           Error::RuntimeError};
+
+use common::signal;
+
+type GlobalConnection = RefCell<Option<Connection>>;
+
+const SIGNALS_NAME: &'static str = "signals";
 
 thread_local! {
-    pub static SESSION_BUS: RefCell<Option<Connection>> = RefCell::new(None);
-    pub static SYSTEM_BUS:  RefCell<Option<Connection>> = RefCell::new(None);
+    pub static SESSION_BUS: GlobalConnection = RefCell::new(None);
+    pub static SYSTEM_BUS:  GlobalConnection = RefCell::new(None);
 }
 
 /// Called from `wayland_glib_interface.c` whenever a request is sent to the
@@ -84,25 +91,186 @@ pub fn connect() -> Result<(RawFd, RawFd), dbus::Error> {
 /// Awesome via DBus.
 pub fn lua_init(lua: &Lua) -> rlua::Result<()> {
     let dbus_table = lua.create_table()?;
+    dbus_table.set(SIGNALS_NAME, lua.create_table()?)?;
     dbus_table.set("request_name", lua.create_function(request_name)?)?;
+    dbus_table.set("release_name", lua.create_function(release_name)?)?;
+    dbus_table.set("add_match", lua.create_function(add_match)?)?;
+    dbus_table.set("remove_match", lua.create_function(remove_match)?)?;
+    dbus_table.set("connect_signal", lua.create_function(connect_signal)?)?;
+    dbus_table.set("disconnect_signal", lua.create_function(disconnect_signal)?)?;
+    dbus_table.set("emit_signal", lua.create_function(emit_signal)?)?;
     lua.globals().set("dbus", dbus_table)?;
     Ok(())
 }
 
-fn request_name(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
-    let bus = match bus.as_str() {
+fn get_bus_by_name<'bus>(bus_name: &str)
+                         -> rlua::Result<&'bus LocalKey<GlobalConnection>> {
+    match bus_name {
         "session" => {
-            &SESSION_BUS
+            Ok(&SESSION_BUS)
         },
         "system" => {
-            &SYSTEM_BUS
+            Ok(&SYSTEM_BUS)
         },
-        v => panic!("Unknown bus type {}", v)
+        v => Err(RuntimeError(format!("Unknown bus type {}", v)))
+    }
+}
+
+fn convert_value(lua: &Lua, type_: Value, value: Value) -> rlua::Result<MessageItem> {
+    use rlua::Value;
+    use ::dbus_rs::arg::ArgType;
+    let type_ = match type_ {
+        Value::String(s) => s.to_str()?.to_string(),
+        _ => return Err(RuntimeError("D-Bus type name was not a string".into()))
     };
+    let is_ascii = type_.chars().next()
+        .map(|c| !char::is_ascii(&c))
+        .unwrap_or(false);
+    if type_.len() > 1 ||  !is_ascii {
+        return Err(RuntimeError(format!("{} is an invalid type name", type_)))
+    }
+    let type_ = ArgType::from_i32(type_.chars().next().unwrap() as i32)
+        .map_err(|_| RuntimeError(format!(
+            "{} is an invalid type name", type_)))?;
+    match (type_, value) {
+        (ArgType::Array, Value::Table(value)) => {
+            let size = value.len()?;
+            if size % 2 != 0 {
+                return Err(RuntimeError(
+                    "your D-Bus signal handling method returned \
+                     wrong number of arguments".into()))
+            }
+            let types = value.clone().sequence_values().step_by(2);
+            let values = value.clone().sequence_values().skip(1).step_by(2);
+            let mut list = Vec::with_capacity(size as usize);
+            for (type_, value) in types.zip(values) {
+                list.push(convert_value(lua, type_?, value?)?)
+            }
+            MessageItem::new_array(list)
+               .map_err(|_| RuntimeError("Empty list is invalid".into()))
+        },
+        (ArgType::Boolean, Value::Boolean(value)) => {
+            Ok(value.into())
+        },
+        (ArgType::String, Value::String(value)) => {
+            Ok(value.to_str()?.into())
+        },
+        (ArgType::Byte, Value::Integer(value)) |
+        (ArgType::Int16, Value::Integer(value)) |
+        (ArgType::UInt16, Value::Integer(value)) |
+        (ArgType::Int32, Value::Integer(value)) |
+        (ArgType::UInt32, Value::Integer(value)) |
+        (ArgType::Int64, Value::Integer(value)) |
+        (ArgType::UInt64, Value::Integer(value))  => {
+            Ok(value.into())
+        },
+        (ArgType::Byte, Value::Number(value)) |
+        (ArgType::Int16, Value::Number(value)) |
+        (ArgType::UInt16, Value::Number(value)) |
+        (ArgType::Int32, Value::Number(value)) |
+        (ArgType::UInt32, Value::Number(value)) |
+        (ArgType::Int64, Value::Number(value)) |
+        (ArgType::UInt64, Value::Number(value)) |
+        (ArgType::Double, Value::Number(value)) => {
+            Ok(value.into())
+        }
+        (type_, value) => {
+            Err(RuntimeError(format!("Invalid type {:?} or value {:?}",
+                                            type_, value)))
+        }
+    }
+}
+
+fn request_name(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
+    let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow_mut();
         let bus = bus.as_ref().unwrap();
-        let _ = bus.register_name(name.as_str(), 0);
+        bus.register_name(name.as_str(), 0)
+            .expect(&format!("Could not register name {}", name.as_str()));
     });
     Ok(true)
+}
+
+fn release_name(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
+    let bus = get_bus_by_name(bus.as_str())?;
+    bus.with(|bus| {
+        let bus = bus.borrow_mut();
+        let bus = bus.as_ref().unwrap();
+        bus.release_name(name.as_str())
+            .expect(&format!("Could not release name {}", name.as_str()));
+    });
+    Ok(true)
+}
+
+fn add_match(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
+    let bus = get_bus_by_name(bus.as_str())?;
+    bus.with(|bus| {
+        let bus = bus.borrow_mut();
+        let bus = bus.as_ref().unwrap();
+        bus.add_match(name.as_str())
+            .map_err(|err| RuntimeError(format!("{}", err)))
+    })?;
+    Ok(())
+}
+
+fn remove_match(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
+    let bus = get_bus_by_name(bus.as_str())?;
+    bus.with(|bus| {
+        let bus = bus.borrow_mut();
+        let bus = bus.as_ref().unwrap();
+        bus.remove_match(name.as_str())
+            .map_err(|err| RuntimeError(format!("{}", err)))
+    })?;
+    Ok(())
+}
+
+fn connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function))
+                  -> rlua::Result<MultiValue<'lua>> {
+    let signals: Table = lua.globals()
+        .get::<_, Table>("dbus")
+        .unwrap().get(SIGNALS_NAME).unwrap();
+    if signals.get(name.as_str())? {
+        let error_msg = format!(
+            "Cannot add signal {} on D-Bus, already existing", name.as_str());
+        warn!("{}", error_msg);
+        (rlua::Nil, error_msg).to_lua_multi(lua)
+    } else {
+        signal::connect_signals(lua, signals, name, &[func])?;
+        (true.to_lua_multi(lua))
+    }
+}
+
+fn disconnect_signal(lua: &Lua, (name, func): (String, rlua::Function))
+                     -> rlua::Result<()> {
+    let signals: Table = lua.globals()
+        .get::<_, Table>("dbus").unwrap()
+        .get(SIGNALS_NAME).unwrap();
+    signal::disconnect_signals(lua, signals, name)
+}
+
+fn emit_signal<'lua>(lua: &'lua Lua, (bus, path, interface, name, args):
+                     (String, String, String, String, MultiValue))
+                     -> rlua::Result<Value<'lua>> {
+    if args.len() % 2 != 0 {
+        let error_msg =
+            "your D-Bus signal emitting metod has wrong number of arguments";
+        warn!("{}", error_msg);
+        return false.to_lua(lua)
+    }
+    let types = args.iter().step_by(2);
+    let values = args.iter().skip(1).step_by(2);
+    let args = types.zip(values)
+        .map(|v| convert_value(lua, v.0.clone(), v.1.clone()))
+        .collect::<rlua::Result<Vec<MessageItem>>>()?;
+    let bus = get_bus_by_name(bus.as_str())?;
+    bus.with(|bus| {
+        let bus = bus.borrow_mut();
+        let bus = bus.as_ref().unwrap();
+        // TODO catch panic, convert to error
+        let mut msg = Message::signal(&path.into(), &interface.into(), &name.into());
+        msg.append_items(&args);
+        bus.send(msg)
+    }).map_err(|_| RuntimeError("Could not send D-Bus message".into()))?;
+    true.to_lua(lua)
 }
