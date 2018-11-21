@@ -85,8 +85,8 @@ impl MsgHandler for DBusHandler {
     }
 
     fn handle_msg(&mut self, msg: &Message) -> Option<MsgHandlerResult> {
-        let (_, _, interface, member) = msg.headers();
         if msg.msg_type() == MessageType::Signal {
+            let (_, _, interface, member) = msg.headers();
             match (interface.unwrap().as_str(), member.unwrap().as_str()) {
                 ("org.freedesktop.DBus.Local", "Disconnected") => {
                     self.global_connection.with(|bus| {
@@ -104,7 +104,7 @@ impl MsgHandler for DBusHandler {
         }
         let reply = LUA.with(|lua| {
             let lua = lua.borrow();
-            self.process_request(&*lua)
+            self.process_request(&*lua, msg)
         }).unwrap_or_else(|err| {
             ::lua::log_error(err);
             vec![]
@@ -119,7 +119,30 @@ impl MsgHandler for DBusHandler {
 }
 
 impl DBusHandler {
-    fn process_request(&mut self, lua: &Lua) -> rlua::Result<Vec<Message>> {
+    /// Gives the D-Bus message to Lua for processing the reply.
+    fn process_request(&mut self, lua: &Lua, msg: &Message) -> rlua::Result<Vec<Message>> {
+        let message_metadata = lua.create_table()?;
+        let msg_type = match msg.msg_type() {
+            MessageType::Signal => "signal",
+            MessageType::MethodCall => "method_call",
+            MessageType::MethodReturn => "method_return",
+            MessageType::Error => "error",
+            MessageType::Invalid => "unknown"
+        };
+        message_metadata.set("type", msg_type)?;
+        let (type_, path, interface, member) = msg.headers();
+        message_metadata.set("interface", interface.unwrap_or_else(|| "".into()))?;
+        message_metadata.set("path", path.unwrap_or_else(|| "".into()))?;
+        message_metadata.set("member", member.unwrap_or_else(|| "".into()))?;
+        if let Some(sender) = msg.sender() {
+            message_metadata.set("sender", sender.to_string())?;
+        }
+        if self.global_connection as *const _ == &SYSTEM_BUS as *const _ {
+            message_metadata.set("bus", "system")?;
+        } else {
+            message_metadata.set("bus", "session")?;
+        };
+        let lua_message = dbus_to_lua_value(lua, msg)?;
         unimplemented!()
     }
 }
@@ -181,7 +204,14 @@ fn get_bus_by_name<'bus>(bus_name: &str)
     }
 }
 
-fn convert_value(lua: &Lua, type_: Value, value: Value) -> rlua::Result<MessageItem> {
+fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg: &Message)
+                           -> rlua::Result<MultiValue<'lua>> {
+    unimplemented!();
+}
+
+/// Converts an `rlua::Value` into a `dbus_rs::MessageItem`.
+fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value)
+                     -> rlua::Result<MessageItem> {
     use rlua::Value;
     use ::dbus_rs::arg::ArgType;
     let type_ = match type_ {
@@ -209,7 +239,7 @@ fn convert_value(lua: &Lua, type_: Value, value: Value) -> rlua::Result<MessageI
             let values = value.clone().sequence_values().skip(1).step_by(2);
             let mut list = Vec::with_capacity(size as usize);
             for (type_, value) in types.zip(values) {
-                list.push(convert_value(lua, type_?, value?)?)
+                list.push(lua_value_to_dbus(lua, type_?, value?)?)
             }
             MessageItem::new_array(list)
                .map_err(|_| RuntimeError("Empty list is invalid".into()))
@@ -326,13 +356,13 @@ fn emit_signal<'lua>(lua: &'lua Lua, (bus, path, interface, name, args):
     let types = args.iter().step_by(2);
     let values = args.iter().skip(1).step_by(2);
     let args = types.zip(values)
-        .map(|v| convert_value(lua, v.0.clone(), v.1.clone()))
+        .map(|v| lua_value_to_dbus(lua, v.0.clone(), v.1.clone()))
         .collect::<rlua::Result<Vec<MessageItem>>>()?;
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow_mut();
         let bus = bus.as_ref().unwrap();
-        // TODO catch panic, convert to error
+        // TODO use new_signal, convert error
         let mut msg = Message::signal(&path.into(), &interface.into(), &name.into());
         msg.append_items(&args);
         bus.send(msg)
