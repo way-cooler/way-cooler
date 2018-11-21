@@ -81,6 +81,17 @@ static void setup_dbus_callback(int fd, GSourceFunc cb, GSource **source) {
 	fcntl(fd, F_SETFD, FD_CLOEXEC);
 }
 
+void remove_dbus_from_glib() {
+	if (session_source) {
+		g_source_destroy(session_source);
+		session_source = NULL;
+	}
+	if (system_source) {
+		g_source_destroy(system_source);
+		system_source = NULL;
+	}
+}
+
 static GSourceFuncs interface_funcs = {
 	.prepare  = interface_prepare,
 	.check    = interface_check,

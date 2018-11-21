@@ -5,6 +5,7 @@ mod utils;
 
 use self::config::load_config;
 pub use self::utils::*;
+pub use self::config::log_error;
 
 use glib::MainLoop;
 use rlua::{self, AnyUserData, Lua, Table, Value};

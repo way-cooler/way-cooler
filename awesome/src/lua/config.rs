@@ -96,7 +96,7 @@ fn get_config() -> Option<(PathBuf, File)> {
     return None
 }
 
-fn log_error(err: rlua::Error) {
+pub fn log_error(err: rlua::Error) {
     fn recursive_callback_print(error: Arc<rlua::Error>) {
         match *error {
             rlua::Error::CallbackError {traceback: ref err, ref cause } => {

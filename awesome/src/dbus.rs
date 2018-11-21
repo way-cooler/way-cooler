@@ -2,20 +2,21 @@
 
 use std::{cell::RefCell, os::unix::io::RawFd, thread::LocalKey};
 
-use dbus_rs::{BusType, Connection, Message, MessageItem, MsgHandler,
+use dbus_rs::{BusType, Connection, Message, MessageItem, MessageType, MsgHandler,
               MsgHandlerType, MsgHandlerResult};
 use rlua::{self, Lua, Table, Value, ToLua, ToLuaMulti, MultiValue,
            Error::RuntimeError};
 
-use common::signal;
+use ::lua::LUA;
+use ::common::signal;
 
-type GlobalConnection = RefCell<Option<Connection>>;
+type GlobalConnection = RefCell<Option<DBusConnection>>;
 
 const SIGNALS_NAME: &'static str = "signals";
 
 thread_local! {
-    pub static SESSION_BUS: GlobalConnection = RefCell::new(None);
-    pub static SYSTEM_BUS:  GlobalConnection = RefCell::new(None);
+    static SESSION_BUS: GlobalConnection = RefCell::new(None);
+    static SYSTEM_BUS:  GlobalConnection = RefCell::new(None);
 }
 
 /// Called from `wayland_glib_interface.c` whenever a request is sent to the
@@ -27,7 +28,7 @@ pub extern "C" fn dbus_session_refresh(_: libc::c_void) -> bool {
     SESSION_BUS.with(|session_bus| {
         let session_bus = session_bus.borrow_mut();
         let session_bus = session_bus.as_ref().unwrap();
-        session_bus.incoming(0);
+        let _ = session_bus.incoming(0).collect::<Vec<_>>();
     });
     true
 }
@@ -41,12 +42,42 @@ pub extern "C" fn dbus_system_refresh(_: libc::c_void) -> bool {
     SYSTEM_BUS.with(|session_bus| {
         let session_bus = session_bus.borrow_mut();
         let session_bus = session_bus.as_ref().unwrap();
-        session_bus.incoming(0);
+        let _ = session_bus.incoming(0).collect::<Vec<_>>();
     });
     true
 }
 
-struct DBusHandler;
+struct DBusConnection {
+    connection: Connection
+}
+
+struct DBusHandler {
+    global_connection: &'static LocalKey<GlobalConnection>
+}
+
+impl std::ops::Deref for DBusConnection {
+    type Target = Connection;
+
+    fn deref(&self) -> &Self::Target {
+        &self.connection
+    }
+}
+
+impl Drop for DBusConnection {
+    fn drop(&mut self) {
+        unsafe {
+            ::remove_dbus_from_glib();
+        }
+        // Need to close both of them, no idea which one was just destroyed,
+        // so try to destroy both of them.
+        SESSION_BUS.try_with(|session_bus| {
+            *session_bus.borrow_mut() = None
+        }).ok();
+        SYSTEM_BUS.try_with(|session_bus| {
+            *session_bus.borrow_mut() = None
+        }).ok();
+    }
+}
 
 impl MsgHandler for DBusHandler {
     fn handler_type(&self) -> MsgHandlerType {
@@ -54,8 +85,42 @@ impl MsgHandler for DBusHandler {
     }
 
     fn handle_msg(&mut self, msg: &Message) -> Option<MsgHandlerResult> {
-        // TODO
-        None
+        let (_, _, interface, member) = msg.headers();
+        if msg.msg_type() == MessageType::Signal {
+            match (interface.unwrap().as_str(), member.unwrap().as_str()) {
+                ("org.freedesktop.DBus.Local", "Disconnected") => {
+                    self.global_connection.with(|bus| {
+                        *bus.borrow_mut() = None;
+                    });
+                    // TODO not none
+                    return Some(MsgHandlerResult {
+                        handled: true,
+                        done: true,
+                        reply: vec![]
+                    });
+                },
+                _ => {}
+            }
+        }
+        let reply = LUA.with(|lua| {
+            let lua = lua.borrow();
+            self.process_request(&*lua)
+        }).unwrap_or_else(|err| {
+            ::lua::log_error(err);
+            vec![]
+        });
+
+        return Some(MsgHandlerResult {
+            handled: true,
+            done: false,
+            reply
+        })
+    }
+}
+
+impl DBusHandler {
+    fn process_request(&mut self, lua: &Lua) -> rlua::Result<Vec<Message>> {
+        unimplemented!()
     }
 }
 
@@ -68,20 +133,20 @@ impl MsgHandler for DBusHandler {
 pub fn connect() -> Result<(RawFd, RawFd), dbus::Error> {
     let session_con = Connection::get_private(BusType::Session)?;
     let system_con = Connection::get_private(BusType::System)?;
-    session_con.add_handler(DBusHandler);
-    system_con.add_handler(DBusHandler);
     let session_fds = session_con.watch_fds();
     let system_fds = system_con.watch_fds();
     assert_eq!(session_fds.len(), 1, "Only one fd per dbus connection");
     assert_eq!(system_fds.len(), 1, "Only one fd per dbus connection");
+    session_con.add_handler(DBusHandler { global_connection: &SESSION_BUS });
+    system_con.add_handler(DBusHandler { global_connection: &SYSTEM_BUS });
 
     SESSION_BUS.with(|session_bus| {
         let mut session_bus = session_bus.borrow_mut();
-        *session_bus = Some(session_con);
+        *session_bus = Some(DBusConnection { connection: session_con });
     });
     SYSTEM_BUS.with(|system_bus| {
         let mut system_bus = system_bus.borrow_mut();
-        *system_bus = Some(system_con);
+        *system_bus = Some(DBusConnection{ connection: system_con });
     });
 
     Ok((session_fds[0].fd(), system_fds[0].fd()))
@@ -181,7 +246,7 @@ fn convert_value(lua: &Lua, type_: Value, value: Value) -> rlua::Result<MessageI
     }
 }
 
-fn request_name(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
+fn request_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow_mut();
@@ -192,7 +257,7 @@ fn request_name(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> 
     Ok(true)
 }
 
-fn release_name(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
+fn release_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow_mut();
@@ -203,7 +268,7 @@ fn release_name(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> 
     Ok(true)
 }
 
-fn add_match(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
+fn add_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow_mut();
@@ -214,7 +279,7 @@ fn add_match(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
     Ok(())
 }
 
-fn remove_match(lua: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
+fn remove_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow_mut();

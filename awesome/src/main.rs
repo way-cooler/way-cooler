@@ -84,13 +84,22 @@ use wayland_client::sys::client::wl_display;
 // So the C code can link to these Rust functions.
 pub use dbus::{dbus_session_refresh, dbus_system_refresh};
 
-use self::lua::{LUA, NEXT_LUA};
+use lua::{LUA, NEXT_LUA};
 use wayland_protocols::xdg_shell::xdg_wm_base;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
+
+#[link(name = "wayland_glib_interface", kind = "static")]
+extern "C" {
+    pub fn wayland_glib_interface_init(display: *mut wl_display,
+                                   session_fd: RawFd,
+                                   system_fd: RawFd,
+                                   wayland_state: *mut libc::c_void);
+    pub fn remove_dbus_from_glib();
+}
 
 /// The state passed into C to store it during the glib loop.
 ///
@@ -238,13 +247,6 @@ fn init_glib(display: Display,
     let mut wayland_state = WaylandState { display, event_queue };
     let display_ptr = wayland_state.display.c_ptr() as *mut wl_display;
     unsafe {
-        #[link(name = "wayland_glib_interface", kind = "static")]
-        extern "C" {
-            fn wayland_glib_interface_init(display: *mut wl_display,
-                                           session_fd: RawFd,
-                                           system_fd: RawFd,
-                                           wayland_state: *mut libc::c_void);
-        }
         wayland_glib_interface_init(display_ptr,
                                     session_fd,
                                     system_fd,
