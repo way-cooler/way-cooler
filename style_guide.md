@@ -26,7 +26,7 @@ checkfmt || exit 1
 Note that we also lock it to 1.0.0 to avoid any changes between versions.
 
 # Line Length
-The length of a line should not exceed 80 characters (though it may be 80 characters).
+Try to keep your lines under 80 columns, but you can go up to 100 if it improves readability. Don't break lines indiscriminately, try to find nice breaking points so your code is easy to read.
 
 rustfmt will normally take care of this for you. When it comes to strings use `\` to break up multiple lines like so:
 

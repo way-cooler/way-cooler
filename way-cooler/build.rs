@@ -1,8 +1,6 @@
 use std::{env, fs, io::Write, path::Path, process::Command};
 
-fn main() {
-    dump_git_version();
-}
+fn main() { dump_git_version(); }
 
 /// Writes the current git hash to a file that is read by Way Cooler
 ///

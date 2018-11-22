@@ -1,8 +1,8 @@
 //! AwesomeWM Mousegrabber interface
 
-use ::LUA;
 use rlua::{self, Function, Lua, Value};
 use wlroots::wlr_button_state;
+use LUA;
 
 pub const MOUSEGRABBER_TABLE: &str = "mousegrabber";
 const MOUSEGRABBER_CALLBACK: &str = "__callback";
@@ -22,16 +22,17 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 pub fn mousegrabber_handle(x: i32,
                            y: i32,
                            button: Option<(u32, wlr_button_state)>)
-                           -> rlua::Result<()> {
+                           -> rlua::Result<()>
+{
     LUA.with(|lua| {
-                 let lua = lua.borrow();
-                 let button_events =
-                     button.map(|(button, button_state)| {
-                                    ::lua::mouse_events_to_lua(&*lua, button, button_state)
-                                })
-                           .unwrap_or_else(|| Ok(vec![false, false, false, false, false]))?;
-                 call_mousegrabber(&*lua, (x, y, button_events))
-             })
+           let lua = lua.borrow();
+           let button_events =
+               button.map(|(button, button_state)| {
+                         ::lua::mouse_events_to_lua(&*lua, button, button_state)
+                     })
+                     .unwrap_or_else(|| Ok(vec![false, false, false, false, false]))?;
+           call_mousegrabber(&*lua, (x, y, button_events))
+       })
 }
 
 #[allow(dead_code)]

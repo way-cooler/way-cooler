@@ -1,8 +1,8 @@
 //! A client to the Wayland compositor. We control their position through tiling
 //! and other properties based on what kind of shell they are.
 
-use std::default::Default;
-use std::hash::{Hash, Hasher};
+use std::{default::Default,
+          hash::{Hash, Hasher}};
 
 use rlua::{self, Lua, Table, UserData};
 
@@ -18,9 +18,7 @@ pub struct ClientState {
 pub type Client<'lua> = Object<'lua, ClientState>;
 
 impl Default for ClientState {
-    fn default() -> Self {
-        ClientState { dummy: 0 }
-    }
+    fn default() -> Self { ClientState { dummy: 0 } }
 }
 
 impl<'lua> PartialEq for Client<'lua> {
@@ -32,37 +30,33 @@ impl<'lua> PartialEq for Client<'lua> {
 impl<'lua> Eq for Client<'lua> {}
 
 impl<'lua> Hash for Client<'lua> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.state().unwrap().hash(state);
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) { self.state().unwrap().hash(state); }
 }
 
-/* This is currently unused.
- * TODO: Figure out if this will be needed later. */
-impl <'lua> Client<'lua> {
+// This is currently unused.
+// TODO: Figure out if this will be needed later.
+impl<'lua> Client<'lua> {
     pub fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Client<'lua>> {
         let class = class::class_setup(lua, "client")?;
-        Ok(Client::allocate(lua, class)?.handle_constructor_argument(args)?
-                                        .build())
+        Ok(Client::allocate(lua, class)?.handle_constructor_argument(args)?.build())
     }
 }
 
 impl UserData for ClientState {}
 
 pub fn init(lua: &Lua) -> rlua::Result<Class<ClientState>> {
-    method_setup(lua, Class::builder(lua, "client", None)?)?
-        .save_class("client")?
-        .build()
+    method_setup(lua, Class::builder(lua, "client", None)?)?.save_class("client")?.build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
                       builder: ClassBuilder<'lua, ClientState>)
-                      -> rlua::Result<ClassBuilder<'lua, ClientState>> {
+                      -> rlua::Result<ClassBuilder<'lua, ClientState>>
+{
     // TODO Do properly
     use super::dummy;
     builder.method("connect_signal".into(), lua.create_function(dummy)?)?
            .method("__call".into(),
-               lua.create_function(|lua, args: Table| Client::new(lua, args))?)?
+                   lua.create_function(|lua, args: Table| Client::new(lua, args))?)?
            .method("get".into(), lua.create_function(dummy_table)?)
 }
 

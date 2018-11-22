@@ -4,33 +4,33 @@ mod config;
 mod utils;
 
 use self::config::{get_config, load_config};
-pub use self::utils::*;
-pub use self::config::log_error;
+pub use self::{config::log_error, utils::*};
 
 use clap::ArgMatches;
 use glib::MainLoop;
 use rlua::{self, AnyUserData, Lua, Table, Value};
 
-use std::{cell::{Cell, RefCell}, io::{self, Read}, fs::File, path::PathBuf};
+use std::{cell::{Cell, RefCell},
+          fs::File,
+          io::{self, Read},
+          path::PathBuf};
 
 use common::signal;
 
 /// Path to the Awesome shims.
 const SHIMS_PATH: &str = "../../tests/awesome/tests/examples/shims/";
 /// Shims to load
-const SHIMS: [&str; 11] = [
-    "awesome",
-    "root",
-    "tag",
-    "screen",
-    "client",
-    "mouse",
-    "drawin",
-    "button",
-    "keygrabber",
-    "mousegrabber",
-    "key"
-];
+const SHIMS: [&str; 11] = ["awesome",
+                           "root",
+                           "tag",
+                           "screen",
+                           "client",
+                           "mouse",
+                           "drawin",
+                           "button",
+                           "keygrabber",
+                           "mousegrabber",
+                           "key"];
 
 thread_local! {
     // NOTE The debug library does some powerful reflection that can do crazy things,
@@ -62,15 +62,13 @@ fn load_shims(lua: &Lua) {
         let mut path = shims_path.clone();
         path.push(format!("{}.lua", shim));
         let shims_path_str = path.to_str().unwrap();
-        let mut file = File::open(path.clone())
-            .expect(&format!("Could not open {}", shims_path_str));
+        let mut file =
+            File::open(path.clone()).expect(&format!("Could not open {}", shims_path_str));
         let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .expect(&format!("Could not read {}", shims_path_str));
+        file.read_to_string(&mut contents).expect(&format!("Could not read {}", shims_path_str));
         let obj = lua.exec::<rlua::Value>(contents.as_str(), None)
-            .expect(&format!("Could not read {}", shims_path_str));
-        globals.set(*shim, obj)
-            .expect("Could not set global object");
+                     .expect(&format!("Could not read {}", shims_path_str));
+        globals.set(*shim, obj).expect("Could not set global object");
     }
 }
 
@@ -81,9 +79,8 @@ fn load_shims(lua: &Lua) {
 pub fn init_awesome_libraries(lib_paths: &[&str]) {
     info!("Setting up Awesome libraries");
     LUA.with(|lua| {
-        register_libraries(&*lua.borrow(), lib_paths)
-            .expect("Could not register lua libraries");
-    });
+           register_libraries(&*lua.borrow(), lib_paths).expect("Could not register lua libraries");
+       });
 }
 
 /// Runs user code from the config through the awesome compatibility layer.
@@ -91,15 +88,14 @@ pub fn init_awesome_libraries(lib_paths: &[&str]) {
 /// It then enters the glib/wayland main loop to listen for events.
 pub fn run_awesome(matches: ArgMatches) {
     LUA.with(|lua| {
-        let mut lua = lua.borrow_mut();
-        info!("Loading Awesome configuration...");
-        let lib_paths = matches.values_of("lua lib search")
-            .unwrap_or_default()
-            .collect::<Vec<_>>();
-        let config = matches.value_of("config");
-        load_config(&mut *lua, config, lib_paths.as_slice());
-        load_shims(&mut *lua);
-    });
+           let mut lua = lua.borrow_mut();
+           info!("Loading Awesome configuration...");
+           let lib_paths =
+               matches.values_of("lua lib search").unwrap_or_default().collect::<Vec<_>>();
+           let config = matches.value_of("config");
+           load_config(&mut *lua, config, lib_paths.as_slice());
+           load_shims(&mut *lua);
+       });
     enter_glib_loop();
 }
 
@@ -113,13 +109,9 @@ fn emit_refresh(lua: &Lua) {
 ///
 /// * Initialise the Lua state
 /// * Run a GMainLoop
-pub fn enter_glib_loop() {
-    MAIN_LOOP.with(|main_loop| main_loop.borrow().run());
-}
+pub fn enter_glib_loop() { MAIN_LOOP.with(|main_loop| main_loop.borrow().run()); }
 
-pub fn terminate() {
-    MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
-}
+pub fn terminate() { MAIN_LOOP.with(|main_loop| main_loop.borrow().quit()) }
 
 /// Checks that the first configuration file used is syntactically correct.
 ///
@@ -129,12 +121,11 @@ pub fn syntax_check(cmdline_path: Option<&str>) -> Result<(), io::Result<rlua::E
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents).map_err(Err)?;
     LUA.with(|lua| {
-        let lua = lua.borrow();
-        let res = lua.load(file_contents.as_str(), path.to_str())
-            .map(|_| ())
-            .map_err(|err| Ok(err));
-        res
-    })
+           let lua = lua.borrow();
+           let res =
+               lua.load(file_contents.as_str(), path.to_str()).map(|_| ()).map_err(|err| Ok(err));
+           res
+       })
 }
 
 /// Register all the Rust functions for the lua libraries
@@ -150,7 +141,8 @@ pub fn register_libraries(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
 }
 
 fn init_libs(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
-    use ::{*, objects::*};
+    use objects::*;
+    use *;
     setup_awesome_path(lua, lib_paths)?;
     setup_global_signals(lua)?;
     setup_xcb_connection(lua)?;

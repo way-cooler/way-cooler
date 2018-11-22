@@ -13,6 +13,4 @@ use rlua::{self, Lua};
 ///
 /// It can take the place of any Lua function that the Awesome libs exppect,
 /// and will always return nil (which is probably not what you want).
-pub fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> {
-    Ok(())
-}
+pub fn dummy<'lua>(_: &'lua Lua, _: rlua::Value) -> rlua::Result<()> { Ok(()) }

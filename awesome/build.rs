@@ -2,7 +2,10 @@ extern crate cc;
 extern crate pkg_config;
 extern crate wayland_scanner;
 
-use std::{env, fs, io::Write, path::{Path, PathBuf}, process::Command};
+use std::{env, fs,
+          io::Write,
+          path::{Path, PathBuf},
+          process::Command};
 
 const PROTOCOL_PATH: &'static str = "../protocols";
 
@@ -18,11 +21,9 @@ fn main() {
 fn dump_git_version() {
     let out_dir = env::var("OUT_DIR").expect("Could not find out directory!");
     let dest_path = Path::new(&out_dir).join("git-version.txt");
-    let mut f = fs::File::create(&dest_path)
-        .expect("Could not write git version to out directory");
+    let mut f = fs::File::create(&dest_path).expect("Could not write git version to out directory");
     if let Some(git_version) = git_version() {
-        f.write_all(git_version.as_ref())
-            .expect("Could not write to git version file");
+        f.write_all(git_version.as_ref()).expect("Could not write to git version file");
     }
 }
 
@@ -58,35 +59,30 @@ fn build_wayland_glib_interface() {
     let dbus = pkg_config::probe_library("dbus-1").unwrap();
     let mut builder = cc::Build::new();
 
-    let include_paths = glib.include_paths.iter()
-        .chain(dbus.include_paths.iter());
+    let include_paths = glib.include_paths.iter().chain(dbus.include_paths.iter());
 
-    for path in include_paths  {
+    for path in include_paths {
         builder.include(path);
     }
 
-    builder.file("src/wayland_glib_interface.c")
-        .compile("wayland_glib_interface");
+    builder.file("src/wayland_glib_interface.c").compile("wayland_glib_interface");
 }
 
 /// Build the wayland protcols that Awesome will use to talk to Way Cooler.
 fn build_wayland_protcols() {
-    let protocols = fs::read_dir(PROTOCOL_PATH)
-        .expect("Protocol build path invalid.");
+    let protocols = fs::read_dir(PROTOCOL_PATH).expect("Protocol build path invalid.");
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
     for protocol_path in protocols {
         let protocol_path: fs::DirEntry = protocol_path.unwrap();
         let path: PathBuf = protocol_path.path().into();
-        let mut file_name: String = protocol_path
-            .file_name().into_string().unwrap();
+        let mut file_name: String = protocol_path.file_name().into_string().unwrap();
         if let Some(extension) = file_name.find(".xml") {
             file_name.truncate(extension);
         }
         wayland_scanner::generate_c_code(path.clone(),
-                      out_dir.join(file_name.clone() + "_api.rs"),
-                      wayland_scanner::Side::Client);
-        wayland_scanner::generate_c_interfaces(path,
-                            out_dir.join(file_name + "_interface.rs"));
+                                         out_dir.join(file_name.clone() + "_api.rs"),
+                                         wayland_scanner::Side::Client);
+        wayland_scanner::generate_c_interfaces(path, out_dir.join(file_name + "_interface.rs"));
     }
 }

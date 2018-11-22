@@ -6,7 +6,5 @@ pub struct OutputLayoutManager;
 impl OutputLayoutHandler for OutputLayoutManager {}
 
 impl OutputLayoutManager {
-    pub fn new() -> Self {
-        OutputLayoutManager::default()
-    }
+    pub fn new() -> Self { OutputLayoutManager::default() }
 }

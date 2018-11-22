@@ -1,20 +1,14 @@
 //! Wrappers around a xdg_surface and xdg_shell setup code.
 
-use std::os::unix::io::AsRawFd;
-use std::cell::RefCell;
-use std::fmt;
+use std::{cell::RefCell, fmt, os::unix::io::AsRawFd};
 
-use wayland_client::{Proxy, NewProxy};
-use wayland_client::protocol::wl_surface::{WlSurface,
-                                           RequestsTrait as WlSurfaceTrait};
-use wayland_protocols::xdg_shell::{xdg_wm_base::{XdgWmBase,
-                                                 RequestsTrait as XdgWmBaseTrait},
-                                   xdg_toplevel::{self,
-                                                  RequestsTrait as XdgToplevelTrait},
-                                   xdg_surface::{self,
-                                                 XdgSurface,
-                                                 RequestsTrait as XdgSurfaceTrait}};
-use wayland_client::protocol::wl_buffer::WlBuffer;
+use wayland_client::{protocol::{wl_buffer::WlBuffer,
+                                wl_surface::{RequestsTrait as WlSurfaceTrait, WlSurface}},
+                     NewProxy, Proxy};
+use wayland_protocols::xdg_shell::{xdg_surface::{self, RequestsTrait as XdgSurfaceTrait,
+                                                 XdgSurface},
+                                   xdg_toplevel::{self, RequestsTrait as XdgToplevelTrait},
+                                   xdg_wm_base::{RequestsTrait as XdgWmBaseTrait, XdgWmBase}};
 use wlroots::{Area, Origin, Size};
 
 use wayland_obj;
@@ -57,20 +51,25 @@ struct XdgToplevelState {
 impl XdgToplevel {
     fn new(wl_surface: Proxy<WlSurface>,
            xdg_surface: Proxy<XdgSurface>,
-           xdg_proxy: NewProxy<xdg_toplevel::XdgToplevel>) -> Self {
+           xdg_proxy: NewProxy<xdg_toplevel::XdgToplevel>)
+           -> Self
+    {
         let proxy = xdg_proxy.implement(|event, proxy: Proxy<xdg_toplevel::XdgToplevel>| {
-            use self::xdg_toplevel::Event;
-            match event {
-                Event::Configure { .. } => {
-                    // TODO Fill in
-                    let state = unwrap_state(&proxy);
-                    state.xdg_surface.set_window_geometry(0, 0, state.size.width, state.size.height);
-                },
-                Event::Close => {
-                    // TODO We should probably do what the compositor wants here.
-                }
-            }
-        });
+                                 use self::xdg_toplevel::Event;
+                                 match event {
+                                     Event::Configure { .. } => {
+                                         // TODO Fill in
+                                         let state = unwrap_state(&proxy);
+                                         state.xdg_surface.set_window_geometry(0,
+                                                                               0,
+                                                                               state.size.width,
+                                                                               state.size.height);
+                                     }
+                                     Event::Close => {
+                                         // TODO We should probably do what the compositor wants here.
+                                     }
+                                 }
+                             });
         wl_surface.commit();
         let cached_state = Box::new(XdgToplevelState { wl_surface,
                                                        xdg_surface,
@@ -91,7 +90,7 @@ impl XdgToplevel {
     /// The contents will not be sent until a wl_surface commit, due to
     /// Wayland surfaces being double buffered.
     pub fn set_surface<FD>(&mut self, fd: &FD, size: Size) -> Result<(), ()>
-    where FD: AsRawFd {
+        where FD: AsRawFd {
         let buffer = wayland_obj::create_buffer(fd.as_raw_fd(), size)?;
         let state = unwrap_state_mut(&mut self.proxy);
         state.wl_surface.attach(Some(&buffer), 0, 0);
@@ -101,9 +100,7 @@ impl XdgToplevel {
     }
 
     #[allow(dead_code)]
-    pub fn commit(&self) {
-        unwrap_state(&self.proxy).wl_surface.commit();
-    }
+    pub fn commit(&self) { unwrap_state(&self.proxy).wl_surface.commit(); }
 }
 
 impl Drop for XdgToplevel {
@@ -121,19 +118,18 @@ impl Drop for XdgToplevel {
 pub fn xdg_shell_init(new_proxy: Result<NewProxy<XdgWmBase>, u32>, _: ()) {
     let new_proxy = new_proxy.expect("Could not create Xdgsurface");
     let proxy = new_proxy.implement(move |event, proxy: Proxy<XdgWmBase>| {
-        use xdg_wm_base::Event;
-        match event {
-            Event::Ping { serial } => proxy.pong(serial)
-        }
-    });
+                             use xdg_wm_base::Event;
+                             match event {
+                                 Event::Ping { serial } => proxy.pong(serial)
+                             }
+                         });
     XDG_SHELL_CREATOR.with(|shell_creator| {
-        *shell_creator.borrow_mut() = Some(proxy);
-    });
+                         *shell_creator.borrow_mut() = Some(proxy);
+                     });
 }
 
-pub fn create_xdg_toplevel<G>(geometry: G)
-                              -> Result<XdgToplevel, ()>
-where G: Into<Option<Area>> {
+pub fn create_xdg_toplevel<G>(geometry: G) -> Result<XdgToplevel, ()>
+    where G: Into<Option<Area>> {
     let surface = wayland_obj::create_surface()?;
     let xdg_surface = create_xdg_surface(&surface)?;
     if let Some(geometry) = geometry.into() {
@@ -141,18 +137,16 @@ where G: Into<Option<Area>> {
         let Size { width, height } = geometry.size;
         xdg_surface.set_window_geometry(x, y, width, height);
     }
-    xdg_surface.get_toplevel()
-        .map(|toplevel| XdgToplevel::new(surface, xdg_surface, toplevel))
+    xdg_surface.get_toplevel().map(|toplevel| XdgToplevel::new(surface, xdg_surface, toplevel))
 }
 
-fn create_xdg_surface(surface: &Proxy<WlSurface>)
-                      -> Result<Proxy<XdgSurface>, ()> {
+fn create_xdg_surface(surface: &Proxy<WlSurface>) -> Result<Proxy<XdgSurface>, ()> {
     XDG_SHELL_CREATOR.with(|shell_creator| {
-        let shell_creator = shell_creator.borrow();
-        let shell_creator = shell_creator.as_ref()
-            .expect("XDG Shell creator not initilized");
-        let surface_ = surface.clone();
-        shell_creator.get_xdg_surface(surface)
+                         let shell_creator = shell_creator.borrow();
+                         let shell_creator =
+                             shell_creator.as_ref().expect("XDG Shell creator not initilized");
+                         let surface_ = surface.clone();
+                         shell_creator.get_xdg_surface(surface)
             .map(|new_proxy| new_proxy.implement(move |event, proxy: Proxy<XdgSurface>| {
                 use self::xdg_surface::Event;
                 match event {
@@ -162,13 +156,11 @@ fn create_xdg_surface(surface: &Proxy<WlSurface>)
                     }
                 }
             }))
-    })
+                     })
 }
 
 impl fmt::Debug for XdgToplevel {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.proxy.c_ptr())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{:?}", self.proxy.c_ptr()) }
 }
 
 fn unwrap_state_mut<'this>(proxy: &'this mut Proxy<xdg_toplevel::XdgToplevel>)
@@ -182,8 +174,7 @@ fn unwrap_state_mut<'this>(proxy: &'this mut Proxy<xdg_toplevel::XdgToplevel>)
     }
 }
 
-fn unwrap_state<'this>(proxy: &'this Proxy<xdg_toplevel::XdgToplevel>)
-                           -> &'this XdgToplevelState {
+fn unwrap_state<'this>(proxy: &'this Proxy<xdg_toplevel::XdgToplevel>) -> &'this XdgToplevelState {
     unsafe {
         let user_data = proxy.get_user_data() as *const XdgToplevelState;
         if user_data.is_null() {

@@ -26,9 +26,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     lua.globals().set("root", root)
 }
 
-fn dummy_double<'lua>(_: &'lua Lua, _: Value) -> rlua::Result<(i32, i32)> {
-    Ok((0, 0))
-}
+fn dummy_double<'lua>(_: &'lua Lua, _: Value) -> rlua::Result<(i32, i32)> { Ok((0, 0)) }
 
 /// Gets the wallpaper as a cairo surface or set it as a cairo pattern
 fn wallpaper<'lua>(lua: &'lua Lua, pattern: Option<LightUserData>) -> rlua::Result<Value<'lua>> {
@@ -76,25 +74,25 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: Value<'lua>) -> rlua::Result<Value
         // Get the global keys
         Value::Nil => {
             let res = lua.create_table()?;
-            for entry in lua.named_registry_value::<Table>(ROOT_KEYS_HANDLE).or(lua.create_table())?.pairs() {
+            for entry in
+                lua.named_registry_value::<Table>(ROOT_KEYS_HANDLE).or(lua.create_table())?.pairs()
+            {
                 let (key, value) = entry?;
                 res.set::<Value, Value>(key, value)?;
             }
             Ok(Value::Table(res))
         }
-        v => {
-            Err(rlua::Error::RuntimeError(format!("Expected nil or array \
-                                                   of keys, got {:?}",
-                                                  v)))
-        }
+        v => Err(rlua::Error::RuntimeError(format!("Expected nil or array \
+                                                    of keys, got {:?}",
+                                                   v)))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use ::root;
-    use ::objects::{tag, key};
+    use objects::{key, tag};
     use rlua::Lua;
+    use root;
 
     #[test]
     fn tags_print() {
@@ -107,7 +105,8 @@ local first, second = tag{}, tag{}
 assert(tostring(first) ~= tostring(second))
 "#,
                  None
-        ).unwrap()
+        )
+           .unwrap()
     }
 
     #[test]
@@ -122,7 +121,8 @@ assert(type(t) == "table")
 assert(type(next(t)) == "nil")
 "#,
                  None
-        ).unwrap()
+        )
+           .unwrap()
     }
 
     #[test]
@@ -139,7 +139,8 @@ t2.name = "Foo"
 assert(t.name == "Foo")
 "#,
                  None
-        ).unwrap()
+        )
+           .unwrap()
     }
 
     #[test]
@@ -156,7 +157,8 @@ assert(t[1] == first)
 assert(t[2] == second)
 "#,
                  None
-        ).unwrap()
+        )
+           .unwrap()
     }
 
     #[test]
@@ -174,7 +176,8 @@ assert(t[1] == second)
 assert(type(t[2]) == "nil")
 "#,
                  None
-        ).unwrap()
+        )
+           .unwrap()
     }
 
     #[test]
@@ -202,6 +205,7 @@ assert(res[2] == second)
 assert(res[3] == nil)
 "#,
                  None
-        ).unwrap()
+        )
+           .unwrap()
     }
 }
