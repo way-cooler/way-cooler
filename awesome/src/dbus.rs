@@ -71,10 +71,14 @@ impl Drop for DBusConnection {
         // Need to close both of them, no idea which one was just destroyed,
         // so try to destroy both of them.
         SESSION_BUS.try_with(|session_bus| {
-            *session_bus.borrow_mut() = None
+            if let Ok(mut bus) = session_bus.try_borrow_mut()  {
+                *bus = None
+            }
         }).ok();
-        SYSTEM_BUS.try_with(|session_bus| {
-            *session_bus.borrow_mut() = None
+        SYSTEM_BUS.try_with(|system_bus| {
+            if let Ok(mut bus) = system_bus.try_borrow_mut()  {
+                *bus = None
+            }
         }).ok();
     }
 }
