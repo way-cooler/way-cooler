@@ -233,6 +233,8 @@ pub fn lua_init(lua: &Lua) -> rlua::Result<()> {
     dbus_table.set("connect_signal", lua.create_function(connect_signal)?)?;
     dbus_table.set("disconnect_signal", lua.create_function(disconnect_signal)?)?;
     dbus_table.set("emit_signal", lua.create_function(emit_signal)?)?;
+    dbus_table.set("__index", lua.create_function(index)?)?;
+    dbus_table.set("__newindex", lua.create_function(newindex)?)?;
     lua.globals().set("dbus", dbus_table)?;
     Ok(())
 }
@@ -468,4 +470,14 @@ fn emit_signal<'lua>(lua: &'lua Lua, (bus, path, interface, name, args):
         bus.send(msg)
     }).map_err(|_| RuntimeError("Could not send D-Bus message".into()))?;
     true.to_lua(lua)
+}
+
+// TODO This is the default class index/newindex, move there
+
+fn index(lua: &Lua, args: Value) -> rlua::Result<()> {
+    signal::global_emit_signal(lua, ("debug::index::miss".into(), args))
+}
+
+fn newindex(lua: &Lua, args: Value) -> rlua::Result<()> {
+    signal::global_emit_signal(lua, ("debug::newindex::miss".into(), args))
 }
