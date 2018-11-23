@@ -163,7 +163,7 @@ impl DBusHandler {
         if let Ok(Value::Table(sig)) = signals.get(interface) {
             // There can only be ONE handler to send reply
             let func: rlua::Function = sig.get(1)?;
-            let res: MultiValue = func.call(lua_message)?;
+            let res: MultiValue = func.call((message_metadata, lua_message))?;
             if res.len() % 2 != 0 {
                 warn!("Your D-Bus signal handling method returned \
                        wrong number of arguments");
@@ -321,7 +321,7 @@ fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value)
         _ => return Err(RuntimeError("D-Bus type name was not a string".into()))
     };
     let is_ascii = type_.chars().next()
-        .map(|c| !char::is_ascii(&c))
+        .map(|c| char::is_ascii(&c))
         .unwrap_or(false);
     if type_.len() > 1 ||  !is_ascii {
         return Err(RuntimeError(format!("{} is an invalid type name", type_)))
@@ -358,7 +358,8 @@ fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value)
         (ArgType::Int32, Value::Integer(value)) |
         (ArgType::UInt32, Value::Integer(value)) |
         (ArgType::Int64, Value::Integer(value)) |
-        (ArgType::UInt64, Value::Integer(value))  => {
+        (ArgType::UInt64, Value::Integer(value)) |
+        (ArgType::Double, Value::Integer(value)) => {
             Ok(value.into())
         },
         (ArgType::Byte, Value::Number(value)) |
