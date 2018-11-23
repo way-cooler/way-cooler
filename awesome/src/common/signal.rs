@@ -69,7 +69,7 @@ pub fn emit_object_signal<'lua, A, S>(lua: &'lua Lua,
     emit_signals(lua, signals, name, args)
 }
 
-fn emit_signals<'lua, A>(_: &'lua Lua,
+pub fn emit_signals<'lua, A>(_: &'lua Lua,
                          signals: Table<'lua>,
                          name: String,
                          args: A)
