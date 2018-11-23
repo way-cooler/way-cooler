@@ -1,6 +1,6 @@
 //! Sets up the dbus interface for Awesome.
 
-use std::{cell::RefCell, os::unix::io::RawFd, thread::LocalKey};
+use std::{cell::RefCell, os::unix::io::RawFd, thread::LocalKey, slice};
 
 use dbus_rs::{BusType, Connection, Message, MessageItem, MessageType, MsgHandler,
               MsgHandlerType, MsgHandlerResult};
@@ -153,7 +153,7 @@ impl DBusHandler {
         } else {
             message_metadata.set("bus", "session")?;
         };
-        let lua_message = dbus_to_lua_value(lua, msg)?;
+        let lua_message = dbus_to_lua_value(lua, msg.get_items().as_slice())?;
         let dbus_table = lua.globals().get::<_, Table>("dbus")?;
         let signals = dbus_table.get(SIGNALS_NAME)?;
         if msg.get_no_reply() {
@@ -250,9 +250,63 @@ fn get_bus_by_name<'bus>(bus_name: &str)
     }
 }
 
-fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg: &Message)
+fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem])
                            -> rlua::Result<MultiValue<'lua>> {
-    unimplemented!();
+    let mut res = MultiValue::new();
+    for msg_item in msg_items {
+        use dbus_rs::MessageItem::*;
+        match msg_item {
+            Variant(sub_msg_item) => {
+                res.extend(dbus_to_lua_value(lua, slice::from_ref(sub_msg_item))?)
+            },
+            DictEntry(key, value) => {
+                res.extend(dbus_to_lua_value(lua, slice::from_ref(key))?);
+                res.extend(dbus_to_lua_value(lua, slice::from_ref(value))?);
+            },
+            Struct(fields) => {
+                let struct_table = lua.create_table()?;
+                let fields = dbus_to_lua_value(lua, fields.as_slice())?;
+                for (index, field) in fields.into_iter().enumerate() {
+                    struct_table.set(index + 1, field)?;
+                }
+                res.push_back(struct_table.to_lua(lua)?);
+            },
+            Array(array) => {
+                let array_table = lua.create_table()?;
+                match array.get(0) {
+                    None => {},
+                    Some(DictEntry(..)) => {
+                        let sub_res = dbus_to_lua_value(lua, array)?;
+                        assert!(sub_res.len() % 2 == 0);
+                        let keys = sub_res.iter().step_by(2);
+                        let values = sub_res.iter().skip(1).step_by(2);
+                        for (key, value) in keys.zip(values) {
+                            array_table.set(key.clone(), value.clone())?;
+                        }
+                    },
+                    Some(_) => {
+                        let sub_res = dbus_to_lua_value(lua, array)?;
+                        for (index, value) in sub_res.into_iter().enumerate() {
+                            array_table.set(index + 1, value)?
+                        }
+                    }
+                }
+                res.push_back(array_table.to_lua(lua)?);
+            },
+            Bool(v) => res.push_back(v.to_lua(lua)?),
+            Byte(v) => res.push_back(v.to_lua(lua)?),
+            Int16(v) => res.push_back(v.to_lua(lua)?),
+            UInt16(v) => res.push_back(v.to_lua(lua)?),
+            Int32(v) => res.push_back(v.to_lua(lua)?),
+            UInt32(v) => res.push_back(v.to_lua(lua)?),
+            Int64(v) => res.push_back(v.to_lua(lua)?),
+            UInt64(v) => res.push_back(v.to_lua(lua)?),
+            Double(v) => res.push_back(v.to_lua(lua)?),
+            Str(v) => res.push_back(v.clone().to_lua(lua)?),
+            _ => res.push_back(Value::Nil)
+        }
+    }
+    Ok(res)
 }
 
 /// Converts an `rlua::Value` into a `dbus_rs::MessageItem`.
