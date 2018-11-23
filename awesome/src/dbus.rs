@@ -461,14 +461,16 @@ fn emit_signal<'lua>(lua: &'lua Lua, (bus, path, interface, name, args):
         .map(|v| lua_value_to_dbus(lua, v.0.clone(), v.1.clone()))
         .collect::<rlua::Result<Vec<MessageItem>>>()?;
     let bus = get_bus_by_name(bus.as_str())?;
-    bus.with(|bus| {
+    bus.with::<_, rlua::Result<_>>(|bus| {
         let bus = bus.borrow_mut();
         let bus = bus.as_ref().unwrap();
-        // TODO use new_signal, convert error
-        let mut msg = Message::signal(&path.into(), &interface.into(), &name.into());
+        let mut msg = Message::new_signal(path, interface, name)
+            .map_err(|_| RuntimeError("your D-Bus signal emitting \
+                                       method had bad argument type".into()))?;
         msg.append_items(&args);
         bus.send(msg)
-    }).map_err(|_| RuntimeError("Could not send D-Bus message".into()))?;
+            .map_err(|_| RuntimeError("Could not send D-Bus message".into()))
+    })?;
     true.to_lua(lua)
 }
 
