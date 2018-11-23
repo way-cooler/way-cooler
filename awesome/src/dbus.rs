@@ -10,6 +10,8 @@ use rlua::{self, Lua, Table, Value, ToLua, ToLuaMulti, MultiValue,
 use ::lua::LUA;
 use ::common::signal;
 
+/// A connection to a D-Bus we store globally that, when destroyed, will destroy
+/// the other connection as well.
 type GlobalConnection = RefCell<Option<DBusConnection>>;
 
 const SIGNALS_NAME: &'static str = "signals";
@@ -135,9 +137,14 @@ impl DBusHandler {
         };
         message_metadata.set("type", msg_type)?;
         let (type_, path, interface, member) = msg.headers();
-        message_metadata.set("interface", interface.unwrap_or_else(|| "".into()))?;
-        message_metadata.set("path", path.unwrap_or_else(|| "".into()))?;
-        message_metadata.set("member", member.unwrap_or_else(|| "".into()))?;
+        let (path, interface, member) = (
+            path.unwrap_or_else(|| "".into()),
+            interface.unwrap_or_else(|| "".into()),
+            member.unwrap_or_else(|| "".into())
+        );
+        message_metadata.set("interface", interface.clone())?;
+        message_metadata.set("path", path)?;
+        message_metadata.set("member", member)?;
         if let Some(sender) = msg.sender() {
             message_metadata.set("sender", sender.to_string())?;
         }
@@ -147,7 +154,42 @@ impl DBusHandler {
             message_metadata.set("bus", "session")?;
         };
         let lua_message = dbus_to_lua_value(lua, msg)?;
-        unimplemented!()
+        let dbus_table = lua.globals().get::<_, Table>("dbus")?;
+        let signals = dbus_table.get(SIGNALS_NAME)?;
+        if msg.get_no_reply() {
+            signal::emit_signals(lua, signals, interface, lua_message)?;
+            return Ok(vec![])
+        }
+        if let Ok(Value::Table(sig)) = signals.get(interface) {
+            // There can only be ONE handler to send reply
+            let func: rlua::Function = sig.get(1)?;
+            let res: MultiValue = func.call(lua_message)?;
+            if res.len() % 2 != 0 {
+                warn!("Your D-Bus signal handling method returned \
+                       wrong number of arguments");
+                return Ok(vec![])
+            }
+            let types = res.iter().step_by(2);
+            let values = res.iter().skip(1).step_by(2);
+            let mut reply = msg.method_return();
+            for (type_, value) in types.zip(values) {
+                match lua_value_to_dbus(lua, type_.clone(), value.clone()) {
+                    Ok(v) => {
+                        reply = reply.append(v);
+                    },
+                    Err(err) => {
+                        warn!("Your D-Bus signal handling method returned \
+                               bad data");
+                        ::lua::log_error(err);
+                        return Ok(vec![])
+                    }
+                }
+            }
+            // TODO Just one reply right?
+            return Ok(vec![reply])
+        } else {
+            Ok(vec![])
+        }
     }
 }
 
