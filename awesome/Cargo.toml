@@ -28,7 +28,8 @@ tempfile = "3.0.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 wayland-client = "0.20.12"
 wayland-sys = "0.20.12"
-dbus = "0.6.*"
+# TODO Use point release once get get_no_reply and friends are released
+dbus = { git = "https://github.com/diwic/dbus-rs" }
 
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }
