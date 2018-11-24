@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler, XdgV6ShellHandler,
-              XdgV6ShellManagerHandler, XdgV6ShellState::*, XdgV6ShellSurfaceHandle};
+              XdgV6ShellManagerHandler, XdgV6ShellSurfaceHandle};
 
 use wlroots::xdg_shell_v6_events::{MoveEvent, ResizeEvent};
 
@@ -104,13 +104,18 @@ impl XdgV6ShellHandler for XdgV6 {
     fn map_request(&mut self,
                    compositor: CompositorHandle,
                    _: SurfaceHandle,
-                   shell_surface_handle: XdgV6ShellSurfaceHandle) {
-        let is_toplevel = with_handles!([(shell_surface: {&shell_surface_handle})] => {
+                   shell_surface: XdgV6ShellSurfaceHandle) {
+        use wlroots::XdgV6ShellState::*;
+
+        let is_toplevel = dehandle!(
+            // we can't combine this with the next block because it needs to use the handle
+            @shell_surface = {&shell_surface};
             match shell_surface.state().unwrap() {
                 TopLevel(_) => true,
                 _ => false
             }
-        }).unwrap();
+        );
+
         dehandle!(
             @compositor = {compositor};
             let server: &mut ::Server = compositor.into();
@@ -120,7 +125,7 @@ impl XdgV6ShellHandler for XdgV6 {
                          ref mut xcursor_manager,
                          .. } = *server;
             if is_toplevel {
-                let view = Rc::new(::View::new(::Shell::XdgV6(shell_surface_handle.into())));
+                let view = Rc::new(::View::new(::Shell::XdgV6(shell_surface.into())));
                 views.push(view.clone());
                 seat.focus_view(view, views);
             };
@@ -144,8 +149,8 @@ impl XdgV6ShellHandler for XdgV6 {
             let destroyed_shell = shell_surface.into();
             views.retain(|view| view.shell != destroyed_shell);
 
-            if views.len() > 0 {
-                seat.focus_view(views[0].clone(), views);
+            if let Some(view) = views.get(0).cloned() {
+                seat.focus_view(view.clone(), views);
             } else {
                 seat.clear_focus();
             };

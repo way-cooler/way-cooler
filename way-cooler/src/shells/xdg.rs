@@ -100,6 +100,64 @@ impl XdgShellHandler for Xdg {
         }).unwrap();
     }
 
+    fn map_request(&mut self,
+                   compositor: CompositorHandle,
+                   _: SurfaceHandle,
+                   shell_surface: XdgShellSurfaceHandle) {
+        use wlroots::XdgShellState::*;
+
+        let is_toplevel = dehandle!(
+            // we can't combine this with the next block because it needs to use the handle
+            @shell_surface = {&shell_surface};
+            match shell_surface.state().unwrap() {
+                TopLevel(_) => true,
+                _ => false
+            }
+        );
+
+        dehandle!(
+            @compositor = {compositor};
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut seat,
+                         ref mut views,
+                         ref cursor,
+                         ref mut xcursor_manager,
+                         .. } = *server;
+            if is_toplevel {
+                let view = Rc::new(::View::new(::Shell::Xdg(shell_surface.into())));
+                views.push(view.clone());
+                seat.focus_view(view, views);
+            };
+            @cursor = {cursor};
+            seat.update_cursor_position(cursor, xcursor_manager, views, None)
+        );
+    }
+
+    fn unmap_request(&mut self,
+                     compositor: CompositorHandle,
+                     _: SurfaceHandle,
+                     shell_surface: XdgShellSurfaceHandle) {
+        dehandle!(
+            @compositor = {compositor};
+            let server: &mut ::Server = compositor.into();
+            let ::Server { ref mut seat,
+                           ref mut views,
+                           ref cursor,
+                           ref mut xcursor_manager,
+                           .. } = *server;
+            let destroyed_shell = shell_surface.into();
+            views.retain(|view| view.shell != destroyed_shell);
+
+            if let Some(view) = views.get(0).cloned() {
+                seat.focus_view(view, views);
+            } else {
+                seat.clear_focus();
+            };
+            @cursor = {cursor};
+            seat.update_cursor_position(cursor, xcursor_manager, views, None)
+        );
+    }
+
     fn destroyed(&mut self,
                  compositor: CompositorHandle,
                  shell_surface: XdgShellSurfaceHandle) {
@@ -119,16 +177,9 @@ pub struct XdgShellManager;
 
 impl XdgShellManagerHandler for XdgShellManager {
     fn new_surface(&mut self,
-                   compositor: CompositorHandle,
-                   xdg_surface: XdgShellSurfaceHandle)
+                   _: CompositorHandle,
+                   _: XdgShellSurfaceHandle)
                    -> (Option<Box<XdgShellHandler>>, Option<Box<SurfaceHandler>>) {
-        dehandle!(
-            @compositor = {compositor};
-            let server: &mut ::Server = compositor.into();
-            let ::Server { ref mut views, .. } = *server;
-            // TODO We should only push it once it's mapped.
-            views.push(Rc::new(::View::new(::Shell::Xdg(xdg_surface.clone().into()))))
-        );
         (Some(Box::new(::Xdg::new())), None)
     }
 }
