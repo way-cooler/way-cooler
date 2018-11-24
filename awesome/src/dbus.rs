@@ -2,8 +2,7 @@
 
 use std::{cell::RefCell, os::unix::io::RawFd, thread::LocalKey, slice};
 
-use dbus_rs::{BusType, Connection, Message, MessageItem, MessageType, MsgHandler,
-              MsgHandlerType, MsgHandlerResult};
+use dbus_rs::{BusType, Connection, Message, MessageItem, MessageType};
 use rlua::{self, Lua, Table, Value, ToLua, ToLuaMulti, MultiValue,
            Error::RuntimeError};
 
@@ -30,6 +29,7 @@ pub extern "C" fn dbus_session_refresh(_: libc::c_void) -> bool {
     SESSION_BUS.with(|session_bus| {
         let session_bus = session_bus.borrow_mut();
         let session_bus = session_bus.as_ref().unwrap();
+        session_bus.replace_message_callback(Some(Box::new(handle_msg_session)));
         let _ = session_bus.incoming(0).collect::<Vec<_>>();
     });
     true
@@ -41,20 +41,17 @@ pub extern "C" fn dbus_session_refresh(_: libc::c_void) -> bool {
 /// This will kick off the special handling code in `dbus.rs`.
 #[no_mangle]
 pub extern "C" fn dbus_system_refresh(_: libc::c_void) -> bool {
-    SYSTEM_BUS.with(|session_bus| {
-        let session_bus = session_bus.borrow_mut();
-        let session_bus = session_bus.as_ref().unwrap();
-        let _ = session_bus.incoming(0).collect::<Vec<_>>();
+    SYSTEM_BUS.with(|system_bus| {
+        let system_bus = system_bus.borrow_mut();
+        let system_bus = system_bus.as_ref().unwrap();
+        system_bus.replace_message_callback(Some(Box::new(handle_msg_system)));
+        let _ = system_bus.incoming(0).collect::<Vec<_>>();
     });
     true
 }
 
 struct DBusConnection {
     connection: Connection
-}
-
-struct DBusHandler {
-    global_connection: &'static LocalKey<GlobalConnection>
 }
 
 impl std::ops::Deref for DBusConnection {
@@ -85,111 +82,103 @@ impl Drop for DBusConnection {
     }
 }
 
-impl MsgHandler for DBusHandler {
-    fn handler_type(&self) -> MsgHandlerType {
-        MsgHandlerType::All
-    }
-
-    fn handle_msg(&mut self, msg: &Message) -> Option<MsgHandlerResult> {
-        if msg.msg_type() == MessageType::Signal {
-            let (_, _, interface, member) = msg.headers();
-            match (interface.unwrap().as_str(), member.unwrap().as_str()) {
-                ("org.freedesktop.DBus.Local", "Disconnected") => {
-                    self.global_connection.with(|bus| {
-                        *bus.borrow_mut() = None;
-                    });
-                    // TODO not none
-                    return Some(MsgHandlerResult {
-                        handled: true,
-                        done: true,
-                        reply: vec![]
-                    });
-                },
-                _ => {}
-            }
-        }
-        let reply = LUA.with(|lua| {
-            let lua = lua.borrow();
-            self.process_request(&*lua, msg)
-        }).unwrap_or_else(|err| {
-            ::lua::log_error(err);
-            vec![]
-        });
-
-        return Some(MsgHandlerResult {
-            handled: true,
-            done: false,
-            reply
-        })
-    }
+fn handle_msg_session(bus: &Connection, msg: Message) -> bool {
+    handle_msg(bus, BusType::Session, msg)
 }
 
-impl DBusHandler {
+fn handle_msg_system(bus: &Connection, msg: Message) -> bool {
+    handle_msg(bus, BusType::System, msg)
+}
+
+fn handle_msg(bus: &Connection, bus_type: BusType, msg: Message) -> bool {
+    if msg.msg_type() == MessageType::Signal {
+        let (_, _, interface, member) = msg.headers();
+        match (interface.unwrap().as_str(), member.unwrap().as_str()) {
+            // TODO Drop them
+            ("org.freedesktop.DBus.Local", "Disconnected") => {
+                return false
+            },
+            _ => {}
+        }
+    }
+    let reply = LUA.with(|lua| {
+        let lua = lua.borrow();
+        process_request(bus_type, &*lua, &msg)
+    }).unwrap_or_else(|err| {
+        ::lua::log_error(err);
+        None
+    });
+    if let Some(reply) = reply {
+        bus.send(reply).expect("Could not send D-Bus reply");
+    }
+    true
+}
+
     /// Gives the D-Bus message to Lua for processing the reply.
-    fn process_request(&mut self, lua: &Lua, msg: &Message) -> rlua::Result<Vec<Message>> {
-        let message_metadata = lua.create_table()?;
-        let msg_type = match msg.msg_type() {
-            MessageType::Signal => "signal",
-            MessageType::MethodCall => "method_call",
-            MessageType::MethodReturn => "method_return",
-            MessageType::Error => "error",
-            MessageType::Invalid => "unknown"
-        };
-        message_metadata.set("type", msg_type)?;
-        let (_type, path, interface, member) = msg.headers();
-        let (path, interface, member) = (
-            path.unwrap_or_else(|| "".into()),
-            interface.unwrap_or_else(|| "".into()),
-            member.unwrap_or_else(|| "".into())
-        );
-        message_metadata.set("interface", interface.clone())?;
-        message_metadata.set("path", path)?;
-        message_metadata.set("member", member)?;
-        if let Some(sender) = msg.sender() {
-            message_metadata.set("sender", sender.to_string())?;
+fn process_request(bus_type: BusType, lua: &Lua, msg: &Message)
+                   -> rlua::Result<Option<Message>> {
+    let message_metadata = lua.create_table()?;
+    let msg_type = match msg.msg_type() {
+        MessageType::Signal => "signal",
+        MessageType::MethodCall => "method_call",
+        MessageType::MethodReturn => "method_return",
+        MessageType::Error => "error",
+        MessageType::Invalid => "unknown"
+    };
+    message_metadata.set("type", msg_type)?;
+    let (_type, path, interface, member) = msg.headers();
+    let (path, interface, member) = (
+        path.unwrap_or_else(|| "".into()),
+        interface.unwrap_or_else(|| "".into()),
+        member.unwrap_or_else(|| "".into())
+    );
+    message_metadata.set("interface", interface.clone())?;
+    message_metadata.set("path", path)?;
+    message_metadata.set("member", member)?;
+    if let Some(sender) = msg.sender() {
+        message_metadata.set("sender", sender.to_string())?;
+    }
+    let bus_type_str = match bus_type {
+        BusType::Session => "session",
+        BusType::System => "system",
+        _ => unimplemented!()
+    };
+    message_metadata.set("bus", bus_type_str)?;
+    let lua_message = dbus_to_lua_value(lua, msg.get_items().as_slice())?;
+    let dbus_table = lua.globals().get::<_, Table>("dbus")?;
+    let signals = dbus_table.get(SIGNALS_NAME)?;
+    if msg.get_no_reply() {
+        signal::emit_signals(lua, signals, interface, lua_message)?;
+        return Ok(None)
+    }
+    if let Ok(Value::Table(sig)) = signals.get(interface) {
+        // There can only be ONE handler to send reply
+        let func: rlua::Function = sig.get(1)?;
+        let res: MultiValue = func.call((message_metadata, lua_message))?;
+        if res.len() % 2 != 0 {
+            warn!("Your D-Bus signal handling method returned \
+                    wrong number of arguments");
+            return Ok(None)
         }
-        if self.global_connection as *const _ == &SYSTEM_BUS as *const _ {
-            message_metadata.set("bus", "system")?;
-        } else {
-            message_metadata.set("bus", "session")?;
-        };
-        let lua_message = dbus_to_lua_value(lua, msg.get_items().as_slice())?;
-        let dbus_table = lua.globals().get::<_, Table>("dbus")?;
-        let signals = dbus_table.get(SIGNALS_NAME)?;
-        if msg.get_no_reply() {
-            signal::emit_signals(lua, signals, interface, lua_message)?;
-            return Ok(vec![])
-        }
-        if let Ok(Value::Table(sig)) = signals.get(interface) {
-            // There can only be ONE handler to send reply
-            let func: rlua::Function = sig.get(1)?;
-            let res: MultiValue = func.call((message_metadata, lua_message))?;
-            if res.len() % 2 != 0 {
-                warn!("Your D-Bus signal handling method returned \
-                       wrong number of arguments");
-                return Ok(vec![])
-            }
-            let types = res.iter().step_by(2);
-            let values = res.iter().skip(1).step_by(2);
-            let mut reply = msg.method_return();
-            for (type_, value) in types.zip(values) {
-                match lua_value_to_dbus(lua, type_.clone(), value.clone()) {
-                    Ok(v) => {
-                        reply = reply.append(v);
-                    },
-                    Err(err) => {
-                        warn!("Your D-Bus signal handling method returned \
-                               bad data");
-                        ::lua::log_error(err);
-                        return Ok(vec![])
-                    }
+        let types = res.iter().step_by(2);
+        let values = res.iter().skip(1).step_by(2);
+        let mut reply = msg.method_return();
+        for (type_, value) in types.zip(values) {
+            match lua_value_to_dbus(lua, type_.clone(), value.clone()) {
+                Ok(v) => {
+                    reply = reply.append(v);
+                },
+                Err(err) => {
+                    warn!("Your D-Bus signal handling method returned \
+                            bad data");
+                    ::lua::log_error(err);
+                    return Ok(None)
                 }
             }
-            // TODO Just one reply right?
-            return Ok(vec![reply])
-        } else {
-            Ok(vec![])
         }
+        Ok(Some(reply))
+    } else {
+        Ok(None)
     }
 }
 
@@ -206,8 +195,6 @@ pub fn connect() -> Result<(RawFd, RawFd), dbus::Error> {
     let system_fds = system_con.watch_fds();
     assert_eq!(session_fds.len(), 1, "Only one fd per dbus connection");
     assert_eq!(system_fds.len(), 1, "Only one fd per dbus connection");
-    session_con.add_handler(DBusHandler { global_connection: &SESSION_BUS });
-    system_con.add_handler(DBusHandler { global_connection: &SYSTEM_BUS });
 
     SESSION_BUS.with(|session_bus| {
         let mut session_bus = session_bus.borrow_mut();
