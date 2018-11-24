@@ -136,7 +136,7 @@ impl DBusHandler {
             MessageType::Invalid => "unknown"
         };
         message_metadata.set("type", msg_type)?;
-        let (type_, path, interface, member) = msg.headers();
+        let (_type, path, interface, member) = msg.headers();
         let (path, interface, member) = (
             path.unwrap_or_else(|| "".into()),
             interface.unwrap_or_else(|| "".into()),
@@ -439,7 +439,7 @@ fn connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function))
     }
 }
 
-fn disconnect_signal(lua: &Lua, (name, func): (String, rlua::Function))
+fn disconnect_signal(lua: &Lua, (name, _func): (String, rlua::Function))
                      -> rlua::Result<()> {
     let signals: Table = lua.globals()
         .get::<_, Table>("dbus").unwrap()
