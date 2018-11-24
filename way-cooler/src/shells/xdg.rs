@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use wlroots::{CompositorHandle, Origin, SurfaceHandle, SurfaceHandler,
-              XdgShellSurfaceHandle, XdgShellHandler, XdgShellManagerHandler, XdgShellState::*};
+              XdgShellSurfaceHandle, XdgShellHandler, XdgShellManagerHandler};
 use wlroots::xdg_shell_events::{MoveEvent, ResizeEvent};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -103,13 +103,18 @@ impl XdgShellHandler for Xdg {
     fn map_request(&mut self,
                    compositor: CompositorHandle,
                    _: SurfaceHandle,
-                   shell_surface_handle: XdgShellSurfaceHandle) {
-        let is_toplevel = with_handles!([(shell_surface: {&shell_surface_handle})] => {
+                   shell_surface: XdgShellSurfaceHandle) {
+        use wlroots::XdgShellState::*;
+
+        let is_toplevel = dehandle!(
+            // we can't combine this with the next block because it needs to use the handle
+            @shell_surface = {&shell_surface};
             match shell_surface.state().unwrap() {
                 TopLevel(_) => true,
                 _ => false
             }
-        }).unwrap();
+        );
+
         dehandle!(
             @compositor = {compositor};
             let server: &mut ::Server = compositor.into();
@@ -119,7 +124,7 @@ impl XdgShellHandler for Xdg {
                          ref mut xcursor_manager,
                          .. } = *server;
             if is_toplevel {
-                let view = Rc::new(::View::new(::Shell::Xdg(shell_surface_handle.into())));
+                let view = Rc::new(::View::new(::Shell::Xdg(shell_surface.into())));
                 views.push(view.clone());
                 seat.focus_view(view, views);
             };
@@ -143,8 +148,8 @@ impl XdgShellHandler for Xdg {
             let destroyed_shell = shell_surface.into();
             views.retain(|view| view.shell != destroyed_shell);
 
-            if views.len() > 0 {
-                seat.focus_view(views[0].clone(), views);
+            if let Some(view) = views.get(0).cloned() {
+                seat.focus_view(view, views);
             } else {
                 seat.clear_focus();
             };
@@ -172,8 +177,8 @@ pub struct XdgShellManager;
 
 impl XdgShellManagerHandler for XdgShellManager {
     fn new_surface(&mut self,
-                   compositor: CompositorHandle,
-                   xdg_surface: XdgShellSurfaceHandle)
+                   _: CompositorHandle,
+                   _: XdgShellSurfaceHandle)
                    -> (Option<Box<XdgShellHandler>>, Option<Box<SurfaceHandler>>) {
         (Some(Box::new(::Xdg::new())), None)
     }
