@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use wlroots::{XdgShellState, XdgV6ShellState};
 use wlroots::{Area, Origin, Size, SurfaceHandle};
+use wlroots::wlroots_dehandle;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PendingMoveResize {
@@ -28,50 +29,47 @@ impl View {
         self.shell.surface()
     }
 
+    #[wlroots_dehandle(xdg_surface)]
     pub fn activate(&self, activate: bool) {
         match self.shell.clone() {
             ::Shell::XdgV6(xdg_surface) => {
-                dehandle! (
-                    @xdg_surface = {xdg_surface};
-                    match xdg_surface.state() {
-                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
-                            toplevel.set_activated(activate);
-                        },
-                        _ => unimplemented!()
-                    }
-                );
+                use xdg_surface as xdg_surface;
+                match xdg_surface.state() {
+                    Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                        toplevel.set_activated(activate);
+                    },
+                    _ => unimplemented!()
+                }
             },
             ::Shell::Xdg(xdg_surface) => {
-                dehandle! (
-                    @xdg_surface = {xdg_surface};
-                    match xdg_surface.state() {
-                        Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
-                            toplevel.set_activated(activate);
-                        },
-                        _ => unimplemented!()
-                    }
-                );
+                use xdg_surface as xdg_surface;
+                match xdg_surface.state() {
+                    Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
+                        toplevel.set_activated(activate);
+                    },
+                    _ => unimplemented!()
+                }
             }
         }
     }
 
+    #[wlroots_dehandle(xdg_surface)]
     pub fn get_size(&self) -> Size {
         match self.shell.clone() {
             ::Shell::XdgV6(xdg_surface) => {
-                with_handles!([(xdg_surface: {xdg_surface})] => {
-                    let Area { origin: _, size } = xdg_surface.geometry();
-                    size
-                }).unwrap()
+                use xdg_surface as xdg_surface;
+                let Area { origin: _, size } = xdg_surface.geometry();
+                size
             },
             ::Shell::Xdg(xdg_surface) => {
-                with_handles!([(xdg_surface: {xdg_surface})] => {
-                    let Area { origin: _, size } = xdg_surface.geometry();
-                    size
-                }).unwrap()
+                use xdg_surface as xdg_surface;
+                let Area { origin: _, size } = xdg_surface.geometry();
+                size
             }
         }
     }
 
+    #[wlroots_dehandle(xdg_surface)]
     pub fn move_resize(&self, area: Area) {
         let Area { origin: Origin { x, y },
                    size: Size { width, height } } = area;
@@ -87,26 +85,24 @@ impl View {
 
         match self.shell.clone() {
             ::Shell::XdgV6(xdg_surface) => {
-                with_handles!([(xdg_surface: {xdg_surface})] => {
-                    match xdg_surface.state() {
-                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
-                            // TODO apply size constraints
-                            serial = toplevel.set_size(width, height);
-                        },
-                        _ => unimplemented!()
-                    }
-                }).unwrap();
+                use xdg_surface as xdg_surface;
+                match xdg_surface.state() {
+                    Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                        // TODO apply size constraints
+                        serial = toplevel.set_size(width, height);
+                    },
+                    _ => unimplemented!()
+                }
             },
             ::Shell::Xdg(xdg_surface) => {
-                with_handles!([(xdg_surface: {xdg_surface})] => {
-                    match xdg_surface.state() {
-                        Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
-                            // TODO apply size constraints
-                            serial = toplevel.set_size(width, height);
-                        },
-                        _ => unimplemented!()
-                    }
-                }).unwrap();
+                use xdg_surface as xdg_surface;
+                match xdg_surface.state() {
+                    Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
+                        // TODO apply size constraints
+                        serial = toplevel.set_size(width, height);
+                    },
+                    _ => unimplemented!()
+                }
             }
         }
 
@@ -121,17 +117,16 @@ impl View {
         }
     }
 
+    #[wlroots_dehandle(xdg_surface)]
     pub fn for_each_surface(&self, f: &mut FnMut(SurfaceHandle, i32, i32)) {
         match self.shell.clone() {
-            ::Shell::XdgV6(xdg_v6_surface) => {
-                with_handles!([(xdg_v6_surface: {xdg_v6_surface})] => {
-                    xdg_v6_surface.for_each_surface(f);
-                }).unwrap();
+            ::Shell::XdgV6(xdg_surface) => {
+                use xdg_surface as xdg_surface;
+                xdg_surface.for_each_surface(f);
             },
             ::Shell::Xdg(xdg_surface) => {
-                with_handles!([(xdg_surface: {xdg_surface})] => {
-                    xdg_surface.for_each_surface(f);
-                }).unwrap();
+                use xdg_surface as xdg_surface;
+                xdg_surface.for_each_surface(f);
             }
         }
     }

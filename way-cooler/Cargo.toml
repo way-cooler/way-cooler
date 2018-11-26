@@ -11,7 +11,7 @@ build = "build.rs"
 publish = false
 
 [dependencies]
-wlroots = { path = "../wlroots-rs" }
+wlroots = { path = "../../wlroots-rs" }
 log = "0.4"
 env_logger = "0.5"
 bitflags = "0.7"
