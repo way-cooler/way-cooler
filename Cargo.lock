@@ -1231,8 +1231,18 @@ dependencies = [
  "rust-ini 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "vsprintf 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-sys 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wlroots-dehandle 0.0.0",
  "wlroots-sys 0.0.0",
  "xkbcommon 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "wlroots-dehandle"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2 0.4.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 0.15.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
