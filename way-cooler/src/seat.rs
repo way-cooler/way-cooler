@@ -74,6 +74,7 @@ impl Seat {
             @seat = {&self.seat};
             if let Some(keyboard) = seat.get_keyboard() {
                 with_handles!([(keyboard: {keyboard}), (surface: {view.surface()})] => {
+                    seat.keyboard_end_grab();
                     seat.keyboard_notify_enter(surface,
                                                &mut keyboard.keycodes(),
                                                &mut keyboard.get_modifier_masks());
