@@ -18,7 +18,7 @@ exec = "0.3"
 rlua = { version = "0.12.0", default-features = false }
 bitflags = "1.0"
 nix = "0.6"
-getopts = "0.2"
+clap = "2"
 cairo-rs = "0.4.1"
 cairo-sys-rs = "0.6.0"
 gdk-pixbuf = "0.4.*"

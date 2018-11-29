@@ -36,7 +36,8 @@ extern crate cairo;
 extern crate cairo_sys;
 extern crate env_logger;
 extern crate exec;
-extern crate getopts;
+#[macro_use]
+extern crate clap;
 extern crate gdk_pixbuf;
 extern crate glib;
 #[macro_use]
@@ -72,6 +73,7 @@ mod dbus;
 use std::{env, mem, path::PathBuf, process::exit, io::{self, Write},
           os::unix::io::RawFd};
 
+use clap::{App, Arg};
 use exec::Command;
 use rlua::{LightUserData, Lua, Table};
 use log::Level;
@@ -87,7 +89,6 @@ pub use dbus::{dbus_session_refresh, dbus_system_refresh};
 use lua::{LUA, NEXT_LUA};
 use wayland_protocols::xdg_shell::xdg_wm_base;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
 pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
@@ -139,24 +140,51 @@ pub extern "C" fn awesome_refresh(wayland_state: *mut libc::c_void) {
     });
 }
 
-fn main() {
-    let mut opts = getopts::Options::new();
-    let matches = match opts.optflag("", "version", "show version information")
-                            .parse(env::args().skip(1)) {
-        Ok(m) => m,
-        Err(f) => {
-            eprintln!("{}", f.to_string());
-            exit(1);
-        }
-    };
-    if matches.opt_present("version") {
+struct AwesomeVersion;
+
+impl <'a> Into<&'a str> for AwesomeVersion {
+    fn into(self) -> &'a str {
         if !GIT_VERSION.is_empty() {
-            println!("Way Cooler {} @ {}", VERSION, GIT_VERSION);
+            concat!("Awesome ",
+                    env!("CARGO_PKG_VERSION"),
+                    " @ ",
+                    include_str!(concat!(env!("OUT_DIR"), "/git-version.txt")))
         } else {
-            println!("Way Cooler {}", VERSION);
+            concat!("Awesome ", env!("CARGO_PKG_VERSION"))
         }
-        return
     }
+}
+
+fn main() {
+    let matches = App::new(env!("CARGO_PKG_NAME"))
+        .version(AwesomeVersion)
+        .version_short("v")
+        .author(crate_authors!("\n"))
+        .arg(Arg::with_name("config")
+             .short("c")
+             .long("config")
+             .value_name("FILE")
+             .help("configuration file to use")
+             .takes_value(true))
+        .arg(Arg::with_name("lua lib search")
+             .long("search")
+             .value_name("DIR")
+             .help("add a directory to the library search path")
+             .takes_value(true)
+             .multiple(true))
+        .arg(Arg::with_name("lua syntax check")
+             .short("k")
+             .long("check")
+             .help("check configure file syntax"))
+        .arg(Arg::with_name("client transparency")
+             .short("a")
+             .long("no-argb")
+             .help("disable client transparency support"))
+        .arg(Arg::with_name("replace wm")
+             .short("r")
+             .long("replace")
+             .help("replace an existing window manager"))
+        .get_matches();
     init_logs();
     let sig_action = SigAction::new(SigHandler::Handler(sig_handle),
                                     SaFlags::empty(),
@@ -165,12 +193,42 @@ fn main() {
         signal::sigaction(signal::SIGINT, &sig_action)
             .expect("Could not set SIGINT catcher");
     }
-    lua::init_awesome_libraries();
+    if matches.is_present("client transparency") {
+        unimplemented!()
+    }
+    if matches.is_present("replace wm") {
+        unimplemented!()
+    }
+    if matches.is_present("lua syntax check") {
+        let config = matches.value_of("config");
+        match lua::syntax_check(config) {
+            Err(Err(err)) => {
+                error!("Could not read configuration files");
+                error!("{}", err);
+                exit(1)
+            }
+            Err(Ok(lua_error)) => {
+                error!("✘ Configuration file syntax error.");
+                error!("{}", lua_error);
+                exit(1)
+            }
+            Ok(_) => {
+                info!("✔ Configuration file syntax OK.");
+                exit(0)
+            }
+        }
+    }
+    {
+        let lib_paths = matches.values_of("lua lib search")
+            .unwrap_or_default()
+            .collect::<Vec<_>>();
+        lua::init_awesome_libraries(lib_paths.as_slice());
+    }
     let (display, event_queue, _globals) = init_wayland();
     let (session_fd, system_fd) = dbus::connect()
         .expect("Could not set up dbus connection");
     init_glib(display, event_queue, session_fd, system_fd);
-    lua::run_awesome();
+    lua::run_awesome(matches);
 }
 
 fn init_wayland() -> (Display, EventQueue, GlobalManager) {
@@ -255,11 +313,16 @@ fn init_glib(display: Display,
     }
 }
 
-fn setup_awesome_path(lua: &Lua) -> rlua::Result<()> {
+fn setup_awesome_path(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
     let globals = lua.globals();
     let package: Table = globals.get("package")?;
     let mut path = package.get::<_, String>("path")?;
     let mut cpath = package.get::<_, String>("cpath")?;
+
+    for lib_path in lib_paths {
+        path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua", lib_path));
+        cpath.push_str(&format!(";{}/?.so", lib_path));
+    }
 
     for mut xdg_data_path in
         env::var("XDG_DATA_DIRS").unwrap_or("/usr/local/share:/usr/share".into())
