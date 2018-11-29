@@ -11,9 +11,12 @@ use clap::ArgMatches;
 use glib::MainLoop;
 use rlua::{self, AnyUserData, Lua, Table, Value};
 
-use std::{cell::{Cell, RefCell}, io::{self, Read}};
+use std::{cell::{Cell, RefCell}, io::{self, Read}, fs::File, path::PathBuf};
 
 use common::signal;
+
+/// Path to the Awesome shims.
+const SHIMS_PATH: &str = "../../tests/awesome/tests/examples/shims/";
 
 thread_local! {
     // NOTE The debug library does some powerful reflection that can do crazy things,
@@ -27,6 +30,29 @@ thread_local! {
 
     /// Main GLib loop
     static MAIN_LOOP: RefCell<MainLoop> = RefCell::new(MainLoop::new(None, false));
+}
+
+/// Loads shim code to act like Awesome.
+///
+/// To be compatible this must eventually be removed.
+///
+/// Best way to help out: comment out one of these lines, fix what breaks.
+fn load_shims(lua: &Lua) {
+    let globals = lua.globals();
+    let package: Table = globals.get("package").unwrap();
+    let mut path = package.get::<_, String>("path").unwrap();
+    path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua", SHIMS_PATH));
+    package.set("path", path).unwrap();
+    let mut shims_path = PathBuf::from(SHIMS_PATH);
+    shims_path.push("_common_template.lua");
+    let shims_path_str = shims_path.to_str().unwrap();
+    let mut file = File::open(shims_path.clone())
+        .expect(&format!("Could not open {}", shims_path_str));
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)
+        .expect(&format!("Could not read {}", shims_path_str));
+    lua.exec::<()>(contents.as_str(), None)
+        .expect(&format!("Could not read {}", shims_path_str));
 }
 
 /// Sets up the Lua environment for the user code.
@@ -46,12 +72,14 @@ pub fn init_awesome_libraries(lib_paths: &[&str]) {
 /// It then enters the glib/wayland main loop to listen for events.
 pub fn run_awesome(matches: ArgMatches) {
     LUA.with(|lua| {
+        let mut lua = lua.borrow_mut();
         info!("Loading Awesome configuration...");
         let lib_paths = matches.values_of("lua lib search")
             .unwrap_or_default()
             .collect::<Vec<_>>();
         let config = matches.value_of("config");
-        load_config(&mut *lua.borrow_mut(), config, lib_paths.as_slice());
+        load_config(&mut *lua, config, lib_paths.as_slice());
+        load_shims(&mut *lua);
     });
     enter_glib_loop();
 }
