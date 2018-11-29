@@ -27,7 +27,7 @@ thread_local! {
 #[no_mangle]
 pub extern "C" fn dbus_session_refresh(_: libc::c_void) -> bool {
     SESSION_BUS.with(|session_bus| {
-        let session_bus = session_bus.borrow_mut();
+        let session_bus = session_bus.borrow();
         let session_bus = session_bus.as_ref().unwrap();
         session_bus.replace_message_callback(Some(Box::new(handle_msg_session)));
         let _ = session_bus.incoming(0).collect::<Vec<_>>();
@@ -42,7 +42,7 @@ pub extern "C" fn dbus_session_refresh(_: libc::c_void) -> bool {
 #[no_mangle]
 pub extern "C" fn dbus_system_refresh(_: libc::c_void) -> bool {
     SYSTEM_BUS.with(|system_bus| {
-        let system_bus = system_bus.borrow_mut();
+        let system_bus = system_bus.borrow();
         let system_bus = system_bus.as_ref().unwrap();
         system_bus.replace_message_callback(Some(Box::new(handle_msg_system)));
         let _ = system_bus.incoming(0).collect::<Vec<_>>();
@@ -369,7 +369,7 @@ fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value)
 fn request_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow_mut();
+        let bus = bus.borrow();
         let bus = bus.as_ref().unwrap();
         bus.register_name(name.as_str(), 0)
             .expect(&format!("Could not register name {}", name.as_str()));
@@ -380,7 +380,7 @@ fn request_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
 fn release_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow_mut();
+        let bus = bus.borrow();
         let bus = bus.as_ref().unwrap();
         bus.release_name(name.as_str())
             .expect(&format!("Could not release name {}", name.as_str()));
@@ -391,7 +391,7 @@ fn release_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
 fn add_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow_mut();
+        let bus = bus.borrow();
         let bus = bus.as_ref().unwrap();
         bus.add_match(name.as_str())
             .map_err(|err| RuntimeError(format!("{}", err)))
@@ -402,7 +402,7 @@ fn add_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
 fn remove_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow_mut();
+        let bus = bus.borrow();
         let bus = bus.as_ref().unwrap();
         bus.remove_match(name.as_str())
             .map_err(|err| RuntimeError(format!("{}", err)))
@@ -450,7 +450,7 @@ fn emit_signal<'lua>(lua: &'lua Lua, (bus, path, interface, name, args):
         .collect::<rlua::Result<Vec<MessageItem>>>()?;
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with::<_, rlua::Result<_>>(|bus| {
-        let bus = bus.borrow_mut();
+        let bus = bus.borrow();
         let bus = bus.as_ref().unwrap();
         let mut msg = Message::new_signal(path, interface, name)
             .map_err(|_| RuntimeError("your D-Bus signal emitting \
