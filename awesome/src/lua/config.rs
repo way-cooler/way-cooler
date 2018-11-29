@@ -10,7 +10,7 @@ use rlua::{self, Lua, Table};
 
 
 const INIT_FILE: &'static str = "rc.lua";
-const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/";
+const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/rc.lua";
 
 pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
 
@@ -73,26 +73,26 @@ pub fn get_config(cmdline_path: Option<&str>) -> io::Result<(PathBuf, File)> {
                                            None,
                                            None,
                                            Some(Path::new(home).join(".config")
-                                                               .join("way-cooler")),
+                                                               .join("way-cooler")
+                                                               .join(INIT_FILE)),
                                            Some(INIT_FILE_FALLBACK_PATH.into())];
 
-    if let Ok(path) = env::var("WAY_COOLER_INIT_FILE").map(|path| PathBuf::from(path)) {
-        let path = path.parent().map_or(PathBuf::new(), Path::to_path_buf);
-        paths[0] = Some(path);
-    }
+    paths[0] = env::var("WAY_COOLER_INIT_FILE").ok().map(PathBuf::from);
 
-    if let Ok(path) = env::var("XDG_CONFIG_HOME").map(|path| PathBuf::from(path)) {
-        paths[1] = Some(path);
-    }
+    paths[1] = env::var("XDG_CONFIG_HOME").ok().map(|path| {
+        let mut path = PathBuf::from(path);
+        path.push(INIT_FILE);
+        path
+    });
 
-    for path in paths.iter_mut() {
-        let (original_path, path) = match path.take() {
-            Some(path) => (path.clone(), path.join(INIT_FILE)),
+    for path in paths.into_iter() {
+        let path = match path {
+            Some(path) => path,
             None => continue
         };
-        if let Ok(file) = OpenOptions::new().read(true).open(path.clone()) {
+        if let Ok(file) = OpenOptions::new().read(true).open(path) {
             info!("Found init file @ {:?}", path);
-            return Ok((original_path, file))
+            return Ok((path.clone(), file))
         }
     }
     Err(io::Error::new(io::ErrorKind::NotFound, "No configuration file found"))
