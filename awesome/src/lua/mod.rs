@@ -17,6 +17,21 @@ use common::signal;
 
 /// Path to the Awesome shims.
 const SHIMS_PATH: &str = "../../tests/awesome/tests/examples/shims/";
+/// Shims to load
+const SHIMS: [&str; 12] = [
+    "awesome",
+    "root",
+    "tag",
+    "screen",
+    "client",
+    "mouse",
+    "drawin",
+    "button",
+    "keygrabber",
+    "mousegrabber",
+    "dbus",
+    "key"
+];
 
 thread_local! {
     // NOTE The debug library does some powerful reflection that can do crazy things,
@@ -43,16 +58,21 @@ fn load_shims(lua: &Lua) {
     let mut path = package.get::<_, String>("path").unwrap();
     path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua", SHIMS_PATH));
     package.set("path", path).unwrap();
-    let mut shims_path = PathBuf::from(SHIMS_PATH);
-    shims_path.push("_common_template.lua");
-    let shims_path_str = shims_path.to_str().unwrap();
-    let mut file = File::open(shims_path.clone())
-        .expect(&format!("Could not open {}", shims_path_str));
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .expect(&format!("Could not read {}", shims_path_str));
-    lua.exec::<()>(contents.as_str(), None)
-        .expect(&format!("Could not read {}", shims_path_str));
+    let shims_path = PathBuf::from(SHIMS_PATH);
+    for shim in SHIMS.iter() {
+        let mut path = shims_path.clone();
+        path.push(format!("{}.lua", shim));
+        let shims_path_str = path.to_str().unwrap();
+        let mut file = File::open(path.clone())
+            .expect(&format!("Could not open {}", shims_path_str));
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .expect(&format!("Could not read {}", shims_path_str));
+        let obj = lua.exec::<rlua::Value>(contents.as_str(), None)
+            .expect(&format!("Could not read {}", shims_path_str));
+        globals.set(*shim, obj)
+            .expect("Could not set global object");
+    }
 }
 
 /// Sets up the Lua environment for the user code.

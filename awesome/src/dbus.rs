@@ -145,8 +145,10 @@ fn process_request(bus_type: BusType, lua: &Lua, msg: &Message)
     };
     message_metadata.set("bus", bus_type_str)?;
     let lua_message = dbus_to_lua_value(lua, msg.get_items().as_slice())?;
-    let dbus_table = lua.globals().get::<_, Table>("dbus")?;
-    let signals = dbus_table.get(SIGNALS_NAME)?;
+    let dbus_table = lua.globals().get::<_, Table>("dbus")
+        .expect("Could not get dbus table");
+    let signals = dbus_table.get(SIGNALS_NAME)
+        .expect("Could not get signals table");
     if msg.get_no_reply() {
         signal::emit_signals(lua, signals, interface, lua_message)?;
         return Ok(None)
@@ -412,9 +414,9 @@ fn remove_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
 
 fn connect_signal<'lua>(lua: &'lua Lua, (name, func): (String, rlua::Function))
                   -> rlua::Result<MultiValue<'lua>> {
-    let signals: Table = lua.globals()
-        .get::<_, Table>("dbus")
-        .unwrap().get(SIGNALS_NAME).unwrap();
+    let signals = lua.globals()
+        .get::<_, Table>("dbus").unwrap()
+        .get::<_, Table>(SIGNALS_NAME).unwrap();
     if signals.get(name.as_str())? {
         let error_msg = format!(
             "Cannot add signal {} on D-Bus, already existing", name.as_str());
