@@ -29,7 +29,6 @@ const SHIMS: [&str; 12] = [
     "button",
     "keygrabber",
     "mousegrabber",
-    "dbus",
     "key"
 ];
 
