@@ -41,4 +41,4 @@ docs: man html
 
 # Tests
 test: build
-	./tests/awesome/tests/run_wayland.sh
+	./test_wayland.sh
