@@ -26,8 +26,9 @@ sources:
 tasks:
   - setup: |
       rustup install stable
+      rustup install nightly
       rustup default stable
-      rustup component add rustfmt-preview
+      rustup component add rustfmt-preview --toolchain nightly
       export CC=clang
       rustup default stable
       export RUST_BACKTRACE=full
@@ -36,4 +37,4 @@ tasks:
   - build: |
       cd way-cooler
       cargo test --verbose
-      cargo fmt --all -- --check
+      cargo +nightly fmt --all -- --check
