@@ -3,16 +3,34 @@
 mod config;
 mod utils;
 
-use self::config::load_config;
+use self::config::{get_config, load_config};
 pub use self::utils::*;
+pub use self::config::log_error;
 
+use clap::ArgMatches;
 use glib::MainLoop;
 use rlua::{self, AnyUserData, Lua, Table, Value};
 
-use std::cell::RefCell;
-use std::cell::Cell;
+use std::{cell::{Cell, RefCell}, io::{self, Read}, fs::File, path::PathBuf};
 
 use common::signal;
+
+/// Path to the Awesome shims.
+const SHIMS_PATH: &str = "../../tests/awesome/tests/examples/shims/";
+/// Shims to load
+const SHIMS: [&str; 11] = [
+    "awesome",
+    "root",
+    "tag",
+    "screen",
+    "client",
+    "mouse",
+    "drawin",
+    "button",
+    "keygrabber",
+    "mousegrabber",
+    "key"
+];
 
 thread_local! {
     // NOTE The debug library does some powerful reflection that can do crazy things,
@@ -28,14 +46,42 @@ thread_local! {
     static MAIN_LOOP: RefCell<MainLoop> = RefCell::new(MainLoop::new(None, false));
 }
 
+/// Loads shim code to act like Awesome.
+///
+/// To be compatible this must eventually be removed.
+///
+/// Best way to help out: comment out one of these lines, fix what breaks.
+fn load_shims(lua: &Lua) {
+    let globals = lua.globals();
+    let package: Table = globals.get("package").unwrap();
+    let mut path = package.get::<_, String>("path").unwrap();
+    path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua", SHIMS_PATH));
+    package.set("path", path).unwrap();
+    let shims_path = PathBuf::from(SHIMS_PATH);
+    for shim in SHIMS.iter() {
+        let mut path = shims_path.clone();
+        path.push(format!("{}.lua", shim));
+        let shims_path_str = path.to_str().unwrap();
+        let mut file = File::open(path.clone())
+            .expect(&format!("Could not open {}", shims_path_str));
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .expect(&format!("Could not read {}", shims_path_str));
+        let obj = lua.exec::<rlua::Value>(contents.as_str(), None)
+            .expect(&format!("Could not read {}", shims_path_str));
+        globals.set(*shim, obj)
+            .expect("Could not set global object");
+    }
+}
+
 /// Sets up the Lua environment for the user code.
 ///
 /// This environment is also necessary for some Wayland callbacks,
 /// so it should be called as soon as possible.
-pub fn init_awesome_libraries() {
+pub fn init_awesome_libraries(lib_paths: &[&str]) {
     info!("Setting up Awesome libraries");
     LUA.with(|lua| {
-        register_libraries(&*lua.borrow())
+        register_libraries(&*lua.borrow(), lib_paths)
             .expect("Could not register lua libraries");
     });
 }
@@ -43,10 +89,16 @@ pub fn init_awesome_libraries() {
 /// Runs user code from the config through the awesome compatibility layer.
 ///
 /// It then enters the glib/wayland main loop to listen for events.
-pub fn run_awesome() {
+pub fn run_awesome(matches: ArgMatches) {
     LUA.with(|lua| {
+        let mut lua = lua.borrow_mut();
         info!("Loading Awesome configuration...");
-        load_config(&mut *lua.borrow_mut());
+        let lib_paths = matches.values_of("lua lib search")
+            .unwrap_or_default()
+            .collect::<Vec<_>>();
+        let config = matches.value_of("config");
+        load_config(&mut *lua, config, lib_paths.as_slice());
+        load_shims(&mut *lua);
     });
     enter_glib_loop();
 }
@@ -69,21 +121,37 @@ pub fn terminate() {
     MAIN_LOOP.with(|main_loop| main_loop.borrow().quit())
 }
 
+/// Checks that the first configuration file used is syntactically correct.
+///
+/// If the inner io::Result is not `Ok(())` we could not read any config files.
+pub fn syntax_check(cmdline_path: Option<&str>) -> Result<(), io::Result<rlua::Error>> {
+    let (path, mut file) = get_config(cmdline_path).map_err(Err)?;
+    let mut file_contents = String::new();
+    file.read_to_string(&mut file_contents).map_err(Err)?;
+    LUA.with(|lua| {
+        let lua = lua.borrow();
+        let res = lua.load(file_contents.as_str(), path.to_str())
+            .map(|_| ())
+            .map_err(|err| Ok(err));
+        res
+    })
+}
+
 /// Register all the Rust functions for the lua libraries
-pub fn register_libraries(lua: &Lua) -> rlua::Result<()> {
+pub fn register_libraries(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
     trace!("Setting up Lua libraries");
     // TODO Is this awesome init code necessary?
     let init_code = include_str!("../../../lib/lua/init.lua");
     lua.exec::<()>(init_code, Some("init.lua"))?;
     let globals = lua.globals();
     globals.set("type", lua.create_function(type_override)?)?;
-    init_libs(&lua).expect("Could not initialize awesome compatibility modules");
+    init_libs(&lua, lib_paths).expect("Could not initialize awesome compatibility modules");
     Ok(())
 }
 
-fn init_libs(lua: &Lua) -> rlua::Result<()> {
+fn init_libs(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
     use ::{*, objects::*};
-    setup_awesome_path(lua)?;
+    setup_awesome_path(lua, lib_paths)?;
     setup_global_signals(lua)?;
     setup_xcb_connection(lua)?;
     button::init(lua)?;
@@ -98,6 +166,7 @@ fn init_libs(lua: &Lua) -> rlua::Result<()> {
     drawin::init(lua)?;
     drawable::init(lua)?;
     mousegrabber::init(lua)?;
+    dbus::lua_init(lua)?;
     Ok(())
 }
 

@@ -12,19 +12,19 @@ use common::object::{Object, ObjectStateType};
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
 pub fn connect_signal<S: ObjectStateType>(lua: &Lua,
-                                obj: Object<S>,
-                                name: String,
-                                funcs: &[Function])
-                                -> rlua::Result<()> {
+                                          obj: Object<S>,
+                                          name: String,
+                                          funcs: &[Function])
+                                          -> rlua::Result<()> {
     let signals = obj.signals()?;
     connect_signals(lua, signals, name, funcs)
 }
 
-fn connect_signals<'lua>(lua: &'lua Lua,
-                         signals: Table<'lua>,
-                         name: String,
-                         funcs: &[Function])
-                         -> rlua::Result<()> {
+pub fn connect_signals<'lua>(lua: &'lua Lua,
+                             signals: Table<'lua>,
+                             name: String,
+                             funcs: &[Function])
+                             -> rlua::Result<()> {
     if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.as_str()) {
         let mut length = table.len()? + 1;
         for func in funcs {
@@ -42,14 +42,15 @@ fn connect_signals<'lua>(lua: &'lua Lua,
 }
 
 pub fn disconnect_signal<S: ObjectStateType>(lua: &Lua,
-                                   obj: Object<S>,
-                                   name: String)
-                                   -> rlua::Result<()> {
+                                             obj: Object<S>,
+                                             name: String,
+)
+                                             -> rlua::Result<()> {
     let signals = obj.signals()?;
     disconnect_signals(lua, signals, name)
 }
 
-fn disconnect_signals(_: &Lua, signals: Table, name: String) -> rlua::Result<()> {
+pub fn disconnect_signals(_: &Lua, signals: Table, name: String) -> rlua::Result<()> {
     signals.set(name, Value::Nil)
 }
 
@@ -68,7 +69,7 @@ pub fn emit_object_signal<'lua, A, S>(lua: &'lua Lua,
     emit_signals(lua, signals, name, args)
 }
 
-fn emit_signals<'lua, A>(_: &'lua Lua,
+pub fn emit_signals<'lua, A>(_: &'lua Lua,
                          signals: Table<'lua>,
                          name: String,
                          args: A)
