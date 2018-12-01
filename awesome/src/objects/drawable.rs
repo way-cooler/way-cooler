@@ -1,21 +1,18 @@
 //! A wrapper around a Cairo image surface.
 
-use std::io::Write;
-use std::fs::File;
-use std::default::Default;
+use std::{default::Default, fs::File, io::Write};
 
 use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
-use rlua::{self, LightUserData, Lua, Table,
-           UserData, UserDataMethods, Value};
-use wlroots::{Area, Origin, Size};
+use rlua::{self, LightUserData, Lua, Table, UserData, UserDataMethods, Value};
 use tempfile;
+use wlroots::{Area, Origin, Size};
 
 use common::{class::{self, Class},
              object::{self, Object},
-             property::Property};
+             property::Property,
+             signal::emit_object_signal};
 use wayland_obj::{self, XdgToplevel};
-use common::signal::emit_object_signal;
 
 #[derive(Debug)]
 pub struct DrawableState {
@@ -31,8 +28,7 @@ pub type Drawable<'lua> = Object<'lua, DrawableState>;
 
 impl Default for DrawableState {
     fn default() -> Self {
-        let temp_file = tempfile::tempfile()
-            .expect("Could not make a temp file for the buffer");
+        let temp_file = tempfile::tempfile().expect("Could not make a temp file for the buffer");
         DrawableState { temp_file,
                         wayland_shell: None,
                         surface: None,
@@ -92,14 +88,14 @@ impl<'lua> Drawable<'lua> {
             let size: Size = geometry.size;
 
             if size.width > 0 && size.height > 0 {
-                let temp_file = tempfile::tempfile()
-                    .expect("Could not make new temp file");
+                let temp_file = tempfile::tempfile().expect("Could not make new temp file");
                 temp_file.set_len(size.width as u64 * size.height as u64 * 4)
-                    .expect("Could not set file length");
+                         .expect("Could not set file length");
                 drawable.surface = Some(ImageSurface::create(Format::ARgb32,
                                                              size.width,
-                                                             size.height)
-                    .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?);
+                                                             size.height).map_err(|err| {
+                                            RuntimeError(format!("Could not allocate {:?}", err))
+                                        })?);
                 {
                     let shell = drawable.wayland_shell.as_mut().unwrap();
                     shell.set_size(size);
@@ -118,10 +114,8 @@ impl<'lua> Drawable<'lua> {
         let mut drawable = self.state_mut()?;
         let drawable = &mut *drawable;
         if let Some(data) = drawable.surface.as_mut().map(get_data) {
-            drawable.temp_file.write(&*data)
-                .expect("Could not write data to buffer");
-            drawable.temp_file.flush()
-                .expect("Could not flush buffer");
+            drawable.temp_file.write(&*data).expect("Could not write data to buffer");
+            drawable.temp_file.flush().expect("Could not flush buffer");
             drawable.refreshed = true;
         }
         Ok(())
@@ -129,9 +123,7 @@ impl<'lua> Drawable<'lua> {
 }
 
 impl UserData for DrawableState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
-        object::default_add_methods(methods);
-    }
+    fn add_methods(methods: &mut UserDataMethods<Self>) { object::default_add_methods(methods); }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class<DrawableState>> {
@@ -170,8 +162,8 @@ fn get_data(surface: &mut ImageSurface) -> &[u8] {
     // NOTE This is safe to do because there's one thread.
     //
     // We know Lua is not modifying it because it's not running.
-    use std::slice;
     use cairo_sys;
+    use std::slice;
     unsafe {
         let len = surface.get_stride() as usize * surface.get_height() as usize;
         let surface = surface.to_glib_none().0;

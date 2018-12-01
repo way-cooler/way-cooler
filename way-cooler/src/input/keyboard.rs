@@ -1,6 +1,7 @@
-use wlroots::{key_events::KeyEvent, xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
+use wlroots::{key_events::KeyEvent,
+              wlroots_dehandle,
+              xkbcommon::xkb::{KEY_Escape, KEY_Super_L, KEY_Super_R},
               Capability, CompositorHandle, KeyboardHandle, KeyboardHandler, WLR_KEY_PRESSED};
-use wlroots::wlroots_dehandle;
 
 pub struct Keyboard;
 
@@ -11,8 +12,12 @@ fn key_is_meta(key: u32) -> bool {
 
 impl KeyboardHandler for Keyboard {
     #[wlroots_dehandle(compositor, seat, keyboard)]
-    fn on_key(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle, event: &KeyEvent) {
-        use compositor as compositor;
+    fn on_key(&mut self,
+              compositor_handle: CompositorHandle,
+              keyboard_handle: KeyboardHandle,
+              event: &KeyEvent)
+    {
+        use compositor_handle as compositor;
         if event.key_state() == WLR_KEY_PRESSED {
             for key in event.pressed_keys() {
                 // TODO Keep it hardcoded, make this configurable by awesome
@@ -34,16 +39,14 @@ impl KeyboardHandler for Keyboard {
         };
         let server: &mut ::Server = compositor.into();
         let seat_handle = &server.seat.seat;
+        use keyboard_handle as keyboard;
         use seat_handle as seat;
-        use keyboard as keyboard;
         seat.set_keyboard(keyboard.input_device());
-        seat.keyboard_notify_key(event.time_msec(),
-                                 event.keycode(),
-                                 event.key_state() as u32);
+        seat.keyboard_notify_key(event.time_msec(), event.keycode(), event.key_state() as u32);
         seat.keyboard_send_modifiers(&mut keyboard.get_modifier_masks());
         keyboard.get_modifiers();
         // TODO
-        //LUA.with(|lua| {
+        // LUA.with(|lua| {
         //             let lua = lua.borrow();
         //             if let Err(err) = emit_awesome_keybindings(&*lua, event, modifiers) {
         //                 warn!("Could not emit binding for {}: {:?}", event.keycode(), err);
@@ -52,19 +55,19 @@ impl KeyboardHandler for Keyboard {
     }
 
     #[wlroots_dehandle(compositor, seat, keyboard)]
-    fn modifiers(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
-        use compositor as compositor;
+    fn modifiers(&mut self, compositor_handle: CompositorHandle, keyboard_handle: KeyboardHandle) {
+        use compositor_handle as compositor;
         let server: &mut ::Server = compositor.into();
         let seat_handle = &server.seat.seat;
+        use keyboard_handle as keyboard;
         use seat_handle as seat;
-        use keyboard as keyboard;
         seat.keyboard_notify_modifiers(&mut keyboard.get_modifier_masks())
     }
 
     #[wlroots_dehandle(compositor, keyboard, seat)]
-    fn destroyed(&mut self, compositor: CompositorHandle, keyboard: KeyboardHandle) {
-        use compositor as compositor;
-        use keyboard as keyboard;
+    fn destroyed(&mut self, compositor_handle: CompositorHandle, keyboard_handle: KeyboardHandle) {
+        use compositor_handle as compositor;
+        use keyboard_handle as keyboard;
         let server: &mut ::Server = compositor.into();
         let weak_reference = keyboard.weak_reference();
         server.keyboards.retain(|k| *k != weak_reference);

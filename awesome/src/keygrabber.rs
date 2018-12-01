@@ -1,11 +1,11 @@
 //! AwesomeWM Keygrabber interface
 
 use rlua::{self, Function, Lua, Table, Value};
-use wlroots::{events::key_events::Key, wlr_key_state,
-              xkbcommon::xkb::keysym_get_name, WLR_KEY_PRESSED};
+use wlroots::{events::key_events::Key, wlr_key_state, xkbcommon::xkb::keysym_get_name,
+              WLR_KEY_PRESSED};
 
-use ::LUA;
 use common::signal;
+use LUA;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const KEYGRABBER_CALLBACK: &str = "__callback";
@@ -29,20 +29,16 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 #[allow(dead_code)]
 pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua::Result<()> {
     LUA.with(|lua| {
-                 let lua = lua.borrow();
-                 let lua_state = if state == WLR_KEY_PRESSED {
-                                     "press"
-                                 } else {
-                                     "release"
-                                 }.into();
-                 let lua_sym = keysym_get_name(sym);
-                 let lua_mods = ::lua::mods_to_lua(&*lua, &mods)?;
-                 let res = call_keygrabber(&*lua, (lua_mods, lua_sym, lua_state));
-                 match res {
-                     Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => Ok(()),
-                     err => err
-                 }
-             })
+           let lua = lua.borrow();
+           let lua_state = if state == WLR_KEY_PRESSED { "press" } else { "release" }.into();
+           let lua_sym = keysym_get_name(sym);
+           let lua_mods = ::lua::mods_to_lua(&*lua, &mods)?;
+           let res = call_keygrabber(&*lua, (lua_mods, lua_sym, lua_state));
+           match res {
+               Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => Ok(()),
+               err => err
+           }
+       })
 }
 
 /// Check is the Lua callback function is set

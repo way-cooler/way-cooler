@@ -1,24 +1,22 @@
-use wlroots::{Capability, CompositorHandle, InputManagerHandler, KeyboardHandle, KeyboardHandler,
-              PointerHandle, PointerHandler};
-use wlroots::wlroots_dehandle;
+use wlroots::{wlroots_dehandle, Capability, CompositorHandle, InputManagerHandler, KeyboardHandle,
+              KeyboardHandler, PointerHandle, PointerHandler};
 
 pub struct InputManager;
 
 impl InputManager {
-    pub fn new() -> Self {
-        InputManager
-    }
+    pub fn new() -> Self { InputManager }
 }
 
 impl InputManagerHandler for InputManager {
     #[wlroots_dehandle(compositor, keyboard, seat)]
     fn keyboard_added(&mut self,
-                      compositor: CompositorHandle,
-                      keyboard: KeyboardHandle)
-                      -> Option<Box<KeyboardHandler>> {
+                      compositor_handle: CompositorHandle,
+                      keyboard_handle: KeyboardHandle)
+                      -> Option<Box<KeyboardHandler>>
+    {
         {
-            use compositor as compositor;
-            use keyboard as keyboard;
+            use compositor_handle as compositor;
+            use keyboard_handle as keyboard;
             let server: &mut ::Server = compositor.into();
             server.keyboards.push(keyboard.weak_reference());
             // Now that we have at least one keyboard, update the seat capabilities.
@@ -34,12 +32,13 @@ impl InputManagerHandler for InputManager {
 
     #[wlroots_dehandle(compositor, pointer, cursor, seat)]
     fn pointer_added(&mut self,
-                     compositor: CompositorHandle,
-                     pointer: PointerHandle)
-                     -> Option<Box<PointerHandler>> {
+                     compositor_handle: CompositorHandle,
+                     pointer_handle: PointerHandle)
+                     -> Option<Box<PointerHandler>>
+    {
         {
-            use compositor as compositor;
-            use pointer as pointer;
+            use compositor_handle as compositor;
+            use pointer_handle as pointer;
             let server: &mut ::Server = compositor.into();
             server.pointers.push(pointer.weak_reference());
             if server.pointers.len() == 1 {
@@ -51,7 +50,7 @@ impl InputManagerHandler for InputManager {
                 seat.set_capabilities(capabilities);
             };
 
-            let cursor_handle = &server.cursor;
+            let cursor_handle = &server.cursor_handle;
             use cursor_handle as cursor;
             cursor.attach_input_device(pointer.input_device());
         }

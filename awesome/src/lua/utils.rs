@@ -3,7 +3,8 @@
 use wlroots::{events::{key_events::Key,
                        pointer_events::{wlr_button_state, BTN_EXTRA, BTN_LEFT, BTN_MIDDLE,
                                         BTN_RIGHT, BTN_SIDE}},
-              xkbcommon::xkb::keysyms::*, KeyboardModifier};
+              xkbcommon::xkb::keysyms::*,
+              KeyboardModifier};
 
 use rlua::{self, Error::RuntimeError, Lua, Table, Value};
 
@@ -15,15 +16,14 @@ const MOD_NAMES: [&str; 8] = ["Shift", "Caps", "Control", "Alt", "Mod2", "Mod3",
 const MOUSE_EVENTS: [u32; 5] = [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, BTN_SIDE, BTN_EXTRA];
 
 #[allow(dead_code)]
-const MOD_TYPES: [(KeyboardModifier, Key); 7] = [
-    (KeyboardModifier::WLR_MODIFIER_SHIFT, KEY_Shift_L),
-    (KeyboardModifier::WLR_MODIFIER_CAPS,  KEY_Caps_Lock),
-    (KeyboardModifier::WLR_MODIFIER_CTRL,  KEY_Control_L),
-    (KeyboardModifier::WLR_MODIFIER_ALT,   KEY_Alt_L),
-    (KeyboardModifier::WLR_MODIFIER_MOD2,  KEY_Meta_L),
-    (KeyboardModifier::WLR_MODIFIER_LOGO,  KEY_Super_L),
-    (KeyboardModifier::WLR_MODIFIER_MOD5,  KEY_Hyper_L)
-];
+const MOD_TYPES: [(KeyboardModifier, Key); 7] =
+    [(KeyboardModifier::WLR_MODIFIER_SHIFT, KEY_Shift_L),
+     (KeyboardModifier::WLR_MODIFIER_CAPS, KEY_Caps_Lock),
+     (KeyboardModifier::WLR_MODIFIER_CTRL, KEY_Control_L),
+     (KeyboardModifier::WLR_MODIFIER_ALT, KEY_Alt_L),
+     (KeyboardModifier::WLR_MODIFIER_MOD2, KEY_Meta_L),
+     (KeyboardModifier::WLR_MODIFIER_LOGO, KEY_Super_L),
+     (KeyboardModifier::WLR_MODIFIER_MOD5, KEY_Hyper_L)];
 
 /// Convert a modifier to the Lua interpretation
 #[allow(non_upper_case_globals)]
@@ -51,7 +51,7 @@ pub fn num_to_mods(modifiers: KeyboardModifier) -> Vec<Key> {
         if (mod_km.clone() & modifiers) != KeyboardModifier::empty() {
             res.push(mod_k.clone());
         }
-    };
+    }
     res
 }
 
@@ -102,7 +102,8 @@ pub fn mods_to_rust(mods_table: Table) -> rlua::Result<Vec<Key>> {
 pub fn mouse_events_to_lua(_: &Lua,
                            button: u32,
                            button_state: wlr_button_state)
-                           -> rlua::Result<Vec<bool>> {
+                           -> rlua::Result<Vec<bool>>
+{
     let mut event_list = Vec::with_capacity(MOUSE_EVENTS.len());
     for mouse_event in &MOUSE_EVENTS[..5] {
         let state_pressed = button_state == wlr_button_state::WLR_BUTTON_PRESSED;

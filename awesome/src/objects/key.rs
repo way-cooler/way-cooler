@@ -23,8 +23,7 @@ impl<'lua> Key<'lua> {
     fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Key<'lua>> {
         // TODO FIXME
         let class = class::class_setup(lua, "key")?;
-        Ok(Key::allocate(lua, class)?.handle_constructor_argument(args)?
-                                     .build())
+        Ok(Key::allocate(lua, class)?.handle_constructor_argument(args)?.build())
     }
 
     pub fn set_modifiers(&mut self, modifiers: u32) -> rlua::Result<()> {
@@ -63,28 +62,26 @@ impl<'lua> Key<'lua> {
 }
 
 impl UserData for KeyState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
-        object::default_add_methods(methods);
-    }
+    fn add_methods(methods: &mut UserDataMethods<Self>) { object::default_add_methods(methods); }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class<KeyState>> {
-    property_setup(lua, method_setup(lua, Class::builder(lua, "key", None)?)?)?
-        .save_class("key")?
-        .build()
+    property_setup(lua, method_setup(lua, Class::builder(lua, "key", None)?)?)?.save_class("key")?
+                                                                               .build()
 }
 
 fn method_setup<'lua>(lua: &'lua Lua,
                       builder: ClassBuilder<'lua, KeyState>)
-                      -> rlua::Result<ClassBuilder<'lua, KeyState>> {
+                      -> rlua::Result<ClassBuilder<'lua, KeyState>>
+{
     // TODO Do properly
-    builder.method("__call".into(),
-                   lua.create_function(|lua, args: Table| Key::new(lua, args))?)
+    builder.method("__call".into(), lua.create_function(|lua, args: Table| Key::new(lua, args))?)
 }
 
 fn property_setup<'lua>(lua: &'lua Lua,
                         builder: ClassBuilder<'lua, KeyState>)
-                        -> rlua::Result<ClassBuilder<'lua, KeyState>> {
+                        -> rlua::Result<ClassBuilder<'lua, KeyState>>
+{
     // TODO Do properly
     builder.property(Property::new("key".into(),
                                    Some(lua.create_function(set_key)?),
@@ -100,13 +97,12 @@ fn property_setup<'lua>(lua: &'lua Lua,
                                    Some(lua.create_function(set_modifiers)?)))
 }
 
-fn get_modifiers<'lua>(_: &'lua Lua, key: Key<'lua>) -> rlua::Result<u32> {
-    key.modifiers()
-}
+fn get_modifiers<'lua>(_: &'lua Lua, key: Key<'lua>) -> rlua::Result<u32> { key.modifiers() }
 
 fn set_modifiers<'lua>(_: &'lua Lua,
                        (mut key, mods): (Key<'lua>, Table<'lua>))
-                       -> rlua::Result<()> {
+                       -> rlua::Result<()>
+{
     key.set_modifiers(mods_to_num(mods)?.bits())
 }
 
@@ -121,7 +117,8 @@ fn get_key<'lua>(lua: &'lua Lua, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
 
 fn set_key<'lua>(_: &'lua Lua,
                  (mut key, key_name): (Key<'lua>, String))
-                 -> rlua::Result<Value<'lua>> {
+                 -> rlua::Result<Value<'lua>>
+{
     if key_name.starts_with('#') && key_name.len() >= 2 {
         let number = key_name[1..].parse::<xkb::Keycode>()
             .map_err(|err| rlua::Error::RuntimeError(format!("Parse error: {:?}", err)))?;
