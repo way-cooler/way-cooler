@@ -37,5 +37,5 @@ If you find bugs or have questions about the code, please [submit an issue][] or
 [AwesomeWM]: https://awesomewm.org/
 [submit an issue]: https://github.com/Immington-Industries/way-cooler/issues/new
 [wlroots]: https://github.com/swaywm/wlroots
-[IRC]: https://webchat.freenode.net/?channels=awesome&uio=d4
+[IRC]: https://webchat.oftc.net/?channels=awesome&uio=d4
 [i3]: https://i3wm.org
