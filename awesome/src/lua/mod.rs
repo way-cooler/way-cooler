@@ -55,9 +55,9 @@ fn load_shims(lua: &Lua) {
     let globals = lua.globals();
     let package: Table = globals.get("package").unwrap();
     let mut path = package.get::<_, String>("path").unwrap();
-    path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua", SHIMS_PATH));
+    let shims_path: PathBuf = std::env::current_exe().unwrap().parent().unwrap().join(SHIMS_PATH);
+    path.push_str(&format!(";{0}/?.lua;{0}/?/init.lua", shims_path.to_str().unwrap()));
     package.set("path", path).unwrap();
-    let shims_path = PathBuf::from(SHIMS_PATH);
     for shim in SHIMS.iter() {
         let mut path = shims_path.clone();
         path.push(format!("{}.lua", shim));
