@@ -72,6 +72,7 @@ fn build_wayland_glib_interface() {
 fn build_wayland_protcols() {
     let protocols = fs::read_dir(PROTOCOL_PATH).expect("Protocol build path invalid.");
     let out_dir = env::var("OUT_DIR").unwrap();
+    println!("cargo:rerun-if-changed={}", PROTOCOL_PATH); // rebuild on protocols change
     let out_dir = Path::new(&out_dir);
     for protocol_path in protocols {
         let protocol_path: fs::DirEntry = protocol_path.unwrap();
