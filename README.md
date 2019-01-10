@@ -20,16 +20,12 @@ To get the docs, run `make docs`. Man pages will be in `target/man` and web page
 
 # Development
 
-Way Cooler is under very active development right now. Currently, master is not usable for production. There are old versions of Way Cooler that do work, however:
+Way Cooler is currently not being developed right now. I have decided to focus on wlroots-rs for now and may come back to this project later.
+I am still accepting patches and willing to mentor anyone seeking to contribute. You can contact me on [IRC][].
+
+Master is not usable for production. There are old versions of Way Cooler that do work, however:
 * They use an old framework, [wlc][], and thus are very limited and buggy.
 * Was not designed to emulate Awesome, but instead has [i3][] tiling and its own (very incomplete) Lua libraries.
-
-There will be another release this year, v0.9.0. It will be the last release before 1.0. 1.0 is defined to be 100% compatible with AwesomeWM.
-
-# Contributing
-Check out [Contributing](Contributing.md) for more information.
-
-If you find bugs or have questions about the code, please [submit an issue][] or ask us on [IRC][].
 
 [Rust]: https://www.rust-lang.org
 [Wayland]: https://wayland.freedesktop.org/
