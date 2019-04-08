@@ -4,8 +4,8 @@
 
 ### Git
 
-[Use good git commit messages](https://chris.beams.io/posts/git-commit/). If
-your commits are not good we will request you squash and rebase them.
+[Use good git commit messages](https://chris.beams.io/posts/git-commit/). Please
+squash/rebase liberally.
 
 ## C
 
@@ -32,7 +32,7 @@ function checkfmt() {
        echo "Expected $expected"
        return 1
     fi
-    formatted=$(cargo fmt -- --check)
+    formatted=$(cd awesome; cargo fmt -- --check)
     [ -z "$formatted" ] && return 0
 
     echo >&2 "Please format your files with cargo fmt"
@@ -50,7 +50,7 @@ imports, and local lib/binary imports. Within these groups the imports should be
 sorted in alphabetical order. Each of these groups must be separated by a single
 empty line.
 
-Import statemnts should be grouped using the nested `{}` syntax.
+Import statements should be grouped using the nested `{}` syntax.
 
 Here is an example:
 
@@ -72,7 +72,7 @@ conforming to an interface) the variable name shall be `_` if it is a non-std
 type. If it is a standard or simple type (such as `String` or `bool`) then a
 descriptive variable name should be provided prefixed with `_`.
 
-If it is a non-std type but still ambigious then you may give it a name. This is
+If it is a non-std type but still ambiguous then you may give it a name. This is
 best evaluated on a case-by-case basis.
 
 If the code is part of an example in `examples/` it is strongly encouraged to
