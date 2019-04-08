@@ -3,8 +3,8 @@
 use rlua::{self, Function, Lua, Table, Value};
 use wlroots::{events::key_events::Key, wlr_key_state, xkbcommon::xkb::keysym_get_name, WLR_KEY_PRESSED};
 
-use common::signal;
-use LUA;
+use crate::common::signal;
+use crate::LUA;
 
 pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const KEYGRABBER_CALLBACK: &str = "__callback";
@@ -36,7 +36,7 @@ pub fn keygrabber_handle(mods: Vec<Key>, sym: Key, state: wlr_key_state) -> rlua
         }
         .into();
         let lua_sym = keysym_get_name(sym);
-        let lua_mods = ::lua::mods_to_lua(&*lua, &mods)?;
+        let lua_mods = crate::lua::mods_to_lua(&*lua, &mods)?;
         let res = call_keygrabber(&*lua, (lua_mods, lua_sym, lua_state));
         match res {
             Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => Ok(()),

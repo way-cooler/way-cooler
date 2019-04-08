@@ -21,12 +21,12 @@ use xcb::{
     xkb, Connection
 };
 
-use common::{
+use crate::common::{
     signal,
     xproperty::{XProperty, XPropertyType, PROPERTIES}
 };
-use lua::NEXT_LUA;
-use XCB_CONNECTION_HANDLE;
+use crate::lua::NEXT_LUA;
+use crate::XCB_CONNECTION_HANDLE;
 
 // TODO FIXME
 // Often we are getting some raw pointers from the xcb replies
@@ -125,7 +125,7 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("pixbuf_to_surface", lua.create_function(pixbuf_to_surface)?)?;
     awesome_table.set("sync", lua.create_function(sync)?)?;
     awesome_table.set("exec", lua.create_function(exec)?)?;
-    awesome_table.set("spawn", lua.create_function(::objects::dummy)?)?;
+    awesome_table.set("spawn", lua.create_function(crate::objects::dummy)?)?;
     awesome_table.set("kill", lua.create_function(kill)?)?;
     awesome_table.set("quit", lua.create_function(quit)?)
 }
@@ -311,7 +311,7 @@ fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
 }
 
 fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
-    ::lua::terminate();
+    crate::lua::terminate();
     Ok(())
 }
 

@@ -8,6 +8,7 @@ readme = "README.md"
 license = "MIT"
 authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 wlroots = { path = "../wlroots-rs" }

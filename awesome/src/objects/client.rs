@@ -8,7 +8,7 @@ use std::{
 
 use rlua::{self, Lua, Table, UserData};
 
-use common::{
+use crate::common::{
     class::{self, Class, ClassBuilder},
     object::Object
 };

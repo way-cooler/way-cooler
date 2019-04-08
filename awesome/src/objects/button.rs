@@ -8,7 +8,7 @@ use rlua::{self, Lua, Table, UserData, UserDataMethods, Value};
 use wlroots::events::key_events::Key;
 use xcb::ffi::xproto::xcb_button_t;
 
-use common::{
+use crate::common::{
     class::{self, Class},
     object::{self, Object},
     property::Property,
@@ -63,7 +63,7 @@ impl<'lua> Button<'lua> {
     }
 
     pub fn set_modifiers(&mut self, mods: Table<'lua>) -> rlua::Result<()> {
-        use lua::mods_to_rust;
+        use crate::lua::mods_to_rust;
         let mut button = self.state_mut()?;
         button.modifiers = mods_to_rust(mods)?;
         Ok(())
@@ -120,6 +120,6 @@ fn set_modifiers<'lua>(
 }
 
 fn get_modifiers<'lua>(lua: &'lua Lua, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
-    use lua::mods_to_lua;
+    use crate::lua::mods_to_lua;
     mods_to_lua(lua, &button.modifiers()?).map(Value::Table)
 }

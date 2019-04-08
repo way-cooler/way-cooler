@@ -6,8 +6,8 @@
 
 use rlua::{self, Function, Lua, Table, ToLua, ToLuaMulti, Value};
 
-use common::object::{Object, ObjectStateType};
-use GLOBAL_SIGNALS;
+use crate::common::object::{Object, ObjectStateType};
+use crate::GLOBAL_SIGNALS;
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.

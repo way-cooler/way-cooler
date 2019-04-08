@@ -2,6 +2,11 @@
 
 use std::{cell::RefCell, fmt, os::unix::io::AsRawFd};
 
+use crate::wayland_protocols::xdg_shell::{
+    xdg_surface::{self, RequestsTrait as XdgSurfaceTrait, XdgSurface},
+    xdg_toplevel::{self, RequestsTrait as XdgToplevelTrait},
+    xdg_wm_base::{RequestsTrait as XdgWmBaseTrait, XdgWmBase}
+};
 use wayland_client::{
     protocol::{
         wl_buffer::WlBuffer,
@@ -9,14 +14,9 @@ use wayland_client::{
     },
     NewProxy, Proxy
 };
-use wayland_protocols::xdg_shell::{
-    xdg_surface::{self, RequestsTrait as XdgSurfaceTrait, XdgSurface},
-    xdg_toplevel::{self, RequestsTrait as XdgToplevelTrait},
-    xdg_wm_base::{RequestsTrait as XdgWmBaseTrait, XdgWmBase}
-};
 use wlroots::{Area, Origin, Size};
 
-use wayland_obj;
+use crate::wayland_obj;
 
 /// The minimum version of the xdg_wm_base global to bind to.
 pub const XDG_WM_BASE_VERSION: u32 = 2;
@@ -130,7 +130,7 @@ impl Drop for XdgToplevel {
 pub fn xdg_shell_init(new_proxy: Result<NewProxy<XdgWmBase>, u32>, _: ()) {
     let new_proxy = new_proxy.expect("Could not create Xdgsurface");
     let proxy = new_proxy.implement(move |event, proxy: Proxy<XdgWmBase>| {
-        use xdg_wm_base::Event;
+        use crate::xdg_wm_base::Event;
         match event {
             Event::Ping { serial } => proxy.pong(serial)
         }

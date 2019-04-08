@@ -5,12 +5,12 @@
 use rlua::{self, Lua, Table, ToLua, UserData, UserDataMethods, Value};
 use wlroots::{self, xkbcommon::xkb};
 
-use common::{
+use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object},
     property::Property
 };
-use lua::mods_to_num;
+use crate::lua::mods_to_num;
 
 #[derive(Clone, Debug, Default)]
 pub struct KeyState {

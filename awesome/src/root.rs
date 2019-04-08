@@ -4,14 +4,14 @@
 use cairo_sys::cairo_pattern_t;
 use rlua::{self, LightUserData, Lua, Table, ToLua, Value};
 
-use objects::tag;
+use crate::objects::tag;
 
 /// Handle to the list of global key bindings
 pub const ROOT_KEYS_HANDLE: &'static str = "__ROOT_KEYS";
 
 pub fn init(lua: &Lua) -> rlua::Result<()> {
     // TODO Do properly
-    use objects::dummy;
+    use crate::objects::dummy;
 
     let root = lua.create_table()?;
     root.set("connect_signal", lua.create_function(dummy)?)?;
@@ -96,9 +96,9 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: Value<'lua>) -> rlua::Result<Value
 
 #[cfg(test)]
 mod test {
-    use objects::{key, tag};
+    use crate::objects::{key, tag};
+    use crate::root;
     use rlua::Lua;
-    use root;
 
     #[test]
     fn tags_print() {

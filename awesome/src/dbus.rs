@@ -2,11 +2,11 @@
 
 use std::{cell::RefCell, os::unix::io::RawFd, slice, thread::LocalKey};
 
-use dbus_rs::{BusType, Connection, Message, MessageItem, MessageType};
+use crate::dbus_rs::{BusType, Connection, Message, MessageItem, MessageType};
 use rlua::{self, Error::RuntimeError, Lua, MultiValue, Table, ToLua, ToLuaMulti, Value};
 
-use common::signal;
-use lua::LUA;
+use crate::common::signal;
+use crate::lua::LUA;
 
 /// A connection to a D-Bus we store globally that, when destroyed, will destroy
 /// the other connection as well.
@@ -64,7 +64,7 @@ impl std::ops::Deref for DBusConnection {
 impl Drop for DBusConnection {
     fn drop(&mut self) {
         unsafe {
-            ::remove_dbus_from_glib();
+            crate::remove_dbus_from_glib();
         }
         // Need to close both of them, no idea which one was just destroyed,
         // so try to destroy both of them.
@@ -108,7 +108,7 @@ fn handle_msg(bus: &Connection, bus_type: BusType, msg: Message) -> bool {
             process_request(bus_type, &*lua, &msg)
         })
         .unwrap_or_else(|err| {
-            ::lua::log_error(err);
+            crate::lua::log_error(err);
             None
         });
     if let Some(reply) = reply {
@@ -180,7 +180,7 @@ fn process_request(bus_type: BusType, lua: &Lua, msg: &Message) -> rlua::Result<
                         "Your D-Bus signal handling method returned \
                          bad data"
                     );
-                    ::lua::log_error(err);
+                    crate::lua::log_error(err);
                     return Ok(None);
                 }
             }
@@ -250,7 +250,7 @@ fn get_bus_by_name<'bus>(bus_name: &str) -> rlua::Result<&'bus LocalKey<GlobalCo
 fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem]) -> rlua::Result<MultiValue<'lua>> {
     let mut res = MultiValue::new();
     for msg_item in msg_items {
-        use dbus_rs::MessageItem::*;
+        use crate::dbus_rs::MessageItem::*;
         match msg_item {
             Variant(sub_msg_item) => res.extend(dbus_to_lua_value(lua, slice::from_ref(sub_msg_item))?),
             DictEntry(key, value) => {
@@ -305,7 +305,7 @@ fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem]) -> rlua::R
 
 /// Converts an `rlua::Value` into a `dbus_rs::MessageItem`.
 fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value) -> rlua::Result<MessageItem> {
-    use dbus_rs::arg::ArgType;
+    use crate::dbus_rs::arg::ArgType;
     use rlua::Value;
     let type_ = match type_ {
         Value::String(s) => s.to_str()?.to_string(),

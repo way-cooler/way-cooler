@@ -8,13 +8,13 @@ use rlua::{self, LightUserData, Lua, Table, UserData, UserDataMethods, Value};
 use tempfile;
 use wlroots::{Area, Origin, Size};
 
-use common::{
+use crate::common::{
     class::{self, Class},
     object::{self, Object},
     property::Property,
     signal::emit_object_signal
 };
-use wayland_obj::{self, XdgToplevel};
+use crate::wayland_obj::{self, XdgToplevel};
 
 #[derive(Debug)]
 pub struct DrawableState {

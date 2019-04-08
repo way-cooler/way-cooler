@@ -9,12 +9,12 @@ use cairo::ImageSurface;
 use rlua::{self, prelude::LuaInteger, Lua, Table, ToLua, UserData, UserDataMethods};
 use wlroots::{Area, Origin, Size, Texture};
 
-use common::{
+use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object, ObjectBuilder},
     property::Property
 };
-use objects::drawable::Drawable;
+use crate::objects::drawable::Drawable;
 
 pub const DRAWINS_HANDLE: &'static str = "__drawins";
 

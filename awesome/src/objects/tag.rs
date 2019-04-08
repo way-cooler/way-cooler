@@ -5,13 +5,13 @@ use std::{collections::HashSet, default::Default};
 
 use rlua::{self, FromLua, Integer, Lua, Table, UserData, UserDataMethods, Value};
 
-use common::{
+use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object, ObjectBuilder},
     property::Property,
     signal
 };
-use objects::client::Client;
+use crate::objects::client::Client;
 
 pub const TAG_LIST: &'static str = "__tag_list";
 

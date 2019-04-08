@@ -51,7 +51,7 @@ pub fn load_config(mut lua: &mut Lua, cmdline_config: Option<&str>, lib_paths: &
                     unsafe {
                         *lua = Lua::new_with_debug();
                     }
-                    ::lua::register_libraries(&mut lua, lib_paths)?;
+                    crate::lua::register_libraries(&mut lua, lib_paths)?;
                     lua.exec(DEFAULT_CONFIG, Some("init.lua <DEFAULT>".into()))
                 })
                 .expect("Unable to load pre-compiled init file");
@@ -68,7 +68,7 @@ pub fn load_config(mut lua: &mut Lua, cmdline_config: Option<&str>, lib_paths: &
                 .expect("Unable to load pre-compiled init file");
         }
     }
-    ::lua::emit_refresh(lua);
+    crate::lua::emit_refresh(lua);
 }
 
 pub fn get_config(cmdline_path: Option<&str>) -> io::Result<(PathBuf, File)> {

@@ -17,7 +17,7 @@ use std::{
     path::PathBuf
 };
 
-use common::signal;
+use crate::common::signal;
 
 /// Path to the Awesome shims.
 const SHIMS_PATH: &str = "../../tests/awesome/tests/examples/shims/";
@@ -161,8 +161,8 @@ pub fn register_libraries(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
 }
 
 fn init_libs(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
-    use objects::*;
-    use *;
+    use crate::objects::*;
+    use crate::*;
     setup_awesome_path(lua, lib_paths)?;
     setup_global_signals(lua)?;
     setup_xcb_connection(lua)?;

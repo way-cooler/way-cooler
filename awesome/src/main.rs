@@ -15,8 +15,6 @@
         patterns_in_fns_without_body,
         plugin_as_library,
         private_in_public,
-        private_no_mangle_fns,
-        private_no_mangle_statics,
         safe_extern_statics,
         unconditional_recursion,
         unions_with_drop_fields,
@@ -100,10 +98,10 @@ use wayland_client::{
 use xcb::xkb;
 
 // So the C code can link to these Rust functions.
-pub use dbus::{dbus_session_refresh, dbus_system_refresh};
+pub use crate::dbus::{dbus_session_refresh, dbus_system_refresh};
 
-use lua::{LUA, NEXT_LUA};
-use wayland_protocols::xdg_shell::xdg_wm_base;
+use crate::lua::{LUA, NEXT_LUA};
+use crate::wayland_protocols::xdg_shell::xdg_wm_base;
 
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";

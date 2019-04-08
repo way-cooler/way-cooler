@@ -8,13 +8,13 @@ use std::default::Default;
 use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 use wlroots::{Area, Origin, Size};
 
-use common::{
+use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object},
     property::Property,
     signal::emit_object_signal
 };
-use wayland_obj::Output;
+use crate::wayland_obj::Output;
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 
@@ -279,7 +279,7 @@ fn index<'lua>(lua: &'lua Lua, (obj, index): (AnyUserData<'lua>, Value<'lua>)) -
                 }
             }
             for screen in screens.iter() {
-                let mut screen_state = screen.state()?;
+                let screen_state = screen.state()?;
                 for output in &screen_state.outputs {
                     if output.name() == string {
                         return screen.clone().to_lua(lua);

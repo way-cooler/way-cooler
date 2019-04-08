@@ -5,8 +5,8 @@ use std::fmt;
 use wayland_client::{protocol::wl_output::WlOutput, NewProxy, Proxy};
 use wlroots::{Area, Origin, Size};
 
-use lua::LUA;
-use objects::screen::{self, Screen};
+use crate::lua::LUA;
+use crate::objects::screen::{self, Screen};
 
 /// The minimum version of the wl_output global to bind to.
 pub const WL_OUTPUT_VERSION: u32 = 2;
