@@ -1,51 +1,20 @@
-unstable_features = true
-required_version = "1.0.0"
-indent_style = "Visual"
-use_small_heuristics = "Max"
-binop_separator = "Front"
-combine_control_expr = true
-wrap_comments = false
-condense_wildcard_suffixes = true
-control_brace_style = "AlwaysSameLine"
+# line length
 error_on_line_overflow = true
-fn_args_density = "Tall"
-brace_style = "SameLineWhere"
-empty_item_single_line = true
-fn_single_line = true
-where_single_line = true
-force_explicit_abi = true
-format_strings = false
-format_macro_matchers = false
-format_macro_bodies = false
-hard_tabs = false
-imports_indent = "Visual"
-imports_layout = "Mixed"
-merge_imports = true
-match_block_trailing_comma = false
-max_width = 100
-merge_derives = true
-force_multiline_blocks = false
-newline_style = "Unix"
+max_width = 110
+
+# comments
+comment_width = 100
+wrap_comments = false # rustfmt is broken currently and doesn't softwrap
 normalize_comments = true
-remove_nested_parens = true
-reorder_imports = true
-reorder_modules = true
-reorder_impl_items = true
-# TODO Enable this closer to 1.0
-#report_todo = "Unnumbered"
-#report_fixme = "Unnumbered"
-space_after_colon = true
-space_before_colon = false
-struct_field_align_threshold = 0
-spaces_around_ranges = false
-struct_lit_single_line = true
+
+# commas
 trailing_comma = "Never"
-trailing_semicolon = false
-type_punctuation_density = "Wide"
-use_field_init_shorthand = true
+match_block_trailing_comma = true
+
+# code
 use_try_shorthand = true
-format_doc_comments = false
-match_arm_blocks = true
-overflow_delimited_expr = true
-blank_lines_lower_bound = 0
-blank_lines_upper_bound = 2
+binop_separator = "Back"
+format_strings = false # rustfmt string handling is horribly busted
+
+# imports
+reorder_imports = true

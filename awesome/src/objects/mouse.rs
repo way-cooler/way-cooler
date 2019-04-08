@@ -17,7 +17,9 @@ pub struct MouseState {
 }
 
 impl Default for MouseState {
-    fn default() -> Self { MouseState { dummy: 0 } }
+    fn default() -> Self {
+        MouseState { dummy: 0 }
+    }
 }
 
 impl UserData for MouseState {
@@ -40,14 +42,17 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 fn method_setup(lua: &Lua, mouse_table: &Table) -> rlua::Result<()> {
     mouse_table.set("coords", lua.create_function(coords)?)?;
     mouse_table.set("set_index_miss_handler", lua.create_function(set_index_miss)?)?;
-    mouse_table.set("set_newindex_miss_handler", lua.create_function(set_newindex_miss)?)?;
+    mouse_table.set(
+        "set_newindex_miss_handler",
+        lua.create_function(set_newindex_miss)?
+    )?;
     Ok(())
 }
 
-fn coords<'lua>(_lua: &'lua Lua,
-                (_coords, _ignore_enter): (Value<'lua>, Value<'lua>))
-                -> rlua::Result<Table<'lua>>
-{
+fn coords<'lua>(
+    _lua: &'lua Lua,
+    (_coords, _ignore_enter): (Value<'lua>, Value<'lua>)
+) -> rlua::Result<Table<'lua>> {
     // TODO Get Cords
     unimplemented!()
 }
@@ -64,10 +69,10 @@ fn set_newindex_miss(lua: &Lua, func: rlua::Function) -> rlua::Result<()> {
     table.set(NEWINDEX_MISS_FUNCTION, func)
 }
 
-fn index<'lua>(_lua: &'lua Lua,
-               (mouse, index): (AnyUserData<'lua>, Value<'lua>))
-               -> rlua::Result<Value<'lua>>
-{
+fn index<'lua>(
+    _lua: &'lua Lua,
+    (mouse, index): (AnyUserData<'lua>, Value<'lua>)
+) -> rlua::Result<Value<'lua>> {
     let obj_table = mouse.get_user_value::<Table>()?;
     if let Value::String(ref string) = index {
         if string.to_str()? == "screen" {
@@ -94,5 +99,5 @@ fn index<'lua>(_lua: &'lua Lua,
             // return Ok(Value::Nil)
         }
     }
-    return obj_table.get(index)
+    return obj_table.get(index);
 }

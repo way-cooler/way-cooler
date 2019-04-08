@@ -2,8 +2,9 @@
 
 use std::{cell, convert::From, marker::PhantomData};
 
-use rlua::{self, AnyUserData, FromLua, Function, Lua, MetaMethod, Table, ToLua, UserData,
-           UserDataMethods, Value};
+use rlua::{
+    self, AnyUserData, FromLua, Function, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value
+};
 
 use super::{class::Class, property::Property, signal};
 
@@ -21,15 +22,27 @@ pub struct Object<'lua, S: ObjectStateType> {
 }
 
 impl<'lua, S: ObjectStateType> Clone for Object<'lua, S> {
-    fn clone(&self) -> Self { Object { obj: self.obj.clone(), state: PhantomData } }
+    fn clone(&self) -> Self {
+        Object {
+            obj: self.obj.clone(),
+            state: PhantomData
+        }
+    }
 }
 
 impl<'lua, S: ObjectStateType> From<AnyUserData<'lua>> for Object<'lua, S> {
-    fn from(obj: AnyUserData<'lua>) -> Self { Object { obj, state: PhantomData } }
+    fn from(obj: AnyUserData<'lua>) -> Self {
+        Object {
+            obj,
+            state: PhantomData
+        }
+    }
 }
 
 impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
-    fn into(self) -> AnyUserData<'lua> { self.obj }
+    fn into(self) -> AnyUserData<'lua> {
+        self.obj
+    }
 }
 
 /// Construct a new object, used when using the default Objectable::new.
@@ -73,7 +86,7 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
                             // Property exists and has a cb_new callback
                             if let Some(ref new) = prop.cb_new {
                                 let _: () = new.bind(self.object.clone())?.call(value)?;
-                                break
+                                break;
                             }
                         }
                     }
@@ -83,7 +96,9 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
         Ok(self)
     }
 
-    pub fn build(self) -> Object<'lua, S> { self.object }
+    pub fn build(self) -> Object<'lua, S> {
+        self.object
+    }
 }
 
 /// Objects that represent OO lua objects.
@@ -101,10 +116,14 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
     }
 
     /// Gets a reference to the internal state for the concrete object.
-    pub fn state(&self) -> rlua::Result<cell::Ref<S>> { Ok(self.obj.borrow::<S>()?) }
+    pub fn state(&self) -> rlua::Result<cell::Ref<S>> {
+        Ok(self.obj.borrow::<S>()?)
+    }
 
     /// Gets a mutable reference to the internal state for the concrete object.
-    pub fn state_mut(&mut self) -> rlua::Result<cell::RefMut<S>> { Ok(self.obj.borrow_mut::<S>()?) }
+    pub fn state_mut(&mut self) -> rlua::Result<cell::RefMut<S>> {
+        Ok(self.obj.borrow_mut::<S>()?)
+    }
 
     /// Get the signals of the for this object
     pub fn signals(&self) -> rlua::Result<Table<'lua>> {
@@ -130,7 +149,9 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
 
     /// Set the metatable for this object
     pub fn set_metatable(&self, meta: Table<'lua>) -> rlua::Result<()> {
-        self.obj.get_user_value::<Table<'lua>>()?.set_metatable(Some(meta));
+        self.obj
+            .get_user_value::<Table<'lua>>()?
+            .set_metatable(Some(meta));
         Ok(())
     }
 
@@ -157,13 +178,18 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         wrapper_table.set_metatable(Some(meta));
         obj.set_user_value(wrapper_table)?;
         // TODO Emit new signal event
-        let object = Object { obj, state: PhantomData };
+        let object = Object {
+            obj,
+            state: PhantomData
+        };
         Ok(ObjectBuilder { object, lua })
     }
 }
 
 impl<'lua, S: ObjectStateType> ToLua<'lua> for Object<'lua, S> {
-    fn to_lua(self, _: &'lua Lua) -> rlua::Result<Value<'lua>> { Ok(Value::UserData(self.obj)) }
+    fn to_lua(self, _: &'lua Lua) -> rlua::Result<Value<'lua>> {
+        Ok(Value::UserData(self.obj))
+    }
 }
 
 impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
@@ -179,7 +205,9 @@ impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
 /// Can be used for implementing UserData for Lua objects. This provides some
 /// default metafunctions.
 pub fn default_add_methods<S>(methods: &mut UserDataMethods<S>)
-    where S: ObjectStateType {
+where
+    S: ObjectStateType
+{
     methods.add_meta_function(MetaMethod::Index, default_index::<S>);
     methods.add_meta_function(MetaMethod::NewIndex, default_newindex::<S>);
     methods.add_meta_function(MetaMethod::ToString, default_tostring::<S>);
@@ -189,16 +217,16 @@ pub fn default_add_methods<S>(methods: &mut UserDataMethods<S>)
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
-pub fn default_index<'lua, S: ObjectStateType>(lua: &'lua Lua,
-                                               (obj, index): (Object<'lua, S>, Value<'lua>))
-                                               -> rlua::Result<Value<'lua>>
-{
+pub fn default_index<'lua, S: ObjectStateType>(
+    lua: &'lua Lua,
+    (obj, index): (Object<'lua, S>, Value<'lua>)
+) -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
     let meta = obj.get_metatable()?.expect("Object had no metatable");
     if meta.get::<_, AnyUserData>("__class").is_ok() {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
-                Value::Nil => {}
+                Value::Nil => {},
                 val => return Ok(val)
             }
         }
@@ -208,14 +236,14 @@ pub fn default_index<'lua, S: ObjectStateType>(lua: &'lua Lua,
         Err(_) => return Ok(Value::Nil)
     };
     match index.as_str() {
-        "valid" => {
-            Ok(Value::Boolean(if let Ok(class) = meta.get::<_, AnyUserData>("__class") {
-                                  let class: Class<S> = class.into();
-                                  class.checker()?.map(|checker| checker(obj)).unwrap_or(true)
-                              } else {
-                                  false
-                              }))
-        }
+        "valid" => Ok(Value::Boolean(
+            if let Ok(class) = meta.get::<_, AnyUserData>("__class") {
+                let class: Class<S> = class.into();
+                class.checker()?.map(|checker| checker(obj)).unwrap_or(true)
+            } else {
+                false
+            }
+        )),
         "data" => obj.obj.get_user_value(),
         index => {
             // Try see if there is a property of the class with the name
@@ -226,7 +254,7 @@ pub fn default_index<'lua, S: ObjectStateType>(lua: &'lua Lua,
                     if prop.name.as_str() == index {
                         // Property exists and has an index callback
                         if let Some(index) = prop.cb_index {
-                            return index.call(obj)
+                            return index.call(obj);
                         }
                     }
                 }
@@ -247,17 +275,15 @@ pub fn default_index<'lua, S: ObjectStateType>(lua: &'lua Lua,
 ///
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
-pub fn default_newindex<'lua, S: ObjectStateType>(_: &'lua Lua,
-                                                  (obj, index, val): (Object<'lua, S>,
-                                                   String,
-                                                   Value<'lua>))
-                                                  -> rlua::Result<Value<'lua>>
-{
+pub fn default_newindex<'lua, S: ObjectStateType>(
+    _: &'lua Lua,
+    (obj, index, val): (Object<'lua, S>, String, Value<'lua>)
+) -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
     if let Some(meta) = obj.get_metatable()? {
         if let Ok(val) = meta.raw_get::<_, Value>(index.clone()) {
             match val {
-                Value::Nil => {}
+                Value::Nil => {},
                 val => return Ok(val)
             }
         }
@@ -268,7 +294,7 @@ pub fn default_newindex<'lua, S: ObjectStateType>(_: &'lua Lua,
             if prop.name.as_str() == index {
                 // Property exists and has a newindex callback
                 if let Some(newindex) = prop.cb_newindex {
-                    return newindex.bind(obj.clone())?.call(val)
+                    return newindex.bind(obj.clone())?.call(val);
                 }
             }
         }
@@ -284,33 +310,32 @@ pub fn default_newindex<'lua, S: ObjectStateType>(_: &'lua Lua,
 }
 
 pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: Object<'lua, S>) -> rlua::Result<String>
-    where S: ObjectStateType {
+where
+    S: ObjectStateType
+{
     if let Some(meta) = obj.get_metatable()? {
         let class = meta.get::<_, AnyUserData>("__class")?;
         let class_table = class.get_user_value::<Table>()?;
         let name = class_table.get::<_, String>("name")?;
-        return Ok(format!("{}: {:p}", name, &*obj.state()?))
+        return Ok(format!("{}: {:p}", name, &*obj.state()?));
     }
     Err(rlua::Error::UserDataTypeMismatch)
 }
 
-fn connect_signal<S: ObjectStateType>(lua: &Lua,
-                                      (obj, signal, func): (Object<S>, String, Function))
-                                      -> rlua::Result<()>
-{
+fn connect_signal<S: ObjectStateType>(
+    lua: &Lua,
+    (obj, signal, func): (Object<S>, String, Function)
+) -> rlua::Result<()> {
     signal::connect_signal(lua, obj.into(), signal, &[func])
 }
 
-fn disconnect_signal<S: ObjectStateType>(lua: &Lua,
-                                         (obj, signal): (Object<S>, String))
-                                         -> rlua::Result<()>
-{
+fn disconnect_signal<S: ObjectStateType>(lua: &Lua, (obj, signal): (Object<S>, String)) -> rlua::Result<()> {
     signal::disconnect_signal(lua, obj.into(), signal)
 }
 
-fn emit_signal<S: ObjectStateType>(lua: &Lua,
-                                   (obj, signal, args): (Object<S>, String, Value))
-                                   -> rlua::Result<()>
-{
+fn emit_signal<S: ObjectStateType>(
+    lua: &Lua,
+    (obj, signal, args): (Object<S>, String, Value)
+) -> rlua::Result<()> {
     signal::emit_object_signal(lua, obj.into(), signal, args)
 }

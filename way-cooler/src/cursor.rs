@@ -6,5 +6,7 @@ pub struct CursorManager;
 impl CursorHandler for CursorManager {}
 
 impl CursorManager {
-    pub fn new() -> Self { CursorManager::default() }
+    pub fn new() -> Self {
+        CursorManager::default()
+    }
 }

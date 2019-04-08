@@ -5,10 +5,12 @@ use std::{collections::HashSet, default::Default};
 
 use rlua::{self, FromLua, Integer, Lua, Table, UserData, UserDataMethods, Value};
 
-use common::{class::{self, Class, ClassBuilder},
-             object::{self, Object, ObjectBuilder},
-             property::Property,
-             signal};
+use common::{
+    class::{self, Class, ClassBuilder},
+    object::{self, Object, ObjectBuilder},
+    property::Property,
+    signal
+};
 use objects::client::Client;
 
 pub const TAG_LIST: &'static str = "__tag_list";
@@ -23,14 +25,21 @@ pub struct TagState {
 pub type Tag<'lua> = Object<'lua, TagState>;
 
 impl Default for TagState {
-    fn default() -> Self { TagState { name: None, selected: false, activated: false } }
+    fn default() -> Self {
+        TagState {
+            name: None,
+            selected: false,
+            activated: false
+        }
+    }
 }
 
 impl<'lua> Tag<'lua> {
     fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Tag<'lua>> {
         let class = class::class_setup(lua, "tag")?;
-        Ok(object_setup(lua, Tag::allocate(lua, class)?)?.handle_constructor_argument(args)?
-                                                         .build())
+        Ok(object_setup(lua, Tag::allocate(lua, class)?)?
+            .handle_constructor_argument(args)?
+            .build())
     }
 
     pub fn clients(&self) -> rlua::Result<Vec<Client<'lua>>> {
@@ -64,7 +73,7 @@ impl<'lua> Tag<'lua> {
     pub fn tag_client(&mut self, client: Client<'lua>) -> rlua::Result<()> {
         if let Some(_) = self.client_index(&client)? {
             // if it is already part of the clients
-            return Ok(())
+            return Ok(());
         }
         let mut clients = self.clients()?;
         clients.push(client);
@@ -81,59 +90,72 @@ impl<'lua> Tag<'lua> {
 }
 
 impl UserData for TagState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) { object::default_add_methods(methods); }
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        object::default_add_methods(methods);
+    }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class<TagState>> {
     lua.set_named_registry_value(TAG_LIST, lua.create_table()?)?;
-    method_setup(lua, Class::builder(lua, "tag", None)?)?.save_class("tag")?.build()
+    method_setup(lua, Class::builder(lua, "tag", None)?)?
+        .save_class("tag")?
+        .build()
 }
 
-fn method_setup<'lua>(lua: &'lua Lua,
-                      builder: ClassBuilder<'lua, TagState>)
-                      -> rlua::Result<ClassBuilder<'lua, TagState>>
-{
+fn method_setup<'lua>(
+    lua: &'lua Lua,
+    builder: ClassBuilder<'lua, TagState>
+) -> rlua::Result<ClassBuilder<'lua, TagState>> {
     // TODO Do properly
     use super::dummy;
-    builder.method("connect_signal".into(), lua.create_function(dummy)?)?
-           .method("__call".into(), lua.create_function(|lua, args: Table| Tag::new(lua, args))?)?
-           .property(Property::new("name".into(),
-                                   Some(lua.create_function(set_name)?),
-                                   Some(lua.create_function(get_name)?),
-                                   Some(lua.create_function(set_name)?)))?
-           .property(Property::new("selected".into(),
-                                   Some(lua.create_function(set_selected)?),
-                                   Some(lua.create_function(get_selected)?),
-                                   Some(lua.create_function(set_selected)?)))?
-           .property(Property::new("activated".into(),
-                                   Some(lua.create_function(set_activated)?),
-                                   Some(lua.create_function(get_activated)?),
-                                   Some(lua.create_function(set_activated)?)))?
-           .property(Property::new("clients".into(),
-                                   Some(lua.create_function(get_clients)?),
-                                   Some(lua.create_function(|lua, _: Value| {
-                                            // TODO:
-                                            // - Right now this is a property that
-                                            //    returns a function. Can we get
-                                            //    rid of some of this indirection?
-                                            Ok(Value::Function(lua.create_function(get_clients)?))
-                                        })?),
-                                   None))
+    builder
+        .method("connect_signal".into(), lua.create_function(dummy)?)?
+        .method(
+            "__call".into(),
+            lua.create_function(|lua, args: Table| Tag::new(lua, args))?
+        )?
+        .property(Property::new(
+            "name".into(),
+            Some(lua.create_function(set_name)?),
+            Some(lua.create_function(get_name)?),
+            Some(lua.create_function(set_name)?)
+        ))?
+        .property(Property::new(
+            "selected".into(),
+            Some(lua.create_function(set_selected)?),
+            Some(lua.create_function(get_selected)?),
+            Some(lua.create_function(set_selected)?)
+        ))?
+        .property(Property::new(
+            "activated".into(),
+            Some(lua.create_function(set_activated)?),
+            Some(lua.create_function(get_activated)?),
+            Some(lua.create_function(set_activated)?)
+        ))?
+        .property(Property::new(
+            "clients".into(),
+            Some(lua.create_function(get_clients)?),
+            Some(lua.create_function(|lua, _: Value| {
+                // TODO:
+                // - Right now this is a property that
+                //    returns a function. Can we get
+                //    rid of some of this indirection?
+                Ok(Value::Function(lua.create_function(get_clients)?))
+            })?),
+            None
+        ))
 }
 
-fn object_setup<'lua>(lua: &'lua Lua,
-                      builder: ObjectBuilder<'lua, TagState>)
-                      -> rlua::Result<ObjectBuilder<'lua, TagState>>
-{
+fn object_setup<'lua>(
+    lua: &'lua Lua,
+    builder: ObjectBuilder<'lua, TagState>
+) -> rlua::Result<ObjectBuilder<'lua, TagState>> {
     let table = lua.create_table()?;
     table.set("__clients", lua.create_table()?)?; // store clients in lua
     builder.add_to_meta(table)
 }
 
-fn set_name<'lua>(lua: &'lua Lua,
-                  (mut tag, val): (Tag<'lua>, String))
-                  -> rlua::Result<Value<'lua>>
-{
+fn set_name<'lua>(lua: &'lua Lua, (mut tag, val): (Tag<'lua>, String)) -> rlua::Result<Value<'lua>> {
     tag.state_mut()?.name = Some(val.clone());
     signal::emit_object_signal(lua, tag, "property::name".into(), ())?;
     Ok(Value::Nil)
@@ -150,7 +172,7 @@ fn set_selected<'lua>(lua: &'lua Lua, (mut tag, val): (Tag<'lua>, bool)) -> rlua
     {
         let mut tag = tag.state_mut()?;
         if tag.selected == val {
-            return Ok(())
+            return Ok(());
         }
         tag.selected = val;
     }
@@ -162,14 +184,11 @@ fn get_selected<'lua>(_: &'lua Lua, tag: Tag<'lua>) -> rlua::Result<bool> {
     Ok(tag.state()?.selected)
 }
 
-fn set_activated<'lua>(lua: &'lua Lua,
-                       (mut tag, val): (Tag<'lua>, bool))
-                       -> rlua::Result<Value<'lua>>
-{
+fn set_activated<'lua>(lua: &'lua Lua, (mut tag, val): (Tag<'lua>, bool)) -> rlua::Result<Value<'lua>> {
     {
         let mut tag = tag.state_mut()?;
         if tag.activated == val {
-            return Ok(Value::Nil)
+            return Ok(Value::Nil);
         }
         tag.activated = val;
     }
@@ -192,7 +211,7 @@ fn set_activated<'lua>(lua: &'lua Lua,
                         activated_tags.set(index, activated_tags.get::<_, Value>(index + 1)?)?;
                     }
                     activated_tags.set(activated_tags_count, Value::Nil)?;
-                    break
+                    break;
                 }
             }
             assert!(found);
@@ -207,10 +226,10 @@ fn get_activated<'lua>(_: &'lua Lua, tag: Tag<'lua>) -> rlua::Result<Value<'lua>
     Ok(Value::Boolean(tag.state()?.activated))
 }
 
-fn get_clients<'lua>(lua: &'lua Lua,
-                     (mut tag, val): (Tag<'lua>, Value<'lua>))
-                     -> rlua::Result<Vec<Client<'lua>>>
-{
+fn get_clients<'lua>(
+    lua: &'lua Lua,
+    (mut tag, val): (Tag<'lua>, Value<'lua>)
+) -> rlua::Result<Vec<Client<'lua>>> {
     if let Value::Table(_) = val {
         tag.set_clients(Vec::from_lua(val, &lua)?)?;
     };
@@ -219,8 +238,10 @@ fn get_clients<'lua>(lua: &'lua Lua,
 
 #[cfg(test)]
 mod test {
-    use super::super::{client::{self, Client},
-                       tag::{self, Tag}};
+    use super::super::{
+        client::{self, Client},
+        tag::{self, Tag}
+    };
     use rlua::{self, Lua};
 
     #[test]
@@ -228,10 +249,10 @@ mod test {
         let lua = Lua::new();
         tag::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 assert(type(tag{}.name) == "nil")
 "#,
-                 None
+            None
         )
     }
 
@@ -240,11 +261,11 @@ assert(type(tag{}.name) == "nil")
         let lua = Lua::new();
         tag::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local t = tag{ name = "a very cool tag" }
 assert(t.name == "a very cool tag")
 "#,
-                 None
+            None
         )
     }
 
@@ -253,7 +274,7 @@ assert(t.name == "a very cool tag")
         let lua = Lua::new();
         tag::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local t = tag{}
 
 local called = 0
@@ -266,7 +287,7 @@ t.name = "bye"
 assert(t.name == "bye")
 assert(called == 1)
 "#,
-                 None
+            None
         )
     }
 
@@ -275,7 +296,7 @@ assert(called == 1)
         let lua = Lua::new();
         tag::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local t = tag{}
 assert(t.selected == false)
 
@@ -300,7 +321,7 @@ t.selected = false
 assert(t.selected == false)
 assert(called == 2)
 "#,
-                 None
+            None
         )
     }
 
@@ -309,7 +330,7 @@ assert(called == 2)
         let lua = Lua::new();
         tag::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local t = tag{}
 assert(t.activated == false)
 
@@ -334,7 +355,7 @@ t.activated = false
 assert(t.activated == false)
 assert(called == 2)
 "#,
-                 None
+            None
         )
     }
 
@@ -343,7 +364,7 @@ assert(called == 2)
         let lua = Lua::new();
         tag::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local t = tag{selected = true, activated = true}
 
 local called_selected, called_activated = 0, 0
@@ -360,7 +381,7 @@ assert(t.selected == false)
 assert(called_activated == 1)
 assert(called_selected == 1)
 "#,
-                 None
+            None
         )
     }
 
@@ -369,11 +390,11 @@ assert(called_selected == 1)
         let lua = Lua::new();
         tag::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local t = tag{}
 assert(#t:clients() == 0, "Cannot get the clients")
 "#,
-                 None
+            None
         )
     }
 
@@ -383,7 +404,7 @@ assert(#t:clients() == 0, "Cannot get the clients")
         tag::init(&lua)?;
         client::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local c = client{}
 local t = tag{}
 t:clients({ c })
@@ -391,7 +412,7 @@ assert(c, "client doesn't exists")
 assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
-                 None
+            None
         )
     }
 
@@ -401,7 +422,7 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
         tag::init(&lua)?;
         client::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local c = client{}
 local t = tag{}
 t:clients({ c })
@@ -410,7 +431,7 @@ assert(c, "client doesn't exists")
 assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
-                 None
+            None
         )
     }
 
@@ -427,20 +448,20 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
         globals.set("t", t)?;
         globals.set("c", c)?;
         lua.eval::<()>(
-                       r#"
+            r#"
             assert(#t:clients() == 1, "Clients are not tagged")
         "#,
-                       None
+            None
         )?;
 
         let mut t = globals.get::<_, Tag>("t")?;
         let c = globals.get::<_, Client>("c")?;
         t.untag_client(c)?;
         lua.eval(
-                 r#"
+            r#"
             assert(#t:clients() == 0, "Tags are not passed by reference")
         "#,
-                 None
+            None
         )
     }
 
@@ -450,7 +471,7 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
         tag::init(&lua)?;
         client::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local c = client{}
 
 local t = tag{}
@@ -465,7 +486,7 @@ assert(#t2:clients() == 1, "Tag doesn't have the clients")
 assert(t2:clients()[1] == c, "Pass by value, not by reference")
 assert(t2:clients()[1] == t:clients()[1], "Tags does not share the clients")
 "#,
-                 None
+            None
         )
     }
 
@@ -475,14 +496,14 @@ assert(t2:clients()[1] == t:clients()[1], "Tags does not share the clients")
         tag::init(&lua)?;
         client::init(&lua)?;
         lua.eval(
-                 r#"
+            r#"
 local c = client{}
 local t = tag{ clients = { c } }
 assert(c, "client doesn't exists")
 assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
-                 None
+            None
         )
     }
 
@@ -499,19 +520,19 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
         globals.set("t", t)?;
         globals.set("c", c)?;
         lua.eval::<()>(
-                       r#"
+            r#"
             assert(#t:clients() == 1, "Clients are not tagged")
         "#,
-                       None
+            None
         )?;
 
         let mut c = globals.get::<_, Client>("c")?;
         c.state_mut()?.dummy = 1;
         lua.eval::<()>(
-                       r#"
+            r#"
             assert(t:clients()[1] == c, "Tags are not passed by reference")
         "#,
-                       None
+            None
         )?;
 
         let mut c = globals.get::<_, Client>("c")?;
@@ -531,12 +552,12 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
         globals.set("t", t)?;
         globals.set("c", c)?;
         lua.eval(
-                 r#"
+            r#"
 assert(c, "client doesn't exists")
 assert(#t:clients() == 1, "Tag doesn't have the clients")
 assert(t:clients()[1] == c, "Pass by value, not by reference")
 "#,
-                 None
+            None
         )
     }
 
@@ -553,11 +574,11 @@ assert(t:clients()[1] == c, "Pass by value, not by reference")
         globals.set("t", t)?;
         globals.set("c", c)?;
         lua.eval(
-                 r#"
+            r#"
 assert(c, "client doesn't exists")
 assert(#t:clients() == 0, "Clients are not untagged")
 "#,
-                 None
+            None
         )
     }
 }

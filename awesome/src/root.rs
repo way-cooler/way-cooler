@@ -26,7 +26,9 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     lua.globals().set("root", root)
 }
 
-fn dummy_double<'lua>(_: &'lua Lua, _: Value) -> rlua::Result<(i32, i32)> { Ok((0, 0)) }
+fn dummy_double<'lua>(_: &'lua Lua, _: Value) -> rlua::Result<(i32, i32)> {
+    Ok((0, 0))
+}
 
 /// Gets the wallpaper as a cairo surface or set it as a cairo pattern
 fn wallpaper<'lua>(lua: &'lua Lua, pattern: Option<LightUserData>) -> rlua::Result<Value<'lua>> {
@@ -34,10 +36,10 @@ fn wallpaper<'lua>(lua: &'lua Lua, pattern: Option<LightUserData>) -> rlua::Resu
     if let Some(pattern) = pattern {
         // TODO Wrap before giving it to set_wallpaper
         let pattern = pattern.0 as *mut cairo_pattern_t;
-        return set_wallpaper(lua, pattern)?.to_lua(lua)
+        return set_wallpaper(lua, pattern)?.to_lua(lua);
     }
     // TODO Look it up in global conf (e.g probably super secret lua value)
-    return Ok(Value::Nil)
+    return Ok(Value::Nil);
 }
 
 fn set_wallpaper<'lua>(_: &'lua Lua, _pattern: *mut cairo_pattern_t) -> rlua::Result<bool> {
@@ -70,21 +72,25 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: Value<'lua>) -> rlua::Result<Value
             }
             lua.set_named_registry_value(ROOT_KEYS_HANDLE, copy)?;
             Ok(Value::Table(key_array))
-        }
+        },
         // Get the global keys
         Value::Nil => {
             let res = lua.create_table()?;
-            for entry in
-                lua.named_registry_value::<Table>(ROOT_KEYS_HANDLE).or(lua.create_table())?.pairs()
+            for entry in lua
+                .named_registry_value::<Table>(ROOT_KEYS_HANDLE)
+                .or(lua.create_table())?
+                .pairs()
             {
                 let (key, value) = entry?;
                 res.set::<Value, Value>(key, value)?;
             }
             Ok(Value::Table(res))
-        }
-        v => Err(rlua::Error::RuntimeError(format!("Expected nil or array \
-                                                    of keys, got {:?}",
-                                                   v)))
+        },
+        v => Err(rlua::Error::RuntimeError(format!(
+            "Expected nil or array \
+             of keys, got {:?}",
+            v
+        )))
     }
 }
 
@@ -100,13 +106,13 @@ mod test {
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-                 r#"
+            r#"
 local first, second = tag{}, tag{}
 assert(tostring(first) ~= tostring(second))
 "#,
-                 None
+            None
         )
-           .unwrap()
+        .unwrap()
     }
 
     #[test]
@@ -115,14 +121,14 @@ assert(tostring(first) ~= tostring(second))
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-                 r#"
+            r#"
 local t = root.tags()
 assert(type(t) == "table")
 assert(type(next(t)) == "nil")
 "#,
-                 None
+            None
         )
-           .unwrap()
+        .unwrap()
     }
 
     #[test]
@@ -131,16 +137,16 @@ assert(type(next(t)) == "nil")
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-                 r#"
+            r#"
 local t = tag{ activated = true }
 local t2 = root.tags()[1]
 assert(t == t2)
 t2.name = "Foo"
 assert(t.name == "Foo")
 "#,
-                 None
+            None
         )
-           .unwrap()
+        .unwrap()
     }
 
     #[test]
@@ -149,16 +155,16 @@ assert(t.name == "Foo")
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-                 r#"
+            r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 local t = root.tags()
 assert(t[1] == first)
 assert(t[2] == second)
 "#,
-                 None
+            None
         )
-           .unwrap()
+        .unwrap()
     }
 
     #[test]
@@ -167,7 +173,7 @@ assert(t[2] == second)
         tag::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-                 r#"
+            r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 first.activated = false
@@ -175,9 +181,9 @@ local t = root.tags()
 assert(t[1] == second)
 assert(type(t[2]) == "nil")
 "#,
-                 None
+            None
         )
-           .unwrap()
+        .unwrap()
     }
 
     #[test]
@@ -186,7 +192,7 @@ assert(type(t[2]) == "nil")
         key::init(&lua).unwrap();
         root::init(&lua).unwrap();
         lua.eval(
-                 r#"
+            r#"
 assert(next(root.keys()) == nil)
 
 local first = key{}
@@ -204,8 +210,8 @@ assert(res[1] == first)
 assert(res[2] == second)
 assert(res[3] == nil)
 "#,
-                 None
+            None
         )
-           .unwrap()
+        .unwrap()
     }
 }

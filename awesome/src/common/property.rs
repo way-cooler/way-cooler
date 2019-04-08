@@ -20,8 +20,14 @@ impl<'lua> ToLua<'lua> for Property<'lua> {
         table.set("name", self.name)?;
         let metatable = lua.create_table()?;
         metatable.set("__call", self.cb_new.map(Value::Function).unwrap_or(Value::Nil))?;
-        metatable.set("__index", self.cb_index.map(Value::Function).unwrap_or(Value::Nil))?;
-        metatable.set("__newindex", self.cb_newindex.map(Value::Function).unwrap_or(Value::Nil))?;
+        metatable.set(
+            "__index",
+            self.cb_index.map(Value::Function).unwrap_or(Value::Nil)
+        )?;
+        metatable.set(
+            "__newindex",
+            self.cb_newindex.map(Value::Function).unwrap_or(Value::Nil)
+        )?;
         table.set_metatable(Some(metatable));
         Ok(Value::Table(table))
     }
@@ -35,21 +41,35 @@ impl<'lua> FromLua<'lua> for Property<'lua> {
             let cb_new = meta.get("__call").ok();
             let cb_index = meta.get("__index").ok();
             let cb_newindex = meta.get("__newindex").ok();
-            Ok(Property { name, cb_new, cb_index, cb_newindex })
+            Ok(Property {
+                name,
+                cb_new,
+                cb_index,
+                cb_newindex
+            })
         } else {
             use rlua::Error::FromLuaConversionError;
-            Err(FromLuaConversionError { from: "something else", to: "Property", message: None })
+            Err(FromLuaConversionError {
+                from: "something else",
+                to: "Property",
+                message: None
+            })
         }
     }
 }
 
 impl<'lua> Property<'lua> {
-    pub fn new(name: String,
-               cb_new: Option<PropF<'lua>>,
-               cb_index: Option<PropF<'lua>>,
-               cb_newindex: Option<PropF<'lua>>)
-               -> Self
-    {
-        Property { name, cb_new, cb_index, cb_newindex }
+    pub fn new(
+        name: String,
+        cb_new: Option<PropF<'lua>>,
+        cb_index: Option<PropF<'lua>>,
+        cb_newindex: Option<PropF<'lua>>
+    ) -> Self {
+        Property {
+            name,
+            cb_new,
+            cb_index,
+            cb_newindex
+        }
     }
 }

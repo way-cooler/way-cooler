@@ -1,19 +1,23 @@
-use wlroots::{wlroots_dehandle, Capability, CompositorHandle, InputManagerHandler, KeyboardHandle,
-              KeyboardHandler, PointerHandle, PointerHandler};
+use wlroots::{
+    wlroots_dehandle, Capability, CompositorHandle, InputManagerHandler, KeyboardHandle, KeyboardHandler,
+    PointerHandle, PointerHandler
+};
 
 pub struct InputManager;
 
 impl InputManager {
-    pub fn new() -> Self { InputManager }
+    pub fn new() -> Self {
+        InputManager
+    }
 }
 
 impl InputManagerHandler for InputManager {
     #[wlroots_dehandle(compositor, keyboard, seat)]
-    fn keyboard_added(&mut self,
-                      compositor_handle: CompositorHandle,
-                      keyboard_handle: KeyboardHandle)
-                      -> Option<Box<KeyboardHandler>>
-    {
+    fn keyboard_added(
+        &mut self,
+        compositor_handle: CompositorHandle,
+        keyboard_handle: KeyboardHandle
+    ) -> Option<Box<KeyboardHandler>> {
         {
             use compositor_handle as compositor;
             use keyboard_handle as keyboard;
@@ -31,11 +35,11 @@ impl InputManagerHandler for InputManager {
     }
 
     #[wlroots_dehandle(compositor, pointer, cursor, seat)]
-    fn pointer_added(&mut self,
-                     compositor_handle: CompositorHandle,
-                     pointer_handle: PointerHandle)
-                     -> Option<Box<PointerHandler>>
-    {
+    fn pointer_added(
+        &mut self,
+        compositor_handle: CompositorHandle,
+        pointer_handle: PointerHandle
+    ) -> Option<Box<PointerHandler>> {
         {
             use compositor_handle as compositor;
             use pointer_handle as pointer;

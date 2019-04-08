@@ -18,10 +18,16 @@ pub struct View {
 
 impl View {
     pub fn new(shell: ::Shell) -> View {
-        View { shell, origin: Cell::new(Origin::default()), pending_move_resize: Cell::new(None) }
+        View {
+            shell,
+            origin: Cell::new(Origin::default()),
+            pending_move_resize: Cell::new(None)
+        }
     }
 
-    pub fn surface(&self) -> SurfaceHandle { self.shell.surface() }
+    pub fn surface(&self) -> SurfaceHandle {
+        self.shell.surface()
+    }
 
     #[wlroots_dehandle(xdg_surface)]
     pub fn activate(&self, activate: bool) {
@@ -31,16 +37,16 @@ impl View {
                 match xdg_surface.state() {
                     Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
                         toplevel.set_activated(activate);
-                    }
+                    },
                     _ => unimplemented!()
                 }
-            }
+            },
             ::Shell::Xdg(xdg_surface_handle) => {
                 use xdg_surface_handle as xdg_surface;
                 match xdg_surface.state() {
                     Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
                         toplevel.set_activated(activate);
-                    }
+                    },
                     _ => unimplemented!()
                 }
             }
@@ -54,7 +60,7 @@ impl View {
                 use xdg_surface_handle as xdg_surface;
                 let Area { origin: _, size } = xdg_surface.geometry();
                 size
-            }
+            },
             ::Shell::Xdg(xdg_surface_handle) => {
                 use xdg_surface_handle as xdg_surface;
                 let Area { origin: _, size } = xdg_surface.geometry();
@@ -65,7 +71,10 @@ impl View {
 
     #[wlroots_dehandle(xdg_surface)]
     pub fn move_resize(&self, area: Area) {
-        let Area { origin: Origin { x, y }, size: Size { width, height } } = area;
+        let Area {
+            origin: Origin { x, y },
+            size: Size { width, height }
+        } = area;
         let width = width as u32;
         let height = height as u32;
 
@@ -82,17 +91,17 @@ impl View {
                     Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
                         // TODO apply size constraints
                         serial = toplevel.set_size(width, height);
-                    }
+                    },
                     _ => unimplemented!()
                 }
-            }
+            },
             ::Shell::Xdg(xdg_surface_handle) => {
                 use xdg_surface_handle as xdg_surface;
                 match xdg_surface.state() {
                     Some(&mut XdgShellState::TopLevel(ref mut toplevel)) => {
                         // TODO apply size constraints
                         serial = toplevel.set_size(width, height);
-                    }
+                    },
                     _ => unimplemented!()
                 }
             }
@@ -102,8 +111,12 @@ impl View {
             // size didn't change
             self.origin.set(Origin { x, y });
         } else {
-            self.pending_move_resize
-                .set(Some(PendingMoveResize { update_x, update_y, area, serial }));
+            self.pending_move_resize.set(Some(PendingMoveResize {
+                update_x,
+                update_y,
+                area,
+                serial
+            }));
         }
     }
 
@@ -113,7 +126,7 @@ impl View {
             ::Shell::XdgV6(xdg_surface_handle) => {
                 use xdg_surface_handle as xdg_surface;
                 xdg_surface.for_each_surface(f);
-            }
+            },
             ::Shell::Xdg(xdg_surface_handle) => {
                 use xdg_surface_handle as xdg_surface;
                 xdg_surface.for_each_surface(f);

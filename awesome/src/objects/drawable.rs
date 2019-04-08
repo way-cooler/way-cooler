@@ -8,10 +8,12 @@ use rlua::{self, LightUserData, Lua, Table, UserData, UserDataMethods, Value};
 use tempfile;
 use wlroots::{Area, Origin, Size};
 
-use common::{class::{self, Class},
-             object::{self, Object},
-             property::Property,
-             signal::emit_object_signal};
+use common::{
+    class::{self, Class},
+    object::{self, Object},
+    property::Property,
+    signal::emit_object_signal
+};
 use wayland_obj::{self, XdgToplevel};
 
 #[derive(Debug)]
@@ -29,11 +31,13 @@ pub type Drawable<'lua> = Object<'lua, DrawableState>;
 impl Default for DrawableState {
     fn default() -> Self {
         let temp_file = tempfile::tempfile().expect("Could not make a temp file for the buffer");
-        DrawableState { temp_file,
-                        wayland_shell: None,
-                        surface: None,
-                        geo: Area::default(),
-                        refreshed: false }
+        DrawableState {
+            temp_file,
+            wayland_shell: None,
+            surface: None,
+            geo: Area::default(),
+            refreshed: false
+        }
     }
 }
 
@@ -83,23 +87,26 @@ impl<'lua> Drawable<'lua> {
         if size_changed {
             drawable.refreshed = false;
             drawable.surface = None;
-            drawable.wayland_shell = Some(wayland_obj::create_xdg_toplevel(None)
-                .expect("Could not construct an xdg toplevel for a drawable"));
+            drawable.wayland_shell = Some(
+                wayland_obj::create_xdg_toplevel(None)
+                    .expect("Could not construct an xdg toplevel for a drawable")
+            );
             let size: Size = geometry.size;
 
             if size.width > 0 && size.height > 0 {
                 let temp_file = tempfile::tempfile().expect("Could not make new temp file");
-                temp_file.set_len(size.width as u64 * size.height as u64 * 4)
-                         .expect("Could not set file length");
-                drawable.surface = Some(ImageSurface::create(Format::ARgb32,
-                                                             size.width,
-                                                             size.height).map_err(|err| {
-                                            RuntimeError(format!("Could not allocate {:?}", err))
-                                        })?);
+                temp_file
+                    .set_len(size.width as u64 * size.height as u64 * 4)
+                    .expect("Could not set file length");
+                drawable.surface = Some(
+                    ImageSurface::create(Format::ARgb32, size.width, size.height)
+                        .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?
+                );
                 {
                     let shell = drawable.wayland_shell.as_mut().unwrap();
                     shell.set_size(size);
-                    shell.set_surface(&temp_file, size)
+                    shell
+                        .set_surface(&temp_file, size)
                         .map_err(|_| RuntimeError(format!("Could not set surface for drawable")))?;
                 }
                 drawable.temp_file = temp_file;
@@ -114,7 +121,10 @@ impl<'lua> Drawable<'lua> {
         let mut drawable = self.state_mut()?;
         let drawable = &mut *drawable;
         if let Some(data) = drawable.surface.as_mut().map(get_data) {
-            drawable.temp_file.write(&*data).expect("Could not write data to buffer");
+            drawable
+                .temp_file
+                .write(&*data)
+                .expect("Could not write data to buffer");
             drawable.temp_file.flush().expect("Could not flush buffer");
             drawable.refreshed = true;
         }
@@ -123,16 +133,20 @@ impl<'lua> Drawable<'lua> {
 }
 
 impl UserData for DrawableState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) { object::default_add_methods(methods); }
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        object::default_add_methods(methods);
+    }
 }
 
 pub fn init(lua: &Lua) -> rlua::Result<Class<DrawableState>> {
     Class::<DrawableState>::builder(lua, "drawable", None)?
         .method("geometry".into(), lua.create_function(geometry)?)?
-        .property(Property::new("surface".into(),
-                                None,
-                                Some(lua.create_function(get_surface)?),
-                                None))?
+        .property(Property::new(
+            "surface".into(),
+            None,
+            Some(lua.create_function(get_surface)?),
+            None
+        ))?
         .save_class("drawable")?
         .build()
 }
