@@ -1,6 +1,0 @@
-[submodule "wlroots-rs"]
-	path = wlroots-rs
-	url = https://github.com/swaywm/wlroots-rs
-[submodule "tests/awesome"]
-	path = tests/awesome
-	url = https://github.com/awesomeWM/awesome.git

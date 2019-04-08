@@ -1,17 +1,16 @@
 [package]
-name = "awesome"
-description = "Wayland compositor that emulates AwesomeWM"
+name = "way-cooler-awesome"
+description = "Wayland client that emulates AwesomeWM"
 version = "0.8.0"
 repository = "https://github.com/way-cooler/way-cooler/"
-keywords = ["Wayland", "compositor", "window", "manager", "wlroots", "awesome"]
+keywords = ["Wayland"]
 readme = "README.md"
 license = "MIT"
-authors = ["Snirk Immington <snirk.immington@gmail.com>", "Timidger <apragmaticplace@gmail.com>"]
+authors = ["Timidger <apragmaticplace@gmail.com>"]
 publish = false
 edition = "2018"
 
 [dependencies]
-wlroots = { path = "../wlroots-rs" }
 lazy_static = "0.2"
 log = "0.4"
 env_logger = "0.5"
@@ -29,8 +28,7 @@ tempfile = "3.0.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 wayland-client = { version = "0.23", features = [ "native_lib", "dlopen" ] }
 wayland-protocols = { version = "0.23", features = ['client'] }
-# TODO Use point release once get get_no_reply and friends are released
-dbus = { git = "https://github.com/diwic/dbus-rs" }
+dbus = "0.6"
 
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }

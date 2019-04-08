@@ -1,34 +1,21 @@
 default: build
 
-# Debug build options
-awesome:
-	cargo build --package awesome
-
 way_cooler:
-	cargo build --package way-cooler
+	ninja -C build
+	meson build
 
-build:
-	cargo build --all
+.PHONY: awesome
+awesome:
+	`cd awesome; cargo build`
 
-run: build
-	sleep .1 && WAYLAND_DISPLAY=wayland-1 ./target/debug/awesome &
-	trap 'kill %1' SIGINT
-	./target/debug/way-cooler
+build: awesome way_cooler
 
-# Release build options
-awesome_release:
-	cargo build --release --package awesome
+check:
+	`cd awesome; cargo +nightly fmt --all -- --check; cargo clippy --all`
 
-way_cooler_release:
-	cargo build --release --package way-cooler
-
-release:
-	cargo build --all --release
-
-run_release: release
-	sleep .1 && WAYLAND_DISPLAY=wayland-1 ./target/release/awesome &
-	trap 'kill %1' SIGINT
-	./target/release/way-cooler
+# way-cooler should be a shell script that does this
+run: build check
+	./build/way-cooler-compositor ./awesome/target/debug/way-cooler-awesome
 
 # Docs
 man:
