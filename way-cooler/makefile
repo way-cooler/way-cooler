@@ -2,20 +2,16 @@ default: build
 
 .PHONY: way_cooler
 way_cooler:
-	cd way-cooler;\
-	meson build;\
-	ninja -C build
+	`cd way-cooler; ninja -C build meson build`
 
 .PHONY: awesome
 awesome:
-	cd awesome; cargo build
+	`cd awesome; cargo build`
 
 build: awesome way_cooler
 
 check:
-	cd awesome;\
-	cargo +nightly fmt --all -- --check;\
-	cargo clippy --all
+	`cd awesome; cargo +nightly fmt --all -- --check; cargo clippy --all`
 
 # way-cooler should be a shell script that does this
 run: build check
