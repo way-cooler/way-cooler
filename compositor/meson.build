@@ -39,7 +39,7 @@ else
 endif
 
 if not wlroots_has_xwayland
-	error('Cannot build way-cooler: wlroots has been built without Xwayland support')
+	error('Cannot build compositor: wlroots has been built without Xwayland support')
 endif
 
 if git.found()
@@ -62,7 +62,7 @@ way_cooler_sources = files(
 )
 
 executable(
-    'way-cooler-compositor',
+    'way-cooler',
     way_cooler_sources,
     install : true,
     include_directories: [include_directories('.')],

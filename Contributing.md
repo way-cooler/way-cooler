@@ -32,7 +32,7 @@ function checkfmt() {
        echo "Expected $expected"
        return 1
     fi
-    formatted=$(cd awesome; cargo fmt -- --check)
+    formatted=$(cd client; cargo fmt -- --check)
     [ -z "$formatted" ] && return 0
 
     echo >&2 "Please format your files with cargo fmt"

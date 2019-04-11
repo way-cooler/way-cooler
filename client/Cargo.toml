@@ -1,5 +1,5 @@
 [package]
-name = "way-cooler-awesome"
+name = "way-cooler-client"
 description = "Wayland client that emulates AwesomeWM"
 version = "0.8.0"
 repository = "https://github.com/way-cooler/way-cooler/"

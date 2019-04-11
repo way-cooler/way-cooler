@@ -11,5 +11,5 @@ project(
     ]
 )
 
-subdir('way-cooler')
-subdir('awesome')
+subdir('compositor')
+subdir('client')
