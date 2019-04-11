@@ -12,9 +12,4 @@ project(
 )
 
 subdir('way-cooler')
-
-message('Building way-cooler-client...')
-cargo = run_command('cargo', 'build', '--manifest-path=awesome/Cargo.toml', '--target-dir=./build/')
-if cargo.returncode() != 0
-    error(cargo.stderr().strip())
-endif
+subdir('awesome')
