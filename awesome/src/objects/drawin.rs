@@ -3,12 +3,11 @@
 
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
-use std::cell::RefMut;
 
 use cairo::ImageSurface;
 use rlua::{self, prelude::LuaInteger, Lua, Table, ToLua, UserData, UserDataMethods};
-use wlroots::{Area, Origin, Size, Texture};
 
+use crate::area::{Area, Origin, Size};
 use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object, ObjectBuilder},
@@ -27,7 +26,6 @@ pub struct DrawinState {
     cursor: String,
     geometry: Area,
     geometry_dirty: bool,
-    texture: Option<Texture<'static>>,
     surface: Option<ImageSurface>
 }
 
@@ -59,11 +57,6 @@ impl<'lua> Drawin<'lua> {
     #[allow(dead_code)]
     pub fn drawable(&mut self) -> rlua::Result<Drawable> {
         self.get_associated_data::<Drawable>("drawable")
-    }
-
-    #[allow(dead_code)]
-    pub fn texture(&mut self) -> rlua::Result<RefMut<Option<Texture<'static>>>> {
-        Ok(RefMut::map(self.state_mut()?, |state| &mut state.texture))
     }
 
     fn update_drawing(&mut self, lua: &Lua) -> rlua::Result<()> {
@@ -221,12 +214,15 @@ fn drawin_geometry<'lua>(
     (mut drawin, geometry): (Drawin<'lua>, Option<Table<'lua>>)
 ) -> rlua::Result<Table<'lua>> {
     if let Some(geometry) = geometry {
-        let width = geometry.get::<_, i32>("width")?;
-        let height = geometry.get::<_, i32>("height")?;
+        let width = geometry.get::<_, u32>("width")?;
+        let height = geometry.get::<_, u32>("height")?;
         let x = geometry.get::<_, i32>("x")?;
         let y = geometry.get::<_, i32>("y")?;
         if width > 0 && height > 0 {
-            let geo = Area::new(Origin { x, y }, Size { width, height });
+            let geo = Area {
+                origin: Origin { x, y },
+                size: Size { width, height }
+            };
             drawin.resize(lua, geo)?;
         }
     }
@@ -273,7 +269,7 @@ fn get_width<'lua>(_: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaIntege
 fn set_width<'lua>(lua: &'lua Lua, (mut drawin, width): (Drawin<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut geo = drawin.get_geometry()?;
     if width > 0 {
-        geo.size.width = width as i32;
+        geo.size.width = width as i32 as u32;
         drawin.resize(lua, geo)?;
     }
     Ok(())
@@ -287,7 +283,7 @@ fn get_height<'lua>(_lua: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaIn
 fn set_height<'lua>(lua: &'lua Lua, (mut drawin, height): (Drawin<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut geo = drawin.get_geometry()?;
     if height > 0 {
-        geo.size.height = height as i32;
+        geo.size.height = height as i32 as u32;
         drawin.resize(lua, geo)?;
     }
     Ok(())

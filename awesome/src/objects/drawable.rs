@@ -6,8 +6,8 @@ use cairo::{Format, ImageSurface};
 use glib::translate::ToGlibPtr;
 use rlua::{self, LightUserData, Lua, Table, UserData, UserDataMethods, Value};
 use tempfile;
-use wlroots::{Area, Origin, Size};
 
+use crate::area::{Area, Origin, Size};
 use crate::common::{
     class::{self, Class},
     object::{self, Object},
@@ -99,7 +99,7 @@ impl<'lua> Drawable<'lua> {
                     .set_len(size.width as u64 * size.height as u64 * 4)
                     .expect("Could not set file length");
                 drawable.surface = Some(
-                    ImageSurface::create(Format::ARgb32, size.width, size.height)
+                    ImageSurface::create(Format::ARgb32, size.width as i32, size.height as i32)
                         .map_err(|err| RuntimeError(format!("Could not allocate {:?}", err)))?
                 );
                 {

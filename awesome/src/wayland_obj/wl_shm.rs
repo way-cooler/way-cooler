@@ -11,7 +11,7 @@ use wayland_client::{
     NewProxy
 };
 
-use wlroots::Size;
+use crate::area::Size;
 
 /// The minimum version of the wl_shm global to bind to.
 pub const WL_SHM_VERSION: u32 = 1;
@@ -40,6 +40,8 @@ impl wayland_client::GlobalImplementor<WlShm> for WlShmManager {
 /// directly by the Awesome objects.
 pub fn create_buffer(fd: RawFd, size: Size) -> Result<WlBuffer, ()> {
     let Size { width, height } = size;
+    let width = width as i32;
+    let height = height as i32;
     WL_SHM.with(|wl_shm| {
         let wl_shm = wl_shm.borrow();
         let wl_shm = wl_shm.as_ref().expect("WL_SHM was not initilized");

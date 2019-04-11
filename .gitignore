@@ -12,4 +12,7 @@ way-cooler/build
 way-cooler/build-*/
 
 # For building wlroots as a subproject
-way-cooler/subprojects
+subprojects
+
+# For building final artifacts
+build/

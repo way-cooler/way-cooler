@@ -6,8 +6,8 @@
 use std::default::Default;
 
 use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
-use wlroots::{Area, Origin, Size};
 
+use crate::area::{Area, Origin, Size};
 use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object},
@@ -177,7 +177,11 @@ pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<ScreenState>> {
         let mut screen = Screen::new(lua)?;
         {
             let mut obj = screen.state_mut()?;
-            obj.geometry = Size::new(1024, 768).into();
+            obj.geometry = Size {
+                width: 1024,
+                height: 768
+            }
+            .into();
             obj.workarea = obj.geometry;
         }
         screens.push(screen);

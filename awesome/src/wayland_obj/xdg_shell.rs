@@ -13,6 +13,7 @@ use wayland_protocols::xdg_shell::client::{
 };
 use wlroots::{Area, Origin, Size};
 
+use crate::area::{Area, Origin, Size};
 use crate::wayland_obj;
 
 /// The minimum version of the xdg_wm_base global to bind to.
@@ -76,7 +77,7 @@ impl XdgToplevel {
         unwrap_state(self.as_ref())
             .borrow()
             .xdg_surface
-            .set_window_geometry(0, 0, width, height);
+            .set_window_geometry(0, 0, width as i32, height as i32);
     }
 
     /// Set the backing storage of the xdg shell surface.
@@ -135,7 +136,7 @@ where
     if let Some(geometry) = geometry.into() {
         let Origin { x, y } = geometry.origin;
         let Size { width, height } = geometry.size;
-        xdg_surface.set_window_geometry(x, y, width, height);
+        xdg_surface.set_window_geometry(x, y, width as i32, height as i32);
     }
 
     xdg_surface

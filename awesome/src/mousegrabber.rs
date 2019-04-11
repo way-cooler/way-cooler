@@ -2,7 +2,6 @@
 
 use crate::LUA;
 use rlua::{self, Function, Lua, Value};
-use wlroots::wlr_button_state;
 
 pub const MOUSEGRABBER_TABLE: &str = "mousegrabber";
 const MOUSEGRABBER_CALLBACK: &str = "__callback";
@@ -19,7 +18,11 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
 }
 
 #[allow(dead_code)]
-pub fn mousegrabber_handle(x: i32, y: i32, button: Option<(u32, wlr_button_state)>) -> rlua::Result<()> {
+pub fn mousegrabber_handle(
+    x: i32,
+    y: i32,
+    button: Option<(u32, u32 /* TODO real button state */)>
+) -> rlua::Result<()> {
     LUA.with(|lua| {
         let lua = lua.borrow();
         let button_events = button

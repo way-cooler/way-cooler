@@ -1,16 +1,3 @@
-project(
-    'way-cooler',
-    'c',
-    version: '0.8.0',
-    license: 'MIT',
-    meson_version: '>=0.48.0',
-    default_options: [
-        'c_std=c11',
-        'warning_level=2',
-        'werror=true',
-    ],
-)
-
 add_project_arguments(
     [
         '-DWLR_USE_UNSTABLE',
@@ -77,6 +64,7 @@ way_cooler_sources = files(
 executable(
     'way-cooler-compositor',
     way_cooler_sources,
+    install : true,
     include_directories: [include_directories('.')],
 	dependencies: way_cooler_deps,
 )

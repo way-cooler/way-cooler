@@ -43,15 +43,19 @@ extern crate clap;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-use ::dbus as dbus_rs;
-use libc;
-use nix;
-use rlua;
-use wayland_client;
-use xcb;
+extern crate libc;
+extern crate nix;
+extern crate rlua;
+extern crate tempfile;
+extern crate xcb;
+#[macro_use]
+extern crate wayland_client;
+extern crate dbus as dbus_rs;
+extern crate wayland_sys;
 
 #[macro_use]
 mod macros;
+mod area;
 mod awesome;
 mod common;
 mod dbus;
@@ -89,7 +93,7 @@ use xcb::xkb;
 pub use crate::dbus::{dbus_session_refresh, dbus_system_refresh};
 
 use crate::lua::{LUA, NEXT_LUA};
-pub use ::wayland_protocols::xdg_shell::client::xdg_wm_base;
+pub use wayland_protocols::xdg_shell::client::xdg_wm_base;
 
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";

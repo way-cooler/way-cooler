@@ -8,6 +8,7 @@ use wayland_client::{
 };
 use wlroots::{Area, Origin, Size};
 
+use crate::area::{Area, Origin, Size};
 use crate::lua::LUA;
 use crate::objects::screen::{self, Screen};
 
@@ -30,7 +31,7 @@ pub struct WlOutputEventHandler {}
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 struct OutputState {
     name: String,
-    resolution: (i32, i32)
+    resolution: (u32, u32)
 }
 
 impl Output {

@@ -5,8 +5,8 @@
 use std::default::Default;
 
 use rlua::{self, Lua, Table, UserData, UserDataMethods, Value};
-use wlroots::events::key_events::Key;
 use xcb::ffi::xproto::xcb_button_t;
+use xkbcommon::xkb::Keysym;
 
 use crate::common::{
     class::{self, Class},
@@ -18,7 +18,7 @@ use crate::common::{
 #[derive(Clone, Debug)]
 pub struct ButtonState {
     button: xcb_button_t,
-    modifiers: Vec<Key>
+    modifiers: Vec<Keysym>
 }
 
 pub type Button<'lua> = Object<'lua, ButtonState>;
@@ -57,7 +57,7 @@ impl<'lua> Button<'lua> {
         Ok(())
     }
 
-    pub fn modifiers(&self) -> rlua::Result<Vec<Key>> {
+    pub fn modifiers(&self) -> rlua::Result<Vec<Keysym>> {
         let button = self.state()?;
         Ok(button.modifiers.clone())
     }

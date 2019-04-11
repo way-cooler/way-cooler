@@ -3,7 +3,7 @@
 //! This is mostly used to define keybindings.
 
 use rlua::{self, Lua, Table, ToLua, UserData, UserDataMethods, Value};
-use wlroots::{self, xkbcommon::xkb};
+use xkbcommon::xkb::{self, Keysym};
 
 use crate::common::{
     class::{self, Class, ClassBuilder},
@@ -15,7 +15,7 @@ use crate::lua::mods_to_num;
 #[derive(Clone, Debug, Default)]
 pub struct KeyState {
     modifiers: u32,
-    keysym: wlroots::Key,
+    keysym: Keysym,
     keycode: xkb::Keycode
 }
 
@@ -41,13 +41,13 @@ impl<'lua> Key<'lua> {
         Ok(state.modifiers)
     }
 
-    pub fn set_keysym(&mut self, keysym: wlroots::Key) -> rlua::Result<()> {
+    pub fn set_keysym(&mut self, keysym: Keysym) -> rlua::Result<()> {
         let mut state = self.state_mut()?;
         state.keysym = keysym;
         Ok(())
     }
 
-    pub fn keysym(&self) -> rlua::Result<wlroots::Key> {
+    pub fn keysym(&self) -> rlua::Result<Keysym> {
         let state = self.state()?;
         Ok(state.keysym)
     }
@@ -119,7 +119,7 @@ fn get_modifiers<'lua>(_: &'lua Lua, key: Key<'lua>) -> rlua::Result<u32> {
 }
 
 fn set_modifiers<'lua>(_: &'lua Lua, (mut key, mods): (Key<'lua>, Table<'lua>)) -> rlua::Result<()> {
-    key.set_modifiers(mods_to_num(mods)?.bits())
+    key.set_modifiers(mods_to_num(mods)?)
 }
 
 fn get_keysym<'lua>(lua: &'lua Lua, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
