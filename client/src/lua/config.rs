@@ -8,70 +8,43 @@ use std::{
     sync::Arc
 };
 
-use rlua::{self, Lua, Table};
+use rlua::{self, Context, Table};
 
 const INIT_FILE: &'static str = "rc.lua";
 const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/rc.lua";
 
 pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
 
-/// Finds the configuration file and then loads it.
-///
-/// If a configuration file could not be found, the pre-compiled version is used.
-pub fn load_config(mut lua: &mut Lua, cmdline_config: Option<&str>, lib_paths: &[&str]) {
-    let maybe_init_file = get_config(cmdline_config);
-    match maybe_init_file {
-        Ok((init_dir, mut init_file)) => {
-            if init_dir.components().next().is_some() {
-                // Add the config directory to the package path.
-                let globals = lua.globals();
-                let package: Table = globals.get("package").expect("package not defined in Lua");
-                let paths: String = package.get("path").expect("package.path not defined in Lua");
-                package
-                    .set(
-                        "path",
-                        paths +
-                            ";" +
-                            init_dir
-                                .join("?.lua")
-                                .to_str()
-                                .expect("init_dir not a valid UTF-8 string")
-                    )
-                    .expect("Failed to set package.path");
-            }
-            let mut init_contents = String::new();
-            init_file
-                .read_to_string(&mut init_contents)
-                .expect("Could not read contents");
-            lua.exec(init_contents.as_str(), Some("init.lua".into()))
-                .map(|_: ()| info!("Read init.lua successfully"))
-                .or_else(|err| {
-                    log_error(err);
-                    info!("Defaulting to pre-compiled init.lua");
-                    unsafe {
-                        *lua = Lua::new_with_debug();
-                    }
-                    crate::lua::register_libraries(&mut lua, lib_paths)?;
-                    lua.exec(DEFAULT_CONFIG, Some("init.lua <DEFAULT>".into()))
-                })
-                .expect("Unable to load pre-compiled init file");
-        },
-        Err(_) => {
-            warn!("Could not find an init file in any path!");
-            warn!("Defaulting to pre-compiled init.lua");
-            let _: () = lua
-                .exec(DEFAULT_CONFIG, Some("init.lua <DEFAULT>".into()))
-                .or_else(|err| {
-                    log_error(err.clone());
-                    Err(err)
-                })
-                .expect("Unable to load pre-compiled init file");
-        }
+/// Finds the configuration file and returns (filename, content)
+pub fn load_config(lua: Context, cmdline_config: Option<&str>) -> io::Result<(String, String)> {
+    let (init_dir, mut init_file) = get_config(cmdline_config)?;
+    if init_dir.components().next().is_some() {
+        // Add the config directory to the package path.
+        let globals = lua.globals();
+        let package: Table = globals.get("package").expect("package not defined in Lua");
+        let paths: String = package.get("path").expect("package.path not defined in Lua");
+        let init_dir = init_dir
+            .join("?.lua")
+            .into_os_string()
+            .into_string()
+            .expect("init_dir not a valid UTF-8 string");
+        package
+            .set("path", format!("{};{}", paths, init_dir))
+            .expect("Failed to set package.path");
     }
-    crate::lua::emit_refresh(lua);
+    let mut init_contents = String::new();
+    init_file.read_to_string(&mut init_contents)?;
+    Ok(("init.lua".to_string(), init_contents))
 }
 
-pub fn get_config(cmdline_path: Option<&str>) -> io::Result<(PathBuf, File)> {
+pub fn exec_config(lua: rlua::Context, file_name: &str, content: &str) -> rlua::Result<()> {
+    lua.load(content).set_name(file_name).unwrap().exec()?;
+    crate::lua::emit_refresh(lua);
+
+    Ok(())
+}
+
+fn get_config(cmdline_path: Option<&str>) -> io::Result<(PathBuf, File)> {
     let cmdline_path = cmdline_path.map(PathBuf::from);
     let home_var = env::var("HOME").expect("HOME environment variable not defined!");
     let home = home_var.as_str();

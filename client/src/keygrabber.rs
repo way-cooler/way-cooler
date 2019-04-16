@@ -1,6 +1,6 @@
 //! AwesomeWM Keygrabber interface
 
-use rlua::{self, Function, Lua, Table, Value};
+use rlua::{self, Function, Table, Value};
 use xkbcommon::xkb::{keysym_get_name, Keysym};
 
 use crate::common::signal;
@@ -10,7 +10,7 @@ pub const KEYGRABBER_TABLE: &str = "keygrabber";
 const KEYGRABBER_CALLBACK: &str = "__callback";
 
 /// Init the methods defined on this interface.
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init(lua: rlua::Context) -> rlua::Result<()> {
     let keygrabber_table = lua.create_table()?;
     let meta = lua.create_table()?;
     meta.set("__index", lua.create_function(index)?)?;
@@ -31,31 +31,37 @@ pub fn keygrabber_handle(mods: Vec<Keysym>, sym: Keysym, state: u32) -> rlua::Re
         let lua = lua.borrow();
         // TODO Need key state proper type
         let lua_state = if state == 0 { "press" } else { "release" }.into();
-        let lua_sym = keysym_get_name(sym);
-        let lua_mods = crate::lua::mods_to_lua(&*lua, &mods)?;
-        let res = call_keygrabber(&*lua, (lua_mods, lua_sym, lua_state));
-        match res {
-            Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => Ok(()),
-            err => err
-        }
+        lua.context(|ctx| {
+            let lua_sym = keysym_get_name(sym);
+            let lua_mods = crate::lua::mods_to_lua(ctx, &mods)?;
+            let res = call_keygrabber(ctx, (lua_mods, lua_sym, lua_state));
+            match res {
+                Ok(_) | Err(rlua::Error::FromLuaConversionError { .. }) => Ok(()),
+                err => err
+            }
+        })
     })
 }
 
 /// Check is the Lua callback function is set
 #[allow(dead_code)]
-pub fn is_keygrabber_set(lua: &Lua) -> bool {
-    lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK).is_ok()
+pub fn is_keygrabber_set(lua: rlua::Context) -> bool {
+    lua.named_registry_value::<str, Function>(KEYGRABBER_CALLBACK)
+        .is_ok()
 }
 
 /// Call the Lua callback function for when a key is pressed.
 #[allow(dead_code)]
-pub fn call_keygrabber(lua: &Lua, (mods, key, event): (Table, String, String)) -> rlua::Result<()> {
-    let lua_callback = lua.named_registry_value::<Function>(KEYGRABBER_CALLBACK)?;
+pub fn call_keygrabber<'lua>(
+    lua: rlua::Context<'lua>,
+    (mods, key, event): (Table<'lua>, String, String)
+) -> rlua::Result<()> {
+    let lua_callback = lua.named_registry_value::<str, Function>(KEYGRABBER_CALLBACK)?;
     lua_callback.call((mods, key, event))
 }
 
-fn run(lua: &Lua, function: Function) -> rlua::Result<()> {
-    match lua.named_registry_value::<Value>(KEYGRABBER_CALLBACK)? {
+fn run<'lua>(lua: rlua::Context<'lua>, function: Function<'lua>) -> rlua::Result<()> {
+    match lua.named_registry_value::<str, Value>(KEYGRABBER_CALLBACK)? {
         Value::Function(_) => Err(rlua::Error::RuntimeError(
             "keygrabber callback already set!".into()
         )),
@@ -63,21 +69,21 @@ fn run(lua: &Lua, function: Function) -> rlua::Result<()> {
     }
 }
 
-fn stop(lua: &Lua, _: ()) -> rlua::Result<()> {
+fn stop(lua: rlua::Context, _: ()) -> rlua::Result<()> {
     lua.set_named_registry_value(KEYGRABBER_CALLBACK, Value::Nil)
 }
 
-fn isrunning(lua: &Lua, _: ()) -> rlua::Result<bool> {
-    match lua.named_registry_value::<Value>(KEYGRABBER_CALLBACK)? {
+fn isrunning(lua: rlua::Context, _: ()) -> rlua::Result<bool> {
+    match lua.named_registry_value::<str, Value>(KEYGRABBER_CALLBACK)? {
         Value::Function(_) => Ok(true),
         _ => Ok(false)
     }
 }
 
-fn index(lua: &Lua, args: Value) -> rlua::Result<()> {
+fn index<'lua>(lua: rlua::Context<'lua>, args: Value<'lua>) -> rlua::Result<()> {
     signal::global_emit_signal(lua, ("debug::index::miss".into(), args))
 }
 
-fn new_index(lua: &Lua, args: Value) -> rlua::Result<()> {
+fn new_index<'lua>(lua: rlua::Context<'lua>, args: Value<'lua>) -> rlua::Result<()> {
     signal::global_emit_signal(lua, ("debug::newindex::miss".into(), args))
 }

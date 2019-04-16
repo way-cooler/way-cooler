@@ -1,4 +1,4 @@
-use rlua::{self, FromLua, Lua, ToLua, Value};
+use rlua::{self, FromLua, ToLua, Value};
 
 pub type PropF<'lua> = rlua::Function<'lua>;
 
@@ -15,7 +15,7 @@ pub struct Property<'lua> {
 }
 
 impl<'lua> ToLua<'lua> for Property<'lua> {
-    fn to_lua(self, lua: &'lua Lua) -> rlua::Result<Value<'lua>> {
+    fn to_lua(self, lua: rlua::Context<'lua>) -> rlua::Result<Value<'lua>> {
         let table = lua.create_table()?;
         table.set("name", self.name)?;
         let metatable = lua.create_table()?;
@@ -34,7 +34,7 @@ impl<'lua> ToLua<'lua> for Property<'lua> {
 }
 
 impl<'lua> FromLua<'lua> for Property<'lua> {
-    fn from_lua(val: Value<'lua>, _: &'lua Lua) -> rlua::Result<Self> {
+    fn from_lua(val: Value<'lua>, _: rlua::Context<'lua>) -> rlua::Result<Self> {
         if let Value::Table(table) = val {
             let name = table.get("name")?;
             let meta = table.get_metatable().expect("Property table had no metatable");

@@ -5,7 +5,7 @@
 
 use std::default::Default;
 
-use rlua::{self, AnyUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{self, AnyUserData, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 
 use crate::area::{Area, Origin, Size};
 use crate::common::{
@@ -61,14 +61,14 @@ impl Default for ScreenState {
 }
 
 impl UserData for ScreenState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         object::default_add_methods(methods);
         methods.add_meta_function(MetaMethod::Index, index);
     }
 }
 
 impl<'lua> Screen<'lua> {
-    pub fn new(lua: &Lua) -> rlua::Result<Screen> {
+    pub fn new(lua: rlua::Context<'lua>) -> rlua::Result<Screen> {
         let class = class::class_setup(lua, "screen")?;
         Ok(Screen::allocate(lua, class)?.build())
     }
@@ -83,7 +83,7 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn set_geometry(&mut self, lua: &Lua, geometry: Area) -> rlua::Result<()> {
+    pub fn set_geometry(&mut self, lua: rlua::Context<'lua>, geometry: Area) -> rlua::Result<()> {
         if self.state()?.geometry != geometry {
             let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
@@ -97,7 +97,7 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn set_workarea(&mut self, lua: &Lua, geometry: Area) -> rlua::Result<()> {
+    pub fn set_workarea(&mut self, lua: rlua::Context<'lua>, geometry: Area) -> rlua::Result<()> {
         if self.state()?.workarea != geometry {
             let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
@@ -111,7 +111,7 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn get_geometry(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
+    pub fn get_geometry(&self, lua: rlua::Context<'lua>) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
         let Origin { x, y } = state.geometry.origin;
         let Size { width, height } = state.geometry.size;
@@ -123,7 +123,7 @@ impl<'lua> Screen<'lua> {
         Ok(table)
     }
 
-    pub fn get_workarea(&self, lua: &'lua Lua) -> rlua::Result<Table<'lua>> {
+    pub fn get_workarea(&self, lua: rlua::Context<'lua>) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
         let Origin { x, y } = state.workarea.origin;
         let Size { width, height } = state.workarea.size;
@@ -137,16 +137,16 @@ impl<'lua> Screen<'lua> {
 }
 
 /// Adds a screen to the list of screens.
-pub fn add_screen(lua: &Lua, screen: Screen) -> rlua::Result<()> {
-    let mut screens = lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?;
+pub fn add_screen<'lua>(lua: rlua::Context<'lua>, screen: Screen<'lua>) -> rlua::Result<()> {
+    let mut screens = lua.named_registry_value::<str, Vec<AnyUserData>>(SCREENS_HANDLE)?;
     screens.push(screen.into());
     lua.set_named_registry_value(SCREENS_HANDLE, screens.to_lua(lua)?)?;
     Ok(())
 }
 
 /// Find a screen based on the output.
-pub fn get_screen(lua: &Lua, output: Output) -> rlua::Result<Screen> {
-    lua.named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
+pub fn get_screen(lua: rlua::Context, output: Output) -> rlua::Result<Screen> {
+    lua.named_registry_value::<str, Vec<AnyUserData>>(SCREENS_HANDLE)?
         .into_iter()
         .map(|obj| Screen::cast(obj.into()).unwrap())
         // TODO Can there be multiple screens the output is associated with?
@@ -158,7 +158,7 @@ pub fn get_screen(lua: &Lua, output: Output) -> rlua::Result<Screen> {
         .ok_or(rlua::Error::RuntimeError(format!("No screen with output {:?}", output)))
 }
 
-pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<ScreenState>> {
+pub fn init<'lua>(lua: rlua::Context<'lua>) -> rlua::Result<Class<ScreenState>> {
     let builder = Class::builder(lua, "screen", None)?;
     let res = property_setup(lua, method_setup(lua, builder)?)?
         .save_class("screen")?
@@ -192,7 +192,7 @@ pub fn init<'lua>(lua: &'lua Lua) -> rlua::Result<Class<ScreenState>> {
 }
 
 fn method_setup<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     builder: ClassBuilder<'lua, ScreenState>
 ) -> rlua::Result<ClassBuilder<'lua, ScreenState>> {
     // TODO Do properly
@@ -205,7 +205,7 @@ fn method_setup<'lua>(
 }
 
 fn property_setup<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     builder: ClassBuilder<'lua, ScreenState>
 ) -> rlua::Result<ClassBuilder<'lua, ScreenState>> {
     builder
@@ -223,16 +223,16 @@ fn property_setup<'lua>(
         ))
 }
 
-fn get_geometry<'lua>(lua: &'lua Lua, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
+fn get_geometry<'lua>(lua: rlua::Context<'lua>, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
     screen.get_geometry(lua)
 }
 
-fn get_workarea<'lua>(lua: &'lua Lua, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
+fn get_workarea<'lua>(lua: rlua::Context<'lua>, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
     screen.get_workarea(lua)
 }
 
-fn count<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
-    let screens = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?;
+fn count<'lua>(lua: rlua::Context<'lua>, _: ()) -> rlua::Result<Value<'lua>> {
+    let screens = lua.named_registry_value::<str, Vec<Screen>>(SCREENS_HANDLE)?;
     Ok(Value::Integer(screens.len() as _))
 }
 
@@ -244,10 +244,10 @@ fn count<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
 /// list, increment it by 1 (starting at 0 if it's the start) and then once it
 /// falls outside the bounds it will stop by returning nil.
 fn iterate_over_screens<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     (_, prev): (Value<'lua>, Value<'lua>)
 ) -> rlua::Result<Value<'lua>> {
-    let mut screens = lua.named_registry_value::<Vec<Screen>>(SCREENS_HANDLE)?;
+    let mut screens = lua.named_registry_value::<str, Vec<Screen>>(SCREENS_HANDLE)?;
 
     let index = match prev {
         Value::Nil => 0,
@@ -271,7 +271,10 @@ fn iterate_over_screens<'lua>(
     }
 }
 
-fn index<'lua>(lua: &'lua Lua, (obj, index): (AnyUserData<'lua>, Value<'lua>)) -> rlua::Result<Value<'lua>> {
+fn index<'lua>(
+    lua: rlua::Context<'lua>,
+    (obj, index): (AnyUserData<'lua>, Value<'lua>)
+) -> rlua::Result<Value<'lua>> {
     let screens: Vec<Screen> = lua.named_registry_value(SCREENS_HANDLE)?;
     match index {
         Value::String(ref string) => {

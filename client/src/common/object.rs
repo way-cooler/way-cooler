@@ -3,16 +3,16 @@
 use std::{cell, convert::From, marker::PhantomData};
 
 use rlua::{
-    self, AnyUserData, FromLua, Function, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value
+    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value
 };
 
 use super::{class::Class, property::Property, signal};
 
 /// The ObjectStateType trait is used to constrain the generic data types in the Object and Class structs.
 /// They can be transferred to and from Lua user data and force type checking
-pub trait ObjectStateType: UserData + Default + Send {}
+pub trait ObjectStateType: 'static + UserData + Default + Send {}
 
-impl<T> ObjectStateType for T where T: UserData + Default + Send {}
+impl<T> ObjectStateType for T where T: 'static + UserData + Default + Send {}
 
 /// All Lua objects can be cast to this.
 #[derive(Debug)]
@@ -47,7 +47,7 @@ impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
 
 /// Construct a new object, used when using the default Objectable::new.
 pub struct ObjectBuilder<'lua, S: ObjectStateType> {
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     object: Object<'lua, S>
 }
 
@@ -63,12 +63,12 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
     }
 
     #[allow(dead_code)]
-    pub fn add_to_signals(self, name: String, func: Function) -> rlua::Result<Self> {
+    pub fn add_to_signals(self, name: String, func: Function<'lua>) -> rlua::Result<Self> {
         signal::connect_signal(self.lua, self.object.clone(), name, &[func])?;
         Ok(self)
     }
 
-    pub fn handle_constructor_argument(self, args: Table) -> rlua::Result<Self> {
+    pub fn handle_constructor_argument(self, args: Table<'lua>) -> rlua::Result<Self> {
         let meta = self.object.get_metatable()?.expect("Object had no meta table");
         let class = meta.get::<_, AnyUserData>("__class")?;
         let class_table = class.get_user_value::<Table>()?;
@@ -107,7 +107,7 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
 /// into a concrete object so that Rust can do things with it.
 impl<'lua, S: ObjectStateType> Object<'lua, S> {
     pub fn cast(obj: AnyUserData<'lua>) -> rlua::Result<Self> {
-        if obj.is::<S>()? {
+        if obj.is::<S>() {
             Ok(obj.into())
         } else {
             use rlua::Error::RuntimeError;
@@ -160,7 +160,7 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
     /// * ObjectStateType for the object is stored using set_user_value in a "wrapper"
     /// table. * The wrapper table has a data field which hosts the data.
     /// * Class methods/attributes are on the meta table of the wrapper table.
-    pub fn allocate(lua: &'lua Lua, class: Class<S>) -> rlua::Result<ObjectBuilder<'lua, S>> {
+    pub fn allocate(lua: rlua::Context<'lua>, class: Class<'lua, S>) -> rlua::Result<ObjectBuilder<'lua, S>> {
         let obj = lua.create_userdata(S::default())?;
         // TODO Increment the instance count
         let wrapper_table = lua.create_table()?;
@@ -187,13 +187,13 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
 }
 
 impl<'lua, S: ObjectStateType> ToLua<'lua> for Object<'lua, S> {
-    fn to_lua(self, _: &'lua Lua) -> rlua::Result<Value<'lua>> {
+    fn to_lua(self, _: rlua::Context<'lua>) -> rlua::Result<Value<'lua>> {
         Ok(Value::UserData(self.obj))
     }
 }
 
 impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
-    fn from_lua(val: Value<'lua>, _lua: &'lua Lua) -> rlua::Result<Self> {
+    fn from_lua(val: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         if let Value::UserData(obj) = val {
             Ok(obj.into())
         } else {
@@ -204,7 +204,7 @@ impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
 
 /// Can be used for implementing UserData for Lua objects. This provides some
 /// default metafunctions.
-pub fn default_add_methods<S>(methods: &mut UserDataMethods<S>)
+pub fn default_add_methods<'lua, S, M: UserDataMethods<'lua, S>>(methods: &mut M)
 where
     S: ObjectStateType
 {
@@ -218,7 +218,7 @@ where
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
 pub fn default_index<'lua, S: ObjectStateType>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     (obj, index): (Object<'lua, S>, Value<'lua>)
 ) -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
@@ -276,7 +276,7 @@ pub fn default_index<'lua, S: ObjectStateType>(
 /// Automatically looks up contents in meta table, so instead of overriding this
 /// it's easier to just add the required data in the meta table.
 pub fn default_newindex<'lua, S: ObjectStateType>(
-    _: &'lua Lua,
+    _: rlua::Context<'lua>,
     (obj, index, val): (Object<'lua, S>, String, Value<'lua>)
 ) -> rlua::Result<Value<'lua>> {
     // Look up in metatable first
@@ -309,7 +309,7 @@ pub fn default_newindex<'lua, S: ObjectStateType>(
     Ok(Value::Nil)
 }
 
-pub fn default_tostring<'lua, S>(_: &'lua Lua, obj: Object<'lua, S>) -> rlua::Result<String>
+pub fn default_tostring<'lua, S>(_: rlua::Context<'lua>, obj: Object<'lua, S>) -> rlua::Result<String>
 where
     S: ObjectStateType
 {
@@ -322,20 +322,23 @@ where
     Err(rlua::Error::UserDataTypeMismatch)
 }
 
-fn connect_signal<S: ObjectStateType>(
-    lua: &Lua,
-    (obj, signal, func): (Object<S>, String, Function)
+fn connect_signal<'lua, S: ObjectStateType>(
+    lua: rlua::Context<'lua>,
+    (obj, signal, func): (Object<'lua, S>, String, Function<'lua>)
 ) -> rlua::Result<()> {
     signal::connect_signal(lua, obj.into(), signal, &[func])
 }
 
-fn disconnect_signal<S: ObjectStateType>(lua: &Lua, (obj, signal): (Object<S>, String)) -> rlua::Result<()> {
+fn disconnect_signal<'lua, S: ObjectStateType>(
+    lua: rlua::Context<'lua>,
+    (obj, signal): (Object<'lua, S>, String)
+) -> rlua::Result<()> {
     signal::disconnect_signal(lua, obj.into(), signal)
 }
 
-fn emit_signal<S: ObjectStateType>(
-    lua: &Lua,
-    (obj, signal, args): (Object<S>, String, Value)
+fn emit_signal<'lua, S: ObjectStateType>(
+    lua: rlua::Context<'lua>,
+    (obj, signal, args): (Object<'lua, S>, String, Value<'lua>)
 ) -> rlua::Result<()> {
     signal::emit_object_signal(lua, obj.into(), signal, args)
 }
