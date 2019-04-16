@@ -35,7 +35,6 @@ dbus = { git = "https://github.com/diwic/dbus-rs" }
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }
 pkg-config = "0.3.*"
-wayland-scanner = "0.20.12"
 
 
 [features]

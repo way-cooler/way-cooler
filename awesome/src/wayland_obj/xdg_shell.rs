@@ -2,14 +2,14 @@
 
 use std::{cell::RefCell, fmt, os::unix::io::AsRawFd};
 
-use crate::wayland_protocols::xdg_shell::{
-    xdg_surface::{self, XdgSurface},
-    xdg_toplevel,
-    xdg_wm_base::{self, XdgWmBase}
-};
 use wayland_client::{
     protocol::{wl_buffer::WlBuffer, wl_surface::WlSurface},
     NewProxy, Proxy
+};
+use wayland_protocols::xdg_shell::client::{
+    xdg_surface::{self, XdgSurface},
+    xdg_toplevel,
+    xdg_wm_base::{self, XdgWmBase}
 };
 use wlroots::{Area, Origin, Size};
 

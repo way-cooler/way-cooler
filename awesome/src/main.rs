@@ -89,7 +89,7 @@ use xcb::xkb;
 pub use crate::dbus::{dbus_session_refresh, dbus_system_refresh};
 
 use crate::lua::{LUA, NEXT_LUA};
-use crate::wayland_protocols::xdg_shell::xdg_wm_base;
+pub use ::wayland_protocols::xdg_shell::client::xdg_wm_base;
 
 const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
