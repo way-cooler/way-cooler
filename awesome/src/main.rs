@@ -36,32 +36,19 @@
     )
 )]
 
-#[macro_use]
-extern crate bitflags;
-extern crate cairo;
-extern crate cairo_sys;
-extern crate env_logger;
-extern crate exec;
+use env_logger;
 #[macro_use]
 extern crate clap;
-extern crate gdk_pixbuf;
-extern crate glib;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate libc;
-extern crate nix;
-extern crate rlua;
-extern crate tempfile;
-extern crate xcb;
-#[macro_use]
-extern crate wayland_client;
-extern crate dbus as dbus_rs;
-extern crate wayland_sys;
-
-// TODO remove
-extern crate wlroots;
+use ::dbus as dbus_rs;
+use libc;
+use nix;
+use rlua;
+use wayland_client;
+use xcb;
 
 #[macro_use]
 mod macros;
@@ -91,7 +78,8 @@ use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
 use rlua::{LightUserData, Lua, Table};
 use wayland_client::{
-    protocol::{wl_compositor, wl_display::RequestsTrait, wl_output, wl_shm},
+    global_filter,
+    protocol::{wl_compositor, wl_output, wl_shm},
     sys::client::wl_display,
     ConnectError, Display, EventQueue, GlobalError, GlobalManager
 };
@@ -255,74 +243,75 @@ fn main() {
 }
 
 fn init_wayland() -> (Display, EventQueue, GlobalManager) {
-    let (display, mut event_queue) = match Display::connect_to_env() {
-        Ok(res) => res,
-        Err(err) => {
-            match err {
-                ConnectError::NoWaylandLib => {
-                    error!("Could not find Wayland library, is it installed and in PATH?")
-                },
-                ConnectError::NoCompositorListening => {
-                    error!("Could not connect to Wayland server. Is it running?");
-                    error!(
-                        "WAYLAND_DISPLAY={}",
-                        env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "".into())
-                    );
-                },
-                ConnectError::InvalidName => error!("Invalid socket name provided")
-            }
-            exit(1);
+    let (display, mut event_queue) = Display::connect_to_env().unwrap_or_else(|err| {
+        match err {
+            ConnectError::NoWaylandLib => {
+                error!("Could not find Wayland library, is it installed and in PATH?")
+            },
+            ConnectError::NoCompositorListening => {
+                error!("Could not connect to Wayland server. Is it running?");
+                error!(
+                    "WAYLAND_DISPLAY={}",
+                    env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "".into())
+                );
+            },
+            ConnectError::InvalidName => error!("Invalid socket name provided in WAYLAND_SOCKET"),
+            ConnectError::XdgRuntimeDirNotSet => error!("XDG_RUNTIME_DIR must be set"),
+            ConnectError::InvalidFd => error!("Invalid socket provided in WAYLAND_SOCKET")
         }
-    };
+        exit(1);
+    });
     let globals = GlobalManager::new_with_cb(
-        display.get_registry().unwrap(),
+        &display,
         global_filter!(
             [
                 wl_output::WlOutput,
                 wayland_obj::WL_OUTPUT_VERSION,
-                wayland_obj::Output::new
+                wayland_obj::WlOutputManager {}
             ],
             [
                 wl_compositor::WlCompositor,
                 wayland_obj::WL_COMPOSITOR_VERSION,
-                wayland_obj::wl_compositor_init
+                wayland_obj::WlCompositorManager {}
             ],
             [
                 wl_shm::WlShm,
                 wayland_obj::WL_SHM_VERSION,
-                wayland_obj::wl_shm_init
+                wayland_obj::WlShmManager {}
             ]
         )
     );
     event_queue.sync_roundtrip().unwrap();
-    let xwm_base_proxy =
-        match globals.instantiate_exact::<xdg_wm_base::XdgWmBase>(wayland_obj::XDG_WM_BASE_VERSION) {
-            Err(GlobalError::Missing) => {
-                error!(
-                    "Missing xdg_wm_base global (version {})",
-                    wayland_obj::XDG_WM_BASE_VERSION
-                );
-                error!("Your compositor doesn't support the xdg shell protocol");
-                error!("This protocol is necessary for Awesome to function");
-                exit(1);
-            },
-            Err(GlobalError::VersionTooLow(version)) => {
-                error!(
-                    "Got xdg_wm_base version {}, expected version {}",
-                    version,
-                    wayland_obj::XDG_WM_BASE_VERSION
-                );
-                error!(
-                    "Your compositor doesn't support version {} \
-                     of the xdg shell protocol",
-                    wayland_obj::XDG_WM_BASE_VERSION
-                );
-                error!("Ensure your compositor is up to date");
-                exit(1);
-            },
-            Ok(proxy) => Ok(proxy)
-        };
-    wayland_obj::xdg_shell_init(xwm_base_proxy, ());
+
+    globals
+        .instantiate_exact(wayland_obj::XDG_WM_BASE_VERSION, wayland_obj::xdg_shell_init)
+        .unwrap_or_else(|err| {
+            match err {
+                GlobalError::Missing => {
+                    error!(
+                        "Missing xdg_wm_base global (version {})",
+                        wayland_obj::XDG_WM_BASE_VERSION
+                    );
+                    error!("Your compositor doesn't support the xdg shell protocol");
+                    error!("This protocol is necessary for Awesome to function");
+                },
+                GlobalError::VersionTooLow(version) => {
+                    error!(
+                        "Got xdg_wm_base version {}, expected version {}",
+                        version,
+                        wayland_obj::XDG_WM_BASE_VERSION
+                    );
+                    error!(
+                        "Your compositor doesn't support version {} \
+                         of the xdg shell protocol",
+                        wayland_obj::XDG_WM_BASE_VERSION
+                    );
+                    error!("Ensure your compositor is up to date");
+                }
+            }
+            exit(1);
+        });
+
     event_queue.sync_roundtrip().unwrap();
     (display, event_queue, globals)
 }
@@ -333,7 +322,7 @@ fn init_wayland() -> (Display, EventQueue, GlobalManager) {
 /// Note this doesn't actually start it yet, see `lua::run_awesome` for that.
 fn init_glib(display: Display, event_queue: EventQueue, session_fd: RawFd, system_fd: RawFd) {
     let mut wayland_state = WaylandState { display, event_queue };
-    let display_ptr = wayland_state.display.c_ptr() as *mut wl_display;
+    let display_ptr = wayland_state.display.get_display_ptr();
     unsafe {
         wayland_glib_interface_init(
             display_ptr,

@@ -3,12 +3,12 @@
 use std::{cell::RefCell, os::unix::io::RawFd};
 
 use wayland_client::{
+    self,
     protocol::{
         wl_buffer::WlBuffer,
-        wl_shm::{self, RequestsTrait as WlShmTrait, WlShm},
-        wl_shm_pool::RequestsTrait as WlShmPoolTrait
+        wl_shm::{self, WlShm}
     },
-    NewProxy, Proxy
+    NewProxy
 };
 
 use wlroots::Size;
@@ -17,30 +17,41 @@ use wlroots::Size;
 pub const WL_SHM_VERSION: u32 = 1;
 
 thread_local! {
-    static WL_SHM: RefCell<Option<Proxy<WlShm>>> = RefCell::new(None);
+    static WL_SHM: RefCell<Option<WlShm>> = RefCell::new(None);
 }
 
-pub fn wl_shm_init(new_proxy: Result<NewProxy<WlShm>, u32>, _: ()) {
-    let new_proxy = new_proxy.expect("Could not create wl_shm");
-    let proxy = new_proxy.implement(|_event, _proxy| {});
-    WL_SHM.with(|wl_shm| {
-        *wl_shm.borrow_mut() = Some(proxy);
-    });
+pub struct WlShmManager {}
+
+impl wayland_client::GlobalImplementor<WlShm> for WlShmManager {
+    fn new_global(&mut self, new_proxy: NewProxy<WlShm>) -> WlShm {
+        let res = new_proxy.implement_dummy();
+
+        WL_SHM.with(|wl_shm| {
+            *wl_shm.borrow_mut() = Some(res.clone());
+        });
+
+        res
+    }
 }
 
 /// Create a buffer from the raw file descriptor in the given size.
 ///
 /// This should be called from a shell and generally should not be used
 /// directly by the Awesome objects.
-pub fn create_buffer(fd: RawFd, size: Size) -> Result<Proxy<WlBuffer>, ()> {
+pub fn create_buffer(fd: RawFd, size: Size) -> Result<WlBuffer, ()> {
     let Size { width, height } = size;
     WL_SHM.with(|wl_shm| {
         let wl_shm = wl_shm.borrow();
         let wl_shm = wl_shm.as_ref().expect("WL_SHM was not initilized");
-        let pool = wl_shm.create_pool(fd, width * height * 4)?.implement(|_, _| {});
+        let pool = wl_shm.create_pool(fd, width * height * 4, NewProxy::implement_dummy)?;
         // TODO ARb32 instead
-        Ok(pool
-            .create_buffer(0, width, height, width * 4, wl_shm::Format::Argb8888)?
-            .implement(|_, _| {}))
+        pool.create_buffer(
+            0,
+            width,
+            height,
+            width * 4,
+            wl_shm::Format::Argb8888,
+            NewProxy::implement_dummy
+        )
     })
 }
