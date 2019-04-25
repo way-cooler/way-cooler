@@ -1,15 +1,3 @@
-add_project_arguments(
-    [
-        '-DWLR_USE_UNSTABLE',
-
-        '-Wno-unused-parameter',
-        '-Wno-unused-result',
-        '-Wundef',
-        '-Wvla',
-    ],
-    language: 'c'
-)
-
 cc = meson.get_compiler('c')
 
 wayland_server = dependency('wayland-server')
@@ -19,7 +7,6 @@ wayland_egl    = dependency('wayland-egl')
 wayland_protos = dependency('wayland-protocols', version: '>=1.14')
 xkbcommon      = dependency('xkbcommon')
 xcb            = dependency('xcb', required: true)
-git            = find_program('git', native: true, required: false)
 
 # Try first to find wlroots as a subproject, then as a system dependency
 wlroots_version = '>=0.5.0'
@@ -42,23 +29,23 @@ if not wlroots_has_xwayland
 	error('Cannot build compositor: wlroots has been built without Xwayland support')
 endif
 
-if git.found()
-	git_commit_hash = run_command([git.path(), 'describe', '--always', '--tags'])
-	git_branch = run_command([git.path(), 'rev-parse', '--abbrev-ref', 'HEAD'])
-	if git_commit_hash.returncode() == 0 and git_branch.returncode() == 0
-		version = '"@0@ (" __DATE__ ", branch \'@1@\')"'.format(git_commit_hash.stdout().strip(), git_branch.stdout().strip())
-	endif
-endif
-add_project_arguments('-DWAY_COOLER_VERSION=@0@'.format(version), language: 'c')
-
 way_cooler_deps = [
 	wayland_server,
 	wlroots,
 	xkbcommon,
+	server_protos,
 ]
 
 way_cooler_sources = files(
+    'cursor.c',
+    'input.c',
+    'keyboard.c',
     'main.c',
+	'output.c',
+	'pointer.c',
+	'seat.c',
+	'server.c',
+	'view.c',
 )
 
 executable(

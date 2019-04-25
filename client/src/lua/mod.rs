@@ -20,7 +20,7 @@ use std::{
 use crate::common::signal;
 
 /// Path to the Awesome shims.
-const SHIMS_PATH: &str = "../../tests/awesome/tests/examples/shims/";
+const SHIMS_PATH: &str = "../../../tests/awesome/tests/examples/shims/";
 /// Shims to load
 const SHIMS: [&str; 11] = [
     "awesome",

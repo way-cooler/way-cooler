@@ -119,7 +119,7 @@ fn get_modifiers<'lua>(_: &'lua Lua, key: Key<'lua>) -> rlua::Result<u32> {
 }
 
 fn set_modifiers<'lua>(_: &'lua Lua, (mut key, mods): (Key<'lua>, Table<'lua>)) -> rlua::Result<()> {
-    key.set_modifiers(mods_to_num(mods)?)
+    key.set_modifiers(mods_to_num(mods)?.bits())
 }
 
 fn get_keysym<'lua>(lua: &'lua Lua, key: Key<'lua>) -> rlua::Result<Value<'lua>> {

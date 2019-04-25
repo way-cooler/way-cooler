@@ -30,6 +30,9 @@ wayland-client = { version = "0.23", features = [ "native_lib", "dlopen" ] }
 wayland-protocols = { version = "0.23", features = ['client'] }
 dbus = "0.6"
 xkbcommon = "0.3"
+evdev = "0.10"
+enumflags2 = "0.5"
+enumflags2_derive = "0.5"
 
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }
