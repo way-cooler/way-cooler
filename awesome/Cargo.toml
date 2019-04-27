@@ -27,15 +27,14 @@ libc = "0.2.*"
 glib = "0.5.0"
 tempfile = "3.0.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
-wayland-client = "0.20.12"
-wayland-sys = "0.20.12"
+wayland-client = { version = "0.23", features = [ "native_lib", "dlopen" ] }
+wayland-protocols = { version = "0.23", features = ['client'] }
 # TODO Use point release once get get_no_reply and friends are released
 dbus = { git = "https://github.com/diwic/dbus-rs" }
 
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }
 pkg-config = "0.3.*"
-wayland-scanner = "0.20.12"
 
 
 [features]

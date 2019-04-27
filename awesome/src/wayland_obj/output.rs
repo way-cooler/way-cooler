@@ -1,8 +1,11 @@
 //! Wrapper around a wl_output
 
-use std::fmt;
+use std::{cell::RefCell, fmt};
 
-use wayland_client::{protocol::wl_output::WlOutput, NewProxy, Proxy};
+use wayland_client::{
+    protocol::wl_output::{self, WlOutput},
+    GlobalImplementor, NewProxy, Proxy
+};
 use wlroots::{Area, Origin, Size};
 
 use crate::lua::LUA;
@@ -14,8 +17,14 @@ pub const WL_OUTPUT_VERSION: u32 = 2;
 /// Wrapper around WlOutput.
 #[derive(Clone, Eq, PartialEq)]
 pub struct Output {
-    proxy: Proxy<WlOutput>
+    output: WlOutput
 }
+
+// Provides new WlOutputs with an implementation.
+pub struct WlOutputManager {}
+
+// Handle incoming events for WlOutput.
+pub struct WlOutputEventHandler {}
 
 /// The cached state for the WlOutput.
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
@@ -25,98 +34,108 @@ struct OutputState {
 }
 
 impl Output {
-    pub fn new(new_proxy: Result<NewProxy<WlOutput>, u32>, _: ()) {
-        let new_proxy = new_proxy.expect("Could not create WlOutput");
-        let state = Box::new(OutputState::default());
-        let proxy = new_proxy.implement(move |event, mut proxy: Proxy<WlOutput>| {
-            use wayland_client::protocol::wl_output::Event;
-            let output = Output { proxy: proxy.clone() };
-            let state = unwrap_state_mut(&mut proxy);
-            LUA.with(|lua| {
-                let lua = lua.borrow();
-                let lua = &*lua;
-                match event {
-                    Event::Geometry { make, model, .. } => {
-                        state.name = format!("{} ({})", make, model);
-                    },
-                    Event::Mode { width, height, .. } => {
-                        state.resolution = (width, height);
-                        let geometry = Area {
-                            origin: Origin { x: 0, y: 0 },
-                            size: Size { width, height }
-                        };
-                        if let Ok(mut screen) = screen::get_screen(lua, output) {
-                            screen
-                                .set_geometry(lua, geometry)
-                                .expect("could not set geometry");
-                            screen
-                                .set_workarea(lua, geometry)
-                                .expect("could not set workarea ");
-                        }
-                    },
-                    Event::Done => {
-                        // TODO We may not always want to add a new screen
-                        // see how awesome does it and fix this.
-                        let mut screen = Screen::new(lua).expect("Could not allocate new screen");
-                        screen
-                            .init_screens(output.clone(), vec![output])
-                            .expect("Could not initilize new output with a screen");
-                        screen::add_screen(lua, screen).expect("Could not add screen to the list of screens");
-                    },
-                    _ => { /* TODO */ }
-                }
-            });
-        });
-        proxy.set_user_data(Box::into_raw(state) as _);
-        let output = Output { proxy };
+    pub fn resolution(&self) -> (i32, i32) {
+        unwrap_state(self.as_ref()).borrow().resolution
+    }
+
+    pub fn name(&self) -> String {
+        unwrap_state(self.as_ref()).borrow().name.clone()
+    }
+}
+
+impl GlobalImplementor<WlOutput> for WlOutputManager {
+    fn new_global(&mut self, new_proxy: NewProxy<WlOutput>) -> WlOutput {
+        let res = new_proxy.implement(WlOutputEventHandler {}, RefCell::new(OutputState::default()));
+
         LUA.with(|lua| {
             let lua = lua.borrow();
             let lua = &*lua;
+            let output = Output { output: res.clone() };
             let mut screen = Screen::new(lua).expect("Could not allocate new screen");
             screen
                 .init_screens(output.clone(), vec![output])
                 .expect("Could not initilize new output with a screen");
             screen::add_screen(lua, screen).expect("Could not add screen to the list of screens");
         });
+
+        res
+    }
+}
+
+impl wl_output::EventHandler for WlOutputEventHandler {
+    #[allow(unused)]
+    fn geometry(
+        &mut self,
+        object: WlOutput,
+        x: i32,
+        y: i32,
+        physical_width: i32,
+        physical_height: i32,
+        subpixel: wl_output::Subpixel,
+        make: String,
+        model: String,
+        transform: wl_output::Transform
+    ) {
+        unwrap_state(object.as_ref()).borrow_mut().name = format!("{} ({})", make, model);
     }
 
-    pub fn resolution(&self) -> (i32, i32) {
-        unwrap_state(self).resolution
+    #[allow(unused)]
+    fn mode(&mut self, object: WlOutput, flags: wl_output::Mode, width: i32, height: i32, refresh: i32) {
+        unwrap_state(object.as_ref()).borrow_mut().resolution = (width, height);
+        let geometry = Area {
+            origin: Origin { x: 0, y: 0 },
+            size: Size { width, height }
+        };
+        LUA.with(|lua| {
+            let lua = lua.borrow();
+            let lua = &*lua;
+            if let Ok(mut screen) = screen::get_screen(lua, Output { output: object }) {
+                screen
+                    .set_geometry(lua, geometry)
+                    .expect("could not set geometry");
+                screen
+                    .set_workarea(lua, geometry)
+                    .expect("could not set workarea ");
+            };
+        });
     }
 
-    pub fn name(&self) -> &str {
-        unwrap_state(self).name.as_str()
+    #[allow(unused)]
+    fn done(&mut self, object: WlOutput) {
+        // TODO We may not always want to add a new screen
+        // see how awesome does it and fix this.
+        LUA.with(|lua| {
+            let lua = lua.borrow();
+            let lua = &*lua;
+            let mut screen = Screen::new(lua).expect("Could not allocate new screen");
+            let output = Output { output: object };
+            screen
+                .init_screens(output.clone(), vec![output])
+                .expect("Could not initilize new output with a screen");
+            screen::add_screen(&lua, screen).expect("Could not add screen to the list of screens");
+        });
+    }
+
+    #[allow(unused)]
+    fn scale(&mut self, object: WlOutput, factor: i32) {
+        // TODO
     }
 }
 
 impl fmt::Debug for Output {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.proxy.c_ptr())
+        write!(f, "{:?}", self.output.as_ref().c_ptr())
     }
 }
 
-impl<'this> Into<&'this Proxy<WlOutput>> for &'this Output {
-    fn into(self) -> &'this Proxy<WlOutput> {
-        &self.proxy
+impl AsRef<Proxy<WlOutput>> for Output {
+    fn as_ref(&self) -> &Proxy<WlOutput> {
+        &self.output.as_ref()
     }
 }
 
-fn unwrap_state_mut<'this, I: Into<&'this mut Proxy<WlOutput>>>(proxy: I) -> &'this mut OutputState {
-    unsafe {
-        let user_data = proxy.into().get_user_data() as *mut OutputState;
-        if user_data.is_null() {
-            panic!("User data has not been set yet");
-        }
-        &mut *user_data
-    }
-}
-
-fn unwrap_state<'this, I: Into<&'this Proxy<WlOutput>>>(proxy: I) -> &'this OutputState {
-    unsafe {
-        let user_data = proxy.into().get_user_data() as *const OutputState;
-        if user_data.is_null() {
-            panic!("User data has not been set yet");
-        }
-        &*user_data
-    }
+fn unwrap_state(proxy: &Proxy<WlOutput>) -> &RefCell<OutputState> {
+    proxy
+        .user_data::<RefCell<OutputState>>()
+        .expect("User data has not been set yet")
 }
