@@ -25,14 +25,7 @@ as a `pre-commit` git hook:
 
 ```bash
 function checkfmt() {
-    expected="rustfmt 1.0.3-nightly"
-    version=$(rustfmt --version)
-    if [ "${version#*$expected}" == "$version" ]; then
-       echo "Bad version of rustfmt: $(rustfmt --version)"
-       echo "Expected $expected"
-       return 1
-    fi
-    formatted=$(cd client; cargo fmt -- --check)
+    formatted=$(cd client; cargo +nightly fmt -- --check)
     [ -z "$formatted" ] && return 0
 
     echo >&2 "Please format your files with cargo fmt"
