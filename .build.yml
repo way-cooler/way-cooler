@@ -23,13 +23,20 @@ packages:
   - xcb-util-wm
 sources:
   - https://github.com/way-cooler/way-cooler
+  - https://github.com/swaywm/wlroots
 tasks:
-  - setup: |
+  - rust_setup: |
       rustup install stable
       rustup install nightly
       rustup default stable
       rustup component add rustfmt-preview --toolchain nightly
       rustup component add clippy
+  - wlroots: |
+      cd wlroots
+      git checkout 0.5.0
+      meson --prefix=/usr build -Drootston=false -Dexamples=false
+      ninja -C build
+      sudo ninja -C build install
   - way-cooler-common: |
       cd way-cooler
       CC=gcc meson build-gcc
