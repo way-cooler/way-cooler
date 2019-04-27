@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, os::unix::io::RawFd, slice, thread::LocalKey};
 
-use crate::dbus_rs::{BusType, Connection, Message, MessageItem, MessageType};
+use dbus::{BusType, Connection, Message, MessageItem, MessageType};
 use rlua::{self, Error::RuntimeError, Lua, MultiValue, Table, ToLua, ToLuaMulti, Value};
 
 use crate::common::signal;
@@ -250,7 +250,7 @@ fn get_bus_by_name<'bus>(bus_name: &str) -> rlua::Result<&'bus LocalKey<GlobalCo
 fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem]) -> rlua::Result<MultiValue<'lua>> {
     let mut res = MultiValue::new();
     for msg_item in msg_items {
-        use crate::dbus_rs::MessageItem::*;
+        use dbus::MessageItem::*;
         match msg_item {
             Variant(sub_msg_item) => res.extend(dbus_to_lua_value(lua, slice::from_ref(sub_msg_item))?),
             DictEntry(key, value) => {
@@ -303,9 +303,9 @@ fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem]) -> rlua::R
     Ok(res)
 }
 
-/// Converts an `rlua::Value` into a `dbus_rs::MessageItem`.
+/// Converts an `rlua::Value` into a `dbus::MessageItem`.
 fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value) -> rlua::Result<MessageItem> {
-    use crate::dbus_rs::arg::ArgType;
+    use dbus::arg::ArgType;
     use rlua::Value;
     let type_ = match type_ {
         Value::String(s) => s.to_str()?.to_string(),

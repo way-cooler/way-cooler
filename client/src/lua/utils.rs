@@ -15,7 +15,7 @@ pub enum KeyboardModifiers {
     Mod2 = 1 << 4,
     Mod3 = 1 << 5,
     Logo = 1 << 6,
-    Mod5 = 1 << 7,
+    Mod5 = 1 << 7
 }
 
 /// Human readable versions of the standard modifier keys.
@@ -30,7 +30,7 @@ static MOD_TYPES: [(KeyboardModifiers, Keysym); 7] = [
     (KeyboardModifiers::Alt, KEY_Alt_L),
     (KeyboardModifiers::Mod2, KEY_Meta_L),
     (KeyboardModifiers::Logo, KEY_Super_L),
-    (KeyboardModifiers::Mod5, KEY_Hyper_L),
+    (KeyboardModifiers::Mod5, KEY_Hyper_L)
 ];
 
 /// Convert a modifier to the Lua interpretation
@@ -46,19 +46,22 @@ pub fn mods_to_lua<'lua>(lua: &'lua Lua, mods: &[Keysym]) -> rlua::Result<Table<
                 KEY_Alt_L | KEY_Alt_R => "Alt",
                 KEY_Meta_L | KEY_Meta_R => "Mod2",
                 KEY_Super_L | KEY_Super_R => "Mod4",
-                _ => continue,
+                _ => continue
             }
-            .into(),
+            .into()
         );
     }
     lua.create_table_from(mods_list.into_iter().enumerate())
 }
 
 /// Convert a single number to a modifier list.
+#[allow(dead_code)]
 pub fn num_to_mods(modifiers: BitFlags<KeyboardModifiers>) -> Vec<Keysym> {
     let mut res = vec![];
     for (mod_km, mod_k) in MOD_TYPES.iter() {
-        if (BitFlags::from_bits_truncate(mod_km.clone() as _) & modifiers) != BitFlags::<KeyboardModifiers>::empty() {
+        if (BitFlags::from_bits_truncate(mod_km.clone() as _) & modifiers) !=
+            BitFlags::<KeyboardModifiers>::empty()
+        {
             res.push(mod_k.clone());
         }
     }
@@ -100,7 +103,7 @@ pub fn mods_to_rust(mods_table: Table) -> rlua::Result<Vec<Keysym>> {
             "Mod3" => KEY_Alt_L,
             "Mod4" => KEY_Super_L,
             "Mod5" => KEY_Hyper_L,
-            string => return Err(RuntimeError(format!("{} is an invalid modifier", string)))?,
+            string => return Err(RuntimeError(format!("{} is an invalid modifier", string)))?
         })
     }
     Ok(mods)

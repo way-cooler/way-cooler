@@ -43,15 +43,6 @@ extern crate clap;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate libc;
-extern crate nix;
-extern crate rlua;
-extern crate tempfile;
-extern crate xcb;
-#[macro_use]
-extern crate wayland_client;
-extern crate dbus as dbus_rs;
-extern crate wayland_sys;
 
 #[macro_use]
 mod macros;
@@ -65,7 +56,6 @@ mod mousegrabber;
 mod objects;
 mod root;
 mod wayland_obj;
-mod wayland_protocols;
 
 use std::{
     env,

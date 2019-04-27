@@ -11,7 +11,6 @@ use wayland_protocols::xdg_shell::client::{
     xdg_toplevel,
     xdg_wm_base::{self, XdgWmBase}
 };
-use wlroots::{Area, Origin, Size};
 
 use crate::area::{Area, Origin, Size};
 use crate::wayland_obj;
@@ -62,7 +61,7 @@ impl xdg_toplevel::EventHandler for XdgToplevelHandler {
         let state = unwrap_state(object.as_ref()).borrow_mut();
         state
             .xdg_surface
-            .set_window_geometry(0, 0, state.size.width, state.size.height);
+            .set_window_geometry(0, 0, state.size.width as i32, state.size.height as i32);
     }
 
     fn close(&mut self, _object: xdg_toplevel::XdgToplevel) {

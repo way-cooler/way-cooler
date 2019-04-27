@@ -81,7 +81,7 @@ fn index<'lua>(
             // TODO Get output
             let output = None; // unimplemented!();
 
-            let mut screens: Vec<Screen> = lua
+            let screens: Vec<Screen> = lua
                 .named_registry_value::<Vec<AnyUserData>>(SCREENS_HANDLE)?
                 .into_iter()
                 .map(|obj| Screen::cast(obj.into()).unwrap())

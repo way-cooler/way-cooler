@@ -6,7 +6,6 @@ use wayland_client::{
     protocol::wl_output::{self, WlOutput},
     GlobalImplementor, NewProxy, Proxy
 };
-use wlroots::{Area, Origin, Size};
 
 use crate::area::{Area, Origin, Size};
 use crate::lua::LUA;
@@ -35,7 +34,7 @@ struct OutputState {
 }
 
 impl Output {
-    pub fn resolution(&self) -> (i32, i32) {
+    pub fn resolution(&self) -> (u32, u32) {
         unwrap_state(self.as_ref()).borrow().resolution
     }
 
@@ -82,10 +81,13 @@ impl wl_output::EventHandler for WlOutputEventHandler {
 
     #[allow(unused)]
     fn mode(&mut self, object: WlOutput, flags: wl_output::Mode, width: i32, height: i32, refresh: i32) {
-        unwrap_state(object.as_ref()).borrow_mut().resolution = (width, height);
+        unwrap_state(object.as_ref()).borrow_mut().resolution = (width as u32, height as u32);
         let geometry = Area {
             origin: Origin { x: 0, y: 0 },
-            size: Size { width, height }
+            size: Size {
+                width: width as u32,
+                height: height as u32
+            }
         };
         LUA.with(|lua| {
             let lua = lua.borrow();

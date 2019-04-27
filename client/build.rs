@@ -53,9 +53,15 @@ fn in_release_commit() -> bool {
 fn build_wayland_glib_interface() {
     let glib = pkg_config::probe_library("glib-2.0").unwrap();
     let dbus = pkg_config::probe_library("dbus-1").unwrap();
+    let wayland = pkg_config::probe_library("wayland-client").unwrap();
+
     let mut builder = cc::Build::new();
 
-    let include_paths = glib.include_paths.iter().chain(dbus.include_paths.iter());
+    let include_paths = glib
+        .include_paths
+        .iter()
+        .chain(dbus.include_paths.iter())
+        .chain(wayland.include_paths.iter());
 
     for path in include_paths {
         builder.include(path);

@@ -16,6 +16,7 @@ impl Area {
     }
 
     /// Makes a new `Area` with x and y set to the value in the given `Origin`.
+    #[allow(dead_code)]
     pub fn with_origin(self, origin: Origin) -> Self {
         Area { origin, ..self }
     }

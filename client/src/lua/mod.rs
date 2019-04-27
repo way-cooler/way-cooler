@@ -55,6 +55,7 @@ thread_local! {
 /// To be compatible this must eventually be removed.
 ///
 /// Best way to help out: comment out one of these lines, fix what breaks.
+#[allow(dead_code)]
 fn load_shims(lua: &Lua) {
     let globals = lua.globals();
     let package: Table = globals.get("package").unwrap();
@@ -108,7 +109,6 @@ pub fn run_awesome(matches: ArgMatches) {
             .collect::<Vec<_>>();
         let config = matches.value_of("config");
         load_config(&mut *lua, config, lib_paths.as_slice());
-        load_shims(&mut *lua);
     });
     enter_glib_loop();
 }

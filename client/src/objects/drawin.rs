@@ -114,10 +114,10 @@ impl<'lua> Drawin<'lua> {
                     ref mut width,
                     ref mut height
                 } = state.geometry.size;
-                if *width <= 0 {
+                if *width == 0 {
                     *width = old_geometry.size.width;
                 }
-                if *height <= 0 {
+                if *height == 0 {
                     *height = old_geometry.size.height
                 }
             }
@@ -269,7 +269,7 @@ fn get_width<'lua>(_: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaIntege
 fn set_width<'lua>(lua: &'lua Lua, (mut drawin, width): (Drawin<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut geo = drawin.get_geometry()?;
     if width > 0 {
-        geo.size.width = width as i32 as u32;
+        geo.size.width = width as u32;
         drawin.resize(lua, geo)?;
     }
     Ok(())
@@ -283,7 +283,7 @@ fn get_height<'lua>(_lua: &'lua Lua, drawin: Drawin<'lua>) -> rlua::Result<LuaIn
 fn set_height<'lua>(lua: &'lua Lua, (mut drawin, height): (Drawin<'lua>, LuaInteger)) -> rlua::Result<()> {
     let mut geo = drawin.get_geometry()?;
     if height > 0 {
-        geo.size.height = height as i32 as u32;
+        geo.size.height = height as u32;
         drawin.resize(lua, geo)?;
     }
     Ok(())
