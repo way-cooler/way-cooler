@@ -7,7 +7,28 @@
 
 #include "server.h"
 
-void focus_view(struct wc_view* view) {
+static bool is_view_at(struct wc_view* view, double lx, double ly,
+		double* out_sx, double* out_sy) {
+	double view_sx = lx - view->x;
+	double view_sy = ly - view->y;
+
+	struct wlr_surface* surface = wlr_xdg_surface_surface_at(
+			view->xdg_surface, view_sx, view_sy, out_sx, out_sy);
+	return surface != NULL;
+}
+
+struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
+		double* out_sx, double* out_sy) {
+	struct wc_view* view;
+	wl_list_for_each(view, &server->views, link) {
+		if (is_view_at(view, lx, ly, out_sx, out_sy)) {
+			return view;
+		}
+	}
+	return NULL;
+}
+
+void wc_focus_view(struct wc_view* view) {
 	if (view == NULL) {
 		return;
 	}
@@ -36,8 +57,7 @@ void focus_view(struct wc_view* view) {
 static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, map);
 	view->mapped = true;
-	focus_view(view);
-	// TODO focus the view
+	wc_focus_view(view);
 }
 
 static void wc_xdg_surface_unmap(struct wl_listener* listener, void* data) {

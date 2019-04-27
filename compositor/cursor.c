@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "view.h"
 #include "server.h"
 
 static void wc_process_motion(struct wc_server* server, struct wc_cursor* cursor) {
@@ -38,7 +39,15 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 	struct wlr_event_pointer_button* event = data;
 	wlr_seat_pointer_notify_button(server->seat,
 			event->time_msec, event->button, event->state);
-	// TODO Click and focus and stuff
+
+	double sx, sy;
+	struct wc_view* view = wc_view_at(server,
+			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy);
+	if (event->state == WLR_BUTTON_RELEASED) {
+		// TODO Leave interactive move / resize
+	} else if (view) {
+		wc_focus_view(view);
+	}
 }
 
 static void wc_cursor_axis(struct wl_listener* listener, void* data) {

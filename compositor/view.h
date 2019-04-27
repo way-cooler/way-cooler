@@ -24,4 +24,14 @@ struct wc_view {
 
 void init_views(struct wc_server* server);
 
+// Finds the topmost (assuming server->views is top-to-bottom) view at the
+// specified output layout coordinates. If one cannot be found NULL is returned.
+//
+// If a view is found the surface coordinates are stored in out_sx and out_sy.
+struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
+		double* out_sx, double* out_sy);
+
+// Focuses on a view. Automatically un-focuses the previous view.
+void wc_focus_view(struct wc_view* view);
+
 #endif//WC_VIEW_H
