@@ -31,11 +31,17 @@ tasks:
       rustup component add rustfmt-preview --toolchain nightly
       rustup component add clippy
   - way-cooler-common: |
+      cd way-cooler
       CC=gcc meson build-gcc
       CC=clang meson build-clang
   - way-cooler-gcc: |
-      cd build-gcc
+      cd way-cooler/build-gcc
       ninja
   - way-cooler-clang: |
-      cd build-clang
+      cd way-cooler/build-clang
       ninja
+  - way-cooler-client-test: |
+      cd way-cooler/client
+      cargo test --verbose
+      cargo +nightly fmt --all -- --check
+      # TODO enable clippy
