@@ -1,7 +1,7 @@
 //! Utility methods and structures
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Ord, PartialOrd)]
-/// Generic geometry-like struct. Container an origin (x, y) point and bounds
+/// Generic geometry-like struct. Contains an origin (x, y) point and bounds
 /// (width, height).
 pub struct Area {
     pub origin: Origin,

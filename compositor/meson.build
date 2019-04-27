@@ -6,7 +6,7 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_egl    = dependency('wayland-egl')
 wayland_protos = dependency('wayland-protocols', version: '>=1.14')
 xkbcommon      = dependency('xkbcommon')
-xcb            = dependency('xcb', required: true)
+xcb            = dependency('xcb')
 
 # Try first to find wlroots as a subproject, then as a system dependency
 wlroots_version = '>=0.5.0'
@@ -37,10 +37,10 @@ way_cooler_deps = [
 ]
 
 way_cooler_sources = files(
-    'cursor.c',
-    'input.c',
-    'keyboard.c',
-    'main.c',
+	'cursor.c',
+	'input.c',
+	'keyboard.c',
+	'main.c',
 	'output.c',
 	'pointer.c',
 	'seat.c',

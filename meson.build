@@ -23,7 +23,7 @@ add_project_arguments(
     language: 'c'
 )
 
-git            = find_program('git', native: true, required: false)
+git = find_program('git', native: true, required: false)
 
 if git.found()
 	git_commit_hash = run_command([git.path(), 'describe', '--always', '--tags'])

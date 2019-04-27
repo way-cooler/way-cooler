@@ -21,7 +21,7 @@ If you provide this information as well, I can respond to your request much fast
 
 * Is the issue reproducible on Sway?
   * We share the same backend, so if it's not a Way Cooler specific issue it
-    might affect them too
+    might affect them too.
 * Is the issue reproducible on Awesome?
   * It may not be a bug, it could be a feature.
 * What distro do you run?
