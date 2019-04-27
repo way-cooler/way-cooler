@@ -7,9 +7,36 @@
 
 #include "server.h"
 
+void focus_view(struct wc_view* view) {
+	if (view == NULL) {
+		return;
+	}
+	struct wc_server* server = view->server;
+	struct wlr_surface* surface = view->xdg_surface->surface;
+	struct wlr_seat* seat = server->seat;
+	struct wlr_surface* prev_surface = server->seat->keyboard_state.focused_surface;
+	if (prev_surface == surface) {
+		return;
+	}
+	if (prev_surface) {
+		struct wlr_xdg_surface* previous = wlr_xdg_surface_from_wlr_surface(
+				seat->keyboard_state.focused_surface);
+		wlr_xdg_toplevel_set_activated(previous, false);
+	}
+	/* Move the view to the front */
+	wl_list_remove(&view->link);
+	wl_list_insert(&server->views, &view->link);
+	wlr_xdg_toplevel_set_activated(view->xdg_surface, true);
+
+	struct wlr_keyboard* keyboard = wlr_seat_get_keyboard(seat);
+	wlr_seat_keyboard_notify_enter(seat, view->xdg_surface->surface,
+			keyboard->keycodes, keyboard->num_keycodes, &keyboard->modifiers);
+}
+
 static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, map);
 	view->mapped = true;
+	focus_view(view);
 	// TODO focus the view
 }
 

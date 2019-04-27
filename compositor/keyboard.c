@@ -52,6 +52,9 @@ static void wc_keyboard_removed(struct wl_listener* listener, void* data) {
 
 void wc_new_keyboard(struct wc_server* server, struct wlr_input_device* device) {
 	wlr_log(WLR_INFO, "New keyboard detected: %p", device);
+
+	wlr_seat_set_keyboard(server->seat, device);
+
 	struct wc_keyboard* keyboard = calloc(1, sizeof(struct wc_keyboard));
 	keyboard->server = server;
 	keyboard->device = device;
