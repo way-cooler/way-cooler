@@ -7,14 +7,28 @@
 #include "view.h"
 #include "server.h"
 
-static void wc_process_motion(struct wc_server* server, struct wc_cursor* cursor) {
-	// TODO Only do this if no client underneath pointer
-	if (!cursor->image || strcmp(cursor->image, "left_ptr") != 0) {
+static void wc_process_motion(struct wc_server* server, uint32_t time) {
+	// TODO Do things depending on move or resize mode
+	struct wlr_seat* seat = server->seat;
+	struct wc_cursor* cursor = server->cursor;
+	double sx, sy;
+	struct wc_view* view = wc_view_at(server,
+			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy);
+	bool cursor_image_different = !cursor->image || strcmp(cursor->image, "left_ptr") != 0;
+	if (!view && cursor_image_different) {
 		cursor->image = "left_ptr";
 		wlr_xcursor_manager_set_cursor_image(server->xcursor_mgr, "left_ptr",
 				cursor->wlr_cursor);
 	}
-	// TODO Process entering and other things
+	if (view) {
+		bool focused_changed = seat->pointer_state.focused_surface != view->xdg_surface->surface;
+		wlr_seat_pointer_notify_enter(seat, view->xdg_surface->surface, sx, sy);
+		if (!focused_changed) {
+			wlr_seat_pointer_notify_motion(seat, time, sx, sy);
+		}
+	} else {
+		wlr_seat_pointer_clear_focus(seat);
+	}
 }
 
 static void wc_cursor_motion(struct wl_listener* listener, void* data) {
@@ -22,7 +36,7 @@ static void wc_cursor_motion(struct wl_listener* listener, void* data) {
 	struct wlr_event_pointer_motion *event = data;
 	wlr_cursor_move(cursor->wlr_cursor, event->device,
 			event->delta_x, event->delta_y);
-	wc_process_motion(cursor->server, cursor);
+	wc_process_motion(cursor->server, event->time_msec);
 }
 
 static void wc_cursor_motion_absolute(struct wl_listener* listener, void* data) {
@@ -30,7 +44,7 @@ static void wc_cursor_motion_absolute(struct wl_listener* listener, void* data) 
 			motion_absolute);
 	struct wlr_event_pointer_motion_absolute *event = data;
 	wlr_cursor_warp_absolute(cursor->wlr_cursor, event->device, event->x, event->y);
-	wc_process_motion(cursor->server, cursor);
+	wc_process_motion(cursor->server, event->time_msec);
 }
 
 static void wc_cursor_button(struct wl_listener* listener, void* data) {
