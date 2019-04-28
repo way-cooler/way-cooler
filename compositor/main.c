@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
-	struct wc_server server;
+	struct wc_server server = {0};
 	if (!init_server(&server)) {
 		wlr_log(WLR_ERROR, "Could not initialize Wayland resources");
 		exit(1);

@@ -2,6 +2,7 @@
 #define WC_VIEW_H
 
 #include <wayland-server.h>
+#include <wlr/types/wlr_surface.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
 #include "server.h"
@@ -27,9 +28,12 @@ void init_views(struct wc_server* server);
 // Finds the topmost (assuming server->views is top-to-bottom) view at the
 // specified output layout coordinates. If one cannot be found NULL is returned.
 //
+// The out_surface parameter is the surface at that point. Note that this might be
+// a subsurface of the view and thus that is why it is returned.
+//
 // If a view is found the surface coordinates are stored in out_sx and out_sy.
 struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
-		double* out_sx, double* out_sy);
+		double* out_sx, double* out_sy, struct wlr_surface** out_surface);
 
 // Focuses on a view. Automatically un-focuses the previous view.
 void wc_focus_view(struct wc_view* view);

@@ -16,7 +16,7 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	case WC_CURSOR_MOVE:
 		server->grabbed_view->x = wlr_cursor->x - server->grab_x;
 		server->grabbed_view->y = wlr_cursor->y - server->grab_y;
-		return;
+		break;
 	case WC_CURSOR_RESIZE: {
 		double dx = wlr_cursor->x - server->grab_x;
 		double dy = wlr_cursor->y - server->grab_y;
@@ -51,17 +51,18 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 		struct wlr_seat* seat = server->seat;
 		struct wc_cursor* cursor = server->cursor;
 		double sx, sy;
+		struct wlr_surface* surface = NULL;
 		struct wc_view* view = wc_view_at(server,
-				cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy);
+				cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy, &surface);
 		bool cursor_image_different = !cursor->image || strcmp(cursor->image, "left_ptr") != 0;
 		if (!view && cursor_image_different) {
 			cursor->image = "left_ptr";
 			wlr_xcursor_manager_set_cursor_image(server->xcursor_mgr, "left_ptr",
 					cursor->wlr_cursor);
 		}
-		if (view) {
-			bool focused_changed = seat->pointer_state.focused_surface != view->xdg_surface->surface;
-			wlr_seat_pointer_notify_enter(seat, view->xdg_surface->surface, sx, sy);
+		if (surface) {
+			bool focused_changed = seat->pointer_state.focused_surface != surface;
+			wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
 			if (!focused_changed) {
 				wlr_seat_pointer_notify_motion(seat, time, sx, sy);
 			}
@@ -100,8 +101,9 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 			event->time_msec, event->button, event->state);
 
 	double sx, sy;
+	struct wlr_surface* surface = NULL;
 	struct wc_view* view = wc_view_at(server,
-			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy);
+			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy, &surface);
 	if (event->state == WLR_BUTTON_RELEASED) {
 		server->cursor_mode = WC_CURSOR_PASSTHROUGH;
 	} else if (view) {

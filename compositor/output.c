@@ -118,7 +118,7 @@ static void render_surface(struct wlr_surface* surface,
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(surface->current.transform);
 	wlr_matrix_project_box(matrix, &box, transform, 0,
-						   output->transform_matrix);
+			output->transform_matrix);
 
 	wlr_render_texture_with_matrix(rdata->renderer, texture, matrix, 1);
 

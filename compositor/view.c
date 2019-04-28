@@ -3,26 +3,27 @@
 #include <stdlib.h>
 
 #include <wayland-server.h>
+#include <wlr/types/wlr_surface.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
 #include "cursor.h"
 #include "server.h"
 
 static bool is_view_at(struct wc_view* view, double lx, double ly,
-		double* out_sx, double* out_sy) {
+		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
 	double view_sx = lx - view->x;
 	double view_sy = ly - view->y;
 
-	struct wlr_surface* surface = wlr_xdg_surface_surface_at(
+	*out_surface = wlr_xdg_surface_surface_at(
 			view->xdg_surface, view_sx, view_sy, out_sx, out_sy);
-	return surface != NULL;
+	return *out_surface != NULL;
 }
 
 struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
-		double* out_sx, double* out_sy) {
+		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
 	struct wc_view* view;
 	wl_list_for_each(view, &server->views, link) {
-		if (is_view_at(view, lx, ly, out_sx, out_sy)) {
+		if (is_view_at(view, lx, ly, out_sx, out_sy, out_surface)) {
 			return view;
 		}
 	}
