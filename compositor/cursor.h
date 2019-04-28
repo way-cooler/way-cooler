@@ -4,8 +4,6 @@
 #include <wayland-server.h>
 #include <wlr/types/wlr_cursor.h>
 
-#include "server.h"
-
 struct wc_cursor {
 	struct wc_server* server;
 	struct wlr_cursor* wlr_cursor;

@@ -5,6 +5,7 @@
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
+#include "cursor.h"
 #include "server.h"
 
 static bool is_view_at(struct wc_view* view, double lx, double ly,
@@ -72,11 +73,43 @@ static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
 }
 
 static void wc_xdg_toplevel_request_move(struct wl_listener* listener, void* data) {
-	// TODO
+	struct wc_view* view = wl_container_of(listener, view, request_move);
+	struct wc_server* server = view->server;
+	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
+	struct wlr_surface* focused_surface =
+		server->seat->pointer_state.focused_surface;
+	if (view->xdg_surface->surface != focused_surface) {
+		return;
+	}
+	server->grabbed_view = view;
+	server->cursor_mode = WC_CURSOR_MOVE;
+	struct wlr_box geo_box;
+	wlr_xdg_surface_get_geometry(view->xdg_surface, &geo_box);
+	server->grab_x = wlr_cursor->x - view->x;
+	server->grab_y = wlr_cursor->y - view->y;
+	server->grab_width = geo_box.width;
+	server->grab_height = geo_box.height;
 }
 
 static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* data) {
-	// TODO
+	struct wc_view* view = wl_container_of(listener, view, request_resize);
+	struct wlr_xdg_toplevel_resize_event *event = data;
+	struct wc_server* server = view->server;
+	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
+	struct wlr_surface* focused_surface =
+		server->seat->pointer_state.focused_surface;
+	if (view->xdg_surface->surface != focused_surface) {
+		return;
+	}
+	server->grabbed_view = view;
+	server->cursor_mode = WC_CURSOR_RESIZE;
+	struct wlr_box geo_box;
+	wlr_xdg_surface_get_geometry(view->xdg_surface, &geo_box);
+	server->grab_x = wlr_cursor->x + geo_box.x;
+	server->grab_y = wlr_cursor->y + geo_box.y;
+	server->grab_width = geo_box.width;
+	server->grab_height = geo_box.height;
+	server->resize_edges = event->edges;
 }
 
 static void wc_new_xdg_surface(struct wl_listener* listener, void* data) {

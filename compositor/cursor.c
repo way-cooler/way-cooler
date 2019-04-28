@@ -4,30 +4,75 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <wlr/util/log.h>
+
 #include "view.h"
 #include "server.h"
 
 static void wc_process_motion(struct wc_server* server, uint32_t time) {
-	// TODO Do things depending on move or resize mode
-	struct wlr_seat* seat = server->seat;
-	struct wc_cursor* cursor = server->cursor;
-	double sx, sy;
-	struct wc_view* view = wc_view_at(server,
-			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy);
-	bool cursor_image_different = !cursor->image || strcmp(cursor->image, "left_ptr") != 0;
-	if (!view && cursor_image_different) {
-		cursor->image = "left_ptr";
-		wlr_xcursor_manager_set_cursor_image(server->xcursor_mgr, "left_ptr",
-				cursor->wlr_cursor);
-	}
-	if (view) {
-		bool focused_changed = seat->pointer_state.focused_surface != view->xdg_surface->surface;
-		wlr_seat_pointer_notify_enter(seat, view->xdg_surface->surface, sx, sy);
-		if (!focused_changed) {
-			wlr_seat_pointer_notify_motion(seat, time, sx, sy);
+	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
+	struct wc_view* view = server->grabbed_view;
+	switch (server->cursor_mode) {
+	case WC_CURSOR_MOVE:
+		server->grabbed_view->x = wlr_cursor->x - server->grab_x;
+		server->grabbed_view->y = wlr_cursor->y - server->grab_y;
+		return;
+	case WC_CURSOR_RESIZE: {
+		double dx = wlr_cursor->x - server->grab_x;
+		double dy = wlr_cursor->y - server->grab_y;
+		double x = view->x;
+		double y = view->y;
+		int width = server->grab_width;
+		int height = server->grab_height;
+		if (server->resize_edges & WLR_EDGE_TOP) {
+			y = server->grab_y + dy;
+			height -= dy;
+			if (height < 1) {
+				y += height;
+			}
+		} else if (server->resize_edges & WLR_EDGE_BOTTOM) {
+			height += dy;
 		}
-	} else {
-		wlr_seat_pointer_clear_focus(seat);
+		if (server->resize_edges & WLR_EDGE_LEFT) {
+			x = server->grab_x + dx;
+			width -= dx;
+			if (width < 1) {
+				x += width;
+			}
+		} else if (server->resize_edges & WLR_EDGE_RIGHT) {
+			width += dx;
+		}
+		view->x = x;
+		view->y = y;
+		wlr_xdg_toplevel_set_size(view->xdg_surface, width, height);
+		break;
+	}
+	case WC_CURSOR_PASSTHROUGH: {
+		struct wlr_seat* seat = server->seat;
+		struct wc_cursor* cursor = server->cursor;
+		double sx, sy;
+		struct wc_view* view = wc_view_at(server,
+				cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy);
+		bool cursor_image_different = !cursor->image || strcmp(cursor->image, "left_ptr") != 0;
+		if (!view && cursor_image_different) {
+			cursor->image = "left_ptr";
+			wlr_xcursor_manager_set_cursor_image(server->xcursor_mgr, "left_ptr",
+					cursor->wlr_cursor);
+		}
+		if (view) {
+			bool focused_changed = seat->pointer_state.focused_surface != view->xdg_surface->surface;
+			wlr_seat_pointer_notify_enter(seat, view->xdg_surface->surface, sx, sy);
+			if (!focused_changed) {
+				wlr_seat_pointer_notify_motion(seat, time, sx, sy);
+			}
+		} else {
+			wlr_seat_pointer_clear_focus(seat);
+		}
+		break;
+	}
+	default:
+		wlr_log(WLR_ERROR, "Unhandled cursor mode %d!", server->cursor_mode);
+		abort();
 	}
 }
 
@@ -58,7 +103,7 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wc_view_at(server,
 			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy);
 	if (event->state == WLR_BUTTON_RELEASED) {
-		// TODO Leave interactive move / resize
+		server->cursor_mode = WC_CURSOR_PASSTHROUGH;
 	} else if (view) {
 		wc_focus_view(view);
 	}

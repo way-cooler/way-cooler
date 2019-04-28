@@ -35,6 +35,8 @@ bool init_server(struct wc_server* server) {
 	wlr_renderer_init_wl_display(server->renderer, server->wl_display);
 	wlr_compositor_create(server->wl_display, server->renderer);
 
+	server->cursor_mode = WC_CURSOR_PASSTHROUGH;
+
 	init_seat(server);
 	init_output(server);
 	init_inputs(server);
