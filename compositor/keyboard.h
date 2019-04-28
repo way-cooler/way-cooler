@@ -12,6 +12,7 @@ struct wc_keyboard {
 	struct wlr_input_device* device;
 
 	struct wl_listener key;
+	struct wl_listener modifiers;
 	struct wl_listener destroy;
 };
 

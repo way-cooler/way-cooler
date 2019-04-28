@@ -14,6 +14,7 @@
 static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
 	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard, key);
 	struct wc_server* server = keyboard->server;
+	struct wlr_seat* seat = server->seat;
 	struct wlr_event_keyboard_key* event = data;
 
 	uint32_t keycode = event->keycode + 8;
@@ -21,10 +22,12 @@ static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
 	int nsyms = xkb_state_key_get_syms(
 			keyboard->device->keyboard->xkb_state, keycode, &syms);
 
+	bool handled = false;
 	for (int i = 0; i < nsyms; i++) {
 		xkb_keysym_t keysym = syms[i];
 		if (keysym >= XKB_KEY_XF86Switch_VT_1 &&
 				keysym <= XKB_KEY_XF86Switch_VT_12) {
+			handled = true;
 			if (wlr_backend_is_multi(server->backend)) {
 				struct wlr_session* session =
 					wlr_backend_get_session(server->backend);
@@ -38,10 +41,23 @@ static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
 		switch (keysym) {
 		case XKB_KEY_Escape:
 			wl_display_terminate(server->wl_display);
+			handled = true;
 			break;
 		}
 	}
+	if (!handled) {
+		wlr_seat_set_keyboard(seat, keyboard->device);
+		wlr_seat_keyboard_notify_key(seat, event->time_msec,
+				event->keycode, event->state);
+	}
+}
 
+static void wc_keyboard_on_modifiers(struct wl_listener* listener, void* data) {
+	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard,
+			modifiers);
+	wlr_seat_set_keyboard(keyboard->server->seat, keyboard->device);
+	wlr_seat_keyboard_notify_modifiers(keyboard->server->seat,
+			&keyboard->device->keyboard->modifiers);
 }
 
 static void wc_keyboard_removed(struct wl_listener* listener, void* data) {
@@ -73,6 +89,8 @@ void wc_new_keyboard(struct wc_server* server, struct wlr_input_device* device) 
 
 	keyboard->key.notify = wc_keyboard_on_key;
 	wl_signal_add(&device->keyboard->events.key, &keyboard->key);
+	keyboard->modifiers.notify = wc_keyboard_on_modifiers;
+	wl_signal_add(&device->keyboard->events.modifiers, &keyboard->modifiers);
 	keyboard->destroy.notify = wc_keyboard_removed;
 	wl_signal_add(&device->events.destroy, &keyboard->destroy);
 
