@@ -6,10 +6,13 @@
 
 #include <wlr/util/log.h>
 
-#include "view.h"
+#include "output.h"
 #include "server.h"
+#include "view.h"
 
 static void wc_process_motion(struct wc_server* server, uint32_t time) {
+	struct wlr_seat* seat = server->seat;
+	struct wc_cursor* cursor = server->cursor;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
 	struct wc_view* view = server->grabbed_view;
 	switch (server->cursor_mode) {
@@ -48,12 +51,10 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 		break;
 	}
 	case WC_CURSOR_PASSTHROUGH: {
-		struct wlr_seat* seat = server->seat;
-		struct wc_cursor* cursor = server->cursor;
 		double sx, sy;
 		struct wlr_surface* surface = NULL;
 		struct wc_view* view = wc_view_at(server,
-				cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy, &surface);
+				wlr_cursor->x, wlr_cursor->y, &sx, &sy, &surface);
 		bool cursor_image_different = !cursor->image || strcmp(cursor->image, "left_ptr") != 0;
 		if (!view && cursor_image_different) {
 			cursor->image = "left_ptr";
@@ -71,9 +72,19 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 		}
 		break;
 	}
-	default:
-		wlr_log(WLR_ERROR, "Unhandled cursor mode %d!", server->cursor_mode);
-		abort();
+	}
+
+	struct wlr_output* active_output = wlr_output_layout_output_at(
+			server->output_layout, wlr_cursor->x, wlr_cursor->y);
+	if (active_output != NULL &&
+			server->active_output->output != active_output) {
+		struct wc_output* output_;
+		wl_list_for_each(output_, &server->outputs, link) {
+			if (output_->output == active_output) {
+				server->active_output = output_;
+				break;
+			}
+		}
 	}
 }
 

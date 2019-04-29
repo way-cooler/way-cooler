@@ -11,10 +11,16 @@ struct wc_output {
 
 	struct wlr_output* output;
 
+	struct wl_listener destroy;
 	struct wl_listener frame;
 };
 
-void wc_output_frame(struct wl_listener* listener, void* data);
 void wc_init_output(struct wc_server* server);
+
+// Gets the output that was last active (e.g. last had user activity).
+//
+// If there are no outputs, NULL is returned. If there has been no activity,
+// the first output in the list is returned.
+struct wc_output* wc_get_active_output(struct wc_server* server);
 
 #endif // WC_OUTPUT_H

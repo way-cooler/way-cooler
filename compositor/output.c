@@ -57,28 +57,7 @@ static void wc_render_surface(struct wlr_surface* surface,
 	wlr_surface_send_frame_done(surface, rdata->when);
 }
 
-static void wc_new_output(struct wl_listener* listener, void* data) {
-	struct wc_server* server = wl_container_of(listener, server, new_output);
-	struct wlr_output* output = data;
-
-	if (!wl_list_empty(&output->modes)) {
-		struct wlr_output_mode* mode =
-			wl_container_of(output->modes.prev, mode, link);
-		wlr_output_set_mode(output, mode);
-	}
-
-	struct wc_output* wc_output = calloc(1, sizeof(struct wc_output));
-	wc_output->output = output;
-	wc_output->server = server;
-	wc_output->frame.notify = wc_output_frame;
-	wl_signal_add(&output->events.frame, &wc_output->frame);
-	wl_list_insert(&server->outputs, &wc_output->link);
-
-	wlr_output_layout_add_auto(server->output_layout, output);
-	wlr_output_create_global(output);
-}
-
-void wc_output_frame(struct wl_listener* listener, void* data) {
+static void wc_output_frame(struct wl_listener* listener, void* data) {
 	struct wc_output* output = wl_container_of(listener, output, frame);
 	struct wlr_output* wlr_output = output->output;
 	struct wlr_renderer* renderer = wlr_backend_get_renderer(wlr_output->backend);
@@ -119,6 +98,61 @@ void wc_output_frame(struct wl_listener* listener, void* data) {
 	//TODO use wlr_output_commit(wlr_output);
 	wlr_renderer_end(renderer);
 	wlr_output_swap_buffers(wlr_output, NULL, NULL);
+}
+
+static void wc_output_destroy(struct wl_listener* listener, void* data) {
+	struct wc_output* output = wl_container_of(listener, output, destroy);
+	struct wc_server* server = output->server;
+	wl_list_remove(&output->link);
+	if (server->active_output == output) {
+		server->active_output = NULL;
+		if (!wl_list_empty(&server->outputs)) {
+			server->active_output = wl_container_of(
+					server->outputs.prev, server->active_output, link);
+		}
+	}
+	free(output);
+}
+
+static void wc_new_output(struct wl_listener* listener, void* data) {
+	struct wc_server* server = wl_container_of(listener, server, new_output);
+	struct wlr_output* output = data;
+
+	if (!wl_list_empty(&output->modes)) {
+		struct wlr_output_mode* mode =
+			wl_container_of(output->modes.prev, mode, link);
+		wlr_output_set_mode(output, mode);
+	}
+
+	struct wc_output* wc_output = calloc(1, sizeof(struct wc_output));
+	wc_output->output = output;
+	wc_output->server = server;
+
+	wc_output->frame.notify = wc_output_frame;
+	wl_signal_add(&output->events.frame, &wc_output->frame);
+	wc_output->destroy.notify = wc_output_destroy;
+	wl_signal_add(&output->events.destroy, &wc_output->destroy);
+
+	wl_list_insert(&server->outputs, &wc_output->link);
+
+	if (server->active_output == NULL) {
+		server->active_output = wc_output;
+	}
+
+	wlr_output_layout_add_auto(server->output_layout, output);
+	wlr_output_create_global(output);
+}
+
+
+struct wc_output* wc_get_active_output(struct wc_server* server) {
+	if (wl_list_empty(&server->outputs)) {
+		return NULL;
+	}
+	struct wc_output* output = server->active_output;
+	if (output == NULL) {
+		output = wl_container_of(server->outputs.prev, output, link);
+	}
+	return output;
 }
 
 void wc_init_output(struct wc_server* server) {
