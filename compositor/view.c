@@ -9,7 +9,7 @@
 #include "cursor.h"
 #include "server.h"
 
-static bool is_view_at(struct wc_view* view, double lx, double ly,
+static bool wc_is_view_at(struct wc_view* view, double lx, double ly,
 		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
 	double view_sx = lx - view->x;
 	double view_sy = ly - view->y;
@@ -23,7 +23,7 @@ struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
 		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
 	struct wc_view* view;
 	wl_list_for_each(view, &server->views, link) {
-		if (is_view_at(view, lx, ly, out_sx, out_sy, out_surface)) {
+		if (wc_is_view_at(view, lx, ly, out_sx, out_sy, out_surface)) {
 			return view;
 		}
 	}
@@ -140,7 +140,7 @@ static void wc_new_xdg_surface(struct wl_listener* listener, void* data) {
 	wl_list_insert(&server->views, &view->link);
 }
 
-void init_views(struct wc_server* server) {
+void wc_init_views(struct wc_server* server) {
 	wl_list_init(&server->views);
 	server->xdg_shell = wlr_xdg_shell_create(server->wl_display);
 	server->new_xdg_surface.notify = wc_new_xdg_surface;

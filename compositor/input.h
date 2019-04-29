@@ -3,6 +3,6 @@
 
 #include "server.h"
 
-void init_inputs(struct wc_server* server);
+void wc_init_inputs(struct wc_server* server);
 
 #endif//WC_INPUT_H

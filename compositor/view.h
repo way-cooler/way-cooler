@@ -23,7 +23,7 @@ struct wc_view {
 	struct wl_listener request_resize;
 };
 
-void init_views(struct wc_server* server);
+void wc_init_views(struct wc_server* server);
 
 // Finds the topmost (assuming server->views is top-to-bottom) view at the
 // specified output layout coordinates. If one cannot be found NULL is returned.

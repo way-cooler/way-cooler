@@ -15,6 +15,6 @@ struct wc_output {
 };
 
 void wc_output_frame(struct wl_listener* listener, void* data);
-void init_output(struct wc_server* server);
+void wc_init_output(struct wc_server* server);
 
 #endif // WC_OUTPUT_H

@@ -24,6 +24,6 @@ void wc_new_pointer(struct wc_server* server, struct wlr_input_device* device) {
 	wlr_cursor_attach_input_device(server->cursor->wlr_cursor, device);
 }
 
-void init_pointers(struct wc_server* server) {
+void wc_init_pointers(struct wc_server* server) {
 	wl_list_init(&server->pointers);
 }

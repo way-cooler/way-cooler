@@ -15,6 +15,6 @@ struct wc_pointer {
 };
 
 void wc_new_pointer(struct wc_server* server, struct wlr_input_device* device);
-void init_pointers(struct wc_server* server);
+void wc_init_pointers(struct wc_server* server);
 
 #endif//WC_POINTER_H

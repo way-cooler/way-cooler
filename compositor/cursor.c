@@ -126,7 +126,7 @@ static void wc_cursor_frame(struct wl_listener* listener, void* data) {
 	wlr_seat_pointer_notify_frame(server->seat);
 }
 
-void init_cursor(struct wc_server* server) {
+void wc_init_cursor(struct wc_server* server) {
 	struct wc_cursor* cursor = calloc(1, sizeof(struct wc_cursor));
 	server->cursor = cursor;
 	cursor->wlr_cursor = wlr_cursor_create();

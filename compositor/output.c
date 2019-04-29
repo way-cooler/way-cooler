@@ -17,15 +17,45 @@
 
 /* Used to move all of the data necessary to render a surface from the top-level
  * frame handler to the per-surface render function. */
-struct render_data {
+struct wc_render_data {
 	struct wlr_output *output;
 	struct wlr_renderer *renderer;
 	struct wc_view *view;
 	struct timespec *when;
 };
 
-static void render_surface(struct wlr_surface* surface,
-		int sx, int sy, void *data);
+static void wc_render_surface(struct wlr_surface* surface,
+		int sx, int sy, void *data) {
+	struct wc_render_data* rdata = data;
+	struct wc_view* view = rdata->view;
+	struct wlr_output* output = rdata->output;
+
+	struct wlr_texture* texture = wlr_surface_get_texture(surface);
+	if (texture == NULL) {
+		return;
+	}
+
+	double ox = 0, oy = 0;
+	wlr_output_layout_output_coords(
+			view->server->output_layout, output, &ox, &oy);
+	ox += view->x + sx, oy += view->y + sy;
+
+	struct wlr_box box = {
+		.x = ox * output->scale,
+		.y = oy * output->scale,
+		.width = surface->current.width * output->scale,
+		.height = surface->current.height * output->scale,
+	};
+	float matrix[9];
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(surface->current.transform);
+	wlr_matrix_project_box(matrix, &box, transform, 0,
+			output->transform_matrix);
+
+	wlr_render_texture_with_matrix(rdata->renderer, texture, matrix, 1);
+
+	wlr_surface_send_frame_done(surface, rdata->when);
+}
 
 static void wc_new_output(struct wl_listener* listener, void* data) {
 	struct wc_server* server = wl_container_of(listener, server, new_output);
@@ -73,7 +103,7 @@ void wc_output_frame(struct wl_listener* listener, void* data) {
 		if (!view->mapped) {
 			continue;
 		}
-		struct render_data rdata = {
+		struct wc_render_data rdata = {
 			.output = output->output,
 			.view = view,
 			.renderer = renderer,
@@ -81,7 +111,7 @@ void wc_output_frame(struct wl_listener* listener, void* data) {
 		};
 
 		wlr_xdg_surface_for_each_surface(view->xdg_surface,
-				render_surface, &rdata);
+				wc_render_surface, &rdata);
 	}
 
 	wlr_output_render_software_cursors(wlr_output, NULL);
@@ -91,41 +121,7 @@ void wc_output_frame(struct wl_listener* listener, void* data) {
 	wlr_output_swap_buffers(wlr_output, NULL, NULL);
 }
 
-
-static void render_surface(struct wlr_surface* surface,
-		int sx, int sy, void *data) {
-	struct render_data* rdata = data;
-	struct wc_view* view = rdata->view;
-	struct wlr_output* output = rdata->output;
-
-	struct wlr_texture* texture = wlr_surface_get_texture(surface);
-	if (texture == NULL) {
-		return;
-	}
-
-	double ox = 0, oy = 0;
-	wlr_output_layout_output_coords(
-		view->server->output_layout, output, &ox, &oy);
-	ox += view->x + sx, oy += view->y + sy;
-
-	struct wlr_box box = {
-		.x = ox * output->scale,
-		.y = oy * output->scale,
-		.width = surface->current.width * output->scale,
-		.height = surface->current.height * output->scale,
-	};
-	float matrix[9];
-	enum wl_output_transform transform =
-		wlr_output_transform_invert(surface->current.transform);
-	wlr_matrix_project_box(matrix, &box, transform, 0,
-			output->transform_matrix);
-
-	wlr_render_texture_with_matrix(rdata->renderer, texture, matrix, 1);
-
-	wlr_surface_send_frame_done(surface, rdata->when);
-}
-
-void init_output(struct wc_server* server) {
+void wc_init_output(struct wc_server* server) {
 	server->output_layout = wlr_output_layout_create();
 	wl_list_init(&server->outputs);
 	server->new_output.notify = wc_new_output;

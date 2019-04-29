@@ -37,11 +37,11 @@ bool init_server(struct wc_server* server) {
 
 	server->cursor_mode = WC_CURSOR_PASSTHROUGH;
 
-	init_seat(server);
-	init_output(server);
-	init_inputs(server);
-	init_views(server);
-	init_cursor(server);
+	wc_init_seat(server);
+	wc_init_output(server);
+	wc_init_inputs(server);
+	wc_init_views(server);
+	wc_init_cursor(server);
 
 	return true;
 }

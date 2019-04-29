@@ -19,7 +19,7 @@ static void wc_seat_request_cursor(struct wl_listener* listener, void* data) {
 	}
 }
 
-void init_seat(struct wc_server* server) {
+void wc_init_seat(struct wc_server* server) {
 	server->seat = wlr_seat_create(server->wl_display, "seat0");
 	server->request_set_cursor.notify = wc_seat_request_cursor;
 	wl_signal_add(&server->seat->events.request_set_cursor,
