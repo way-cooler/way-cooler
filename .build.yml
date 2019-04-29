@@ -23,18 +23,32 @@ packages:
   - xcb-util-wm
 sources:
   - https://github.com/way-cooler/way-cooler
+  - https://github.com/swaywm/wlroots
 tasks:
-  - setup: |
+  - rust_setup: |
       rustup install stable
       rustup install nightly
       rustup default stable
       rustup component add rustfmt-preview --toolchain nightly
-      export CC=clang
-      rustup default stable
-      export RUST_BACKTRACE=full
+      rustup component add clippy
+  - wlroots: |
+      cd wlroots
+      git checkout 0.5.0
+      meson --prefix=/usr build -Drootston=false -Dexamples=false
+      ninja -C build
+      sudo ninja -C build install
+  - way-cooler-common: |
       cd way-cooler
-      git submodule update --init --recursive
-  - build: |
-      cd way-cooler
+      CC=gcc meson build-gcc
+      CC=clang meson build-clang
+  - way-cooler-gcc: |
+      cd way-cooler/build-gcc
+      ninja
+  - way-cooler-clang: |
+      cd way-cooler/build-clang
+      ninja
+  - way-cooler-client-test: |
+      cd way-cooler/client
       cargo test --verbose
       cargo +nightly fmt --all -- --check
+      # TODO enable clippy
