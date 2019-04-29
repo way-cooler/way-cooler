@@ -46,6 +46,7 @@ way_cooler_sources = files(
 	'seat.c',
 	'server.c',
 	'view.c',
+	'xdg.c',
 )
 
 executable(

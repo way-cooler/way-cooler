@@ -25,6 +25,9 @@ struct wc_view {
 
 void wc_init_views(struct wc_server* server);
 
+// Get the main surface associated with the view.
+struct wlr_surface* wc_view_surface(struct wc_view* view);
+
 // Finds the topmost (assuming server->views is top-to-bottom) view at the
 // specified output layout coordinates. If one cannot be found NULL is returned.
 //
