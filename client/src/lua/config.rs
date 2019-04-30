@@ -2,6 +2,7 @@
 
 use std::{
     env,
+    ffi::OsStr,
     fs::{File, OpenOptions},
     io::{self, Read},
     path::{Path, PathBuf},
@@ -15,10 +16,10 @@ const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/rc.lua";
 
 pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
 
-/// Finds the configuration file and returns (filename, content)
+/// Reads the init file and returns it's contents
 pub fn load_config(lua: Context, cmdline_config: Option<&str>) -> io::Result<(String, String)> {
-    let (init_dir, mut init_file) = get_config(cmdline_config)?;
-    if init_dir.components().next().is_some() {
+    let (init_path, mut init_file) = get_config(cmdline_config)?;
+    if let Some(init_dir) = init_path.parent() {
         // Add the config directory to the package path.
         let globals = lua.globals();
         let package: Table = globals.get("package").expect("package not defined in Lua");
@@ -28,13 +29,16 @@ pub fn load_config(lua: Context, cmdline_config: Option<&str>) -> io::Result<(St
             .into_os_string()
             .into_string()
             .expect("init_dir not a valid UTF-8 string");
+        trace!("Adding location of init file to package.path: {}", init_dir);
         package
             .set("path", format!("{};{}", paths, init_dir))
             .expect("Failed to set package.path");
     }
     let mut init_contents = String::new();
     init_file.read_to_string(&mut init_contents)?;
-    Ok(("init.lua".to_string(), init_contents))
+    let file_name = init_path.file_name().and_then(OsStr::to_str);
+
+    Ok((file_name.unwrap_or(INIT_FILE).to_string(), init_contents))
 }
 
 pub fn exec_config(lua: rlua::Context, file_name: &str, content: &str) -> rlua::Result<()> {
@@ -44,6 +48,9 @@ pub fn exec_config(lua: rlua::Context, file_name: &str, content: &str) -> rlua::
     Ok(())
 }
 
+/// Finds the configuration file in predefined locations and opens it for reading.
+///
+/// Returns the found path and the opened handle.
 fn get_config(cmdline_path: Option<&str>) -> io::Result<(PathBuf, File)> {
     let cmdline_path = cmdline_path.map(PathBuf::from);
     let home_var = env::var("HOME").expect("HOME environment variable not defined!");
@@ -57,9 +64,9 @@ fn get_config(cmdline_path: Option<&str>) -> io::Result<(PathBuf, File)> {
         Some(INIT_FILE_FALLBACK_PATH.into())
     ];
 
-    paths[0] = env::var("WAY_COOLER_INIT_FILE").ok().map(PathBuf::from);
+    paths[1] = env::var("WAY_COOLER_INIT_FILE").ok().map(PathBuf::from);
 
-    paths[1] = env::var("XDG_CONFIG_HOME").ok().map(|path| {
+    paths[2] = env::var("XDG_CONFIG_HOME").ok().map(|path| {
         let mut path = PathBuf::from(path);
         path.push(INIT_FILE);
         path
