@@ -7,11 +7,12 @@
 #include <wlr/util/log.h>
 
 #include "output.h"
+#include "seat.h"
 #include "server.h"
 #include "view.h"
 
 static void wc_process_motion(struct wc_server* server, uint32_t time) {
-	struct wlr_seat* seat = server->seat;
+	struct wc_seat* seat = server->seat;
 	struct wc_cursor* cursor = server->cursor;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
 	struct wc_view* view = server->grabbed_view;
@@ -61,15 +62,7 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 			wlr_xcursor_manager_set_cursor_image(server->xcursor_mgr, "left_ptr",
 					cursor->wlr_cursor);
 		}
-		if (surface) {
-			bool focused_changed = seat->pointer_state.focused_surface != surface;
-			wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
-			if (!focused_changed) {
-				wlr_seat_pointer_notify_motion(seat, time, sx, sy);
-			}
-		} else {
-			wlr_seat_pointer_clear_focus(seat);
-		}
+		wc_seat_update_surface_focus(seat, surface, sx, sy, time);
 		break;
 	}
 	}
@@ -108,7 +101,7 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 	struct wc_cursor* cursor = wl_container_of(listener, cursor, button);
 	struct wc_server* server = cursor->server;
 	struct wlr_event_pointer_button* event = data;
-	wlr_seat_pointer_notify_button(server->seat,
+	wlr_seat_pointer_notify_button(server->seat->seat,
 			event->time_msec, event->button, event->state);
 
 	double sx, sy;
@@ -126,7 +119,7 @@ static void wc_cursor_axis(struct wl_listener* listener, void* data) {
 	struct wc_cursor* cursor = wl_container_of(listener, cursor, axis);
 	struct wc_server* server = cursor->server;
 	struct wlr_event_pointer_axis* event = data;
-	wlr_seat_pointer_notify_axis(server->seat,
+	wlr_seat_pointer_notify_axis(server->seat->seat,
 			event->time_msec, event->orientation, event->delta,
 			event->delta_discrete, event->source);
 }
@@ -134,7 +127,7 @@ static void wc_cursor_axis(struct wl_listener* listener, void* data) {
 static void wc_cursor_frame(struct wl_listener* listener, void* data) {
 	struct wc_cursor* cursor = wl_container_of(listener, cursor, frame);
 	struct wc_server* server = cursor->server;
-	wlr_seat_pointer_notify_frame(server->seat);
+	wlr_seat_pointer_notify_frame(server->seat->seat);
 }
 
 void wc_init_cursor(struct wc_server* server) {

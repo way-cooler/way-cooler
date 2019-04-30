@@ -31,8 +31,7 @@ struct wc_server {
     int grab_width, grab_height;
 	uint32_t resize_edges;
 
-	struct wlr_seat* seat;
-	struct wl_listener request_set_cursor;
+	struct wc_seat* seat;
 
 	struct wl_list keyboards;
 	struct wl_list pointers;

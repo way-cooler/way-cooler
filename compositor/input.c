@@ -8,6 +8,7 @@
 
 #include "keyboard.h"
 #include "pointer.h"
+#include "seat.h"
 #include "server.h"
 
 static void wc_new_input(struct wl_listener* listener, void* data) {
@@ -28,7 +29,7 @@ static void wc_new_input(struct wl_listener* listener, void* data) {
 	if (!wl_list_empty(&server->keyboards)) {
 		caps |= WL_SEAT_CAPABILITY_KEYBOARD;
 	}
-	wlr_seat_set_capabilities(server->seat, caps);
+	wlr_seat_set_capabilities(server->seat->seat, caps);
 }
 
 void wc_init_inputs(struct wc_server* server) {

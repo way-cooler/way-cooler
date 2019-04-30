@@ -7,6 +7,7 @@
 #include <wlr/util/log.h>
 
 #include "cursor.h"
+#include "seat.h"
 #include "server.h"
 #include "xdg.h"
 
@@ -36,9 +37,10 @@ void wc_focus_view(struct wc_view* view) {
 		return;
 	}
 	struct wc_server* server = view->server;
-	struct wlr_surface* surface = view->xdg_surface->surface;
-	struct wlr_seat* seat = server->seat;
-	struct wlr_surface* prev_surface = server->seat->keyboard_state.focused_surface;
+	struct wlr_surface* surface = wc_view_surface(view);
+	struct wlr_seat* seat = server->seat->seat;
+	struct wlr_surface* prev_surface =
+		server->seat->seat->keyboard_state.focused_surface;
 	if (prev_surface == surface) {
 		return;
 	}

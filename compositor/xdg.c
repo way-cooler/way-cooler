@@ -6,6 +6,7 @@
 #include <wlr/types/wlr_xdg_shell.h>
 
 #include "cursor.h"
+#include "seat.h"
 #include "server.h"
 #include "view.h"
 
@@ -31,7 +32,7 @@ static void wc_xdg_toplevel_request_move(struct wl_listener* listener, void* dat
 	struct wc_server* server = view->server;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
 	struct wlr_surface* focused_surface =
-		server->seat->pointer_state.focused_surface;
+		server->seat->seat->pointer_state.focused_surface;
 	struct wlr_surface* surface = wc_view_surface(view);
 	if (surface != focused_surface) {
 		return;
@@ -52,7 +53,7 @@ static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* d
 	struct wc_server* server = view->server;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
 	struct wlr_surface* focused_surface =
-		server->seat->pointer_state.focused_surface;
+		server->seat->seat->pointer_state.focused_surface;
 	struct wlr_surface* surface = wc_view_surface(view);
 	if (surface != focused_surface) {
 		return;
