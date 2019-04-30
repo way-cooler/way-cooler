@@ -13,9 +13,7 @@ use cairo::{self, ImageSurface, ImageSurfaceData};
 use gdk_pixbuf::{Pixbuf, PixbufExt};
 use glib::translate::{FromGlibPtrNone, ToGlibPtr};
 use nix::{self, libc};
-use rlua::{
-    self, AnyUserData, LightUserData, Lua, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value
-};
+use rlua::{self, AnyUserData, LightUserData, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
 use xcb::{
     ffi::{self, xproto},
     xkb, Connection
@@ -69,9 +67,9 @@ impl Display for AwesomeState {
 }
 
 impl UserData for AwesomeState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         fn index<'lua>(
-            _: &'lua Lua,
+            _: rlua::Context<'lua>,
             (awesome, index): (AnyUserData<'lua>, Value<'lua>)
         ) -> rlua::Result<Value<'lua>> {
             let table = awesome.get_user_value::<Table>()?;
@@ -81,7 +79,7 @@ impl UserData for AwesomeState {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init<'lua>(lua: rlua::Context<'lua>) -> rlua::Result<()> {
     let awesome_table = lua.create_table()?;
     method_setup(lua, &awesome_table)?;
     property_setup(lua, &awesome_table)?;
@@ -97,7 +95,7 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     globals.set("awesome", awesome)
 }
 
-fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
+fn method_setup<'lua>(lua: rlua::Context<'lua>, awesome_table: &Table<'lua>) -> rlua::Result<()> {
     // TODO Fill in rest
     awesome_table.set(
         "connect_signal",
@@ -130,15 +128,18 @@ fn method_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Resu
     awesome_table.set("quit", lua.create_function(quit)?)
 }
 
-fn property_setup<'lua>(lua: &'lua Lua, awesome_table: &Table<'lua>) -> rlua::Result<()> {
+fn property_setup<'lua>(_: rlua::Context<'lua>, awesome_table: &Table<'lua>) -> rlua::Result<()> {
     // TODO Do properly
-    awesome_table.set("version", "0".to_lua(lua)?)?;
-    awesome_table.set("themes_path", "/usr/share/awesome/themes".to_lua(lua)?)?;
-    awesome_table.set("conffile", "".to_lua(lua)?)
+    awesome_table.set("version", "0")?;
+    awesome_table.set("themes_path", "/usr/share/awesome/themes")?;
+    awesome_table.set("conffile", "")
 }
 
 /// Registers a new X property
-fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String)) -> rlua::Result<()> {
+fn register_xproperty<'lua>(
+    lua: rlua::Context<'lua>,
+    (name_rust, v_type): (String, String)
+) -> rlua::Result<()> {
     let name = CString::new(name_rust.clone()).expect("XProperty was not CString");
     let arg_type = XPropertyType::from_string(v_type.clone()).ok_or(rlua::Error::RuntimeError(format!(
         "{} not a valid xproperty",
@@ -146,7 +147,7 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String
     )))?;
     unsafe {
         let raw_con = lua
-            .named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?
+            .named_registry_value::<str, LightUserData>(XCB_CONNECTION_HANDLE)?
             .0 as _;
         let atom_c = xproto::xcb_intern_atom_unchecked(
             raw_con,
@@ -177,9 +178,9 @@ fn register_xproperty<'lua>(lua: &'lua Lua, (name_rust, v_type): (String, String
 }
 
 /// Get layout short names
-fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
+fn xkb_get_group_names<'lua>(lua: rlua::Context<'lua>, _: ()) -> rlua::Result<Value<'lua>> {
     let xcb_con = lua
-        .named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?
+        .named_registry_value::<str, LightUserData>(XCB_CONNECTION_HANDLE)?
         .0;
     unsafe {
         let con = Connection::from_raw_conn(xcb_con as _);
@@ -241,12 +242,12 @@ fn xkb_get_group_names<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>>
 }
 
 /// Query & set information about the systray
-fn systray<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<(u32, Value)> {
+fn systray<'lua>(_: rlua::Context<'lua>, _: ()) -> rlua::Result<(u32, Value<'lua>)> {
     Ok((0, Value::Nil))
 }
 
 /// Restart Awesome by restarting the Lua thread
-fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
+fn restart<'lua>(_: rlua::Context<'lua>, _: ()) -> rlua::Result<()> {
     info!("Lua thread restarting");
     NEXT_LUA.with(|next_lua| {
         next_lua.set(true);
@@ -256,7 +257,7 @@ fn restart<'lua>(_: &'lua Lua, _: ()) -> rlua::Result<()> {
 
 /// Load an image from the given path
 /// Returns either a cairo surface as light user data, nil and an error message
-fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lua>> {
+fn load_image<'lua>(lua: rlua::Context<'lua>, file_path: String) -> rlua::Result<Value<'lua>> {
     let pixbuf = Pixbuf::new_from_file(file_path.as_str())
         .map_err(|err| rlua::Error::RuntimeError(format!("{}", err)))?;
     let surface = load_surface_from_pixbuf(pixbuf);
@@ -270,7 +271,7 @@ fn load_image<'lua>(lua: &'lua Lua, file_path: String) -> rlua::Result<Value<'lu
 
 /// Convert a pixbuf to a cairo image surface.
 /// Returns either a cairo surface as light user data, nil and an error message
-fn pixbuf_to_surface<'lua>(lua: &'lua Lua, pixbuf: LightUserData) -> rlua::Result<Value<'lua>> {
+fn pixbuf_to_surface<'lua>(lua: rlua::Context<'lua>, pixbuf: LightUserData) -> rlua::Result<Value<'lua>> {
     let pixbuf = unsafe { Pixbuf::from_glib_none(pixbuf.0 as *const _) };
     let surface = load_surface_from_pixbuf(pixbuf);
     // UGH, I wanted to do to_glib_full, but that isn't defined apparently
@@ -281,7 +282,7 @@ fn pixbuf_to_surface<'lua>(lua: &'lua Lua, pixbuf: LightUserData) -> rlua::Resul
     LightUserData(surface_ptr as _).to_lua(lua)
 }
 
-fn exec(_: &Lua, command: String) -> rlua::Result<()> {
+fn exec(_: rlua::Context<'_>, command: String) -> rlua::Result<()> {
     trace!("exec: \"{}\"", command);
     thread::Builder::new()
         .name(command.clone())
@@ -299,47 +300,47 @@ fn exec(_: &Lua, command: String) -> rlua::Result<()> {
 /// Kills a PID with the given signal
 ///
 /// Returns false if it could not send the signal to that process
-fn kill(_: &Lua, (pid, sig): (libc::pid_t, libc::c_int)) -> rlua::Result<bool> {
+fn kill(_: rlua::Context<'_>, (pid, sig): (libc::pid_t, libc::c_int)) -> rlua::Result<bool> {
     Ok(nix::sys::signal::kill(pid, sig).is_ok())
 }
 
-fn set_preferred_icon_size(lua: &Lua, val: u32) -> rlua::Result<()> {
+fn set_preferred_icon_size(lua: rlua::Context<'_>, val: u32) -> rlua::Result<()> {
     let awesome_state = lua.globals().get::<_, AnyUserData>("awesome")?;
     let mut awesome_state = awesome_state.borrow_mut::<AwesomeState>()?;
     awesome_state.preferred_icon_size = val;
     Ok(())
 }
 
-fn quit(_: &Lua, _: ()) -> rlua::Result<()> {
+fn quit(_: rlua::Context<'_>, _: ()) -> rlua::Result<()> {
     crate::lua::terminate();
     Ok(())
 }
 
 /// No need to sync in Wayland
-fn sync(_: &Lua, _: ()) -> rlua::Result<()> {
+fn sync(_: rlua::Context<'_>, _: ()) -> rlua::Result<()> {
     Ok(())
 }
 
-fn set_xproperty(_: &Lua, _: Value) -> rlua::Result<()> {
+fn set_xproperty(_: rlua::Context<'_>, _: Value) -> rlua::Result<()> {
     warn!("set_xproperty not supported");
     Ok(())
 }
 
-fn get_xproperty(_: &Lua, _: Value) -> rlua::Result<()> {
+fn get_xproperty(_: rlua::Context<'_>, _: Value) -> rlua::Result<()> {
     warn!("get_xproperty not supported");
     Ok(())
 }
 
-fn xkb_set_layout_group(_: &Lua, _group: i32) -> rlua::Result<()> {
+fn xkb_set_layout_group(_: rlua::Context<'_>, _group: i32) -> rlua::Result<()> {
     warn!("xkb_set_layout_group not supported; Wait until wlroots");
     Ok(())
 }
 
-fn xkb_get_layout_group<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>> {
+fn xkb_get_layout_group<'lua>(lua: rlua::Context<'lua>, _: ()) -> rlua::Result<Value<'lua>> {
     use xcb::ffi::xkb;
     unsafe {
         let raw_con = lua
-            .named_registry_value::<LightUserData>(XCB_CONNECTION_HANDLE)?
+            .named_registry_value::<str, LightUserData>(XCB_CONNECTION_HANDLE)?
             .0 as _;
         let state_c = xkb::xcb_xkb_get_state_unchecked(raw_con, xkb::XCB_XKB_ID_USE_CORE_KBD as _);
         let state_r = xkb::xcb_xkb_get_state_reply(raw_con, state_c, ptr::null_mut());
@@ -351,7 +352,10 @@ fn xkb_get_layout_group<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Value<'lua>
     }
 }
 
-fn xrdb_get_value(_lua: &Lua, (_resource_class, _resource_name): (String, String)) -> rlua::Result<Value> {
+fn xrdb_get_value<'lua>(
+    _lua: rlua::Context<'lua>,
+    (_resource_class, _resource_name): (String, String)
+) -> rlua::Result<Value<'lua>> {
     warn!("xrdb_get_value not supported");
     Ok(Value::Nil)
 }
@@ -416,6 +420,6 @@ pub fn load_surface_from_pixbuf(pixbuf: Pixbuf) -> ImageSurface {
 }
 
 /// UTF-8 aware string length computing
-pub fn wlen<'lua>(_: &'lua Lua, cmd: String) -> rlua::Result<Value<'lua>> {
+pub fn wlen<'lua>(_: rlua::Context<'lua>, cmd: String) -> rlua::Result<Value<'lua>> {
     Ok(Value::Integer(cmd.chars().count() as i64))
 }

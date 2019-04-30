@@ -70,7 +70,7 @@ use clap::{App, Arg};
 use exec::Command;
 use log::Level;
 use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
-use rlua::{LightUserData, Lua, Table};
+use rlua::{LightUserData, Table};
 use wayland_client::{
     global_filter,
     protocol::{wl_compositor, wl_output, wl_shm},
@@ -206,13 +206,15 @@ fn main() {
     }
     if matches.is_present("lua syntax check") {
         let config = matches.value_of("config");
+        use crate::lua::SyntaxCheckError::*;
+
         match lua::syntax_check(config) {
-            Err(Err(err)) => {
+            Err(IoError(err)) => {
                 error!("Could not read configuration files");
                 error!("{}", err);
                 exit(1)
             },
-            Err(Ok(lua_error)) => {
+            Err(LuaError(lua_error)) => {
                 error!("✘ Configuration file syntax error.");
                 error!("{}", lua_error);
                 exit(1)
@@ -223,17 +225,16 @@ fn main() {
             }
         }
     }
-    {
-        let lib_paths = matches
-            .values_of("lua lib search")
-            .unwrap_or_default()
-            .collect::<Vec<_>>();
-        lua::init_awesome_libraries(lib_paths.as_slice());
-    }
+    let lib_paths = matches
+        .values_of("lua lib search")
+        .unwrap_or_default()
+        .collect::<Vec<_>>();
+    lua::init_awesome_libraries(&lib_paths);
     let (display, event_queue, _globals) = init_wayland();
     let (session_fd, system_fd) = dbus::connect().expect("Could not set up dbus connection");
     init_glib(display, event_queue, session_fd, system_fd);
-    lua::run_awesome(matches);
+    let config = matches.value_of("config");
+    lua::run_awesome(&lib_paths, config);
 }
 
 fn init_wayland() -> (Display, EventQueue, GlobalManager) {
@@ -328,7 +329,7 @@ fn init_glib(display: Display, event_queue: EventQueue, session_fd: RawFd, syste
     }
 }
 
-fn setup_awesome_path(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
+fn setup_awesome_path(lua: rlua::Context, lib_paths: &[&str]) -> rlua::Result<()> {
     let globals = lua.globals();
     let package: Table = globals.get("package")?;
     let mut path = package.get::<_, String>("path")?;
@@ -376,12 +377,12 @@ fn setup_awesome_path(lua: &Lua, lib_paths: &[&str]) -> rlua::Result<()> {
 /// Set up global signals value
 ///
 /// We need to store this in Lua, because this make it safer to use.
-fn setup_global_signals(lua: &Lua) -> rlua::Result<()> {
+fn setup_global_signals(lua: rlua::Context) -> rlua::Result<()> {
     lua.set_named_registry_value(GLOBAL_SIGNALS, lua.create_table()?)
 }
 
 /// Sets up the xcb connection and stores it in Lua (for us to access it later)
-fn setup_xcb_connection(lua: &Lua) -> rlua::Result<()> {
+fn setup_xcb_connection(lua: rlua::Context) -> rlua::Result<()> {
     let con = match xcb::Connection::connect(None) {
         Err(err) => {
             error!("Way Cooler requires XWayland in order to function");

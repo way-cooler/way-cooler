@@ -2,7 +2,7 @@
 //!
 //! This is mostly used to define keybindings.
 
-use rlua::{self, Lua, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{self, Table, ToLua, UserData, UserDataMethods, Value};
 use xkbcommon::xkb::{self, Keysym};
 
 use crate::common::{
@@ -22,7 +22,7 @@ pub struct KeyState {
 pub type Key<'lua> = Object<'lua, KeyState>;
 
 impl<'lua> Key<'lua> {
-    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Key<'lua>> {
+    fn new(lua: rlua::Context<'lua>, args: Table<'lua>) -> rlua::Result<Key<'lua>> {
         // TODO FIXME
         let class = class::class_setup(lua, "key")?;
         Ok(Key::allocate(lua, class)?
@@ -66,19 +66,19 @@ impl<'lua> Key<'lua> {
 }
 
 impl UserData for KeyState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         object::default_add_methods(methods);
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<KeyState>> {
+pub fn init(lua: rlua::Context) -> rlua::Result<Class<KeyState>> {
     property_setup(lua, method_setup(lua, Class::builder(lua, "key", None)?)?)?
         .save_class("key")?
         .build()
 }
 
 fn method_setup<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     builder: ClassBuilder<'lua, KeyState>
 ) -> rlua::Result<ClassBuilder<'lua, KeyState>> {
     // TODO Do properly
@@ -89,7 +89,7 @@ fn method_setup<'lua>(
 }
 
 fn property_setup<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     builder: ClassBuilder<'lua, KeyState>
 ) -> rlua::Result<ClassBuilder<'lua, KeyState>> {
     // TODO Do properly
@@ -114,24 +114,30 @@ fn property_setup<'lua>(
         ))
 }
 
-fn get_modifiers<'lua>(_: &'lua Lua, key: Key<'lua>) -> rlua::Result<u32> {
+fn get_modifiers<'lua>(_: rlua::Context<'lua>, key: Key<'lua>) -> rlua::Result<u32> {
     key.modifiers()
 }
 
-fn set_modifiers<'lua>(_: &'lua Lua, (mut key, mods): (Key<'lua>, Table<'lua>)) -> rlua::Result<()> {
+fn set_modifiers<'lua>(
+    _: rlua::Context<'lua>,
+    (mut key, mods): (Key<'lua>, Table<'lua>)
+) -> rlua::Result<()> {
     key.set_modifiers(mods_to_num(mods)?.bits())
 }
 
-fn get_keysym<'lua>(lua: &'lua Lua, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_keysym<'lua>(lua: rlua::Context<'lua>, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
     // TODO Shouldn't this be able to fail?
     xkb::keysym_get_name(key.keysym()?).to_lua(lua)
 }
 
-fn get_key<'lua>(lua: &'lua Lua, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_key<'lua>(lua: rlua::Context<'lua>, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
     key.keysym()?.to_lua(lua)
 }
 
-fn set_key<'lua>(_: &'lua Lua, (mut key, key_name): (Key<'lua>, String)) -> rlua::Result<Value<'lua>> {
+fn set_key<'lua>(
+    _: rlua::Context<'lua>,
+    (mut key, key_name): (Key<'lua>, String)
+) -> rlua::Result<Value<'lua>> {
     if key_name.starts_with('#') && key_name.len() >= 2 {
         let number = key_name[1..]
             .parse::<xkb::Keycode>()

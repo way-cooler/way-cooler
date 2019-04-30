@@ -48,14 +48,14 @@ impl GlobalImplementor<WlOutput> for WlOutputManager {
         let res = new_proxy.implement(WlOutputEventHandler {}, RefCell::new(OutputState::default()));
 
         LUA.with(|lua| {
-            let lua = lua.borrow();
-            let lua = &*lua;
-            let output = Output { output: res.clone() };
-            let mut screen = Screen::new(lua).expect("Could not allocate new screen");
-            screen
-                .init_screens(output.clone(), vec![output])
-                .expect("Could not initilize new output with a screen");
-            screen::add_screen(lua, screen).expect("Could not add screen to the list of screens");
+            lua.borrow().context(|ctx| {
+                let output = Output { output: res.clone() };
+                let mut screen = Screen::new(ctx).expect("Could not allocate new screen");
+                screen
+                    .init_screens(output.clone(), vec![output])
+                    .expect("Could not initilize new output with a screen");
+                screen::add_screen(ctx, screen).expect("Could not add screen to the list of screens");
+            })
         });
 
         res
@@ -90,16 +90,16 @@ impl wl_output::EventHandler for WlOutputEventHandler {
             }
         };
         LUA.with(|lua| {
-            let lua = lua.borrow();
-            let lua = &*lua;
-            if let Ok(mut screen) = screen::get_screen(lua, Output { output: object }) {
-                screen
-                    .set_geometry(lua, geometry)
-                    .expect("could not set geometry");
-                screen
-                    .set_workarea(lua, geometry)
-                    .expect("could not set workarea ");
-            };
+            lua.borrow().context(|ctx| {
+                if let Ok(mut screen) = screen::get_screen(ctx, Output { output: object }) {
+                    screen
+                        .set_geometry(ctx, geometry)
+                        .expect("could not set geometry");
+                    screen
+                        .set_workarea(ctx, geometry)
+                        .expect("could not set workarea ");
+                }
+            });
         });
     }
 
@@ -108,14 +108,14 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         // TODO We may not always want to add a new screen
         // see how awesome does it and fix this.
         LUA.with(|lua| {
-            let lua = lua.borrow();
-            let lua = &*lua;
-            let mut screen = Screen::new(lua).expect("Could not allocate new screen");
-            let output = Output { output: object };
-            screen
-                .init_screens(output.clone(), vec![output])
-                .expect("Could not initilize new output with a screen");
-            screen::add_screen(&lua, screen).expect("Could not add screen to the list of screens");
+            lua.borrow().context(|ctx| {
+                let mut screen = Screen::new(ctx).expect("Could not allocate new screen");
+                let output = Output { output: object };
+                screen
+                    .init_screens(output.clone(), vec![output])
+                    .expect("Could not initilize new output with a screen");
+                screen::add_screen(ctx, screen).expect("Could not add screen to the list of screens");
+            });
         });
     }
 

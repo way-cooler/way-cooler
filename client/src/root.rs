@@ -2,14 +2,14 @@
 //! Awesome's equivalent of globalconf's properties are accessible via registry keys
 
 use cairo_sys::cairo_pattern_t;
-use rlua::{self, LightUserData, Lua, Table, ToLua, Value};
+use rlua::{self, LightUserData, Table, ToLua, Value};
 
 use crate::objects::tag;
 
 /// Handle to the list of global key bindings
 pub const ROOT_KEYS_HANDLE: &'static str = "__ROOT_KEYS";
 
-pub fn init(lua: &Lua) -> rlua::Result<()> {
+pub fn init(lua: rlua::Context) -> rlua::Result<()> {
     // TODO Do properly
     use crate::objects::dummy;
 
@@ -26,12 +26,12 @@ pub fn init(lua: &Lua) -> rlua::Result<()> {
     lua.globals().set("root", root)
 }
 
-fn dummy_double<'lua>(_: &'lua Lua, _: Value) -> rlua::Result<(i32, i32)> {
+fn dummy_double<'lua>(_: rlua::Context<'lua>, _: Value) -> rlua::Result<(i32, i32)> {
     Ok((0, 0))
 }
 
 /// Gets the wallpaper as a cairo surface or set it as a cairo pattern
-fn wallpaper<'lua>(lua: &'lua Lua, pattern: Option<LightUserData>) -> rlua::Result<Value<'lua>> {
+fn wallpaper<'lua>(lua: rlua::Context<'lua>, pattern: Option<LightUserData>) -> rlua::Result<Value<'lua>> {
     // TODO FIXME Implement for realz
     if let Some(pattern) = pattern {
         // TODO Wrap before giving it to set_wallpaper
@@ -42,14 +42,14 @@ fn wallpaper<'lua>(lua: &'lua Lua, pattern: Option<LightUserData>) -> rlua::Resu
     return Ok(Value::Nil);
 }
 
-fn set_wallpaper<'lua>(_: &'lua Lua, _pattern: *mut cairo_pattern_t) -> rlua::Result<bool> {
+fn set_wallpaper<'lua>(_: rlua::Context<'lua>, _pattern: *mut cairo_pattern_t) -> rlua::Result<bool> {
     warn!("Fake setting the wallpaper");
     Ok(true)
 }
 
-fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
+fn tags<'lua>(lua: rlua::Context<'lua>, _: ()) -> rlua::Result<Table<'lua>> {
     let table = lua.create_table()?;
-    let activated_tags = lua.named_registry_value::<Table>(tag::TAG_LIST)?;
+    let activated_tags = lua.named_registry_value::<str, Table>(tag::TAG_LIST)?;
     for pair in activated_tags.pairs::<Value, Value>() {
         let (key, value) = pair?;
         table.set(key, value)?;
@@ -60,7 +60,7 @@ fn tags<'lua>(lua: &'lua Lua, _: ()) -> rlua::Result<Table<'lua>> {
 /// Get or set global key bindings.
 ///
 /// These bindings will be available when you press keys on the root window.
-fn root_keys<'lua>(lua: &'lua Lua, key_array: Value<'lua>) -> rlua::Result<Value<'lua>> {
+fn root_keys<'lua>(lua: rlua::Context<'lua>, key_array: Value<'lua>) -> rlua::Result<Value<'lua>> {
     match key_array {
         // Set the global keys
         Value::Table(key_array) => {
@@ -77,7 +77,7 @@ fn root_keys<'lua>(lua: &'lua Lua, key_array: Value<'lua>) -> rlua::Result<Value
         Value::Nil => {
             let res = lua.create_table()?;
             for entry in lua
-                .named_registry_value::<Table>(ROOT_KEYS_HANDLE)
+                .named_registry_value::<str, Table>(ROOT_KEYS_HANDLE)
                 .or(lua.create_table())?
                 .pairs()
             {
@@ -103,96 +103,107 @@ mod test {
     #[test]
     fn tags_print() {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        root::init(&lua).unwrap();
-        lua.eval(
-            r#"
+        lua.context(|ctx| {
+            tag::init(ctx).unwrap();
+            root::init(ctx).unwrap();
+            ctx.load(
+                r#"
 local first, second = tag{}, tag{}
 assert(tostring(first) ~= tostring(second))
-"#,
-            None
-        )
-        .unwrap()
+                "#
+            )
+            .eval()
+            .unwrap()
+        })
     }
 
     #[test]
     fn tags_none() {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        root::init(&lua).unwrap();
-        lua.eval(
-            r#"
+        lua.context(|ctx| {
+            tag::init(ctx).unwrap();
+            root::init(ctx).unwrap();
+            ctx.load(
+                r#"
 local t = root.tags()
 assert(type(t) == "table")
 assert(type(next(t)) == "nil")
-"#,
-            None
-        )
-        .unwrap()
+                "#
+            )
+            .eval()
+            .unwrap()
+        })
     }
 
     #[test]
     fn tags_does_not_copy() {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        root::init(&lua).unwrap();
-        lua.eval(
-            r#"
+        lua.context(|ctx| {
+            tag::init(ctx).unwrap();
+            root::init(ctx).unwrap();
+            ctx.load(
+                r#"
 local t = tag{ activated = true }
 local t2 = root.tags()[1]
 assert(t == t2)
 t2.name = "Foo"
 assert(t.name == "Foo")
-"#,
-            None
-        )
-        .unwrap()
+                "#
+            )
+            .eval()
+            .unwrap()
+        })
     }
 
     #[test]
     fn tags_some() {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        root::init(&lua).unwrap();
-        lua.eval(
-            r#"
+        lua.context(|ctx| {
+            tag::init(ctx).unwrap();
+            root::init(ctx).unwrap();
+            ctx.load(
+                r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 local t = root.tags()
 assert(t[1] == first)
 assert(t[2] == second)
-"#,
-            None
-        )
-        .unwrap()
+                "#
+            )
+            .eval()
+            .unwrap()
+        })
     }
 
     #[test]
     fn tags_removal() {
         let lua = Lua::new();
-        tag::init(&lua).unwrap();
-        root::init(&lua).unwrap();
-        lua.eval(
-            r#"
+        lua.context(|ctx| {
+            tag::init(ctx).unwrap();
+            root::init(ctx).unwrap();
+            ctx.load(
+                r#"
 local first = tag{ activated = true }
 local second = tag{ activated = true }
 first.activated = false
 local t = root.tags()
 assert(t[1] == second)
 assert(type(t[2]) == "nil")
-"#,
-            None
-        )
-        .unwrap()
+                "#
+            )
+            .eval()
+            .unwrap()
+        })
     }
 
     #[test]
     fn keys() {
         let lua = Lua::new();
-        key::init(&lua).unwrap();
-        root::init(&lua).unwrap();
-        lua.eval(
-            r#"
+        lua.context(|ctx| {
+            key::init(ctx).unwrap();
+            root::init(ctx).unwrap();
+            ctx.load(
+                r#"
 assert(next(root.keys()) == nil)
 
 local first = key{}
@@ -209,9 +220,10 @@ local res = root.keys()
 assert(res[1] == first)
 assert(res[2] == second)
 assert(res[3] == nil)
-"#,
-            None
-        )
-        .unwrap()
+                "#
+            )
+            .eval()
+            .unwrap()
+        })
     }
 }

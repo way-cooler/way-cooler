@@ -6,7 +6,7 @@ use std::{
     hash::{Hash, Hasher}
 };
 
-use rlua::{self, Lua, Table, UserData};
+use rlua::{self, Table, UserData};
 
 use crate::common::{
     class::{self, Class, ClassBuilder},
@@ -44,7 +44,7 @@ impl<'lua> Hash for Client<'lua> {
 // This is currently unused.
 // TODO: Figure out if this will be needed later.
 impl<'lua> Client<'lua> {
-    pub fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Client<'lua>> {
+    pub fn new(lua: rlua::Context<'lua>, args: Table<'lua>) -> rlua::Result<Client<'lua>> {
         let class = class::class_setup(lua, "client")?;
         Ok(Client::allocate(lua, class)?
             .handle_constructor_argument(args)?
@@ -54,14 +54,14 @@ impl<'lua> Client<'lua> {
 
 impl UserData for ClientState {}
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<ClientState>> {
+pub fn init(lua: rlua::Context) -> rlua::Result<Class<ClientState>> {
     method_setup(lua, Class::builder(lua, "client", None)?)?
         .save_class("client")?
         .build()
 }
 
 fn method_setup<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     builder: ClassBuilder<'lua, ClientState>
 ) -> rlua::Result<ClassBuilder<'lua, ClientState>> {
     // TODO Do properly
@@ -75,6 +75,6 @@ fn method_setup<'lua>(
         .method("get".into(), lua.create_function(dummy_table)?)
 }
 
-fn dummy_table<'lua>(lua: &'lua Lua, _: rlua::Value) -> rlua::Result<Table<'lua>> {
+fn dummy_table<'lua>(lua: rlua::Context<'lua>, _: rlua::Value) -> rlua::Result<Table<'lua>> {
     Ok(lua.create_table()?)
 }

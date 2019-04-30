@@ -4,7 +4,7 @@
 
 use std::default::Default;
 
-use rlua::{self, Lua, Table, UserData, UserDataMethods, Value};
+use rlua::{self, Table, UserData, UserDataMethods, Value};
 use xcb::ffi::xproto::xcb_button_t;
 use xkbcommon::xkb::Keysym;
 
@@ -33,13 +33,13 @@ impl Default for ButtonState {
 }
 
 impl UserData for ButtonState {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         object::default_add_methods(methods);
     }
 }
 
 impl<'lua> Button<'lua> {
-    fn new(lua: &'lua Lua, args: Table) -> rlua::Result<Button<'lua>> {
+    fn new(lua: rlua::Context<'lua>, args: Table<'lua>) -> rlua::Result<Button<'lua>> {
         let class = class::class_setup(lua, "button")?;
         Ok(Button::allocate(lua, class)?
             .handle_constructor_argument(args)?
@@ -70,7 +70,7 @@ impl<'lua> Button<'lua> {
     }
 }
 
-pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
+pub fn init(lua: rlua::Context) -> rlua::Result<Class<ButtonState>> {
     Class::<ButtonState>::builder(lua, "button", None)?
         .method(
             "__call".into(),
@@ -93,7 +93,7 @@ pub fn init(lua: &Lua) -> rlua::Result<Class<ButtonState>> {
 }
 
 fn set_button<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     (mut button, val): (Button<'lua>, Value<'lua>)
 ) -> rlua::Result<Value<'lua>> {
     use rlua::Value::*;
@@ -106,12 +106,12 @@ fn set_button<'lua>(
     Ok(Nil)
 }
 
-fn get_button<'lua>(_: &'lua Lua, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_button<'lua>(_: rlua::Context<'lua>, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
     button.button()
 }
 
 fn set_modifiers<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     (mut button, modifiers): (Button<'lua>, Table<'lua>)
 ) -> rlua::Result<()> {
     button.set_modifiers(modifiers.clone())?;
@@ -119,7 +119,7 @@ fn set_modifiers<'lua>(
     Ok(())
 }
 
-fn get_modifiers<'lua>(lua: &'lua Lua, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_modifiers<'lua>(lua: rlua::Context<'lua>, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
     use crate::lua::mods_to_lua;
     mods_to_lua(lua, &button.modifiers()?).map(Value::Table)
 }

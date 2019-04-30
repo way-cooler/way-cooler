@@ -35,7 +35,7 @@ static MOD_TYPES: [(KeyboardModifiers, Keysym); 7] = [
 
 /// Convert a modifier to the Lua interpretation
 #[allow(non_upper_case_globals)]
-pub fn mods_to_lua<'lua>(lua: &'lua Lua, mods: &[Keysym]) -> rlua::Result<Table<'lua>> {
+pub fn mods_to_lua<'lua>(lua: rlua::Context<'lua>, mods: &[Keysym]) -> rlua::Result<Table<'lua>> {
     let mut mods_list: Vec<String> = Vec::with_capacity(MOD_NAMES.len());
     for modifier in mods {
         mods_list.push(

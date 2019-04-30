@@ -3,7 +3,7 @@
 use std::{cell::RefCell, os::unix::io::RawFd, slice, thread::LocalKey};
 
 use dbus::{BusType, Connection, Message, MessageItem, MessageType};
-use rlua::{self, Error::RuntimeError, Lua, MultiValue, Table, ToLua, ToLuaMulti, Value};
+use rlua::{self, Error::RuntimeError, MultiValue, Table, ToLua, ToLuaMulti, Value};
 
 use crate::common::signal;
 use crate::lua::LUA;
@@ -105,7 +105,7 @@ fn handle_msg(bus: &Connection, bus_type: BusType, msg: Message) -> bool {
     let reply = LUA
         .with(|lua| {
             let lua = lua.borrow();
-            process_request(bus_type, &*lua, &msg)
+            lua.context(|lua_ctx| process_request(bus_type, lua_ctx, &msg))
         })
         .unwrap_or_else(|err| {
             crate::lua::log_error(err);
@@ -118,7 +118,7 @@ fn handle_msg(bus: &Connection, bus_type: BusType, msg: Message) -> bool {
 }
 
 /// Gives the D-Bus message to Lua for processing the reply.
-fn process_request(bus_type: BusType, lua: &Lua, msg: &Message) -> rlua::Result<Option<Message>> {
+fn process_request(bus_type: BusType, lua: rlua::Context, msg: &Message) -> rlua::Result<Option<Message>> {
     let message_metadata = lua.create_table()?;
     let msg_type = match msg.msg_type() {
         MessageType::Signal => "signal",
@@ -223,7 +223,7 @@ pub fn connect() -> Result<(RawFd, RawFd), dbus::Error> {
 
 /// Set up the DBus object in Lua so that the user libs can interact with
 /// Awesome via DBus.
-pub fn lua_init(lua: &Lua) -> rlua::Result<()> {
+pub fn lua_init(lua: rlua::Context) -> rlua::Result<()> {
     let dbus_table = lua.create_table()?;
     dbus_table.set(SIGNALS_NAME, lua.create_table()?)?;
     dbus_table.set("request_name", lua.create_function(request_name)?)?;
@@ -247,8 +247,11 @@ fn get_bus_by_name<'bus>(bus_name: &str) -> rlua::Result<&'bus LocalKey<GlobalCo
     }
 }
 
-fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem]) -> rlua::Result<MultiValue<'lua>> {
-    let mut res = MultiValue::new();
+fn dbus_to_lua_value<'lua>(
+    lua: rlua::Context<'lua>,
+    msg_items: &[MessageItem]
+) -> rlua::Result<MultiValue<'lua>> {
+    let mut res = Vec::new();
     for msg_item in msg_items {
         use dbus::MessageItem::*;
         match msg_item {
@@ -263,7 +266,7 @@ fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem]) -> rlua::R
                 for (index, field) in fields.into_iter().enumerate() {
                     struct_table.set(index + 1, field)?;
                 }
-                res.push_back(struct_table.to_lua(lua)?);
+                res.push(struct_table.to_lua(lua)?);
             },
             Array(array) => {
                 let array_table = lua.create_table()?;
@@ -285,26 +288,26 @@ fn dbus_to_lua_value<'lua>(lua: &'lua Lua, msg_items: &[MessageItem]) -> rlua::R
                         }
                     }
                 }
-                res.push_back(array_table.to_lua(lua)?);
+                res.push(array_table.to_lua(lua)?);
             },
-            Bool(v) => res.push_back(v.to_lua(lua)?),
-            Byte(v) => res.push_back(v.to_lua(lua)?),
-            Int16(v) => res.push_back(v.to_lua(lua)?),
-            UInt16(v) => res.push_back(v.to_lua(lua)?),
-            Int32(v) => res.push_back(v.to_lua(lua)?),
-            UInt32(v) => res.push_back(v.to_lua(lua)?),
-            Int64(v) => res.push_back(v.to_lua(lua)?),
-            UInt64(v) => res.push_back(v.to_lua(lua)?),
-            Double(v) => res.push_back(v.to_lua(lua)?),
-            Str(v) => res.push_back(v.clone().to_lua(lua)?),
-            _ => res.push_back(Value::Nil)
+            Bool(v) => res.push(v.to_lua(lua)?),
+            Byte(v) => res.push(v.to_lua(lua)?),
+            Int16(v) => res.push(v.to_lua(lua)?),
+            UInt16(v) => res.push(v.to_lua(lua)?),
+            Int32(v) => res.push(v.to_lua(lua)?),
+            UInt32(v) => res.push(v.to_lua(lua)?),
+            Int64(v) => res.push(v.to_lua(lua)?),
+            UInt64(v) => res.push(v.to_lua(lua)?),
+            Double(v) => res.push(v.to_lua(lua)?),
+            Str(v) => res.push(v.clone().to_lua(lua)?),
+            _ => res.push(Value::Nil)
         }
     }
-    Ok(res)
+    Ok(MultiValue::from_vec(res))
 }
 
 /// Converts an `rlua::Value` into a `dbus::MessageItem`.
-fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value) -> rlua::Result<MessageItem> {
+fn lua_value_to_dbus(lua: rlua::Context, type_: Value, value: Value) -> rlua::Result<MessageItem> {
     use dbus::arg::ArgType;
     use rlua::Value;
     let type_ = match type_ {
@@ -360,7 +363,7 @@ fn lua_value_to_dbus(lua: &Lua, type_: Value, value: Value) -> rlua::Result<Mess
     }
 }
 
-fn request_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
+fn request_name(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow();
@@ -371,7 +374,7 @@ fn request_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
     Ok(true)
 }
 
-fn release_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
+fn release_name(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow();
@@ -382,7 +385,7 @@ fn release_name(_: &Lua, (bus, name): (String, String)) -> rlua::Result<bool> {
     Ok(true)
 }
 
-fn add_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
+fn add_match(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow();
@@ -393,7 +396,7 @@ fn add_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
     Ok(())
 }
 
-fn remove_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
+fn remove_match(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
         let bus = bus.borrow();
@@ -405,8 +408,8 @@ fn remove_match(_: &Lua, (bus, name): (String, String)) -> rlua::Result<()> {
 }
 
 fn connect_signal<'lua>(
-    lua: &'lua Lua,
-    (name, func): (String, rlua::Function)
+    lua: rlua::Context<'lua>,
+    (name, func): (String, rlua::Function<'lua>)
 ) -> rlua::Result<MultiValue<'lua>> {
     let signals = lua
         .globals()
@@ -424,7 +427,7 @@ fn connect_signal<'lua>(
     }
 }
 
-fn disconnect_signal(lua: &Lua, (name, _func): (String, rlua::Function)) -> rlua::Result<()> {
+fn disconnect_signal(lua: rlua::Context, (name, _func): (String, rlua::Function)) -> rlua::Result<()> {
     let signals: Table = lua
         .globals()
         .get::<_, Table>("dbus")
@@ -435,7 +438,7 @@ fn disconnect_signal(lua: &Lua, (name, _func): (String, rlua::Function)) -> rlua
 }
 
 fn emit_signal<'lua>(
-    lua: &'lua Lua,
+    lua: rlua::Context<'lua>,
     (bus, path, interface, name, args): (String, String, String, String, MultiValue)
 ) -> rlua::Result<Value<'lua>> {
     if args.len() % 2 != 0 {
@@ -469,10 +472,10 @@ fn emit_signal<'lua>(
 
 // TODO This is the default class index/newindex, move there
 
-fn index(lua: &Lua, args: Value) -> rlua::Result<()> {
+fn index<'lua>(lua: rlua::Context<'lua>, args: Value<'lua>) -> rlua::Result<()> {
     signal::global_emit_signal(lua, ("debug::index::miss".into(), args))
 }
 
-fn newindex(lua: &Lua, args: Value) -> rlua::Result<()> {
+fn newindex<'lua>(lua: rlua::Context<'lua>, args: Value<'lua>) -> rlua::Result<()> {
     signal::global_emit_signal(lua, ("debug::newindex::miss".into(), args))
 }
