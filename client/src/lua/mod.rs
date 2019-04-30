@@ -106,11 +106,11 @@ pub fn run_awesome(lib_paths: &[&str], cmdline_path: Option<&str>) {
         info!("Loading Awesome configuration...");
         let regular_startup = lua.context(|ctx| {
             let (file_name, content) = load_config(ctx, cmdline_path).map_err(|err| {
-                warn!("Could not read init.lua {}:", err);
+                warn!("Could not read init file: {}", err);
                 SyntaxCheckError::IoError(err)
             })?;
 
-            info!("Read init.lua successfully");
+            info!("Read init file successfully");
             exec_config(ctx, &file_name, &content).map_err(|err| {
                 log_error(err.clone());
                 SyntaxCheckError::LuaError(err)
