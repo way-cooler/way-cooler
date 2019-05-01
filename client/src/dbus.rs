@@ -153,7 +153,7 @@ fn process_request(bus_type: BusType, lua: rlua::Context, msg: &Message) -> rlua
         .expect("Could not get dbus table");
     let signals = dbus_table.get(SIGNALS_NAME).expect("Could not get signals table");
     if msg.get_no_reply() {
-        signal::emit_signals(lua, signals, interface, lua_message)?;
+        signal::emit_signals(lua, signals, &interface, lua_message)?;
         return Ok(None);
     }
     if let Ok(Value::Table(sig)) = signals.get(interface) {
@@ -309,7 +309,6 @@ fn dbus_to_lua_value<'lua>(
 /// Converts an `rlua::Value` into a `dbus::MessageItem`.
 fn lua_value_to_dbus(lua: rlua::Context, type_: Value, value: Value) -> rlua::Result<MessageItem> {
     use dbus::arg::ArgType;
-    use rlua::Value;
     let type_ = match type_ {
         Value::String(s) => s.to_str()?.to_string(),
         _ => return Err(RuntimeError("D-Bus type name was not a string".into()))
@@ -422,7 +421,7 @@ fn connect_signal<'lua>(
         warn!("{}", error_msg);
         (rlua::Nil, error_msg).to_lua_multi(lua)
     } else {
-        signal::connect_signals(lua, signals, name, &[func])?;
+        signal::connect_signals(lua, signals, &name, &[func])?;
         (true.to_lua_multi(lua))
     }
 }
@@ -434,7 +433,7 @@ fn disconnect_signal(lua: rlua::Context, (name, _func): (String, rlua::Function)
         .unwrap()
         .get(SIGNALS_NAME)
         .unwrap();
-    signal::disconnect_signals(lua, signals, name)
+    signal::disconnect_signals(lua, signals, &name)
 }
 
 fn emit_signal<'lua>(

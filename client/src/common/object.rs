@@ -3,7 +3,8 @@
 use std::{cell, convert::From, marker::PhantomData};
 
 use rlua::{
-    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value
+    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, ToLuaMulti, UserData, UserDataMethods,
+    Value
 };
 
 use super::{class::Class, property::Property, signal};
@@ -46,6 +47,7 @@ impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
 }
 
 /// Construct a new object, used when using the default Objectable::new.
+#[allow(unused)]
 pub struct ObjectBuilder<'lua, S: ObjectStateType> {
     lua: rlua::Context<'lua>,
     object: Object<'lua, S>
@@ -59,12 +61,6 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
             meta.set(key, value)?;
         }
         self.object.set_metatable(meta)?;
-        Ok(self)
-    }
-
-    #[allow(dead_code)]
-    pub fn add_to_signals(self, name: String, func: Function<'lua>) -> rlua::Result<Self> {
-        signal::connect_signal(self.lua, self.object.clone(), name, &[func])?;
         Ok(self)
     }
 
@@ -170,9 +166,24 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         meta.set("__class", class)?;
         meta.set("properties", Vec::<Property>::new().to_lua(lua)?)?;
         meta.set("signals", lua.create_table()?)?;
-        meta.set("connect_signal", lua.create_function(connect_signal::<S>)?)?;
-        meta.set("disconnect_signal", lua.create_function(disconnect_signal::<S>)?)?;
-        meta.set("emit_signal", lua.create_function(emit_signal::<S>)?)?;
+        meta.set(
+            "connect_signal",
+            lua.create_function(|ctx, (obj, name, func): (_, String, _)| {
+                Self::connect_signal(ctx, &obj, name.as_ref(), func)
+            })?
+        )?;
+        meta.set(
+            "disconnect_signal",
+            lua.create_function(|ctx, (obj, name): (_, String)| {
+                Self::disconnect_signal(ctx, &obj, name.as_ref())
+            })?
+        )?;
+        meta.set(
+            "emit_signal",
+            lua.create_function(|ctx, (obj, name, args): (_, String, Value)| {
+                Self::emit_signal(ctx, &obj, name.as_ref(), args)
+            })?
+        )?;
         meta.set("__index", meta.clone())?;
         meta.set("__tostring", lua.create_function(default_tostring::<S>)?)?;
         wrapper_table.set_metatable(Some(meta));
@@ -183,6 +194,39 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
             state: PhantomData
         };
         Ok(ObjectBuilder { object, lua })
+    }
+}
+
+/// Signal methods that will be provided on the lua end
+impl<'lua, S: ObjectStateType> Object<'lua, S> {
+    pub(crate) fn connect_signal(
+        lua: rlua::Context<'lua>,
+        obj: &Object<'lua, S>,
+        name: &str,
+        func: Function<'lua>
+    ) -> rlua::Result<()> {
+        signal::connect_signals(lua, obj.signals()?, name, &[func])
+    }
+
+    pub(crate) fn disconnect_signal(
+        lua: rlua::Context<'lua>,
+        obj: &Object<'lua, S>,
+        name: &str
+    ) -> rlua::Result<()> {
+        signal::disconnect_signals(lua, obj.signals()?, name)
+    }
+
+    pub(crate) fn emit_signal<A>(
+        lua: rlua::Context<'lua>,
+        obj: &Object<'lua, S>,
+        name: &str,
+        args: A
+    ) -> rlua::Result<()>
+    where
+        A: ToLua<'lua>
+    {
+        let args = (obj.clone().to_lua(lua)?, args).to_lua_multi(lua)?;
+        signal::emit_signals(lua, obj.signals()?, name, args)
     }
 }
 
@@ -320,25 +364,4 @@ where
         return Ok(format!("{}: {:p}", name, &*obj.state()?));
     }
     Err(rlua::Error::UserDataTypeMismatch)
-}
-
-fn connect_signal<'lua, S: ObjectStateType>(
-    lua: rlua::Context<'lua>,
-    (obj, signal, func): (Object<'lua, S>, String, Function<'lua>)
-) -> rlua::Result<()> {
-    signal::connect_signal(lua, obj.into(), signal, &[func])
-}
-
-fn disconnect_signal<'lua, S: ObjectStateType>(
-    lua: rlua::Context<'lua>,
-    (obj, signal): (Object<'lua, S>, String)
-) -> rlua::Result<()> {
-    signal::disconnect_signal(lua, obj.into(), signal)
-}
-
-fn emit_signal<'lua, S: ObjectStateType>(
-    lua: rlua::Context<'lua>,
-    (obj, signal, args): (Object<'lua, S>, String, Value<'lua>)
-) -> rlua::Result<()> {
-    signal::emit_object_signal(lua, obj.into(), signal, args)
 }

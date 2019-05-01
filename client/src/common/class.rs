@@ -183,7 +183,7 @@ impl<'lua, S: ObjectStateType> Class<'lua, S> {
         ctx: rlua::Context<'lua>,
         (class, name, func): (Class<'lua, S>, String, Function<'lua>)
     ) -> rlua::Result<()> {
-        signal::connect_signals(ctx, class.signals()?, name, &[func])
+        signal::connect_signals(ctx, class.signals()?, &name, &[func])
     }
 }
 

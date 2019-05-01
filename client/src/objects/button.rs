@@ -11,8 +11,7 @@ use xkbcommon::xkb::Keysym;
 use crate::common::{
     class::{self, Class},
     object::{self, Object},
-    property::Property,
-    signal
+    property::Property
 };
 
 #[derive(Clone, Debug)]
@@ -102,7 +101,7 @@ fn set_button<'lua>(
         Integer(num) => button.set_button(num as _)?,
         _ => button.set_button(xcb_button_t::default())?
     }
-    signal::emit_object_signal(lua, button, "property::button".into(), val)?;
+    Object::emit_signal(lua, &button, "property::button", val)?;
     Ok(Nil)
 }
 
@@ -115,7 +114,7 @@ fn set_modifiers<'lua>(
     (mut button, modifiers): (Button<'lua>, Table<'lua>)
 ) -> rlua::Result<()> {
     button.set_modifiers(modifiers.clone())?;
-    signal::emit_object_signal(lua, button, "property::modifiers".into(), modifiers)?;
+    Object::emit_signal(lua, &button, "property::modifiers", modifiers)?;
     Ok(())
 }
 

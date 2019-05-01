@@ -11,8 +11,7 @@ use crate::area::{Area, Origin, Size};
 use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object},
-    property::Property,
-    signal::emit_object_signal
+    property::Property
 };
 use crate::wayland_obj::Output;
 
@@ -85,28 +84,26 @@ impl<'lua> Screen<'lua> {
 
     pub fn set_geometry(&mut self, lua: rlua::Context<'lua>, geometry: Area) -> rlua::Result<()> {
         if self.state()?.geometry != geometry {
-            let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
             old_area.set("x", geometry.origin.x)?;
             old_area.set("y", geometry.origin.y)?;
             old_area.set("width", geometry.size.width)?;
             old_area.set("height", geometry.size.height)?;
             self.state_mut()?.geometry = geometry;
-            emit_object_signal(lua, self.clone().into(), "property::geometry".into(), old_area)?;
+            Object::emit_signal(lua, self, "property::geometry", old_area)?;
         }
         Ok(())
     }
 
     pub fn set_workarea(&mut self, lua: rlua::Context<'lua>, geometry: Area) -> rlua::Result<()> {
         if self.state()?.workarea != geometry {
-            let geometry = self.state()?.geometry;
             let old_area = lua.create_table()?;
             old_area.set("x", geometry.origin.x)?;
             old_area.set("y", geometry.origin.y)?;
             old_area.set("width", geometry.size.width)?;
             old_area.set("height", geometry.size.height)?;
             self.state_mut()?.workarea = geometry;
-            emit_object_signal(lua, self.clone().into(), "property::workarea".into(), old_area)?;
+            Object::emit_signal(lua, self, "property::workarea", old_area)?;
         }
         Ok(())
     }
