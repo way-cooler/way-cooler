@@ -4,8 +4,10 @@
 
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/util/log.h>
 
 #include "cursor.h"
+#include "output.h"
 #include "seat.h"
 #include "server.h"
 #include "view.h"
@@ -14,11 +16,43 @@ static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, map);
 	view->mapped = true;
 	wc_focus_view(view);
+	// TODO FIXME This can return null (and every other place).
+	// Ask on irc how to fix this up because it's broken
+	struct wc_output* output =
+		wc_view_get_output(view->server->output_layout, view);
+	if (output != NULL) {
+		output_damage_surface(output, view->xdg_surface->surface,
+				view->x, view->y);
+	}
 }
 
 static void wc_xdg_surface_unmap(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, unmap);
 	view->mapped = false;
+	struct wc_output* output =
+		wc_view_get_output(view->server->output_layout, view);
+
+	if (output != NULL) {
+		output_damage_surface(output, view->xdg_surface->surface,
+				view->x, view->y);
+	}
+}
+
+static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
+	struct wc_view* view = wl_container_of(listener, view, commit);
+	wlr_log(WLR_ERROR, "committing %d",view->mapped);
+	if (!view->mapped) {
+		return;
+	}
+
+	// TODO Damage only what has changed
+	struct wc_output* output =
+		wc_view_get_output(view->server->output_layout, view);
+
+	if (output) {
+		output_damage_surface(output, view->xdg_surface->surface,
+				view->x, view->y);
+	}
 }
 
 static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
@@ -27,6 +61,7 @@ static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
 
 	wl_list_remove(&view->map.link);
 	wl_list_remove(&view->unmap.link);
+	wl_list_remove(&view->commit.link);
 	wl_list_remove(&view->request_move.link);
 	wl_list_remove(&view->request_resize.link);
 	wl_list_remove(&view->destroy.link);
@@ -92,6 +127,8 @@ static void wc_xdg_new_surface(struct wl_listener* listener, void* data) {
 	wl_signal_add(&xdg_surface->events.map, &view->map);
 	view->unmap.notify = wc_xdg_surface_unmap;
 	wl_signal_add(&xdg_surface->events.unmap, &view->unmap);
+	view->commit.notify = wc_xdg_surface_commit;
+	wl_signal_add(&xdg_surface->surface->events.commit, &view->commit);
 	view->destroy.notify = wc_xdg_surface_destroy;
 	wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
 

@@ -13,6 +13,8 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 
+int WC_DEBUG;
+
 enum wc_cursor_mode {
 	WC_CURSOR_PASSTHROUGH,
 	WC_CURSOR_MOVE,

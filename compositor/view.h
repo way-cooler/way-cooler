@@ -29,6 +29,7 @@ struct wc_view {
 
 	struct wl_listener map;
 	struct wl_listener unmap;
+	struct wl_listener commit;
 	struct wl_listener destroy;
 	struct wl_listener request_move;
 	struct wl_listener request_resize;
@@ -51,5 +52,11 @@ struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
 
 // Focuses on a view. Automatically un-focuses the previous view.
 void wc_focus_view(struct wc_view* view);
+
+// Get the output that the view is on.
+//
+// NULL could be returned if none of the corners or center is on an output.
+struct wc_output* wc_view_get_output(struct wlr_output_layout* layout,
+		struct wc_view* view);
 
 #endif//WC_VIEW_H

@@ -3,6 +3,8 @@
 
 #include <wayland-server.h>
 #include <wlr/types/wlr_box.h>
+#include <wlr/types/wlr_output.h>
+#include <wlr/types/wlr_output_damage.h>
 
 #include "server.h"
 
@@ -11,6 +13,7 @@ struct wc_output {
 	struct wc_server* server;
 
 	struct wlr_output* output;
+	struct wlr_output_damage* damage;
 
 	struct wlr_box usable_area;
 	struct wl_list layers[4];
@@ -26,5 +29,9 @@ void wc_init_output(struct wc_server* server);
 // If there are no outputs, NULL is returned. If there has been no activity,
 // the first output in the list is returned.
 struct wc_output* wc_get_active_output(struct wc_server* server);
+
+/// Damages the entire surface which is at the given output coordinates.
+void output_damage_surface(struct wc_output* output, struct wlr_surface* surface,
+		double ox, double oy);
 
 #endif // WC_OUTPUT_H

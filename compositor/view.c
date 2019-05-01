@@ -12,6 +12,40 @@
 #include "server.h"
 #include "xdg.h"
 
+
+struct wc_output* wc_view_get_output(struct wlr_output_layout* layout,
+		struct wc_view* view) {
+	int width, height, x, y;
+	struct wlr_output* output = NULL;
+	switch (view->surface_type) {
+	case WC_XDG:
+		x = view->xdg_surface->geometry.x;
+		y = view->xdg_surface->geometry.y;
+		height = view->xdg_surface->geometry.height;
+		width = view->xdg_surface->geometry.width;
+	}
+	// top left
+	output = wlr_output_layout_output_at(layout, x, y);
+	if (output == NULL) {
+		// bottom right
+		output = wlr_output_layout_output_at(layout, x + width, y);
+	}
+	if (output == NULL) {
+		// top right
+		output = wlr_output_layout_output_at(layout, x + width, y + height);
+	}
+	if (output == NULL) {
+		// bottom left
+		output = wlr_output_layout_output_at(layout, x, y + height);
+	}
+	if (output == NULL) {
+		// center
+		output = wlr_output_layout_output_at(layout,
+				x + (width / 2), y + (height / 2));
+	}
+	return output ? output->data : NULL;
+}
+
 struct wlr_surface* wc_view_surface(struct wc_view* view) {
 	switch (view->surface_type) {
 	case WC_XDG:
