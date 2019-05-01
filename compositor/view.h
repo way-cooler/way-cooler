@@ -3,18 +3,29 @@
 
 #include <wayland-server.h>
 #include <wlr/types/wlr_surface.h>
+#include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
 #include "server.h"
 
+enum wc_surface_type {
+	WC_XDG,
+};
+
 struct wc_view {
 	struct wl_list link;
-	struct wc_server *server;
+	struct wc_server* server;
 
-	// TODO This should be abstract over surfaces of all kinds (xwayland, layer shell)
-	struct wlr_xdg_surface *xdg_surface;
+	enum wc_surface_type surface_type;
+	union {
+		struct wlr_xdg_surface* xdg_surface;
+	};
+
 	bool mapped;
 	int x, y;
+
+	// These variables are layer surface specific
+	struct wlr_box wc_layer_geo;
 
 	struct wl_listener map;
 	struct wl_listener unmap;
@@ -24,6 +35,9 @@ struct wc_view {
 };
 
 void wc_init_views(struct wc_server* server);
+
+// Get the main surface associated with the view.
+struct wlr_surface* wc_view_surface(struct wc_view* view);
 
 // Finds the topmost (assuming server->views is top-to-bottom) view at the
 // specified output layout coordinates. If one cannot be found NULL is returned.

@@ -6,15 +6,17 @@
 #include <wayland-server.h>
 #include <wlr/backend/session.h>
 #include <wlr/backend/multi.h>
+#include <wlr/types/wlr_input_device.h>
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "wlr/types/wlr_input_device.h"
+#include "seat.h"
+
 
 static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
 	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard, key);
 	struct wc_server* server = keyboard->server;
-	struct wlr_seat* seat = server->seat;
+	struct wlr_seat* seat = server->seat->seat;
 	struct wlr_event_keyboard_key* event = data;
 
 	uint32_t keycode = event->keycode + 8;
@@ -55,8 +57,8 @@ static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
 static void wc_keyboard_on_modifiers(struct wl_listener* listener, void* data) {
 	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard,
 			modifiers);
-	wlr_seat_set_keyboard(keyboard->server->seat, keyboard->device);
-	wlr_seat_keyboard_notify_modifiers(keyboard->server->seat,
+	wlr_seat_set_keyboard(keyboard->server->seat->seat, keyboard->device);
+	wlr_seat_keyboard_notify_modifiers(keyboard->server->seat->seat,
 			&keyboard->device->keyboard->modifiers);
 }
 
@@ -69,7 +71,7 @@ static void wc_keyboard_removed(struct wl_listener* listener, void* data) {
 void wc_new_keyboard(struct wc_server* server, struct wlr_input_device* device) {
 	wlr_log(WLR_INFO, "New keyboard detected: %p", device);
 
-	wlr_seat_set_keyboard(server->seat, device);
+	wlr_seat_set_keyboard(server->seat->seat, device);
 
 	struct wc_keyboard* keyboard = calloc(1, sizeof(struct wc_keyboard));
 	keyboard->server = server;

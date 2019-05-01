@@ -6,10 +6,14 @@
 
 #include <wlr/util/log.h>
 
-#include "view.h"
+#include "output.h"
+#include "seat.h"
 #include "server.h"
+#include "view.h"
 
 static void wc_process_motion(struct wc_server* server, uint32_t time) {
+	struct wc_seat* seat = server->seat;
+	struct wc_cursor* cursor = server->cursor;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
 	struct wc_view* view = server->grabbed_view;
 	switch (server->cursor_mode) {
@@ -48,32 +52,32 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 		break;
 	}
 	case WC_CURSOR_PASSTHROUGH: {
-		struct wlr_seat* seat = server->seat;
-		struct wc_cursor* cursor = server->cursor;
 		double sx, sy;
 		struct wlr_surface* surface = NULL;
 		struct wc_view* view = wc_view_at(server,
-				cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy, &surface);
+				wlr_cursor->x, wlr_cursor->y, &sx, &sy, &surface);
 		bool cursor_image_different = !cursor->image || strcmp(cursor->image, "left_ptr") != 0;
 		if (!view && cursor_image_different) {
 			cursor->image = "left_ptr";
 			wlr_xcursor_manager_set_cursor_image(server->xcursor_mgr, "left_ptr",
 					cursor->wlr_cursor);
 		}
-		if (surface) {
-			bool focused_changed = seat->pointer_state.focused_surface != surface;
-			wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
-			if (!focused_changed) {
-				wlr_seat_pointer_notify_motion(seat, time, sx, sy);
-			}
-		} else {
-			wlr_seat_pointer_clear_focus(seat);
-		}
+		wc_seat_update_surface_focus(seat, surface, sx, sy, time);
 		break;
 	}
-	default:
-		wlr_log(WLR_ERROR, "Unhandled cursor mode %d!", server->cursor_mode);
-		abort();
+	}
+
+	struct wlr_output* active_output = wlr_output_layout_output_at(
+			server->output_layout, wlr_cursor->x, wlr_cursor->y);
+	if (active_output != NULL &&
+			server->active_output->output != active_output) {
+		struct wc_output* output_;
+		wl_list_for_each(output_, &server->outputs, link) {
+			if (output_->output == active_output) {
+				server->active_output = output_;
+				break;
+			}
+		}
 	}
 }
 
@@ -97,7 +101,7 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 	struct wc_cursor* cursor = wl_container_of(listener, cursor, button);
 	struct wc_server* server = cursor->server;
 	struct wlr_event_pointer_button* event = data;
-	wlr_seat_pointer_notify_button(server->seat,
+	wlr_seat_pointer_notify_button(server->seat->seat,
 			event->time_msec, event->button, event->state);
 
 	double sx, sy;
@@ -115,7 +119,7 @@ static void wc_cursor_axis(struct wl_listener* listener, void* data) {
 	struct wc_cursor* cursor = wl_container_of(listener, cursor, axis);
 	struct wc_server* server = cursor->server;
 	struct wlr_event_pointer_axis* event = data;
-	wlr_seat_pointer_notify_axis(server->seat,
+	wlr_seat_pointer_notify_axis(server->seat->seat,
 			event->time_msec, event->orientation, event->delta,
 			event->delta_discrete, event->source);
 }
@@ -123,7 +127,7 @@ static void wc_cursor_axis(struct wl_listener* listener, void* data) {
 static void wc_cursor_frame(struct wl_listener* listener, void* data) {
 	struct wc_cursor* cursor = wl_container_of(listener, cursor, frame);
 	struct wc_server* server = cursor->server;
-	wlr_seat_pointer_notify_frame(server->seat);
+	wlr_seat_pointer_notify_frame(server->seat->seat);
 }
 
 void wc_init_cursor(struct wc_server* server) {
