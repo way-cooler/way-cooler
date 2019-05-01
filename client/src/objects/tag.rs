@@ -107,9 +107,7 @@ fn method_setup<'lua>(
     builder: ClassBuilder<'lua, TagState>
 ) -> rlua::Result<ClassBuilder<'lua, TagState>> {
     // TODO Do properly
-    use super::dummy;
     builder
-        .method("connect_signal".into(), lua.create_function(dummy)?)?
         .method(
             "__call".into(),
             lua.create_function(|lua, args: Table| Tag::new(lua, args))?

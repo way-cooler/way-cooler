@@ -196,9 +196,7 @@ fn method_setup<'lua>(
     builder: ClassBuilder<'lua, ScreenState>
 ) -> rlua::Result<ClassBuilder<'lua, ScreenState>> {
     // TODO Do properly
-    use super::dummy;
     builder
-        .method("connect_signal".into(), lua.create_function(dummy)?)?
         .method("count".into(), lua.create_function(count)?)?
         .method("__call".into(), lua.create_function(iterate_over_screens)?)?
         .method("__index".into(), lua.create_function(index)?)

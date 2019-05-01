@@ -2,11 +2,14 @@
 
 use std::{convert::From, marker::PhantomData, sync::Arc};
 
-use rlua::{self, AnyUserData, Function, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{
+    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value
+};
 
 use super::{
     object::{self, Object, ObjectStateType},
-    property::Property
+    property::Property,
+    signal
 };
 
 pub type Checker<S> = Arc<Fn(Object<S>) -> bool + Send + Sync>;
@@ -22,6 +25,20 @@ impl<'lua, S: ObjectStateType> From<AnyUserData<'lua>> for Class<'lua, S> {
         Class {
             class,
             kind: PhantomData
+        }
+    }
+}
+
+impl<'lua, S: ObjectStateType> FromLua<'lua> for Class<'lua, S> {
+    fn from_lua(lua_value: Value<'lua>, _: rlua::Context<'lua>) -> rlua::Result<Self> {
+        if let Value::UserData(class) = lua_value {
+            Ok(Class::<'lua, S>::from(class))
+        } else {
+            Err(rlua::Error::FromLuaConversionError {
+                from: "not UserData",
+                to: "Class",
+                message: Some(format!("got: {:?}", lua_value))
+            })
         }
     }
 }
@@ -119,6 +136,11 @@ impl<'lua, S: ObjectStateType> Class<'lua, S> {
         let meta = lua.create_table()?;
         meta.set("signals", lua.create_table()?)?;
         meta.set(
+            "connect_signal",
+            lua.create_function(Self::connect_signal)?
+                .bind(user_data.clone())?
+        )?;
+        meta.set(
             "set_index_miss_handler",
             lua.create_function(set_index_miss_handler)?
                 .bind(user_data.clone())?
@@ -144,6 +166,24 @@ impl<'lua, S: ObjectStateType> Class<'lua, S> {
         self.class
             .borrow::<ClassState<S>>()
             .map(|class| class.checker.clone())
+    }
+
+    fn metatable(&self) -> rlua::Result<Table<'lua>> {
+        self.class
+            .get_user_value::<Table>()?
+            .get_metatable()
+            .ok_or_else(|| rlua::Error::RuntimeError("no metatable on screen class".to_string()))
+    }
+
+    pub fn signals(&self) -> rlua::Result<rlua::Table<'lua>> {
+        self.metatable()?.get("signals")
+    }
+
+    fn connect_signal(
+        ctx: rlua::Context<'lua>,
+        (class, name, func): (Class<'lua, S>, String, Function<'lua>)
+    ) -> rlua::Result<()> {
+        signal::connect_signals(ctx, class.signals()?, name, &[func])
     }
 }
 
