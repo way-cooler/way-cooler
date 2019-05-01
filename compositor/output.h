@@ -2,6 +2,7 @@
 #define WC_OUTPUT_H
 
 #include <wayland-server.h>
+#include <wlr/types/wlr_box.h>
 
 #include "server.h"
 
@@ -10,6 +11,9 @@ struct wc_output {
 	struct wc_server* server;
 
 	struct wlr_output* output;
+
+	struct wlr_box usable_area;
+	struct wl_list layers[4];
 
 	struct wl_listener destroy;
 	struct wl_listener frame;

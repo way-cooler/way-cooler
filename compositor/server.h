@@ -6,6 +6,7 @@
 #include <wlr/backend.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layout.h>
@@ -42,9 +43,12 @@ struct wc_server {
 	struct wl_list outputs;
 	struct wl_listener new_output;
 
+	struct wl_list views;
 	struct wlr_xdg_shell* xdg_shell;
 	struct wl_listener new_xdg_surface;
-	struct wl_list views;
+
+	struct wlr_layer_shell_v1* layer_shell;
+	struct wl_listener new_layer_surface;
 };
 
 bool init_server(struct wc_server* server);

@@ -7,17 +7,31 @@
 #include <wlr/util/log.h>
 
 #include "cursor.h"
+#include "layer_shell.h"
 #include "seat.h"
 #include "server.h"
 #include "xdg.h"
+
+struct wlr_surface* wc_view_surface(struct wc_view* view) {
+	switch (view->surface_type) {
+	case WC_XDG:
+		return view->xdg_surface->surface;
+	default:
+		return NULL;
+	}
+}
 
 static bool wc_is_view_at(struct wc_view* view, double lx, double ly,
 		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
 	double view_sx = lx - view->x;
 	double view_sy = ly - view->y;
 
-	*out_surface = wlr_xdg_surface_surface_at(
-			view->xdg_surface, view_sx, view_sy, out_sx, out_sy);
+	switch (view->surface_type) {
+	case WC_XDG:
+		*out_surface = wlr_xdg_surface_surface_at(
+				view->xdg_surface, view_sx, view_sy, out_sx, out_sy);
+		break;
+	}
 	return *out_surface != NULL;
 }
 
@@ -44,19 +58,23 @@ void wc_focus_view(struct wc_view* view) {
 	if (prev_surface == surface) {
 		return;
 	}
-	if (prev_surface) {
-		struct wlr_xdg_surface* previous = wlr_xdg_surface_from_wlr_surface(
-				seat->keyboard_state.focused_surface);
+	if (prev_surface && wlr_surface_is_xdg_surface(prev_surface)) {
+		struct wlr_xdg_surface* previous =
+			wlr_xdg_surface_from_wlr_surface(prev_surface);
 		wlr_xdg_toplevel_set_activated(previous, false);
 	}
 	/* Move the view to the front */
-	wl_list_remove(&view->link);
-	wl_list_insert(&server->views, &view->link);
-	wlr_xdg_toplevel_set_activated(view->xdg_surface, true);
+	if (view->surface_type == WC_XDG) {
+		wl_list_remove(&view->link);
+		wl_list_insert(&server->views, &view->link);
+	}
+	if (view->surface_type == WC_XDG) {
+		wlr_xdg_toplevel_set_activated(view->xdg_surface, true);
+	}
 
 	struct wlr_keyboard* keyboard = wlr_seat_get_keyboard(seat);
-	wlr_seat_keyboard_notify_enter(seat, view->xdg_surface->surface,
-			keyboard->keycodes, keyboard->num_keycodes, &keyboard->modifiers);
+	wlr_seat_keyboard_notify_enter(seat, surface, keyboard->keycodes,
+			keyboard->num_keycodes, &keyboard->modifiers);
 }
 
 void wc_init_views(struct wc_server* server) {
