@@ -51,7 +51,7 @@ struct wc_server {
 	struct wlr_layer_shell_v1* layer_shell;
 	struct wl_listener new_layer_surface;
 
-    struct wlr_screencopy_manager_v1* screencopy_manager;
+	struct wlr_screencopy_manager_v1* screencopy_manager;
 };
 
 bool init_server(struct wc_server* server);

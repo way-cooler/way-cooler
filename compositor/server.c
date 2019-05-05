@@ -37,7 +37,7 @@ bool init_server(struct wc_server* server) {
 	wlr_renderer_init_wl_display(server->renderer, server->wl_display);
 	wlr_compositor_create(server->wl_display, server->renderer);
 
-    server->screencopy_manager = wlr_screencopy_manager_v1_create(server->wl_display);
+	server->screencopy_manager = wlr_screencopy_manager_v1_create(server->wl_display);
 
 	server->cursor_mode = WC_CURSOR_PASSTHROUGH;
 
@@ -52,7 +52,7 @@ bool init_server(struct wc_server* server) {
 }
 
 void fini_server(struct wc_server* server) {
-    wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
+	wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
 	wl_display_destroy_clients(server->wl_display);
 	wl_display_destroy(server->wl_display);
 }
