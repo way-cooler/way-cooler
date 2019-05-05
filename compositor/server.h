@@ -8,6 +8,7 @@
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_xcursor_manager.h>
@@ -49,6 +50,8 @@ struct wc_server {
 
 	struct wlr_layer_shell_v1* layer_shell;
 	struct wl_listener new_layer_surface;
+
+    struct wlr_screencopy_manager_v1* screencopy_manager;
 };
 
 bool init_server(struct wc_server* server);
