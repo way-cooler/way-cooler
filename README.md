@@ -19,7 +19,7 @@ ninja -C build
 
 This will build a debug version of the compositor and the client. The compositor
 binary will be placed in `build/compositor/way-cooler` and the client will be
-placed in `build/client/debug/way-cooler/client`. To execute them both, you can
+placed in `build/client/debug/way-cooler-client`. To execute them both, you can
 pass the client program (or any program for that matter) as an argument to
 `way-cooler`:
 
@@ -30,10 +30,10 @@ pass the client program (or any program for that matter) as an argument to
 Both pieces are designed to run stand-alone, though neither is really useful
 (yet) without the other. 
 
-The compositor is a bare-bones Wayland compositor. 
+The compositor is a bare-bones Wayland compositor. It is written in C.
 
-The client is a Wayland client that implements exactly what the old AwesomeWM
-program used to do but with Wayland instead of X11.
+The client is a Wayland client, written in Rust, that implements exactly what 
+the old AwesomeWM program used to do but with Wayland instead of X11.
 
 ## Development
 
