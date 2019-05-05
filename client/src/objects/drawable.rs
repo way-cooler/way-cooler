@@ -11,8 +11,7 @@ use crate::area::{Area, Origin, Size};
 use crate::common::{
     class::{self, Class},
     object::{self, Object},
-    property::Property,
-    signal::emit_object_signal
+    property::Property
 };
 use crate::wayland_obj::{self, XdgToplevel};
 
@@ -110,7 +109,7 @@ impl<'lua> Drawable<'lua> {
                         .map_err(|_| RuntimeError(format!("Could not set surface for drawable")))?;
                 }
                 drawable.temp_file = temp_file;
-                emit_object_signal(lua, obj_clone.into(), "property::surface".into(), ())?;
+                Object::emit_signal(lua, &obj_clone, "property::surface".into(), Value::Nil)?;
             }
         }
         Ok(())

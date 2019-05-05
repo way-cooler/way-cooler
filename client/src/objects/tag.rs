@@ -8,8 +8,7 @@ use rlua::{self, FromLua, Integer, Table, UserData, UserDataMethods, Value};
 use crate::common::{
     class::{self, Class, ClassBuilder},
     object::{self, Object, ObjectBuilder},
-    property::Property,
-    signal
+    property::Property
 };
 use crate::objects::client::Client;
 
@@ -107,9 +106,7 @@ fn method_setup<'lua>(
     builder: ClassBuilder<'lua, TagState>
 ) -> rlua::Result<ClassBuilder<'lua, TagState>> {
     // TODO Do properly
-    use super::dummy;
     builder
-        .method("connect_signal".into(), lua.create_function(dummy)?)?
         .method(
             "__call".into(),
             lua.create_function(|lua, args: Table| Tag::new(lua, args))?
@@ -160,7 +157,7 @@ fn set_name<'lua>(
     (mut tag, val): (Tag<'lua>, String)
 ) -> rlua::Result<Value<'lua>> {
     tag.state_mut()?.name = Some(val.clone());
-    signal::emit_object_signal(lua, tag, "property::name".into(), ())?;
+    Object::emit_signal(lua, &tag, "property::name", Value::Nil)?;
     Ok(Value::Nil)
 }
 
@@ -179,7 +176,7 @@ fn set_selected<'lua>(lua: rlua::Context<'lua>, (mut tag, val): (Tag<'lua>, bool
         }
         tag.selected = val;
     }
-    signal::emit_object_signal(lua, tag, "property::selected".into(), ())?;
+    Object::emit_signal(lua, &tag, "property::selected", Value::Nil)?;
     Ok(())
 }
 
@@ -224,7 +221,7 @@ fn set_activated<'lua>(
         }
         set_selected(lua, (tag.clone(), false))?;
     }
-    signal::emit_object_signal(lua, tag, "property::activated".into(), ())?;
+    Object::emit_signal(lua, &tag, "property::activated", Value::Nil)?;
     Ok(Value::Nil)
 }
 

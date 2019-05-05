@@ -142,8 +142,7 @@ fn method_setup<'lua>(
     builder: ClassBuilder<'lua, DrawinState>
 ) -> rlua::Result<ClassBuilder<'lua, DrawinState>> {
     // TODO Do properly
-    use super::dummy;
-    builder.method("connect_signal".into(), lua.create_function(dummy)?)?
+    builder
            // TODO This should be adding properties, e.g like luaA_class_new
            .method("__call".into(), lua.create_function(|lua, args: Table| Drawin::new(lua, args))?)
 }

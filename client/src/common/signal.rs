@@ -4,30 +4,19 @@
 //! Signals are stored with the object in its metatable,
 //! the methods defined here are just to make it easier to use.
 
-use rlua::{self, Function, Table, ToLua, ToLuaMulti, Value};
+use rlua::{self, Function, Table, ToLuaMulti, Value};
 
-use crate::common::object::{Object, ObjectStateType};
 use crate::GLOBAL_SIGNALS;
 
 /// Connects functions to a signal. Creates a new entry in the table if it
 /// doesn't exist.
-pub fn connect_signal<'lua, S: ObjectStateType>(
-    lua: rlua::Context<'lua>,
-    obj: Object<'lua, S>,
-    name: String,
-    funcs: &[Function<'lua>]
-) -> rlua::Result<()> {
-    let signals = obj.signals()?;
-    connect_signals(lua, signals, name, funcs)
-}
-
 pub fn connect_signals<'lua>(
     lua: rlua::Context<'lua>,
     signals: Table<'lua>,
-    name: String,
+    name: &str,
     funcs: &[Function<'lua>]
 ) -> rlua::Result<()> {
-    if let Ok(Value::Table(table)) = signals.get::<_, Value>(name.as_str()) {
+    if let Ok(Value::Table(table)) = signals.get::<_, Value>(name) {
         let mut length = table.len()? + 1;
         for func in funcs {
             table.set(length, func.clone())?;
@@ -43,39 +32,15 @@ pub fn connect_signals<'lua>(
     }
 }
 
-pub fn disconnect_signal<S: ObjectStateType>(
-    lua: rlua::Context,
-    obj: Object<S>,
-    name: String
-) -> rlua::Result<()> {
-    let signals = obj.signals()?;
-    disconnect_signals(lua, signals, name)
-}
-
-pub fn disconnect_signals(_: rlua::Context, signals: Table, name: String) -> rlua::Result<()> {
+pub fn disconnect_signals(_: rlua::Context, signals: Table, name: &str) -> rlua::Result<()> {
     signals.set(name, Value::Nil)
 }
 
 /// Evaluate the functions associated with a signal.
-pub fn emit_object_signal<'lua, A, S>(
-    lua: rlua::Context<'lua>,
-    obj: Object<'lua, S>,
-    name: String,
-    args: A
-) -> rlua::Result<()>
-where
-    A: ToLuaMulti<'lua> + Clone,
-    S: ObjectStateType
-{
-    let signals = obj.signals()?;
-    let args = (obj.to_lua(lua)?, args).to_lua_multi(lua)?;
-    emit_signals(lua, signals, name, args)
-}
-
 pub fn emit_signals<'lua, A>(
     _: rlua::Context<'lua>,
     signals: Table<'lua>,
-    name: String,
+    name: &str,
     args: A
 ) -> rlua::Result<()>
 where
@@ -102,13 +67,13 @@ pub fn global_connect_signal<'lua>(
     (name, func): (String, Function<'lua>)
 ) -> rlua::Result<()> {
     let global_signals = lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
-    connect_signals(lua, global_signals, name, &[func])
+    connect_signals(lua, global_signals, &name, &[func])
 }
 
 /// Disconnect the function from the named signal in the global signal list.
 pub fn global_disconnect_signal<'lua>(lua: rlua::Context<'lua>, name: String) -> rlua::Result<()> {
     let global_signals = lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
-    disconnect_signals(lua, global_signals, name)
+    disconnect_signals(lua, global_signals, &name)
 }
 
 /// Emit the signal with the given name from the global signal list.
@@ -117,5 +82,5 @@ pub fn global_emit_signal<'lua>(
     (name, args): (String, Value<'lua>)
 ) -> rlua::Result<()> {
     let global_signals = lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
-    emit_signals(lua, global_signals, name, args)
+    emit_signals(lua, global_signals, &name, args)
 }
