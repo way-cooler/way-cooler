@@ -24,6 +24,13 @@ static void wc_xdg_surface_unmap(struct wl_listener* listener, void* data) {
 static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, destroy);
 	wl_list_remove(&view->link);
+
+	wl_list_remove(&view->map.link);
+	wl_list_remove(&view->unmap.link);
+	wl_list_remove(&view->request_move.link);
+	wl_list_remove(&view->request_resize.link);
+	wl_list_remove(&view->destroy.link);
+
 	free(view);
 }
 
