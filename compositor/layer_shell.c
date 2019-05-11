@@ -41,6 +41,12 @@ static void wc_layer_shell_unmap(struct wl_listener* listener, void* data) {
 static void wc_layer_shell_destroy(struct wl_listener* listener, void* data) {
 	struct wc_layer* layer = wl_container_of(listener, layer, destroy);
 	wl_list_remove(&layer->link);
+
+	wl_list_remove(&layer->commit.link);
+	wl_list_remove(&layer->map.link);
+	wl_list_remove(&layer->unmap.link);
+	wl_list_remove(&layer->destroy.link);
+
 	wlr_layer_surface_v1_close(layer->layer_surface);
 	free(layer);
 }

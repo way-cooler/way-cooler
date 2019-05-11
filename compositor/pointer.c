@@ -10,6 +10,10 @@
 static void wc_pointer_removed(struct wl_listener* listener, void* data) {
 	struct wc_pointer* pointer = wl_container_of(listener, pointer, destroy);
 	wl_list_remove(&pointer->link);
+
+	wl_list_remove(&pointer->destroy.link);
+
+	free(pointer);
 }
 
 void wc_new_pointer(struct wc_server* server, struct wlr_input_device* device) {

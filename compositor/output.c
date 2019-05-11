@@ -171,6 +171,10 @@ static void wc_output_destroy(struct wl_listener* listener, void* data) {
 	struct wc_output* output = wl_container_of(listener, output, destroy);
 	struct wc_server* server = output->server;
 	wl_list_remove(&output->link);
+
+	wl_list_remove(&output->frame.link);
+	wl_list_remove(&output->destroy.link);
+
 	if (server->active_output == output) {
 		server->active_output = NULL;
 		if (!wl_list_empty(&server->outputs)) {
@@ -178,6 +182,7 @@ static void wc_output_destroy(struct wl_listener* listener, void* data) {
 					server->outputs.prev, server->active_output, link);
 		}
 	}
+
 	free(output);
 }
 

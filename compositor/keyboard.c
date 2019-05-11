@@ -66,6 +66,11 @@ static void wc_keyboard_removed(struct wl_listener* listener, void* data) {
 	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard, destroy);
 	wlr_log(WLR_INFO, "Keyboard removed: %p", keyboard->device);
 	wl_list_remove(&keyboard->link);
+
+	wl_list_remove(&keyboard->key.link);
+	wl_list_remove(&keyboard->modifiers.link);
+	wl_list_remove(&keyboard->destroy.link);
+	free(keyboard);
 }
 
 void wc_new_keyboard(struct wc_server* server, struct wlr_input_device* device) {
