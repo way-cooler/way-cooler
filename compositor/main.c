@@ -46,9 +46,7 @@ int main(int argc, char* argv[]) {
 		case 'h':
 		default:
 			print_usage();
-			if (c != 'h') {
-				exit(1);
-			}
+			exit(1);
 		}
 	}
 	if (optind < argc) {
