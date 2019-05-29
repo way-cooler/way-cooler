@@ -31,7 +31,7 @@ void wc_init_output(struct wc_server* server);
 struct wc_output* wc_get_active_output(struct wc_server* server);
 
 /// Damages the entire surface which is at the given output coordinates.
-void output_damage_surface(struct wc_output* output, struct wlr_surface* surface,
-		double ox, double oy);
+void wc_output_damage_surface(struct wc_output* output,
+		struct wlr_surface* surface, double ox, double oy);
 
 #endif // WC_OUTPUT_H

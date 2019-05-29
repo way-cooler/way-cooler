@@ -23,6 +23,13 @@ struct wc_view {
 
 	bool mapped;
 	int x, y;
+	int width, height;
+
+	bool is_pending_geometry;
+	struct {
+		double x, y;
+		int width, height;
+	} pending_geometry;
 
 	// These variables are layer surface specific
 	struct wlr_box wc_layer_geo;
@@ -53,10 +60,13 @@ struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
 // Focuses on a view. Automatically un-focuses the previous view.
 void wc_focus_view(struct wc_view* view);
 
-// Get the output that the view is on.
+// Get the outputs that the view is on.
 //
-// NULL could be returned if none of the corners or center is on an output.
-struct wc_output* wc_view_get_output(struct wlr_output_layout* layout,
-		struct wc_view* view);
+// There can be up to four (one for each corner), so the out_outputs should be
+// an array of at least 4 (it will zero out the first four).
+//
+// The order is as follows (with holes being null): top left, top right, bottom left, bottom right
+void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
+		struct wlr_output* out_outputs[4]);
 
 #endif//WC_VIEW_H

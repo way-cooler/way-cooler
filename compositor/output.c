@@ -61,8 +61,8 @@ static void damage_surface_iterator(struct wlr_surface* surface,
 	}
 }
 
-void output_damage_surface(struct wc_output* output, struct wlr_surface* surface,
-		double ox, double oy) {
+void wc_output_damage_surface(struct wc_output* output,
+		struct wlr_surface* surface, double ox, double oy) {
 	struct wc_surface_damage_data damage_data = {
 		.output = output,
 		.ox = ox,
@@ -146,7 +146,7 @@ static void wc_render_view(struct wlr_surface* surface,
 	ox += view->x + sx, oy += view->y + sy;
 
 	wc_render_surface(surface, damage, output, rdata->renderer,
-			rdata->when, sx, sy, view->x, view->y);
+			rdata->when, sx, sy, ox, oy);
 }
 
 static void wc_render_layer(struct wlr_surface* surface,

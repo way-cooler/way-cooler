@@ -16,42 +16,85 @@ static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, map);
 	view->mapped = true;
 	wc_focus_view(view);
-	// TODO FIXME This can return null (and every other place).
-	// Ask on irc how to fix this up because it's broken
-	struct wc_output* output =
-		wc_view_get_output(view->server->output_layout, view);
-	if (output != NULL) {
-		output_damage_surface(output, view->xdg_surface->surface,
-				view->x, view->y);
+
+	struct wlr_output* outputs[4] = { 0 };
+	wc_view_get_outputs(view->server->output_layout, view, outputs);
+
+	for (int i = 0; i < 4; i++) {
+		struct wlr_output* output = outputs[i];
+		if (output) {
+			wc_output_damage_surface(output->data, view->xdg_surface->surface,
+					view->x - output->lx, view->y - output->ly);
+		}
 	}
 }
 
 static void wc_xdg_surface_unmap(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, unmap);
 	view->mapped = false;
-	struct wc_output* output =
-		wc_view_get_output(view->server->output_layout, view);
 
-	if (output != NULL) {
-		output_damage_surface(output, view->xdg_surface->surface,
-				view->x, view->y);
+	struct wlr_output* outputs[4] = { 0 };
+	wc_view_get_outputs(view->server->output_layout, view, outputs);
+
+	for (int i = 0; i < 4; i++) {
+		struct wlr_output* output = outputs[i];
+		if (output) {
+			wc_output_damage_surface(output->data, view->xdg_surface->surface,
+					view->x - output->lx, view->y - output->ly);
+		}
 	}
 }
 
 static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, commit);
-	wlr_log(WLR_ERROR, "committing %d",view->mapped);
 	if (!view->mapped) {
 		return;
 	}
 
-	// TODO Damage only what has changed
-	struct wc_output* output =
-		wc_view_get_output(view->server->output_layout, view);
+	struct wlr_output* outputs[4] = { 0 };
+	wc_view_get_outputs(view->server->output_layout, view, outputs);
 
-	if (output) {
-		output_damage_surface(output, view->xdg_surface->surface,
-				view->x, view->y);
+	for (int i = 0; i < 4; i++) {
+		struct wlr_output* output = outputs[i];
+		if (output) {
+			struct wlr_box surface_area = {
+				.x = view->x - output->lx,
+				.y = view->y - output->ly,
+				.width = view->width,
+				.height = view->height
+			};
+			wlr_log(WLR_DEBUG, "DAMAGING (%d, %d : %d, %d)",
+					surface_area.x, surface_area.y, surface_area.width, surface_area.height);
+			struct wc_output* wc_output = output->data;
+			wlr_output_damage_add_box(wc_output->damage, &surface_area);
+		}
+	}
+
+	if (view->is_pending_geometry) {
+		view->is_pending_geometry = false;
+		if (view->pending_geometry.x != view->x) {
+			view->x = view->pending_geometry.x;
+		}
+		if (view->pending_geometry.y != view->y) {
+			view->y = view->pending_geometry.y;
+		}
+		if (view->pending_geometry.width != view->width) {
+			view->width = view->pending_geometry.width;
+		}
+		if (view->pending_geometry.height != view->height) {
+			view->height = view->pending_geometry.height;
+		}
+	}
+
+	wc_view_get_outputs(view->server->output_layout, view, outputs);
+	// TODO Damage only what has changed
+	for (int i = 0; i < 4; i++) {
+		struct wlr_output* output = outputs[i];
+		if (output) {
+			wc_output_damage_surface(
+					output->data, view->xdg_surface->surface,
+					view->x - output->lx, view->y - output->ly);
+		}
 	}
 }
 

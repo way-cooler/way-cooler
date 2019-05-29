@@ -16,20 +16,36 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	struct wc_cursor* cursor = server->cursor;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
 	struct wc_view* view = server->grabbed_view;
-	struct wlr_output* active_output = wlr_output_layout_output_at(
-			server->output_layout, wlr_cursor->x, wlr_cursor->y);
-	if (active_output == NULL) {
-		return;
-	}
 	switch (server->cursor_mode) {
-	case WC_CURSOR_MOVE:
-		output_damage_surface(active_output->data, view->xdg_surface->surface,
-				view->x, view->y);
+	case WC_CURSOR_MOVE: {
+		struct wlr_output* outputs[4] = { 0 };
+		wc_view_get_outputs(view->server->output_layout, view, outputs);
+
+		for (int i = 0; i < 4; i++) {
+			struct wlr_output* output = outputs[i];
+			if (output) {
+				wc_output_damage_surface(
+						output->data, view->xdg_surface->surface,
+						view->x - output->lx, view->y - output->ly);
+			}
+		}
+
+		wc_view_get_outputs(view->server->output_layout, view, outputs);
 		view->x = wlr_cursor->x - server->grab_x;
 		view->y = wlr_cursor->y - server->grab_y;
-		output_damage_surface(active_output->data, view->xdg_surface->surface,
-				view->x, view->y);
+
+		for (int i = 0; i < 4; i++) {
+			struct wlr_output* output = outputs[i];
+			if (output) {
+				wc_output_damage_surface(
+						output->data, view->xdg_surface->surface,
+						view->x - output->lx, view->y - output->ly);
+			}
+		}
 		break;
+		// TODO Do we need to do a dameg calculation here?
+		// Relying on commit might leave artifacts from the previous position
+	}
 	case WC_CURSOR_RESIZE: {
 		double dx = wlr_cursor->x - server->grab_x;
 		double dy = wlr_cursor->y - server->grab_y;
@@ -55,9 +71,16 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 		} else if (server->resize_edges & WLR_EDGE_RIGHT) {
 			width += dx;
 		}
-		view->x = x;
-		view->y = y;
+
+		// TODO Check serial, if zero apply updates now.
 		wlr_xdg_toplevel_set_size(view->xdg_surface, width, height);
+
+		view->is_pending_geometry = true;
+		view->pending_geometry.x = x;
+		view->pending_geometry.y = y;
+		view->pending_geometry.width = width;
+		view->pending_geometry.height = height;
+
 		break;
 	}
 	case WC_CURSOR_PASSTHROUGH: {
@@ -76,6 +99,8 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	}
 	}
 
+	struct wlr_output* active_output = wlr_output_layout_output_at(
+			server->output_layout, wlr_cursor->x, wlr_cursor->y);
 	if (server->active_output->output != active_output) {
 		struct wc_output* output_;
 		wl_list_for_each(output_, &server->outputs, link) {

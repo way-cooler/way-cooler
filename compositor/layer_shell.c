@@ -30,10 +30,10 @@ static void wc_layer_shell_commit(struct wl_listener* listener, void* data) {
 	wc_layer_shell_arrange_layers(wlr_output->data);
 
 	if (memcmp(&old_geo, &layer->geo, sizeof(struct wlr_box)) != 0) {
-		output_damage_surface(wlr_output->data, layer_surface->surface,
+		wc_output_damage_surface(wlr_output->data, layer_surface->surface,
 				old_geo.x, old_geo.y);
 	}
-	output_damage_surface(wlr_output->data, layer_surface->surface,
+	wc_output_damage_surface(wlr_output->data, layer_surface->surface,
 			layer->geo.x, layer->geo.y);
 }
 
@@ -41,7 +41,7 @@ static void wc_layer_shell_map(struct wl_listener* listener, void* data) {
 	struct wc_layer* layer = wl_container_of(listener, layer, map);
 	struct wlr_layer_surface_v1* layer_surface = layer->layer_surface;
 	layer->mapped = true;
-	output_damage_surface(layer_surface->output->data, layer_surface->surface,
+	wc_output_damage_surface(layer_surface->output->data, layer_surface->surface,
 			layer->geo.x, layer->geo.y);
 }
 
@@ -49,7 +49,7 @@ static void wc_layer_shell_unmap(struct wl_listener* listener, void* data) {
 	struct wc_layer* layer = wl_container_of(listener, layer, unmap);
 	struct wlr_layer_surface_v1* layer_surface = layer->layer_surface;
 	layer->mapped = false;
-	output_damage_surface(layer_surface->output->data, layer_surface->surface,
+	wc_output_damage_surface(layer_surface->output->data, layer_surface->surface,
 			layer->geo.x, layer->geo.y);
 }
 
