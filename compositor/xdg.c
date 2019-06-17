@@ -10,19 +10,19 @@
 #include "server.h"
 #include "view.h"
 
-static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
-	struct wc_view* view = wl_container_of(listener, view, map);
+static void wc_xdg_surface_map(struct wl_listener *listener, void *data) {
+	struct wc_view *view = wl_container_of(listener, view, map);
 	view->mapped = true;
 	wc_focus_view(view);
 }
 
-static void wc_xdg_surface_unmap(struct wl_listener* listener, void* data) {
-	struct wc_view* view = wl_container_of(listener, view, unmap);
+static void wc_xdg_surface_unmap(struct wl_listener *listener, void *data) {
+	struct wc_view *view = wl_container_of(listener, view, unmap);
 	view->mapped = false;
 }
 
-static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
-	struct wc_view* view = wl_container_of(listener, view, destroy);
+static void wc_xdg_surface_destroy(struct wl_listener *listener, void *data) {
+	struct wc_view *view = wl_container_of(listener, view, destroy);
 	wl_list_remove(&view->link);
 
 	wl_list_remove(&view->map.link);
@@ -34,13 +34,13 @@ static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
 	free(view);
 }
 
-static void wc_xdg_toplevel_request_move(struct wl_listener* listener, void* data) {
-	struct wc_view* view = wl_container_of(listener, view, request_move);
-	struct wc_server* server = view->server;
-	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
-	struct wlr_surface* focused_surface =
+static void wc_xdg_toplevel_request_move(struct wl_listener *listener, void *data) {
+	struct wc_view *view = wl_container_of(listener, view, request_move);
+	struct wc_server *server = view->server;
+	struct wlr_cursor *wlr_cursor = server->cursor->wlr_cursor;
+	struct wlr_surface *focused_surface =
 		server->seat->seat->pointer_state.focused_surface;
-	struct wlr_surface* surface = wc_view_surface(view);
+	struct wlr_surface *surface = wc_view_surface(view);
 	if (surface != focused_surface) {
 		return;
 	}
@@ -54,14 +54,14 @@ static void wc_xdg_toplevel_request_move(struct wl_listener* listener, void* dat
 	server->grab_height = geo_box.height;
 }
 
-static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* data) {
-	struct wc_view* view = wl_container_of(listener, view, request_resize);
+static void wc_xdg_toplevel_request_resize(struct wl_listener *listener, void *data) {
+	struct wc_view *view = wl_container_of(listener, view, request_resize);
 	struct wlr_xdg_toplevel_resize_event *event = data;
-	struct wc_server* server = view->server;
-	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
-	struct wlr_surface* focused_surface =
+	struct wc_server *server = view->server;
+	struct wlr_cursor *wlr_cursor = server->cursor->wlr_cursor;
+	struct wlr_surface *focused_surface =
 		server->seat->seat->pointer_state.focused_surface;
-	struct wlr_surface* surface = wc_view_surface(view);
+	struct wlr_surface *surface = wc_view_surface(view);
 	if (surface != focused_surface) {
 		return;
 	}
@@ -76,14 +76,14 @@ static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* d
 	server->resize_edges = event->edges;
 }
 
-static void wc_xdg_new_surface(struct wl_listener* listener, void* data) {
-	struct wc_server* server = wl_container_of(listener, server, new_xdg_surface);
-	struct wlr_xdg_surface* xdg_surface = data;
+static void wc_xdg_new_surface(struct wl_listener *listener, void *data) {
+	struct wc_server *server = wl_container_of(listener, server, new_xdg_surface);
+	struct wlr_xdg_surface *xdg_surface = data;
 	if (xdg_surface->role != WLR_XDG_SURFACE_ROLE_TOPLEVEL) {
 		return;
 	}
 
-	struct wc_view* view = calloc(1, sizeof(struct wc_view));
+	struct wc_view *view = calloc(1, sizeof(struct wc_view));
 	view->server = server;
 	view->xdg_surface = xdg_surface;
 	view->surface_type = WC_XDG;
@@ -104,7 +104,7 @@ static void wc_xdg_new_surface(struct wl_listener* listener, void* data) {
 	wl_list_insert(&server->views, &view->link);
 }
 
-void wc_init_xdg(struct wc_server* server) {
+void wc_init_xdg(struct wc_server *server) {
 	server->xdg_shell = wlr_xdg_shell_create(server->wl_display);
 	server->new_xdg_surface.notify = wc_xdg_new_surface;
 	wl_signal_add(&server->xdg_shell->events.new_surface,

@@ -12,10 +12,10 @@
 #include "view.h"
 
 static void wc_process_motion(struct wc_server* server, uint32_t time) {
-	struct wc_seat* seat = server->seat;
-	struct wc_cursor* cursor = server->cursor;
-	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
-	struct wc_view* view = server->grabbed_view;
+	struct wc_seat *seat = server->seat;
+	struct wc_cursor *cursor = server->cursor;
+	struct wlr_cursor *wlr_cursor = server->cursor->wlr_cursor;
+	struct wc_view *view = server->grabbed_view;
 	switch (server->cursor_mode) {
 	case WC_CURSOR_MOVE:
 		server->grabbed_view->x = wlr_cursor->x - server->grab_x;
@@ -53,8 +53,8 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	}
 	case WC_CURSOR_PASSTHROUGH: {
 		double sx, sy;
-		struct wlr_surface* surface = NULL;
-		struct wc_view* view = wc_view_at(server,
+		struct wlr_surface *surface = NULL;
+		struct wc_view *view = wc_view_at(server,
 				wlr_cursor->x, wlr_cursor->y, &sx, &sy, &surface);
 		bool cursor_image_different = !cursor->image || strcmp(cursor->image, "left_ptr") != 0;
 		if (!view && cursor_image_different) {
@@ -67,11 +67,11 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	}
 	}
 
-	struct wlr_output* active_output = wlr_output_layout_output_at(
+	struct wlr_output *active_output = wlr_output_layout_output_at(
 			server->output_layout, wlr_cursor->x, wlr_cursor->y);
 	if (active_output != NULL &&
 			server->active_output->output != active_output) {
-		struct wc_output* output_;
+		struct wc_output *output_;
 		wl_list_for_each(output_, &server->outputs, link) {
 			if (output_->output == active_output) {
 				server->active_output = output_;
@@ -98,15 +98,15 @@ static void wc_cursor_motion_absolute(struct wl_listener* listener, void* data) 
 }
 
 static void wc_cursor_button(struct wl_listener* listener, void* data) {
-	struct wc_cursor* cursor = wl_container_of(listener, cursor, button);
-	struct wc_server* server = cursor->server;
-	struct wlr_event_pointer_button* event = data;
+	struct wc_cursor *cursor = wl_container_of(listener, cursor, button);
+	struct wc_server *server = cursor->server;
+	struct wlr_event_pointer_button *event = data;
 	wlr_seat_pointer_notify_button(server->seat->seat,
 			event->time_msec, event->button, event->state);
 
 	double sx, sy;
-	struct wlr_surface* surface = NULL;
-	struct wc_view* view = wc_view_at(server,
+	struct wlr_surface *surface = NULL;
+	struct wc_view *view = wc_view_at(server,
 			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy, &surface);
 	if (event->state == WLR_BUTTON_RELEASED) {
 		server->cursor_mode = WC_CURSOR_PASSTHROUGH;
@@ -116,22 +116,22 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 }
 
 static void wc_cursor_axis(struct wl_listener* listener, void* data) {
-	struct wc_cursor* cursor = wl_container_of(listener, cursor, axis);
-	struct wc_server* server = cursor->server;
-	struct wlr_event_pointer_axis* event = data;
+	struct wc_cursor *cursor = wl_container_of(listener, cursor, axis);
+	struct wc_server *server = cursor->server;
+	struct wlr_event_pointer_axis *event = data;
 	wlr_seat_pointer_notify_axis(server->seat->seat,
 			event->time_msec, event->orientation, event->delta,
 			event->delta_discrete, event->source);
 }
 
 static void wc_cursor_frame(struct wl_listener* listener, void* data) {
-	struct wc_cursor* cursor = wl_container_of(listener, cursor, frame);
-	struct wc_server* server = cursor->server;
+	struct wc_cursor *cursor = wl_container_of(listener, cursor, frame);
+	struct wc_server *server = cursor->server;
 	wlr_seat_pointer_notify_frame(server->seat->seat);
 }
 
 void wc_init_cursor(struct wc_server* server) {
-	struct wc_cursor* cursor = calloc(1, sizeof(struct wc_cursor));
+	struct wc_cursor *cursor = calloc(1, sizeof(struct wc_cursor));
 	server->cursor = cursor;
 	cursor->wlr_cursor = wlr_cursor_create();
 	cursor->server = server;

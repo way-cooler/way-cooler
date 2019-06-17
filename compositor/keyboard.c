@@ -14,13 +14,13 @@
 
 
 static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
-	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard, key);
-	struct wc_server* server = keyboard->server;
-	struct wlr_seat* seat = server->seat->seat;
-	struct wlr_event_keyboard_key* event = data;
+	struct wc_keyboard *keyboard = wl_container_of(listener, keyboard, key);
+	struct wc_server *server = keyboard->server;
+	struct wlr_seat *seat = server->seat->seat;
+	struct wlr_event_keyboard_key *event = data;
 
 	uint32_t keycode = event->keycode + 8;
-	const xkb_keysym_t* syms;
+	const xkb_keysym_t *syms;
 	int nsyms = xkb_state_key_get_syms(
 			keyboard->device->keyboard->xkb_state, keycode, &syms);
 
@@ -31,7 +31,7 @@ static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
 				keysym <= XKB_KEY_XF86Switch_VT_12) {
 			handled = true;
 			if (wlr_backend_is_multi(server->backend)) {
-				struct wlr_session* session =
+				struct wlr_session *session =
 					wlr_backend_get_session(server->backend);
 				if (session) {
 					xkb_keysym_t vt = keysym - XKB_KEY_XF86Switch_VT_1 + 1;
@@ -55,7 +55,7 @@ static void wc_keyboard_on_key(struct wl_listener* listener, void* data) {
 }
 
 static void wc_keyboard_on_modifiers(struct wl_listener* listener, void* data) {
-	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard,
+	struct wc_keyboard *keyboard = wl_container_of(listener, keyboard,
 			modifiers);
 	wlr_seat_set_keyboard(keyboard->server->seat->seat, keyboard->device);
 	wlr_seat_keyboard_notify_modifiers(keyboard->server->seat->seat,
@@ -63,7 +63,7 @@ static void wc_keyboard_on_modifiers(struct wl_listener* listener, void* data) {
 }
 
 static void wc_keyboard_removed(struct wl_listener* listener, void* data) {
-	struct wc_keyboard* keyboard = wl_container_of(listener, keyboard, destroy);
+	struct wc_keyboard *keyboard = wl_container_of(listener, keyboard, destroy);
 	wlr_log(WLR_INFO, "Keyboard removed: %p", keyboard->device);
 	wl_list_remove(&keyboard->link);
 
@@ -78,7 +78,7 @@ void wc_new_keyboard(struct wc_server* server, struct wlr_input_device* device) 
 
 	wlr_seat_set_keyboard(server->seat->seat, device);
 
-	struct wc_keyboard* keyboard = calloc(1, sizeof(struct wc_keyboard));
+	struct wc_keyboard *keyboard = calloc(1, sizeof(struct wc_keyboard));
 	keyboard->server = server;
 	keyboard->device = device;
 
