@@ -12,8 +12,8 @@
 #include "server.h"
 
 static void wc_new_input(struct wl_listener* listener, void* data) {
-	struct wc_server* server = wl_container_of(listener, server, new_input);
-	struct wlr_input_device* device = data;
+	struct wc_server *server = wl_container_of(listener, server, new_input);
+	struct wlr_input_device *device = data;
 	switch (device->type) {
 	case WLR_INPUT_DEVICE_KEYBOARD:
 		wc_new_keyboard(server, device);

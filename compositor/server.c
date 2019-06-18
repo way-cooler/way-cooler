@@ -21,7 +21,7 @@
 #include "seat.h"
 #include "view.h"
 
-bool init_server(struct wc_server* server) {
+bool init_server(struct wc_server *server) {
 	if (server == NULL) {
 		return false;
 	}
@@ -51,7 +51,7 @@ bool init_server(struct wc_server* server) {
 	return true;
 }
 
-void fini_server(struct wc_server* server) {
+void fini_server(struct wc_server *server) {
 	wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
 	wl_display_destroy_clients(server->wl_display);
 	wl_display_destroy(server->wl_display);

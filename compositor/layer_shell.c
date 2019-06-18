@@ -18,28 +18,28 @@ static const uint32_t LAYER_BOTH_HORIZ = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
 static const uint32_t LAYER_BOTH_VERT = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
 	| ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
 
-static void wc_layer_shell_commit(struct wl_listener* listener, void* data) {
-	struct wc_layer* layer = wl_container_of(listener, layer, commit);
-	struct wlr_layer_surface_v1* layer_surface = layer->layer_surface;
-	struct wlr_output* wlr_output = layer_surface->output;
+static void wc_layer_shell_commit(struct wl_listener *listener, void *data) {
+	struct wc_layer *layer = wl_container_of(listener, layer, commit);
+	struct wlr_layer_surface_v1 *layer_surface = layer->layer_surface;
+	struct wlr_output *wlr_output = layer_surface->output;
 	if (wlr_output == NULL) {
 		return;
 	}
 	wc_layer_shell_arrange_layers(wlr_output->data);
 }
 
-static void wc_layer_shell_map(struct wl_listener* listener, void* data) {
-	struct wc_layer* layer = wl_container_of(listener, layer, map);
+static void wc_layer_shell_map(struct wl_listener *listener, void *data) {
+	struct wc_layer *layer = wl_container_of(listener, layer, map);
 	layer->mapped = true;
 }
 
-static void wc_layer_shell_unmap(struct wl_listener* listener, void* data) {
-	struct wc_layer* layer = wl_container_of(listener, layer, unmap);
+static void wc_layer_shell_unmap(struct wl_listener *listener, void *data) {
+	struct wc_layer *layer = wl_container_of(listener, layer, unmap);
 	layer->mapped = false;
 }
 
-static void wc_layer_shell_destroy(struct wl_listener* listener, void* data) {
-	struct wc_layer* layer = wl_container_of(listener, layer, destroy);
+static void wc_layer_shell_destroy(struct wl_listener *listener, void *data) {
+	struct wc_layer *layer = wl_container_of(listener, layer, destroy);
 	wl_list_remove(&layer->link);
 
 	wl_list_remove(&layer->commit.link);
@@ -51,13 +51,13 @@ static void wc_layer_shell_destroy(struct wl_listener* listener, void* data) {
 	free(layer);
 }
 
-static void wc_arrange_layer(struct wc_output* output,
-		struct wc_seat* seat, struct wl_list* layers,
-		struct wlr_box* usable_area, bool exclusive) {
+static void wc_arrange_layer(struct wc_output *output,
+		struct wc_seat *seat, struct wl_list *layers,
+		struct wlr_box *usable_area, bool exclusive) {
 	struct wlr_box full_area = { 0 };
 	wlr_output_effective_resolution(output->output,
 			&full_area.width, &full_area.height);
-	struct wc_layer* wc_layer;
+	struct wc_layer *wc_layer;
 	wl_list_for_each_reverse(wc_layer, layers, link) {
 		struct wlr_layer_surface_v1* layer = wc_layer->layer_surface;
 		struct wlr_layer_surface_v1_state* state = &layer->current;
@@ -133,10 +133,10 @@ static void wc_arrange_layer(struct wc_output* output,
 	}
 }
 
-void wc_layer_shell_arrange_layers(struct wc_output* output) {
+void wc_layer_shell_arrange_layers(struct wc_output *output) {
 	struct wlr_box usable_area = { 0 };
-	struct wc_server* server = output->server;
-	struct wc_seat* seat = server->seat;
+	struct wc_server *server = output->server;
+	struct wc_seat *seat = server->seat;
 	wlr_output_effective_resolution(output->output,
 			&usable_area.width, &usable_area.height);
 	wc_arrange_layer(output, seat,
@@ -173,8 +173,8 @@ void wc_layer_shell_arrange_layers(struct wc_output* output) {
 		ZWLR_LAYER_SHELL_V1_LAYER_TOP,
 	};
 	size_t nlayers = sizeof(layers_above_shell) / sizeof(layers_above_shell[0]);
-	struct wc_layer* layer = NULL;
-	struct wc_layer* topmost = NULL;
+	struct wc_layer *layer = NULL;
+	struct wc_layer *topmost = NULL;
 	for (size_t i = 0; i < nlayers; i++) {
 		wl_list_for_each_reverse(layer,
 				&output->layers[layers_above_shell[i]], link) {
@@ -192,10 +192,10 @@ void wc_layer_shell_arrange_layers(struct wc_output* output) {
 }
 
 static void wc_layer_shell_new_surface(
-		struct wl_listener* listener, void* data) {
-	struct wc_server* server = wl_container_of(listener, server, new_layer_surface);
-	struct wlr_layer_surface_v1* layer_surface = data;
-	struct wc_output* active_output = wc_get_active_output(server);
+		struct wl_listener *listener, void *data) {
+	struct wc_server *server = wl_container_of(listener, server, new_layer_surface);
+	struct wlr_layer_surface_v1 *layer_surface = data;
+	struct wc_output *active_output = wc_get_active_output(server);
 	if (active_output == NULL) {
 		wlr_layer_surface_v1_close(layer_surface);
 		return;
@@ -205,9 +205,9 @@ static void wc_layer_shell_new_surface(
 		// If client did not request an output, give them the focused one.
 		layer_surface->output = active_output->output;
 	}
-	struct wc_output* output = layer_surface->output->data;
+	struct wc_output *output = layer_surface->output->data;
 
-	struct wc_layer* layer = calloc(1, sizeof(struct wc_layer));
+	struct wc_layer *layer = calloc(1, sizeof(struct wc_layer));
 	layer->server = server;
 	layer->layer_surface = layer_surface;
 
@@ -234,7 +234,7 @@ static void wc_layer_shell_new_surface(
 	layer_surface->current = old_state;
 }
 
-void wc_init_layers(struct wc_server* server) {
+void wc_init_layers(struct wc_server *server) {
 	server->layer_shell = wlr_layer_shell_v1_create(server->wl_display);
 
 	server->new_layer_surface.notify = wc_layer_shell_new_surface;
