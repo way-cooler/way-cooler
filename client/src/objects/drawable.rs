@@ -175,7 +175,6 @@ fn get_data(surface: &mut ImageSurface) -> &[u8] {
     // NOTE This is safe to do because there's one thread.
     //
     // We know Lua is not modifying it because it's not running.
-    use cairo_sys;
     use std::slice;
     unsafe {
         let len = surface.get_stride() as usize * surface.get_height() as usize;
