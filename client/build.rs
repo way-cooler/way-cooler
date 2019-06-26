@@ -69,5 +69,7 @@ fn build_wayland_glib_interface() {
 
     builder
         .file("src/wayland_glib_interface.c")
+        .flag("-lwayland-client")
         .compile("wayland_glib_interface");
+    println!("cargo:rustc-flags=-l wayland-client");
 }
