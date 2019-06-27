@@ -1,6 +1,7 @@
 #include "xdg.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
@@ -70,8 +71,10 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 		}
 	}
 
-	if (view->is_pending_geometry) {
-		view->is_pending_geometry = false;
+	struct wlr_xdg_surface* surface = view->xdg_surface;
+	uint32_t pending_serial =
+		view->pending_serial;
+	if (pending_serial != 0 && pending_serial >+ surface->configure_serial) {
 		if (view->pending_geometry.x != view->x) {
 			view->x = view->pending_geometry.x;
 		}
@@ -84,6 +87,7 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 		if (view->pending_geometry.height != view->height) {
 			view->height = view->pending_geometry.height;
 		}
+		view->pending_serial = 0;
 	}
 
 	wc_view_get_outputs(view->server->output_layout, view, outputs);

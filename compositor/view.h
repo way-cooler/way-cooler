@@ -1,6 +1,8 @@
 #ifndef WC_VIEW_H
 #define WC_VIEW_H
 
+#include <stdint.h>
+
 #include <wayland-server.h>
 #include <wlr/types/wlr_surface.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
@@ -25,7 +27,7 @@ struct wc_view {
 	int x, y;
 	int width, height;
 
-	bool is_pending_geometry;
+	uint32_t pending_serial;
 	struct {
 		double x, y;
 		int width, height;

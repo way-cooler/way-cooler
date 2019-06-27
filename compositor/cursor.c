@@ -72,14 +72,14 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 			width += dx;
 		}
 
-		// TODO Check serial, if zero apply updates now.
-		wlr_xdg_toplevel_set_size(view->xdg_surface, width, height);
-
-		view->is_pending_geometry = true;
 		view->pending_geometry.x = x;
 		view->pending_geometry.y = y;
 		view->pending_geometry.width = width;
 		view->pending_geometry.height = height;
+
+		// TODO Handle it being zero, in which case resize immediately
+		view->pending_serial =
+			wlr_xdg_toplevel_set_size(view->xdg_surface, width, height);
 
 		break;
 	}
