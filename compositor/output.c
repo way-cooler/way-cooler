@@ -59,6 +59,7 @@ static void damage_surface_iterator(struct wlr_surface* surface,
 		wlr_log(WLR_DEBUG, "New damage whole => x: %d, y: %d, width: %d, height: %d",
 				surface_area.x, surface_area.y, surface_area.width, surface_area.height);
 	}
+	wlr_output_schedule_frame(output->output);
 }
 
 void wc_output_damage_surface(struct wc_output* output,

@@ -5,7 +5,9 @@
 #include <wayland-server.h>
 #include <wlr/types/wlr_surface.h>
 #include <wlr/util/log.h>
+#include <wlr/types/wlr_output_damage.h>
 
+#include "output.h"
 #include "cursor.h"
 #include "layer_shell.h"
 #include "seat.h"
@@ -59,6 +61,19 @@ static bool wc_is_view_at(struct wc_view* view, double lx, double ly,
 		break;
 	}
 	return *out_surface != NULL;
+}
+
+void wc_view_damage_whole(struct wc_view* view) {
+	struct wlr_output* outputs[4] = { 0 };
+	wc_view_get_outputs(view->server->output_layout, view, outputs);
+
+	for (int i = 0; i < 4; i++) {
+		struct wlr_output* output = outputs[i];
+		if (output) {
+			wc_output_damage_surface(output->data, view->xdg_surface->surface,
+					view->x - output->lx, view->y - output->ly);
+		}
+	}
 }
 
 struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,

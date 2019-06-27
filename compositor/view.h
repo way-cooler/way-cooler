@@ -46,6 +46,9 @@ struct wc_view {
 
 void wc_init_views(struct wc_server* server);
 
+/// Damage the whole view, based on its current geometry.
+void wc_view_damage_whole(struct wc_view* view);
+
 // Get the main surface associated with the view.
 struct wlr_surface* wc_view_surface(struct wc_view* view);
 
