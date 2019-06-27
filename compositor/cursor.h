@@ -27,7 +27,8 @@ struct wc_cursor {
 	struct {
 		struct wc_view* view;
 		double original_x, original_y;
-		int original_width, original_height;
+		double original_view_x, original_view_y;
+		int original_view_width, original_view_height;
 		uint32_t resize_edges;
 	} grabbed;
 

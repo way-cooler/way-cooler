@@ -31,10 +31,10 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 		double dy = wlr_cursor->y - cursor->grabbed.original_y;
 		double x = view->x;
 		double y = view->y;
-		int width = cursor->grabbed.original_width;
-		int height = cursor->grabbed.original_height;
+		int width = cursor->grabbed.original_view_width;
+		int height = cursor->grabbed.original_view_height;
 		if (cursor->grabbed.resize_edges & WLR_EDGE_TOP) {
-			y = cursor->grabbed.original_y + dy;
+			y = cursor->grabbed.original_view_y + dy;
 			height -= dy;
 			if (height < 1) {
 				y += height;
@@ -43,7 +43,7 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 			height += dy;
 		}
 		if (cursor->grabbed.resize_edges & WLR_EDGE_LEFT) {
-			x = cursor->grabbed.original_x + dx;
+			x = cursor->grabbed.original_view_x + dx;
 			width -= dx;
 			if (width < 1) {
 				x += width;

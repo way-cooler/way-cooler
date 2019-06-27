@@ -99,8 +99,10 @@ static void wc_xdg_toplevel_request_move(struct wl_listener* listener, void* dat
 	cursor->grabbed.view = view;
 	cursor->grabbed.original_x = wlr_cursor->x - view->x;
 	cursor->grabbed.original_y = wlr_cursor->y - view->y;
-	cursor->grabbed.original_width = geo_box.width;
-	cursor->grabbed.original_height = geo_box.height;
+	cursor->grabbed.original_view_x = view->x;
+	cursor->grabbed.original_view_y = view->y;
+	cursor->grabbed.original_view_width = geo_box.width;
+	cursor->grabbed.original_view_height = geo_box.height;
 }
 
 static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* data) {
@@ -124,8 +126,10 @@ static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* d
 	cursor->grabbed.view = view;
 	cursor->grabbed.original_x = wlr_cursor->x;
 	cursor->grabbed.original_y = wlr_cursor->y;
-	cursor->grabbed.original_width = geo_box.width;
-	cursor->grabbed.original_height = geo_box.height;
+	cursor->grabbed.original_view_x = view->x;
+	cursor->grabbed.original_view_y = view->y;
+	cursor->grabbed.original_view_width = geo_box.width;
+	cursor->grabbed.original_view_height = geo_box.height;
 	cursor->grabbed.resize_edges = event->edges;
 }
 
