@@ -18,32 +18,14 @@ static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	view->mapped = true;
 	wc_focus_view(view);
 
-	struct wlr_output* outputs[4] = { 0 };
-	wc_view_get_outputs(view->server->output_layout, view, outputs);
-
-	for (int i = 0; i < 4; i++) {
-		struct wlr_output* output = outputs[i];
-		if (output) {
-			wc_output_damage_surface(output->data, view->xdg_surface->surface,
-					view->x - output->lx, view->y - output->ly);
-		}
-	}
+	wc_view_damage_whole(view);
 }
 
 static void wc_xdg_surface_unmap(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, unmap);
 	view->mapped = false;
 
-	struct wlr_output* outputs[4] = { 0 };
-	wc_view_get_outputs(view->server->output_layout, view, outputs);
-
-	for (int i = 0; i < 4; i++) {
-		struct wlr_output* output = outputs[i];
-		if (output) {
-			wc_output_damage_surface(output->data, view->xdg_surface->surface,
-					view->x - output->lx, view->y - output->ly);
-		}
-	}
+	wc_view_damage_whole(view);
 }
 
 static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {

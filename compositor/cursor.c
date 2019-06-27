@@ -18,33 +18,13 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	struct wc_view* view = server->grabbed_view;
 	switch (server->cursor_mode) {
 	case WC_CURSOR_MOVE: {
-		struct wlr_output* outputs[4] = { 0 };
-		wc_view_get_outputs(view->server->output_layout, view, outputs);
+		wc_view_damage_whole(view);
 
-		for (int i = 0; i < 4; i++) {
-			struct wlr_output* output = outputs[i];
-			if (output) {
-				wc_output_damage_surface(
-						output->data, view->xdg_surface->surface,
-						view->x - output->lx, view->y - output->ly);
-			}
-		}
-
-		wc_view_get_outputs(view->server->output_layout, view, outputs);
 		view->x = wlr_cursor->x - server->grab_x;
 		view->y = wlr_cursor->y - server->grab_y;
 
-		for (int i = 0; i < 4; i++) {
-			struct wlr_output* output = outputs[i];
-			if (output) {
-				wc_output_damage_surface(
-						output->data, view->xdg_surface->surface,
-						view->x - output->lx, view->y - output->ly);
-			}
-		}
+		wc_view_damage_whole(view);
 		break;
-		// TODO Do we need to do a dameg calculation here?
-		// Relying on commit might leave artifacts from the previous position
 	}
 	case WC_CURSOR_RESIZE: {
 		double dx = wlr_cursor->x - server->grab_x;

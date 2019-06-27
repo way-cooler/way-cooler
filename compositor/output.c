@@ -41,18 +41,26 @@ struct wc_layer_render_data {
 struct wc_surface_damage_data {
 	struct wc_output* output;
 	double ox, oy;
-
+	double width, height;
 };
 
 static void damage_surface_iterator(struct wlr_surface* surface,
 		int sx, int sy, void* data_) {
 	struct wc_surface_damage_data* data = data_;
 	struct wc_output* output = data->output;
+	double width = data->width;
+	double height = data->height;
+	if (width == 0) {
+		width = surface->current.width;
+	}
+	if (height == 0) {
+		height = surface->current.height;
+	}
 	struct wlr_box surface_area = {
 		.x = data->ox + sx,
 		.y = data->oy + sy,
-		.width = surface->current.width,
-		.height = surface->current.height
+		.width = width,
+		.height = height
 	};
 	wlr_output_damage_add_box(output->damage, &surface_area);
 	if (WC_DEBUG) {
@@ -63,11 +71,14 @@ static void damage_surface_iterator(struct wlr_surface* surface,
 }
 
 void wc_output_damage_surface(struct wc_output* output,
-		struct wlr_surface* surface, double ox, double oy) {
+		struct wlr_surface* surface, double ox, double oy,
+		double width, double height) {
 	struct wc_surface_damage_data damage_data = {
 		.output = output,
 		.ox = ox,
-		.oy = oy
+		.oy = oy,
+		.width = width,
+		.height = height
 	};
 	wlr_surface_for_each_surface(surface, damage_surface_iterator, &damage_data);
 }
