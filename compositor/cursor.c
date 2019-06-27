@@ -15,40 +15,40 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	struct wc_seat* seat = server->seat;
 	struct wc_cursor* cursor = server->cursor;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
-	struct wc_view* view = server->grabbed_view;
-	switch (server->cursor_mode) {
+	struct wc_view* view = cursor->grabbed.view;
+	switch (cursor->cursor_mode) {
 	case WC_CURSOR_MOVE: {
 		wc_view_damage_whole(view);
 
-		view->x = wlr_cursor->x - server->grab_x;
-		view->y = wlr_cursor->y - server->grab_y;
+		view->x = wlr_cursor->x - cursor->grabbed.original_x;
+		view->y = wlr_cursor->y - cursor->grabbed.original_y;
 
 		wc_view_damage_whole(view);
 		break;
 	}
 	case WC_CURSOR_RESIZE: {
-		double dx = wlr_cursor->x - server->grab_x;
-		double dy = wlr_cursor->y - server->grab_y;
+		double dx = wlr_cursor->x - cursor->grabbed.original_x;
+		double dy = wlr_cursor->y - cursor->grabbed.original_y;
 		double x = view->x;
 		double y = view->y;
-		int width = server->grab_width;
-		int height = server->grab_height;
-		if (server->resize_edges & WLR_EDGE_TOP) {
-			y = server->grab_y + dy;
+		int width = cursor->grabbed.original_width;
+		int height = cursor->grabbed.original_height;
+		if (cursor->grabbed.resize_edges & WLR_EDGE_TOP) {
+			y = cursor->grabbed.original_y + dy;
 			height -= dy;
 			if (height < 1) {
 				y += height;
 			}
-		} else if (server->resize_edges & WLR_EDGE_BOTTOM) {
+		} else if (cursor->grabbed.resize_edges & WLR_EDGE_BOTTOM) {
 			height += dy;
 		}
-		if (server->resize_edges & WLR_EDGE_LEFT) {
-			x = server->grab_x + dx;
+		if (cursor->grabbed.resize_edges & WLR_EDGE_LEFT) {
+			x = cursor->grabbed.original_x + dx;
 			width -= dx;
 			if (width < 1) {
 				x += width;
 			}
-		} else if (server->resize_edges & WLR_EDGE_RIGHT) {
+		} else if (cursor->grabbed.resize_edges & WLR_EDGE_RIGHT) {
 			width += dx;
 		}
 
@@ -120,7 +120,7 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wc_view_at(server,
 			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy, &surface);
 	if (event->state == WLR_BUTTON_RELEASED) {
-		server->cursor_mode = WC_CURSOR_PASSTHROUGH;
+		cursor->cursor_mode = WC_CURSOR_PASSTHROUGH;
 	} else if (view) {
 		wc_focus_view(view);
 	}

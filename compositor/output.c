@@ -50,10 +50,10 @@ static void damage_surface_iterator(struct wlr_surface* surface,
 	struct wc_output* output = data->output;
 	double width = data->width;
 	double height = data->height;
-	if (width == 0) {
+	if (surface->current.width > width) {
 		width = surface->current.width;
 	}
-	if (height == 0) {
+	if (surface->current.height > height) {
 		height = surface->current.height;
 	}
 	struct wlr_box surface_area = {
