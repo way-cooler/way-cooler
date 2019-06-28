@@ -60,7 +60,9 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 			view->y = view->pending_geometry.y +
 				view->pending_geometry.height - size.height;
 		}
-		view->pending_serial = 0;
+		if (pending_serial == surface->configure_serial) {
+			view->pending_serial = 0;
+		}
 	}
 
 	wc_view_damage_whole(view);
