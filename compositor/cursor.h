@@ -2,6 +2,7 @@
 #define WC_CURSOR_H
 
 #include <wayland-server.h>
+#include <wlr/types/wlr_box.h>
 #include <wlr/types/wlr_cursor.h>
 
 enum wc_cursor_mode {
@@ -26,9 +27,9 @@ struct wc_cursor {
 	 */
 	struct {
 		struct wc_view* view;
-		double original_x, original_y;
-		double original_view_x, original_view_y;
-		int original_view_width, original_view_height;
+		// Original coordinates of where the cursor was.
+		int original_x, original_y;
+		struct wlr_box original_view_geo;
 		uint32_t resize_edges;
 	} grabbed;
 

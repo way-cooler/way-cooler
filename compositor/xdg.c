@@ -21,10 +21,7 @@ static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	struct wlr_xdg_surface* surface = view->xdg_surface;
 	struct wlr_box box = {0};
 	wlr_xdg_surface_get_geometry(surface, &box);
-	view->x = box.x;
-	view->y = box.y;
-	view->width = box.width;
-	view->height = box.height;
+	memcpy(&view->geo, &box, sizeof(struct wlr_box));
 
 	wc_view_damage_whole(view);
 }
@@ -50,20 +47,20 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 	struct wlr_box size = {0};
 	wlr_xdg_surface_get_geometry(surface, &size);
 
-	view->width = surface->surface->current.width;
-	view->height = surface->surface->current.height;
+	view->geo.width = surface->surface->current.width;
+	view->geo.height = surface->surface->current.height;
 
 	wc_view_damage_whole(view);
 
 	uint32_t pending_serial =
 		view->pending_serial;
 	if (pending_serial > 0 && pending_serial >= surface->configure_serial) {
-		if (view->pending_geometry.x != view->x) {
-			view->x = view->pending_geometry.x +
+		if (view->pending_geometry.x != view->geo.x) {
+			view->geo.x = view->pending_geometry.x +
 				view->pending_geometry.width - size.width;
 		}
-		if (view->pending_geometry.y != view->y) {
-			view->y = view->pending_geometry.y +
+		if (view->pending_geometry.y != view->geo.y) {
+			view->geo.y = view->pending_geometry.y +
 				view->pending_geometry.height - size.height;
 		}
 
@@ -106,12 +103,13 @@ static void wc_xdg_toplevel_request_move(struct wl_listener* listener, void* dat
 
 	cursor->cursor_mode = WC_CURSOR_MOVE;
 	cursor->grabbed.view = view;
-	cursor->grabbed.original_x = wlr_cursor->x - view->x;
-	cursor->grabbed.original_y = wlr_cursor->y - view->y;
-	cursor->grabbed.original_view_x = view->x;
-	cursor->grabbed.original_view_y = view->y;
-	cursor->grabbed.original_view_width = geo_box.width;
-	cursor->grabbed.original_view_height = geo_box.height;
+	cursor->grabbed.original_x = wlr_cursor->x - view->geo.x;
+	cursor->grabbed.original_y = wlr_cursor->y - view->geo.y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo_box.width;
+	cursor->grabbed.original_view_geo.height = geo_box.height;
 }
 
 static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* data) {
@@ -135,10 +133,12 @@ static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* d
 	cursor->grabbed.view = view;
 	cursor->grabbed.original_x = wlr_cursor->x;
 	cursor->grabbed.original_y = wlr_cursor->y;
-	cursor->grabbed.original_view_x = view->x;
-	cursor->grabbed.original_view_y = view->y;
-	cursor->grabbed.original_view_width = geo_box.width;
-	cursor->grabbed.original_view_height = geo_box.height;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo_box.width;
+	cursor->grabbed.original_view_geo.height = geo_box.height;
+
 	cursor->grabbed.resize_edges = event->edges;
 }
 

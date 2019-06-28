@@ -124,7 +124,8 @@ static void wc_render_view(struct wlr_surface* surface,
 	double ox = 0, oy = 0;
 	wlr_output_layout_output_coords(
 			view->server->output_layout, output, &ox, &oy);
-	ox += view->x + sx, oy += view->y + sy;
+	ox += view->geo.x + sx;
+	oy += view->geo.y + sy;
 
 	wc_render_surface(surface, damage, output, rdata->renderer,
 			rdata->when, sx, sy, ox, oy);

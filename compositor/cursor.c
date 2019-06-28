@@ -20,46 +20,46 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	case WC_CURSOR_MOVE: {
 		wc_view_damage_whole(view);
 
-		view->x = wlr_cursor->x - cursor->grabbed.original_x;
-		view->y = wlr_cursor->y - cursor->grabbed.original_y;
+		view->geo.x = wlr_cursor->x - cursor->grabbed.original_x;
+		view->geo.y = wlr_cursor->y - cursor->grabbed.original_y;
 
 		wc_view_damage_whole(view);
 		break;
 	}
 	case WC_CURSOR_RESIZE: {
-		double dx = wlr_cursor->x - cursor->grabbed.original_x;
-		double dy = wlr_cursor->y - cursor->grabbed.original_y;
-		double x = view->x;
-		double y = view->y;
-		int width = cursor->grabbed.original_view_width;
-		int height = cursor->grabbed.original_view_height;
+		int dx = wlr_cursor->x - cursor->grabbed.original_x;
+		int dy = wlr_cursor->y - cursor->grabbed.original_y;
+		struct wlr_box new_geo = {
+			.x = view->geo.x,
+			.y = view->geo.y,
+			.width = cursor->grabbed.original_view_geo.width,
+			.height = cursor->grabbed.original_view_geo.height
+		};
 		if (cursor->grabbed.resize_edges & WLR_EDGE_TOP) {
-			y = cursor->grabbed.original_view_y + dy;
-			height -= dy;
-			if (height < 1) {
-				y += height;
+			new_geo.y = cursor->grabbed.original_view_geo.y + dy;
+			new_geo.height -= dy;
+			if (new_geo.height < 1) {
+				new_geo.y += new_geo.height;
 			}
 		} else if (cursor->grabbed.resize_edges & WLR_EDGE_BOTTOM) {
-			height += dy;
+			new_geo.height += dy;
 		}
 		if (cursor->grabbed.resize_edges & WLR_EDGE_LEFT) {
-			x = cursor->grabbed.original_view_x + dx;
-			width -= dx;
-			if (width < 1) {
-				x += width;
+			new_geo.x = cursor->grabbed.original_view_geo.x + dx;
+			new_geo.width -= dx;
+			if (new_geo.width < 1) {
+				new_geo.x += new_geo.width;
 			}
 		} else if (cursor->grabbed.resize_edges & WLR_EDGE_RIGHT) {
-			width += dx;
+			new_geo.width += dx;
 		}
 
-		view->pending_geometry.x = x;
-		view->pending_geometry.y = y;
-		view->pending_geometry.width = width;
-		view->pending_geometry.height = height;
+		memcpy(&view->pending_geometry, &new_geo, sizeof(struct wlr_box));
 
 		// TODO Handle it being zero, in which case resize immediately
 		view->pending_serial =
-			wlr_xdg_toplevel_set_size(view->xdg_surface, width, height);
+			wlr_xdg_toplevel_set_size(view->xdg_surface,
+					new_geo.width, new_geo.height);
 
 		break;
 	}

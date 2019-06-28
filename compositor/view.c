@@ -17,8 +17,8 @@
 
 static bool wc_is_view_at(struct wc_view* view, double lx, double ly,
 		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
-	double view_sx = lx - view->x;
-	double view_sy = ly - view->y;
+	int view_sx = lx - view->geo.x;
+	int view_sy = ly - view->geo.y;
 
 	switch (view->surface_type) {
 	case WC_XDG:
@@ -31,27 +31,24 @@ static bool wc_is_view_at(struct wc_view* view, double lx, double ly,
 
 void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
 		struct wlr_output** out_outputs) {
-	int width, height, x, y;
+	struct wlr_box geo = {0};
 	switch (view->surface_type) {
 	case WC_XDG:
-		x = view->x;
-		y = view->y;
-		height = view->height;
-		width = view->width;
+		memcpy(&geo, &view->geo, sizeof(struct wlr_box));
 	}
 	int next_index = 0;
 	// top left
 	out_outputs[next_index++] =
-		wlr_output_layout_output_at(layout, x, y);
+		wlr_output_layout_output_at(layout, geo.x, geo.y);
 	// top right
 	out_outputs[next_index++] =
-		wlr_output_layout_output_at(layout, x + width, y);
+		wlr_output_layout_output_at(layout, geo.x + geo.width, geo.y);
 	// bottom left
 	out_outputs[next_index++] =
-		wlr_output_layout_output_at(layout, x, y + height);
+		wlr_output_layout_output_at(layout, geo.x, geo.y + geo.height);
 	// bottom right
 	out_outputs[next_index++] =
-		wlr_output_layout_output_at(layout, x + width, y + height);
+		wlr_output_layout_output_at(layout, geo.x + geo.width, geo.y + geo.height);
 }
 
 struct wlr_surface* wc_view_surface(struct wc_view* view) {
@@ -72,8 +69,8 @@ void wc_view_damage_whole(struct wc_view* view) {
 		struct wlr_output* output = outputs[i];
 		if (output) {
 			wc_output_damage_surface(output->data, view->xdg_surface->surface,
-					view->x - output->lx, view->y - output->ly,
-					view->width, view->height);
+					view->geo.x - output->lx, view->geo.y - output->ly,
+					view->geo.width, view->geo.height);
 		}
 	}
 }
