@@ -76,6 +76,8 @@ void wc_focus_view(struct wc_view* view);
 // an array of at least 4 (it will zero out the first four).
 //
 // The order is as follows (with holes being null): top left, top right, bottom left, bottom right
+//
+// Each output is guaranteed to be unique in the array.
 void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
 		struct wlr_output* out_outputs[4]);
 

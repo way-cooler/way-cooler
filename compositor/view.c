@@ -36,7 +36,8 @@ void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
 	case WC_XDG:
 		memcpy(&geo, &view->geo, sizeof(struct wlr_box));
 	}
-	int next_index = 0;
+
+	size_t next_index = 0;
 	// top left
 	out_outputs[next_index++] =
 		wlr_output_layout_output_at(layout, geo.x, geo.y);
@@ -49,6 +50,14 @@ void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
 	// bottom right
 	out_outputs[next_index++] =
 		wlr_output_layout_output_at(layout, geo.x + geo.width, geo.y + geo.height);
+
+	for (size_t i = 1; i < 4; i++) {
+		for (size_t j = 0; j < i; j++) {
+			if (out_outputs[i] == out_outputs[j]) {
+				out_outputs[i] = NULL;
+			}
+		}
+	}
 }
 
 struct wlr_surface* wc_view_surface(struct wc_view* view) {
