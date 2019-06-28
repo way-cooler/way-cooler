@@ -7,6 +7,7 @@
 #include <wordexp.h>
 #include <unistd.h>
 
+#include <wlr/types/wlr_data_device.h>
 #include <wlr/backend.h>
 #include <wlr/util/log.h>
 
@@ -78,6 +79,8 @@ int main(int argc, char* argv[]) {
 			execl("/bin/sh", "/bin/sh", "-c", startup_cmd, (void*)NULL);
 		}
 	}
+
+	wlr_data_device_manager_create(server.wl_display);
 
 	wl_display_run(server.wl_display);
 	fini_server(&server);
