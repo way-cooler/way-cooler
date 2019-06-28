@@ -22,8 +22,8 @@ void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
 	case WC_XDG:
 		x = view->x;
 		y = view->y;
-		height = view->xdg_surface->geometry.height;
-		width = view->xdg_surface->geometry.width;
+		height = view->height;
+		width = view->width;
 	}
 	int next_index = 0;
 	// top left
