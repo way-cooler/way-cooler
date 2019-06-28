@@ -63,9 +63,9 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 		if (pending_serial == surface->configure_serial) {
 			view->pending_serial = 0;
 		}
-	}
 
-	wc_view_damage_whole(view);
+		wc_view_damage_whole(view);
+	}
 }
 
 static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
