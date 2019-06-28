@@ -52,6 +52,9 @@ struct wc_view {
 
 void wc_init_views(struct wc_server* server);
 
+/// Add the calculated damage to all the surfaces that make up this view.
+void wc_view_damage(struct wc_view* view, pixman_region32_t* damage);
+
 /// Damage the whole view, based on its current geometry.
 void wc_view_damage_whole(struct wc_view* view);
 

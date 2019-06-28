@@ -39,18 +39,25 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 		return;
 	}
 
-	// TODO Only damage what's changed from the surface,
-	// then move this down into the pending if block below
-	wc_view_damage_whole(view);
-
 	struct wlr_xdg_surface* surface = view->xdg_surface;
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	wlr_surface_get_effective_damage(surface->surface, &damage);
+	wc_view_damage(view, &damage);
+
 	struct wlr_box size = {0};
 	wlr_xdg_surface_get_geometry(surface, &size);
 
-	view->geo.width = surface->surface->current.width;
-	view->geo.height = surface->surface->current.height;
+	bool size_changed =
+		view->geo.width != surface->surface->current.width ||
+		view->geo.height != surface->surface->current.height;
 
-	wc_view_damage_whole(view);
+	if (size_changed) {
+		wc_view_damage_whole(view);
+		view->geo.width = surface->surface->current.width;
+		view->geo.height = surface->surface->current.height;
+		wc_view_damage_whole(view);
+	}
 
 	uint32_t pending_serial =
 		view->pending_serial;
@@ -71,6 +78,7 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 			view->is_pending_serial = false;
 		}
 	}
+	pixman_region32_fini(&damage);
 }
 
 static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {

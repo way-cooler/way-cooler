@@ -40,23 +40,25 @@ struct wc_layer_render_data {
 /* Used when calculating the damage of a surface */
 struct wc_surface_damage_data {
 	struct wc_output* output;
-	int ox, oy;
-	int width, height;
+	pixman_region32_t* surface_damage;
+	// The full size of the surface, used if the surface_damage is NULL
+	struct wlr_box surface_output_geo;
 };
 
 static void damage_surface_iterator(struct wlr_surface* surface,
 		int sx, int sy, void* data_) {
-	struct wc_surface_damage_data* data = data_;
-	struct wc_output* output = data->output;
-	double width = data->width;
-	double height = data->height;
-	struct wlr_box surface_area = {
-		.x = data->ox + sx,
-		.y = data->oy + sy,
-		.width = width,
-		.height = height
-	};
-	wlr_output_damage_add_box(output->damage, &surface_area);
+	struct wc_surface_damage_data* damage_data = data_;
+
+	struct wlr_box surface_area = damage_data->surface_output_geo;
+	surface_area.x += sx;
+	surface_area.y += sy;
+
+	struct wc_output* output = damage_data->output;
+	if (damage_data->surface_damage == NULL) {
+		wlr_output_damage_add_box(output->damage, &surface_area);
+	} else {
+		wlr_output_damage_add(output->damage, damage_data->surface_damage);
+	}
 	wlr_output_schedule_frame(output->output);
 }
 
@@ -334,14 +336,12 @@ struct wc_output* wc_get_active_output(struct wc_server* server) {
 }
 
 void wc_output_damage_surface(struct wc_output* output,
-		struct wlr_surface* surface, int ox, int oy,
-		int width, int height) {
+		struct wlr_surface* surface, pixman_region32_t* surface_damage,
+		struct wlr_box surface_output_geo) {
 	struct wc_surface_damage_data damage_data = {
 		.output = output,
-		.ox = ox,
-		.oy = oy,
-		.width = width,
-		.height = height
+		.surface_output_geo = surface_output_geo,
+		.surface_damage = surface_damage
 	};
 	wlr_surface_for_each_surface(surface, damage_surface_iterator, &damage_data);
 }
