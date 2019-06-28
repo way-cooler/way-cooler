@@ -72,7 +72,7 @@ void wc_view_damage_whole(struct wc_view* view) {
 		if (output) {
 			wc_output_damage_surface(output->data, view->xdg_surface->surface,
 					view->x - output->lx, view->y - output->ly,
-					view->width + 100, view->height);
+					view->width, view->height);
 		}
 	}
 }

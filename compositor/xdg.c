@@ -50,8 +50,8 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 	struct wlr_box size = {0};
 	wlr_xdg_surface_get_geometry(surface, &size);
 
-	view->width = size.width;
-	view->height = size.height;
+	view->width = surface->surface->current.width;
+	view->height = surface->surface->current.height;
 
 	wc_view_damage_whole(view);
 
