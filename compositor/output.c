@@ -57,24 +57,7 @@ static void damage_surface_iterator(struct wlr_surface* surface,
 		.height = height
 	};
 	wlr_output_damage_add_box(output->damage, &surface_area);
-	if (WC_DEBUG) {
-		wlr_log(WLR_DEBUG, "New damage whole => x: %d, y: %d, width: %d, height: %d",
-				surface_area.x, surface_area.y, surface_area.width, surface_area.height);
-	}
 	wlr_output_schedule_frame(output->output);
-}
-
-void wc_output_damage_surface(struct wc_output* output,
-		struct wlr_surface* surface, int ox, int oy,
-		int width, int height) {
-	struct wc_surface_damage_data damage_data = {
-		.output = output,
-		.ox = ox,
-		.oy = oy,
-		.width = width,
-		.height = height
-	};
-	wlr_surface_for_each_surface(surface, damage_surface_iterator, &damage_data);
 }
 
 static void scissor_output(struct wlr_output* wlr_output,
@@ -114,10 +97,6 @@ static void wc_render_surface(struct wlr_surface* surface,
 		.width = surface->current.width * output->scale,
 		.height = surface->current.height * output->scale,
 	};
-	if (WC_DEBUG) {
-		wlr_log(WLR_DEBUG, "wc_render_surface box: x: %d, y: %d, width: %d, height: %d",
-				box.x, box.y, box.width, box.height);
-	}
 	float matrix[9];
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(surface->current.transform);
@@ -129,10 +108,6 @@ static void wc_render_surface(struct wlr_surface* surface,
 		pixman_region32_rectangles(damage, &nrects);
 	for (int i = 0; i < nrects; i++) {
 		scissor_output(output, &rects[i]);
-		if (WC_DEBUG) {
-			wlr_log(WLR_DEBUG, "wc_render_surface Damage x: %d, y: %d, x2: %d, y2: %d",
-					rects[i].x1, rects[i].y1, rects[i].x2, rects[i].y2);
-		}
 		wlr_render_texture_with_matrix(renderer, texture, matrix, 1);
 	}
 
@@ -229,10 +204,6 @@ static void wc_output_frame(struct wl_listener* listener, void* data) {
 	pixman_box32_t* rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; i++) {
 		scissor_output(output->output, &rects[i]);
-		if (WC_DEBUG) {
-			wlr_log(WLR_DEBUG, "Background damage x: %d, y: %d, x2: %d, y2: %d",
-					rects[i].x1, rects[i].y1, rects[i].x2, rects[i].y2);
-		}
 		wlr_renderer_clear(renderer, background_color);
 	}
 
@@ -361,9 +332,23 @@ struct wc_output* wc_get_active_output(struct wc_server* server) {
 	return output;
 }
 
+void wc_output_damage_surface(struct wc_output* output,
+		struct wlr_surface* surface, int ox, int oy,
+		int width, int height) {
+	struct wc_surface_damage_data damage_data = {
+		.output = output,
+		.ox = ox,
+		.oy = oy,
+		.width = width,
+		.height = height
+	};
+	wlr_surface_for_each_surface(surface, damage_surface_iterator, &damage_data);
+}
+
 void wc_init_output(struct wc_server* server) {
 	server->output_layout = wlr_output_layout_create();
 	wl_list_init(&server->outputs);
 	server->new_output.notify = wc_new_output;
 	wl_signal_add(&server->backend->events.new_output, &server->new_output);
 }
+

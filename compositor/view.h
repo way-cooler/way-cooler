@@ -24,17 +24,22 @@ struct wc_view {
 	};
 
 	bool mapped;
+
+	// Current coordinates of the view.
 	int x, y;
+	// NOTE These may not reflect what the client currently thinks, but
+	// this is only temporary - when you change these you _must_ notify the
+	// client of its new size.
 	int width, height;
 
+	// Serial for a pending move / resize.
 	uint32_t pending_serial;
 	struct {
 		int x, y;
+		// NOTE Do not use the width and height for damage calculation,
+		// use the surface's wlr_surface.current field.
 		int width, height;
 	} pending_geometry;
-
-	// These variables are layer surface specific
-	struct wlr_box wc_layer_geo;
 
 	struct wl_listener map;
 	struct wl_listener unmap;

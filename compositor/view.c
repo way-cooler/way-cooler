@@ -15,6 +15,20 @@
 #include "xdg.h"
 
 
+static bool wc_is_view_at(struct wc_view* view, double lx, double ly,
+		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
+	double view_sx = lx - view->x;
+	double view_sy = ly - view->y;
+
+	switch (view->surface_type) {
+	case WC_XDG:
+		*out_surface = wlr_xdg_surface_surface_at(
+				view->xdg_surface, view_sx, view_sy, out_sx, out_sy);
+		break;
+	}
+	return *out_surface != NULL;
+}
+
 void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
 		struct wlr_output** out_outputs) {
 	int width, height, x, y;
@@ -31,13 +45,13 @@ void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
 		wlr_output_layout_output_at(layout, x, y);
 	// top right
 	out_outputs[next_index++] =
-		wlr_output_layout_output_at(layout, x + width, y + height);
+		wlr_output_layout_output_at(layout, x + width, y);
 	// bottom left
 	out_outputs[next_index++] =
 		wlr_output_layout_output_at(layout, x, y + height);
 	// bottom right
 	out_outputs[next_index++] =
-		wlr_output_layout_output_at(layout, x + width, y);
+		wlr_output_layout_output_at(layout, x + width, y + height);
 }
 
 struct wlr_surface* wc_view_surface(struct wc_view* view) {
@@ -49,19 +63,6 @@ struct wlr_surface* wc_view_surface(struct wc_view* view) {
 	}
 }
 
-static bool wc_is_view_at(struct wc_view* view, double lx, double ly,
-		double* out_sx, double* out_sy, struct wlr_surface** out_surface) {
-	double view_sx = lx - view->x;
-	double view_sy = ly - view->y;
-
-	switch (view->surface_type) {
-	case WC_XDG:
-		*out_surface = wlr_xdg_surface_surface_at(
-				view->xdg_surface, view_sx, view_sy, out_sx, out_sy);
-		break;
-	}
-	return *out_surface != NULL;
-}
 
 void wc_view_damage_whole(struct wc_view* view) {
 	struct wlr_output* outputs[4] = { 0 };
