@@ -18,6 +18,14 @@ static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	view->mapped = true;
 	wc_focus_view(view);
 
+	struct wlr_xdg_surface* surface = view->xdg_surface;
+	struct wlr_box box = {0};
+	wlr_xdg_surface_get_geometry(surface, &box);
+	view->x = box.x;
+	view->y = box.y;
+	view->width = box.width;
+	view->height = box.height;
+
 	wc_view_damage_whole(view);
 }
 
