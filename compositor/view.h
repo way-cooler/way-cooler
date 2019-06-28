@@ -29,7 +29,7 @@ struct wc_view {
 
 	uint32_t pending_serial;
 	struct {
-		double x, y;
+		int x, y;
 		int width, height;
 	} pending_geometry;
 

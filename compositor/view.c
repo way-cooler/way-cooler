@@ -71,7 +71,8 @@ void wc_view_damage_whole(struct wc_view* view) {
 		struct wlr_output* output = outputs[i];
 		if (output) {
 			wc_output_damage_surface(output->data, view->xdg_surface->surface,
-					view->x - output->lx, view->y - output->ly, view->width, view->height);
+					view->x - output->lx, view->y - output->ly,
+					view->width + 100, view->height);
 		}
 	}
 }

@@ -40,8 +40,8 @@ struct wc_layer_render_data {
 /* Used when calculating the damage of a surface */
 struct wc_surface_damage_data {
 	struct wc_output* output;
-	double ox, oy;
-	double width, height;
+	int ox, oy;
+	int width, height;
 };
 
 static void damage_surface_iterator(struct wlr_surface* surface,
@@ -50,12 +50,6 @@ static void damage_surface_iterator(struct wlr_surface* surface,
 	struct wc_output* output = data->output;
 	double width = data->width;
 	double height = data->height;
-	if (surface->current.width > width) {
-		width = surface->current.width;
-	}
-	if (surface->current.height > height) {
-		height = surface->current.height;
-	}
 	struct wlr_box surface_area = {
 		.x = data->ox + sx,
 		.y = data->oy + sy,
@@ -71,8 +65,8 @@ static void damage_surface_iterator(struct wlr_surface* surface,
 }
 
 void wc_output_damage_surface(struct wc_output* output,
-		struct wlr_surface* surface, double ox, double oy,
-		double width, double height) {
+		struct wlr_surface* surface, int ox, int oy,
+		int width, int height) {
 	struct wc_surface_damage_data damage_data = {
 		.output = output,
 		.ox = ox,
@@ -109,7 +103,7 @@ static void scissor_output(struct wlr_output* wlr_output,
 static void wc_render_surface(struct wlr_surface* surface,
 		pixman_region32_t* damage, struct wlr_output* output,
 		struct wlr_renderer* renderer, struct timespec* when,
-		int sx, int sy, double ox, double oy) {
+		int sx, int sy, int ox, int oy) {
 	struct wlr_texture* texture = wlr_surface_get_texture(surface);
 	if (texture == NULL) {
 		return;

@@ -50,16 +50,14 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 	struct wlr_box size = {0};
 	wlr_xdg_surface_get_geometry(surface, &size);
 
+	view->width = size.width;
+	view->height = size.height;
+
+	wc_view_damage_whole(view);
+
 	uint32_t pending_serial =
 		view->pending_serial;
-	if (pending_serial != 0 && pending_serial >= surface->configure_serial) {
-		if (view->pending_geometry.width != view->width) {
-			view->width = view->pending_geometry.width;
-		}
-		if (view->pending_geometry.height != view->height) {
-			view->height = view->pending_geometry.height;
-		}
-		wc_view_damage_whole(view);
+	if (pending_serial > 0 && pending_serial >= surface->configure_serial) {
 		if (view->pending_geometry.x != view->x) {
 			view->x = view->pending_geometry.x +
 				view->pending_geometry.width - size.width;
@@ -68,11 +66,12 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 			view->y = view->pending_geometry.y +
 				view->pending_geometry.height - size.height;
 		}
+
+		wc_view_damage_whole(view);
+
 		if (pending_serial == surface->configure_serial) {
 			view->pending_serial = 0;
 		}
-
-		wc_view_damage_whole(view);
 	}
 }
 
