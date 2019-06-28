@@ -68,6 +68,7 @@ static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
 
 		if (pending_serial == surface->configure_serial) {
 			view->pending_serial = 0;
+			view->is_pending_serial = false;
 		}
 	}
 }

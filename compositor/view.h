@@ -36,6 +36,7 @@ struct wc_view {
 
 	// Serial for a pending move / resize.
 	uint32_t pending_serial;
+	bool is_pending_serial;
 	/* NOTE Do not use the width and height for damage calculation,
 	 * use the surface's wlr_surface.current field.
 	 */

@@ -56,10 +56,10 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 
 		memcpy(&view->pending_geometry, &new_geo, sizeof(struct wlr_box));
 
-		// TODO Handle it being zero, in which case resize immediately
 		view->pending_serial =
 			wlr_xdg_toplevel_set_size(view->xdg_surface,
 					new_geo.width, new_geo.height);
+		view->is_pending_serial = true;
 
 		break;
 	}
