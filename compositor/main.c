@@ -1,43 +1,42 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <getopt.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <wordexp.h>
 #include <unistd.h>
+#include <wordexp.h>
 
-#include <wlr/types/wlr_data_device.h>
 #include <wlr/backend.h>
+#include <wlr/types/wlr_data_device.h>
 #include <wlr/util/log.h>
 
 #include "server.h"
 
-const char* WC_HELP_MESSAGE =
-	"Usage: %s [OPTION] startup_command\n"
-	"\n"
-	"  -c <command>           Execute the command after startup.\n"
-	"  -h                     Show help message and quit.\n"
-	"  -d                     Turn on debugging"
-	"\n";
+const char *WC_HELP_MESSAGE =
+		"Usage: %s [OPTION] startup_command\n"
+		"\n"
+		"  -c <command>           Execute the command after startup.\n"
+		"  -h                     Show help message and quit.\n"
+		"  -d                     Turn on debugging"
+		"\n";
 
-const char* WC_GETOPT_OPTIONS =
+const char *WC_GETOPT_OPTIONS =
 #ifdef __GNUC__
-"+"
+		"+"
 #endif
-"hc:d";
+		"hc:d";
 
-const char* WC_BINARY_PATH = NULL;
-
+const char *WC_BINARY_PATH = NULL;
 
 void print_usage(void) {
 	printf(WC_HELP_MESSAGE, WC_BINARY_PATH);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 	WC_BINARY_PATH = argv[0];
 	wlr_log_init(WLR_DEBUG, NULL);
-	char* startup_cmd = NULL;
+	char *startup_cmd = NULL;
 
 	int c;
 	while ((c = getopt(argc, argv, WC_GETOPT_OPTIONS)) != -1) {
@@ -76,7 +75,7 @@ int main(int argc, char* argv[]) {
 	if (startup_cmd) {
 		wlr_log(WLR_INFO, "Executing \"%s\"", startup_cmd);
 		if (fork() == 0) {
-			execl("/bin/sh", "/bin/sh", "-c", startup_cmd, (void*)NULL);
+			execl("/bin/sh", "/bin/sh", "-c", startup_cmd, (void *)NULL);
 		}
 	}
 

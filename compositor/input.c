@@ -11,9 +11,9 @@
 #include "seat.h"
 #include "server.h"
 
-static void wc_new_input(struct wl_listener* listener, void* data) {
-	struct wc_server* server = wl_container_of(listener, server, new_input);
-	struct wlr_input_device* device = data;
+static void wc_new_input(struct wl_listener *listener, void *data) {
+	struct wc_server *server = wl_container_of(listener, server, new_input);
+	struct wlr_input_device *device = data;
 	switch (device->type) {
 	case WLR_INPUT_DEVICE_KEYBOARD:
 		wc_new_keyboard(server, device);
@@ -32,7 +32,7 @@ static void wc_new_input(struct wl_listener* listener, void* data) {
 	wlr_seat_set_capabilities(server->seat->seat, caps);
 }
 
-void wc_init_inputs(struct wc_server* server) {
+void wc_init_inputs(struct wc_server *server) {
 	server->new_input.notify = wc_new_input;
 	wl_signal_add(&server->backend->events.new_input, &server->new_input);
 

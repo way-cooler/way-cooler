@@ -3,6 +3,6 @@
 
 #include "server.h"
 
-void wc_init_xdg(struct wc_server* server);
+void wc_init_xdg(struct wc_server *server);
 
-#endif//XDG_H
+#endif  // XDG_H

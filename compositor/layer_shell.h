@@ -7,9 +7,9 @@
 
 struct wc_layer {
 	struct wl_list link;
-	struct wc_server* server;
+	struct wc_server *server;
 
-	struct wlr_layer_surface_v1* layer_surface;
+	struct wlr_layer_surface_v1 *layer_surface;
 	struct wlr_box geo;
 	bool mapped;
 
@@ -19,9 +19,9 @@ struct wc_layer {
 	struct wl_listener destroy;
 };
 
-void wc_init_layers(struct wc_server* server);
+void wc_init_layers(struct wc_server *server);
 
 // Arrange the layer shells on this output.
-void wc_layer_shell_arrange_layers(struct wc_output* output);
+void wc_layer_shell_arrange_layers(struct wc_output *output);
 
-#endif//LAYER_SHELL_H
+#endif  // LAYER_SHELL_H

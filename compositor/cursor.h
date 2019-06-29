@@ -12,10 +12,10 @@ enum wc_cursor_mode {
 };
 
 struct wc_cursor {
-	struct wc_server* server;
-	struct wlr_cursor* wlr_cursor;
+	struct wc_server *server;
+	struct wlr_cursor *wlr_cursor;
 
-	char* image;
+	char *image;
 
 	enum wc_cursor_mode cursor_mode;
 	/*
@@ -26,7 +26,7 @@ struct wc_cursor {
 	 * depending on mode, these may or may not be valid
 	 */
 	struct {
-		struct wc_view* view;
+		struct wc_view *view;
 		// Original coordinates of where the cursor was.
 		int original_x, original_y;
 		struct wlr_box original_view_geo;
@@ -40,6 +40,6 @@ struct wc_cursor {
 	struct wl_listener frame;
 };
 
-void wc_init_cursor(struct wc_server* server);
+void wc_init_cursor(struct wc_server *server);
 
-#endif//WC_CURSOR_H
+#endif  // WC_CURSOR_H
