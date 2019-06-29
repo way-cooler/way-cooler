@@ -32,10 +32,17 @@ static void wc_new_input(struct wl_listener *listener, void *data) {
 	wlr_seat_set_capabilities(server->seat->seat, caps);
 }
 
-void wc_init_inputs(struct wc_server *server) {
+void wc_inputs_init(struct wc_server *server) {
 	server->new_input.notify = wc_new_input;
 	wl_signal_add(&server->backend->events.new_input, &server->new_input);
 
-	wc_init_keyboards(server);
-	wc_init_pointers(server);
+	wc_keyboards_init(server);
+	wc_pointers_init(server);
+}
+
+void wc_inputs_fini(struct wc_server *server) {
+	wl_list_remove(&server->new_input.link);
+
+	wc_keyboards_fini(server);
+	wc_pointers_fini(server);
 }

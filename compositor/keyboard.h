@@ -17,6 +17,9 @@ struct wc_keyboard {
 };
 
 void wc_new_keyboard(struct wc_server *server, struct wlr_input_device *device);
-void wc_init_keyboards(struct wc_server *server);
+
+void wc_keyboards_init(struct wc_server *server);
+
+void wc_keyboards_fini(struct wc_server *server);
 
 #endif  // WC_KEYBOARD_H

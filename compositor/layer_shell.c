@@ -76,7 +76,7 @@ static void wc_layer_shell_unmap(struct wl_listener *listener, void *data) {
 	pixman_region32_fini(&damage);
 }
 
-static void wc_layer_shell_destroy(struct wl_listener *listener, void *data) {
+void wc_layer_shell_destroy(struct wl_listener *listener, void *data) {
 	struct wc_layer *layer = wl_container_of(listener, layer, destroy);
 	wl_list_remove(&layer->link);
 
@@ -186,7 +186,6 @@ void wc_layer_shell_arrange_layers(struct wc_output *output) {
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND], &usable_area,
 			true);
 
-	memcpy(&output->usable_area, &usable_area, sizeof(struct wlr_box));
 	// TODO Arrange maximized views once we have those
 
 	wc_arrange_layer(output, seat,
@@ -269,10 +268,17 @@ static void wc_layer_shell_new_surface(
 	layer_surface->current = old_state;
 }
 
-void wc_init_layers(struct wc_server *server) {
+void wc_layers_init(struct wc_server *server) {
 	server->layer_shell = wlr_layer_shell_v1_create(server->wl_display);
 
 	server->new_layer_surface.notify = wc_layer_shell_new_surface;
 	wl_signal_add(&server->layer_shell->events.new_surface,
 			&server->new_layer_surface);
+}
+
+void wc_layers_fini(struct wc_server *server) {
+	wlr_layer_shell_v1_destroy(server->layer_shell);
+	server->layer_shell = NULL;
+
+	wl_list_remove(&server->new_layer_surface.link);
 }

@@ -41,7 +41,7 @@ void wc_seat_set_focus_layer(
 	// TODO
 }
 
-void wc_init_seat(struct wc_server *server) {
+void wc_seat_init(struct wc_server *server) {
 	struct wc_seat *seat = calloc(1, sizeof(struct wc_seat));
 	seat->server = server;
 	seat->seat = wlr_seat_create(server->wl_display, "seat0");
@@ -51,4 +51,14 @@ void wc_init_seat(struct wc_server *server) {
 			&seat->seat->events.request_set_cursor, &seat->request_set_cursor);
 
 	server->seat = seat;
+}
+
+void wc_seat_fini(struct wc_server *server) {
+	struct wc_seat *seat = server->seat;
+
+	wlr_seat_destroy(seat->seat);
+	wl_list_remove(&seat->request_set_cursor.link);
+
+	free(seat);
+	server->seat = NULL;
 }

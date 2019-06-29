@@ -40,6 +40,8 @@ struct wc_cursor {
 	struct wl_listener frame;
 };
 
-void wc_init_cursor(struct wc_server *server);
+void wc_cursor_init(struct wc_server *server);
+
+void wc_cursor_fini(struct wc_server *server);
 
 #endif  // WC_CURSOR_H

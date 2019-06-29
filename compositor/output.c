@@ -274,6 +274,14 @@ static void wc_output_destroy(struct wl_listener *listener, void *data) {
 		}
 	}
 
+	for (size_t i = 0; i < 4; i++) {
+		struct wc_layer *layer;
+		struct wc_layer *temp;
+		wl_list_for_each_safe(layer, temp, &output->layers[i], link) {
+			wc_layer_shell_destroy(&layer->destroy, NULL);
+		}
+	}
+
 	free(output);
 }
 
@@ -337,9 +345,23 @@ void wc_output_damage_surface(struct wc_output *output,
 			surface, damage_surface_iterator, &damage_data);
 }
 
-void wc_init_output(struct wc_server *server) {
+void wc_output_init(struct wc_server *server) {
 	server->output_layout = wlr_output_layout_create();
+
 	wl_list_init(&server->outputs);
 	server->new_output.notify = wc_new_output;
+
 	wl_signal_add(&server->backend->events.new_output, &server->new_output);
+}
+
+void wc_output_fini(struct wc_server *server) {
+	wlr_output_layout_destroy(server->output_layout);
+
+	struct wc_output *output;
+	struct wc_output *temp;
+	wl_list_for_each_safe(output, temp, &server->outputs, link) {
+		wc_output_destroy(&output->destroy, NULL);
+	}
+
+	wl_list_remove(&server->new_output.link);
 }

@@ -104,6 +104,14 @@ void wc_new_keyboard(
 	wl_list_insert(&server->keyboards, &keyboard->link);
 }
 
-void wc_init_keyboards(struct wc_server *server) {
+void wc_keyboards_init(struct wc_server *server) {
 	wl_list_init(&server->keyboards);
+}
+
+void wc_keyboards_fini(struct wc_server *server) {
+	struct wc_keyboard *keyboard;
+	struct wc_keyboard *temp;
+	wl_list_for_each_safe(keyboard, temp, &server->keyboards, link) {
+		wc_keyboard_removed(&keyboard->destroy, NULL);
+	}
 }

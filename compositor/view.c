@@ -148,7 +148,20 @@ void wc_focus_view(struct wc_view *view) {
 			keyboard->num_keycodes, &keyboard->modifiers);
 }
 
-void wc_init_views(struct wc_server *server) {
+void wc_views_init(struct wc_server *server) {
 	wl_list_init(&server->views);
-	wc_init_xdg(server);
+	wc_xdg_init(server);
+}
+
+void wc_views_fini(struct wc_server *server) {
+	struct wc_view *view;
+	struct wc_view *temp;
+	wl_list_for_each_safe(view, temp, &server->views, link) {
+		switch (view->surface_type) {
+		case WC_XDG:
+			wc_xdg_surface_destroy(&view->destroy, NULL);
+		}
+	}
+
+	wc_xdg_fini(server);
 }

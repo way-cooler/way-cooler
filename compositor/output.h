@@ -15,14 +15,15 @@ struct wc_output {
 	struct wlr_output *output;
 	struct wlr_output_damage *damage;
 
-	struct wlr_box usable_area;
 	struct wl_list layers[4];
 
 	struct wl_listener destroy;
 	struct wl_listener frame;
 };
 
-void wc_init_output(struct wc_server *server);
+void wc_output_init(struct wc_server *server);
+
+void wc_output_fini(struct wc_server *server);
 
 // Gets the output that was last active (e.g. last had user activity).
 //

@@ -19,7 +19,11 @@ struct wc_layer {
 	struct wl_listener destroy;
 };
 
-void wc_init_layers(struct wc_server *server);
+void wc_layers_init(struct wc_server *server);
+
+void wc_layers_fini(struct wc_server *server);
+
+void wc_layer_shell_destroy(struct wl_listener *listener, void *data);
 
 // Arrange the layer shells on this output.
 void wc_layer_shell_arrange_layers(struct wc_output *output);

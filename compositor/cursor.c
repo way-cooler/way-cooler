@@ -141,7 +141,7 @@ static void wc_cursor_frame(struct wl_listener *listener, void *data) {
 	wlr_seat_pointer_notify_frame(server->seat->seat);
 }
 
-void wc_init_cursor(struct wc_server *server) {
+void wc_cursor_init(struct wc_server *server) {
 	struct wc_cursor *cursor = calloc(1, sizeof(struct wc_cursor));
 	server->cursor = cursor;
 	cursor->wlr_cursor = wlr_cursor_create();
@@ -162,4 +162,19 @@ void wc_init_cursor(struct wc_server *server) {
 
 	server->xcursor_mgr = wlr_xcursor_manager_create(NULL, 24);
 	wlr_xcursor_manager_load(server->xcursor_mgr, 1);
+}
+
+void wc_cursor_fini(struct wc_server *server) {
+	struct wc_cursor *cursor = server->cursor;
+	wlr_cursor_destroy(cursor->wlr_cursor);
+	cursor->wlr_cursor = NULL;
+
+	wl_list_remove(&cursor->motion.link);
+	wl_list_remove(&cursor->motion_absolute.link);
+	wl_list_remove(&cursor->button.link);
+	wl_list_remove(&cursor->axis.link);
+	wl_list_remove(&cursor->frame.link);
+
+	free(server->cursor);
+	server->cursor = NULL;
 }

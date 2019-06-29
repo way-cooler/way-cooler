@@ -79,7 +79,7 @@ static void wc_xdg_surface_commit(struct wl_listener *listener, void *data) {
 	pixman_region32_fini(&damage);
 }
 
-static void wc_xdg_surface_destroy(struct wl_listener *listener, void *data) {
+void wc_xdg_surface_destroy(struct wl_listener *listener, void *data) {
 	struct wc_view *view = wl_container_of(listener, view, destroy);
 	wl_list_remove(&view->link);
 
@@ -182,9 +182,16 @@ static void wc_xdg_new_surface(struct wl_listener *listener, void *data) {
 	wl_list_insert(&server->views, &view->link);
 }
 
-void wc_init_xdg(struct wc_server *server) {
+void wc_xdg_init(struct wc_server *server) {
 	server->xdg_shell = wlr_xdg_shell_create(server->wl_display);
 	server->new_xdg_surface.notify = wc_xdg_new_surface;
 	wl_signal_add(
 			&server->xdg_shell->events.new_surface, &server->new_xdg_surface);
+}
+
+void wc_xdg_fini(struct wc_server *server) {
+	wlr_xdg_shell_destroy(server->xdg_shell);
+	server->xdg_shell = NULL;
+
+	wl_list_remove(&server->new_xdg_surface.link);
 }

@@ -50,7 +50,9 @@ struct wc_view {
 	struct wl_listener request_resize;
 };
 
-void wc_init_views(struct wc_server *server);
+void wc_views_init(struct wc_server *server);
+
+void wc_views_fini(struct wc_server *server);
 
 /// Add the calculated damage to all the surfaces that make up this view.
 void wc_view_damage(struct wc_view *view, pixman_region32_t *damage);

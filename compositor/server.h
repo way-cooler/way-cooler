@@ -20,6 +20,7 @@ struct wc_server {
 	struct wl_display *wl_display;
 	struct wlr_backend *backend;
 	struct wlr_renderer *renderer;
+	struct wlr_compositor *compositor;
 
 	struct wlr_xcursor_manager *xcursor_mgr;
 	struct wc_cursor *cursor;
@@ -43,6 +44,7 @@ struct wc_server {
 	struct wl_listener new_layer_surface;
 
 	struct wlr_screencopy_manager_v1 *screencopy_manager;
+	struct wlr_data_device_manager *data_device_manager;
 };
 
 bool init_server(struct wc_server *server);

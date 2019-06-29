@@ -45,30 +45,33 @@ int main(int argc, char *argv[]) {
 			WC_DEBUG = 1;
 			break;
 		case 'c':
+			if (startup_cmd != NULL) {
+				free(startup_cmd);
+			}
 			startup_cmd = strdup(optarg);
 			break;
 		case 'h':
 		default:
 			print_usage();
-			exit(1);
+			goto fail;
 		}
 	}
 	if (optind < argc) {
 		print_usage();
-		exit(1);
+		goto fail;
 	}
 
 	struct wc_server server = {0};
 	if (!init_server(&server)) {
 		wlr_log(WLR_ERROR, "Could not initialize Wayland resources");
-		exit(1);
+		goto fail;
 	}
 	wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s",
 			server.wayland_socket);
 	if (!wlr_backend_start(server.backend)) {
 		wlr_backend_destroy(server.backend);
 		wl_display_destroy(server.wl_display);
-		return false;
+		goto fail;
 	}
 	setenv("WAYLAND_DISPLAY", server.wayland_socket, true);
 
@@ -79,9 +82,12 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	wlr_data_device_manager_create(server.wl_display);
-
 	wl_display_run(server.wl_display);
 	fini_server(&server);
+
+	return 0;
+
+fail:
 	free(startup_cmd);
+	exit(1);
 }
