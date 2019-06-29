@@ -9,8 +9,11 @@
 #include <wayland-server.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_output.h>
+#include <wlr/types/wlr_output_damage.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/render/wlr_renderer.h>
+#include <wlr/util/region.h>
+#include <wlr/util/log.h>
 
 #include "layer_shell.h"
 #include "view.h"
@@ -21,6 +24,7 @@
 struct wc_view_render_data {
 	struct wlr_output* output;
 	struct wlr_renderer* renderer;
+	pixman_region32_t* damage;
 	struct wc_view* view;
 	struct timespec* when;
 };
@@ -28,20 +32,70 @@ struct wc_view_render_data {
 /* Used to move all of the data necessary to render a surface from the layers */
 struct wc_layer_render_data {
 	struct wlr_renderer* renderer;
+	pixman_region32_t* damage;
 	struct wc_layer* layer;
 	struct timespec* when;
 };
 
+/* Used when calculating the damage of a surface */
+struct wc_surface_damage_data {
+	struct wc_output* output;
+	pixman_region32_t* surface_damage;
+	// The full size of the surface, used if the surface_damage is NULL
+	struct wlr_box surface_output_geo;
+};
+
+static void damage_surface_iterator(struct wlr_surface* surface,
+		int sx, int sy, void* data_) {
+	struct wc_surface_damage_data* damage_data = data_;
+
+	struct wlr_box surface_area = damage_data->surface_output_geo;
+	surface_area.x += sx;
+	surface_area.y += sy;
+
+	struct wc_output* output = damage_data->output;
+	if (damage_data->surface_damage == NULL) {
+		wlr_output_damage_add_box(output->damage, &surface_area);
+	} else {
+		wlr_output_damage_add(output->damage, damage_data->surface_damage);
+	}
+	wlr_output_schedule_frame(output->output);
+}
+
+static void scissor_output(struct wlr_output* wlr_output,
+		pixman_box32_t* rect) {
+	struct wlr_renderer* renderer =
+		wlr_backend_get_renderer(wlr_output->backend);
+	assert(renderer);
+
+	struct wlr_box box = {
+		.x = rect->x1,
+		.y = rect->y1,
+		.width = rect->x2 - rect->x1,
+		.height = rect->y2 - rect->y1,
+	};
+
+	int ow, oh;
+	wlr_output_transformed_resolution(wlr_output, &ow, &oh);
+
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(wlr_output->transform);
+	wlr_box_transform(&box, &box, transform, ow, oh);
+
+	wlr_renderer_scissor(renderer, &box);
+}
+
 static void wc_render_surface(struct wlr_surface* surface,
-		struct wlr_output* output, struct wlr_renderer* renderer,
-		struct timespec* when, int sx, int sy, double ox, double oy) {
+		pixman_region32_t* damage, struct wlr_output* output,
+		struct wlr_renderer* renderer, struct timespec* when,
+		int sx, int sy, int ox, int oy) {
 	struct wlr_texture* texture = wlr_surface_get_texture(surface);
 	if (texture == NULL) {
 		return;
 	}
 	struct wlr_box box = {
-		.x = ox * output->scale,
-		.y = oy * output->scale,
+		.x = sx + ox,
+		.y = sy + oy,
 		.width = surface->current.width * output->scale,
 		.height = surface->current.height * output->scale,
 	};
@@ -51,7 +105,13 @@ static void wc_render_surface(struct wlr_surface* surface,
 	wlr_matrix_project_box(matrix, &box, transform, 0,
 			output->transform_matrix);
 
-	wlr_render_texture_with_matrix(renderer, texture, matrix, 1);
+	int nrects;
+	pixman_box32_t* rects =
+		pixman_region32_rectangles(damage, &nrects);
+	for (int i = 0; i < nrects; i++) {
+		scissor_output(output, &rects[i]);
+		wlr_render_texture_with_matrix(renderer, texture, matrix, 1);
+	}
 
 	wlr_surface_send_frame_done(surface, when);
 }
@@ -59,21 +119,24 @@ static void wc_render_surface(struct wlr_surface* surface,
 static void wc_render_view(struct wlr_surface* surface,
 		int sx, int sy, void* data) {
 	struct wc_view_render_data* rdata = data;
+	pixman_region32_t* damage = rdata->damage;
 	struct wc_view* view = rdata->view;
 	struct wlr_output* output = rdata->output;
 
 	double ox = 0, oy = 0;
 	wlr_output_layout_output_coords(
 			view->server->output_layout, output, &ox, &oy);
-	ox += view->x + sx, oy += view->y + sy;
+	ox += view->geo.x + sx;
+	oy += view->geo.y + sy;
 
-	wc_render_surface(surface, output, rdata->renderer,
+	wc_render_surface(surface, damage, output, rdata->renderer,
 			rdata->when, sx, sy, ox, oy);
 }
 
 static void wc_render_layer(struct wlr_surface* surface,
 		int sx, int sy, void* data) {
 	struct wc_layer_render_data* rdata = data;
+	pixman_region32_t* damage = rdata->damage;
 	struct wc_layer* layer = rdata->layer;
 	struct wc_server* server = layer->server;
 	struct wlr_output* output = layer->layer_surface->output;
@@ -83,11 +146,11 @@ static void wc_render_layer(struct wlr_surface* surface,
 			server->output_layout, output, &ox, &oy);
 	ox += layer->geo.x + sx, oy += layer->geo.y + sy;
 
-	wc_render_surface(surface, output, rdata->renderer,
-			rdata->when, sx, sy, ox, oy);
+	wc_render_surface(surface, damage, output, rdata->renderer,
+			rdata->when, sx, sy, layer->geo.x, layer->geo.y);
 }
 
-static void wc_render_layers(struct timespec* now,
+static void wc_render_layers(struct timespec* now, pixman_region32_t* damage,
 		struct wlr_renderer* renderer, struct wc_output* output,
 		struct wl_list* layers) {
 	struct wc_layer* layer;
@@ -98,6 +161,7 @@ static void wc_render_layers(struct timespec* now,
 		struct wc_layer_render_data rdata = {
 			.layer = layer,
 			.renderer = renderer,
+			.damage = damage,
 			.when = now
 		};
 
@@ -115,18 +179,36 @@ static void wc_output_frame(struct wl_listener* listener, void* data) {
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	bool needs_swap = false;
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
 	//TODO wlr_output_attach_render(wlr_output, NULL);
-	if (!wlr_output_make_current(wlr_output, NULL)) {
+	if (!wlr_output_damage_make_current(output->damage, &needs_swap, &damage)) {
 		return;
 	}
 
-	int width, height;
-	wlr_output_effective_resolution(wlr_output, &width, &height);
-	wlr_renderer_begin(renderer, width, height);
+	if (!needs_swap) {
+		goto damage_finish;
+	}
 
-	// TODO Remove this once a background renders
-	float color[4] = { 0.25f, 0.25f, 0.25f, 1 };
-	wlr_renderer_clear(renderer, color);
+	wlr_renderer_begin(renderer, wlr_output->width, wlr_output->height);
+
+	if (!pixman_region32_not_empty(&damage)) {
+		goto renderer_end;
+	}
+
+	if (WC_DEBUG) {
+		wlr_renderer_clear(renderer, (float[]){1, 1, 0, 1});
+	}
+
+	float background_color[4] = { 0.25f, 0.25f, 0.25f, 1 };
+	int nrects;
+	pixman_box32_t* rects = pixman_region32_rectangles(&damage, &nrects);
+	for (int i = 0; i < nrects; i++) {
+		scissor_output(output->output, &rects[i]);
+		wlr_renderer_clear(renderer, background_color);
+	}
 
 	struct wl_list* backgrounds =
 		&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND];
@@ -137,8 +219,8 @@ static void wc_output_frame(struct wl_listener* listener, void* data) {
 	struct wl_list* overlay =
 		&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY];
 
-	wc_render_layers(&now, renderer, output, backgrounds);
-	wc_render_layers(&now, renderer, output, bottom);
+	wc_render_layers(&now, &damage, renderer, output, backgrounds);
+	wc_render_layers(&now, &damage, renderer, output, bottom);
 
 	// Render traditional shell surfaces between bottom and top layers.
 	struct wc_view* view;
@@ -150,6 +232,7 @@ static void wc_output_frame(struct wl_listener* listener, void* data) {
 			.output = output->output,
 			.view = view,
 			.renderer = renderer,
+			.damage = &damage,
 			.when = &now
 		};
 
@@ -157,14 +240,29 @@ static void wc_output_frame(struct wl_listener* listener, void* data) {
 				wc_render_view, &rdata);
 	}
 
-	wc_render_layers(&now, renderer, output, top);
-	wc_render_layers(&now, renderer, output, overlay);
+	wc_render_layers(&now, &damage, renderer, output, top);
+	wc_render_layers(&now, &damage, renderer, output, overlay);
 
-	wlr_output_render_software_cursors(wlr_output, NULL);
-
+renderer_end:
+	wlr_output_render_software_cursors(wlr_output, &damage);
+	wlr_renderer_scissor(renderer, NULL);
 	//TODO use wlr_output_commit(wlr_output);
 	wlr_renderer_end(renderer);
-	wlr_output_swap_buffers(wlr_output, NULL, NULL);
+
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+
+	if (WC_DEBUG) {
+		pixman_region32_union_rect(&damage, &damage, 0, 0, width, height);
+	}
+
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(wlr_output->transform);
+	wlr_region_transform(&damage, &damage, transform, width, height);
+	wlr_output_damage_swap_buffers(output->damage, &now, &damage);
+
+damage_finish:
+	pixman_region32_fini(&damage);
 }
 
 static void wc_output_destroy(struct wl_listener* listener, void* data) {
@@ -200,6 +298,7 @@ static void wc_new_output(struct wl_listener* listener, void* data) {
 	wc_output->output = output;
 	wc_output->server = server;
 	output->data = wc_output;
+	wc_output->damage = wlr_output_damage_create(output);
 
 	size_t len = sizeof(wc_output->layers) / sizeof(wc_output->layers[0]);
 	for (size_t i = 0; i < len; i++) {
@@ -207,7 +306,7 @@ static void wc_new_output(struct wl_listener* listener, void* data) {
 	}
 
 	wc_output->frame.notify = wc_output_frame;
-	wl_signal_add(&output->events.frame, &wc_output->frame);
+	wl_signal_add(&wc_output->damage->events.frame, &wc_output->frame);
 	wc_output->destroy.notify = wc_output_destroy;
 	wl_signal_add(&output->events.destroy, &wc_output->destroy);
 
@@ -221,6 +320,7 @@ static void wc_new_output(struct wl_listener* listener, void* data) {
 	wlr_output_create_global(output);
 
 	wc_layer_shell_arrange_layers(wc_output);
+	wlr_output_damage_add_whole(wc_output->damage);
 }
 
 
@@ -235,9 +335,21 @@ struct wc_output* wc_get_active_output(struct wc_server* server) {
 	return output;
 }
 
+void wc_output_damage_surface(struct wc_output* output,
+		struct wlr_surface* surface, pixman_region32_t* surface_damage,
+		struct wlr_box surface_output_geo) {
+	struct wc_surface_damage_data damage_data = {
+		.output = output,
+		.surface_output_geo = surface_output_geo,
+		.surface_damage = surface_damage
+	};
+	wlr_surface_for_each_surface(surface, damage_surface_iterator, &damage_data);
+}
+
 void wc_init_output(struct wc_server* server) {
 	server->output_layout = wlr_output_layout_create();
 	wl_list_init(&server->outputs);
 	server->new_output.notify = wc_new_output;
 	wl_signal_add(&server->backend->events.new_output, &server->new_output);
 }
+

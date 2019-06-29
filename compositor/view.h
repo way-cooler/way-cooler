@@ -1,6 +1,8 @@
 #ifndef WC_VIEW_H
 #define WC_VIEW_H
 
+#include <stdint.h>
+
 #include <wayland-server.h>
 #include <wlr/types/wlr_surface.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
@@ -22,19 +24,39 @@ struct wc_view {
 	};
 
 	bool mapped;
-	int x, y;
 
-	// These variables are layer surface specific
-	struct wlr_box wc_layer_geo;
+	/* Current coordinates of the view.
+	 *
+	 * NOTE The width and height may not reflect what the client currently
+	 * thinks, but
+	 * this is only temporary - when you change these you _must_ notify the
+	 * client of its new size.
+	 */
+	struct wlr_box geo;
+
+	// Serial for a pending move / resize.
+	uint32_t pending_serial;
+	bool is_pending_serial;
+	/* NOTE Do not use the width and height for damage calculation,
+	 * use the surface's wlr_surface.current field.
+	 */
+	struct wlr_box pending_geometry;
 
 	struct wl_listener map;
 	struct wl_listener unmap;
+	struct wl_listener commit;
 	struct wl_listener destroy;
 	struct wl_listener request_move;
 	struct wl_listener request_resize;
 };
 
 void wc_init_views(struct wc_server* server);
+
+/// Add the calculated damage to all the surfaces that make up this view.
+void wc_view_damage(struct wc_view* view, pixman_region32_t* damage);
+
+/// Damage the whole view, based on its current geometry.
+void wc_view_damage_whole(struct wc_view* view);
 
 // Get the main surface associated with the view.
 struct wlr_surface* wc_view_surface(struct wc_view* view);
@@ -51,5 +73,16 @@ struct wc_view* wc_view_at(struct wc_server* server, double lx, double ly,
 
 // Focuses on a view. Automatically un-focuses the previous view.
 void wc_focus_view(struct wc_view* view);
+
+// Get the outputs that the view is on.
+//
+// There can be up to four (one for each corner), so the out_outputs should be
+// an array of at least 4 (it will zero out the first four).
+//
+// The order is as follows (with holes being null): top left, top right, bottom left, bottom right
+//
+// Each output is guaranteed to be unique in the array.
+void wc_view_get_outputs(struct wlr_output_layout* layout, struct wc_view* view,
+		struct wlr_output* out_outputs[4]);
 
 #endif//WC_VIEW_H

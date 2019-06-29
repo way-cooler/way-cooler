@@ -15,40 +15,52 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 	struct wc_seat* seat = server->seat;
 	struct wc_cursor* cursor = server->cursor;
 	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
-	struct wc_view* view = server->grabbed_view;
-	switch (server->cursor_mode) {
-	case WC_CURSOR_MOVE:
-		server->grabbed_view->x = wlr_cursor->x - server->grab_x;
-		server->grabbed_view->y = wlr_cursor->y - server->grab_y;
+	struct wc_view* view = cursor->grabbed.view;
+	switch (cursor->cursor_mode) {
+	case WC_CURSOR_MOVE: {
+		wc_view_damage_whole(view);
+
+		view->geo.x = wlr_cursor->x - cursor->grabbed.original_x;
+		view->geo.y = wlr_cursor->y - cursor->grabbed.original_y;
+
+		wc_view_damage_whole(view);
 		break;
+	}
 	case WC_CURSOR_RESIZE: {
-		double dx = wlr_cursor->x - server->grab_x;
-		double dy = wlr_cursor->y - server->grab_y;
-		double x = view->x;
-		double y = view->y;
-		int width = server->grab_width;
-		int height = server->grab_height;
-		if (server->resize_edges & WLR_EDGE_TOP) {
-			y = server->grab_y + dy;
-			height -= dy;
-			if (height < 1) {
-				y += height;
+		int dx = wlr_cursor->x - cursor->grabbed.original_x;
+		int dy = wlr_cursor->y - cursor->grabbed.original_y;
+		struct wlr_box new_geo = {
+			.x = view->geo.x,
+			.y = view->geo.y,
+			.width = cursor->grabbed.original_view_geo.width,
+			.height = cursor->grabbed.original_view_geo.height
+		};
+		if (cursor->grabbed.resize_edges & WLR_EDGE_TOP) {
+			new_geo.y = cursor->grabbed.original_view_geo.y + dy;
+			new_geo.height -= dy;
+			if (new_geo.height < 1) {
+				new_geo.y += new_geo.height;
 			}
-		} else if (server->resize_edges & WLR_EDGE_BOTTOM) {
-			height += dy;
+		} else if (cursor->grabbed.resize_edges & WLR_EDGE_BOTTOM) {
+			new_geo.height += dy;
 		}
-		if (server->resize_edges & WLR_EDGE_LEFT) {
-			x = server->grab_x + dx;
-			width -= dx;
-			if (width < 1) {
-				x += width;
+		if (cursor->grabbed.resize_edges & WLR_EDGE_LEFT) {
+			new_geo.x = cursor->grabbed.original_view_geo.x + dx;
+			new_geo.width -= dx;
+			if (new_geo.width < 1) {
+				new_geo.x += new_geo.width;
 			}
-		} else if (server->resize_edges & WLR_EDGE_RIGHT) {
-			width += dx;
+		} else if (cursor->grabbed.resize_edges & WLR_EDGE_RIGHT) {
+			new_geo.width += dx;
 		}
-		view->x = x;
-		view->y = y;
-		wlr_xdg_toplevel_set_size(view->xdg_surface, width, height);
+
+		memcpy(&view->pending_geometry, &new_geo, sizeof(struct wlr_box));
+
+		view->pending_serial =
+			wlr_xdg_toplevel_set_size(view->xdg_surface,
+					new_geo.width, new_geo.height);
+		view->is_pending_serial = true;
+
 		break;
 	}
 	case WC_CURSOR_PASSTHROUGH: {
@@ -69,8 +81,7 @@ static void wc_process_motion(struct wc_server* server, uint32_t time) {
 
 	struct wlr_output* active_output = wlr_output_layout_output_at(
 			server->output_layout, wlr_cursor->x, wlr_cursor->y);
-	if (active_output != NULL &&
-			server->active_output->output != active_output) {
+	if (server->active_output->output != active_output) {
 		struct wc_output* output_;
 		wl_list_for_each(output_, &server->outputs, link) {
 			if (output_->output == active_output) {
@@ -109,7 +120,7 @@ static void wc_cursor_button(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wc_view_at(server,
 			cursor->wlr_cursor->x, cursor->wlr_cursor->y, &sx, &sy, &surface);
 	if (event->state == WLR_BUTTON_RELEASED) {
-		server->cursor_mode = WC_CURSOR_PASSTHROUGH;
+		cursor->cursor_mode = WC_CURSOR_PASSTHROUGH;
 	} else if (view) {
 		wc_focus_view(view);
 	}

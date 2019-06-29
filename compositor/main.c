@@ -7,6 +7,7 @@
 #include <wordexp.h>
 #include <unistd.h>
 
+#include <wlr/types/wlr_data_device.h>
 #include <wlr/backend.h>
 #include <wlr/util/log.h>
 
@@ -17,13 +18,14 @@ const char* WC_HELP_MESSAGE =
 	"\n"
 	"  -c <command>           Execute the command after startup.\n"
 	"  -h                     Show help message and quit.\n"
+	"  -d                     Turn on debugging"
 	"\n";
 
 const char* WC_GETOPT_OPTIONS =
 #ifdef __GNUC__
 "+"
 #endif
-"hc:";
+"hc:d";
 
 const char* WC_BINARY_PATH = NULL;
 
@@ -40,6 +42,9 @@ int main(int argc, char* argv[]) {
 	int c;
 	while ((c = getopt(argc, argv, WC_GETOPT_OPTIONS)) != -1) {
 		switch (c) {
+		case 'd':
+			WC_DEBUG = 1;
+			break;
 		case 'c':
 			startup_cmd = strdup(optarg);
 			break;
@@ -74,6 +79,8 @@ int main(int argc, char* argv[]) {
 			execl("/bin/sh", "/bin/sh", "-c", startup_cmd, (void*)NULL);
 		}
 	}
+
+	wlr_data_device_manager_create(server.wl_display);
 
 	wl_display_run(server.wl_display);
 	fini_server(&server);

@@ -13,11 +13,7 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 
-enum wc_cursor_mode {
-	WC_CURSOR_PASSTHROUGH,
-	WC_CURSOR_MOVE,
-	WC_CURSOR_RESIZE,
-};
+int WC_DEBUG;
 
 struct wc_server {
 	const char* wayland_socket;
@@ -27,11 +23,6 @@ struct wc_server {
 
 	struct wlr_xcursor_manager* xcursor_mgr;
 	struct wc_cursor *cursor;
-	enum wc_cursor_mode cursor_mode;
-	struct wc_view* grabbed_view;
-	double grab_x, grab_y;
-    int grab_width, grab_height;
-	uint32_t resize_edges;
 
 	struct wc_seat* seat;
 

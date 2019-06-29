@@ -39,8 +39,6 @@ bool init_server(struct wc_server* server) {
 
 	server->screencopy_manager = wlr_screencopy_manager_v1_create(server->wl_display);
 
-	server->cursor_mode = WC_CURSOR_PASSTHROUGH;
-
 	wc_init_seat(server);
 	wc_init_output(server);
 	wc_init_inputs(server);

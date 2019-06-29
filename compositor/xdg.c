@@ -1,11 +1,14 @@
 #include "xdg.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <wayland-server.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/util/log.h>
 
 #include "cursor.h"
+#include "output.h"
 #include "seat.h"
 #include "server.h"
 #include "view.h"
@@ -14,11 +17,68 @@ static void wc_xdg_surface_map(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, map);
 	view->mapped = true;
 	wc_focus_view(view);
+
+	struct wlr_xdg_surface* surface = view->xdg_surface;
+	struct wlr_box box = {0};
+	wlr_xdg_surface_get_geometry(surface, &box);
+	memcpy(&view->geo, &box, sizeof(struct wlr_box));
+
+	wc_view_damage_whole(view);
 }
 
 static void wc_xdg_surface_unmap(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, unmap);
 	view->mapped = false;
+
+	wc_view_damage_whole(view);
+}
+
+static void wc_xdg_surface_commit(struct wl_listener* listener, void* data) {
+	struct wc_view* view = wl_container_of(listener, view, commit);
+	if (!view->mapped) {
+		return;
+	}
+
+	struct wlr_xdg_surface* surface = view->xdg_surface;
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	wlr_surface_get_effective_damage(surface->surface, &damage);
+	wc_view_damage(view, &damage);
+
+	struct wlr_box size = {0};
+	wlr_xdg_surface_get_geometry(surface, &size);
+
+	bool size_changed =
+		view->geo.width != surface->surface->current.width ||
+		view->geo.height != surface->surface->current.height;
+
+	if (size_changed) {
+		wc_view_damage_whole(view);
+		view->geo.width = surface->surface->current.width;
+		view->geo.height = surface->surface->current.height;
+		wc_view_damage_whole(view);
+	}
+
+	uint32_t pending_serial =
+		view->pending_serial;
+	if (pending_serial > 0 && pending_serial >= surface->configure_serial) {
+		if (view->pending_geometry.x != view->geo.x) {
+			view->geo.x = view->pending_geometry.x +
+				view->pending_geometry.width - size.width;
+		}
+		if (view->pending_geometry.y != view->geo.y) {
+			view->geo.y = view->pending_geometry.y +
+				view->pending_geometry.height - size.height;
+		}
+
+		wc_view_damage_whole(view);
+
+		if (pending_serial == surface->configure_serial) {
+			view->pending_serial = 0;
+			view->is_pending_serial = false;
+		}
+	}
+	pixman_region32_fini(&damage);
 }
 
 static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
@@ -27,6 +87,7 @@ static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
 
 	wl_list_remove(&view->map.link);
 	wl_list_remove(&view->unmap.link);
+	wl_list_remove(&view->commit.link);
 	wl_list_remove(&view->request_move.link);
 	wl_list_remove(&view->request_resize.link);
 	wl_list_remove(&view->destroy.link);
@@ -37,43 +98,57 @@ static void wc_xdg_surface_destroy(struct wl_listener* listener, void* data) {
 static void wc_xdg_toplevel_request_move(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, request_move);
 	struct wc_server* server = view->server;
-	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
+	struct wc_cursor* cursor = server->cursor;
+	struct wlr_cursor* wlr_cursor = cursor->wlr_cursor;
 	struct wlr_surface* focused_surface =
 		server->seat->seat->pointer_state.focused_surface;
 	struct wlr_surface* surface = wc_view_surface(view);
+
 	if (surface != focused_surface) {
 		return;
 	}
-	server->grabbed_view = view;
-	server->cursor_mode = WC_CURSOR_MOVE;
 	struct wlr_box geo_box;
 	wlr_xdg_surface_get_geometry(view->xdg_surface, &geo_box);
-	server->grab_x = wlr_cursor->x - view->x;
-	server->grab_y = wlr_cursor->y - view->y;
-	server->grab_width = geo_box.width;
-	server->grab_height = geo_box.height;
+
+	cursor->cursor_mode = WC_CURSOR_MOVE;
+	cursor->grabbed.view = view;
+	cursor->grabbed.original_x = wlr_cursor->x - view->geo.x;
+	cursor->grabbed.original_y = wlr_cursor->y - view->geo.y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo_box.width;
+	cursor->grabbed.original_view_geo.height = geo_box.height;
 }
 
 static void wc_xdg_toplevel_request_resize(struct wl_listener* listener, void* data) {
 	struct wc_view* view = wl_container_of(listener, view, request_resize);
 	struct wlr_xdg_toplevel_resize_event *event = data;
 	struct wc_server* server = view->server;
-	struct wlr_cursor* wlr_cursor = server->cursor->wlr_cursor;
+	struct wc_cursor* cursor = server->cursor;
+	struct wlr_cursor* wlr_cursor = cursor->wlr_cursor;
 	struct wlr_surface* focused_surface =
 		server->seat->seat->pointer_state.focused_surface;
 	struct wlr_surface* surface = wc_view_surface(view);
+
 	if (surface != focused_surface) {
 		return;
 	}
-	server->grabbed_view = view;
-	server->cursor_mode = WC_CURSOR_RESIZE;
+
 	struct wlr_box geo_box;
 	wlr_xdg_surface_get_geometry(view->xdg_surface, &geo_box);
-	server->grab_x = wlr_cursor->x + geo_box.x;
-	server->grab_y = wlr_cursor->y + geo_box.y;
-	server->grab_width = geo_box.width;
-	server->grab_height = geo_box.height;
-	server->resize_edges = event->edges;
+
+	cursor->cursor_mode = WC_CURSOR_RESIZE;
+	cursor->grabbed.view = view;
+	cursor->grabbed.original_x = wlr_cursor->x;
+	cursor->grabbed.original_y = wlr_cursor->y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo_box.width;
+	cursor->grabbed.original_view_geo.height = geo_box.height;
+
+	cursor->grabbed.resize_edges = event->edges;
 }
 
 static void wc_xdg_new_surface(struct wl_listener* listener, void* data) {
@@ -92,6 +167,8 @@ static void wc_xdg_new_surface(struct wl_listener* listener, void* data) {
 	wl_signal_add(&xdg_surface->events.map, &view->map);
 	view->unmap.notify = wc_xdg_surface_unmap;
 	wl_signal_add(&xdg_surface->events.unmap, &view->unmap);
+	view->commit.notify = wc_xdg_surface_commit;
+	wl_signal_add(&xdg_surface->surface->events.commit, &view->commit);
 	view->destroy.notify = wc_xdg_surface_destroy;
 	wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
 
