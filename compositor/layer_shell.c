@@ -29,16 +29,14 @@ static void wc_layer_shell_commit(struct wl_listener* listener, void* data) {
 	struct wlr_box old_geo = layer->geo;
 	wc_layer_shell_arrange_layers(wlr_output->data);
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	wlr_surface_get_effective_damage(layer_surface->surface, &damage);
-	pixman_region32_translate(&damage, old_geo.x, old_geo.y);
-
 	if (memcmp(&old_geo, &layer->geo, sizeof(struct wlr_box)) != 0) {
 		wc_output_damage_surface(wlr_output->data, layer_surface->surface,
-				&damage, old_geo);
+				NULL, old_geo);
 	}
 
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
 	wlr_surface_get_effective_damage(layer_surface->surface, &damage);
 	pixman_region32_translate(&damage, layer->geo.x, layer->geo.y);
 	wc_output_damage_surface(wlr_output->data, layer_surface->surface,
