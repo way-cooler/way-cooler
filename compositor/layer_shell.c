@@ -28,30 +28,55 @@ static void wc_layer_shell_commit(struct wl_listener* listener, void* data) {
 	}
 	struct wlr_box old_geo = layer->geo;
 	wc_layer_shell_arrange_layers(wlr_output->data);
-	// TODO Only update what layer shell says is damaged
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	wlr_surface_get_effective_damage(layer_surface->surface, &damage);
+	pixman_region32_translate(&damage, old_geo.x, old_geo.y);
 
 	if (memcmp(&old_geo, &layer->geo, sizeof(struct wlr_box)) != 0) {
 		wc_output_damage_surface(wlr_output->data, layer_surface->surface,
-				NULL, old_geo);
+				&damage, old_geo);
 	}
+
+	wlr_surface_get_effective_damage(layer_surface->surface, &damage);
+	pixman_region32_translate(&damage, layer->geo.x, layer->geo.y);
 	wc_output_damage_surface(wlr_output->data, layer_surface->surface,
-			NULL, layer->geo);
+			&damage, layer->geo);
+
+	pixman_region32_fini(&damage);
 }
 
 static void wc_layer_shell_map(struct wl_listener* listener, void* data) {
 	struct wc_layer* layer = wl_container_of(listener, layer, map);
 	struct wlr_layer_surface_v1* layer_surface = layer->layer_surface;
 	layer->mapped = true;
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	wlr_surface_get_effective_damage(layer_surface->surface, &damage);
+	pixman_region32_translate(&damage, layer->geo.x, layer->geo.y);
+
 	wc_output_damage_surface(layer_surface->output->data, layer_surface->surface,
-			NULL, layer->geo);
+			&damage, layer->geo);
+
+	pixman_region32_fini(&damage);
 }
 
 static void wc_layer_shell_unmap(struct wl_listener* listener, void* data) {
 	struct wc_layer* layer = wl_container_of(listener, layer, unmap);
 	struct wlr_layer_surface_v1* layer_surface = layer->layer_surface;
 	layer->mapped = false;
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	wlr_surface_get_effective_damage(layer_surface->surface, &damage);
+	pixman_region32_translate(&damage, layer->geo.x, layer->geo.y);
+
 	wc_output_damage_surface(layer_surface->output->data, layer_surface->surface,
-			NULL, layer->geo);
+			&damage, layer->geo);
+
+	pixman_region32_fini(&damage);
 }
 
 static void wc_layer_shell_destroy(struct wl_listener* listener, void* data) {
