@@ -15,6 +15,7 @@ struct wc_seat {
 };
 
 void wc_seat_init(struct wc_server *server);
+
 void wc_seat_fini(struct wc_server *server);
 
 // Updates the seat's focus based on the surface. If surface is NULL the focus

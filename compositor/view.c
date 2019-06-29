@@ -1,5 +1,6 @@
 #include "view.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include <wayland-server.h>
@@ -63,9 +64,19 @@ struct wlr_surface *wc_view_surface(struct wc_view *view) {
 	switch (view->surface_type) {
 	case WC_XDG:
 		return view->xdg_surface->surface;
-	default:
-		return NULL;
 	}
+	return NULL;
+}
+
+void wc_view_update_geometry(struct wc_view *view, struct wlr_box new_geo) {
+	switch (view->surface_type) {
+	case WC_XDG:
+		view->pending_serial = wlr_xdg_toplevel_set_size(
+				view->xdg_surface, new_geo.width, new_geo.height);
+	}
+
+	memcpy(&view->pending_geometry, &new_geo, sizeof(struct wlr_box));
+	view->is_pending_serial = true;
 }
 
 void wc_view_damage(struct wc_view *view, pixman_region32_t *damage) {
@@ -108,6 +119,8 @@ void wc_view_damage_whole(struct wc_view *view) {
 
 struct wc_view *wc_view_at(struct wc_server *server, double lx, double ly,
 		double *out_sx, double *out_sy, struct wlr_surface **out_surface) {
+	assert(out_surface != NULL);
+
 	struct wc_view *view;
 	wl_list_for_each(view, &server->views, link) {
 		if (wc_is_view_at(view, lx, ly, out_sx, out_sy, out_surface)) {
@@ -118,28 +131,28 @@ struct wc_view *wc_view_at(struct wc_server *server, double lx, double ly,
 }
 
 void wc_focus_view(struct wc_view *view) {
-	if (view == NULL) {
-		return;
-	}
+	assert(view != NULL);
+
 	struct wc_server *server = view->server;
 	struct wlr_surface *surface = wc_view_surface(view);
 	struct wlr_seat *seat = server->seat->seat;
-	struct wlr_surface *prev_surface =
-			server->seat->seat->keyboard_state.focused_surface;
+	struct wlr_surface *prev_surface = seat->keyboard_state.focused_surface;
 	if (prev_surface == surface) {
 		return;
 	}
+
 	if (prev_surface && wlr_surface_is_xdg_surface(prev_surface)) {
 		struct wlr_xdg_surface *previous =
 				wlr_xdg_surface_from_wlr_surface(prev_surface);
 		wlr_xdg_toplevel_set_activated(previous, false);
 	}
-	/* Move the view to the front */
-	if (view->surface_type == WC_XDG) {
+
+	switch (view->surface_type) {
+	case WC_XDG:
+		/* Move the view to the front */
 		wl_list_remove(&view->link);
 		wl_list_insert(&server->views, &view->link);
-	}
-	if (view->surface_type == WC_XDG) {
+
 		wlr_xdg_toplevel_set_activated(view->xdg_surface, true);
 	}
 
@@ -164,4 +177,12 @@ void wc_views_fini(struct wc_server *server) {
 	}
 
 	wc_xdg_fini(server);
+}
+
+void wc_view_for_each_surface(struct wc_view *view,
+		wlr_surface_iterator_func_t iterator, void *data) {
+	switch (view->surface_type) {
+	case WC_XDG:
+		wlr_xdg_surface_for_each_surface(view->xdg_surface, iterator, data);
+	}
 }

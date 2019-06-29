@@ -56,9 +56,11 @@ static void wc_keyboard_on_key(struct wl_listener *listener, void *data) {
 static void wc_keyboard_on_modifiers(struct wl_listener *listener, void *data) {
 	struct wc_keyboard *keyboard =
 			wl_container_of(listener, keyboard, modifiers);
-	wlr_seat_set_keyboard(keyboard->server->seat->seat, keyboard->device);
-	wlr_seat_keyboard_notify_modifiers(keyboard->server->seat->seat,
-			&keyboard->device->keyboard->modifiers);
+	struct wlr_seat *seat = keyboard->server->seat->seat;
+
+	wlr_seat_set_keyboard(seat, keyboard->device);
+	wlr_seat_keyboard_notify_modifiers(
+			seat, &keyboard->device->keyboard->modifiers);
 }
 
 static void wc_keyboard_removed(struct wl_listener *listener, void *data) {
@@ -83,7 +85,8 @@ void wc_new_keyboard(
 	keyboard->device = device;
 
 	/* We need to prepare an XKB keymap and assign it to the keyboard. This
-	 * assumes the defaults (e.g. layout = "us"). */
+	 * assumes the defaults (i.e. uses the XKB_DEFAULT_* environment variables).
+	 */
 	struct xkb_rule_names rules = {0};
 	struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	struct xkb_keymap *keymap = xkb_map_new_from_names(
@@ -92,13 +95,15 @@ void wc_new_keyboard(
 	wlr_keyboard_set_keymap(device->keyboard, keymap);
 	xkb_keymap_unref(keymap);
 	xkb_context_unref(context);
+
 	wlr_keyboard_set_repeat_info(device->keyboard, 25, 600);
 
 	keyboard->key.notify = wc_keyboard_on_key;
-	wl_signal_add(&device->keyboard->events.key, &keyboard->key);
 	keyboard->modifiers.notify = wc_keyboard_on_modifiers;
-	wl_signal_add(&device->keyboard->events.modifiers, &keyboard->modifiers);
 	keyboard->destroy.notify = wc_keyboard_removed;
+
+	wl_signal_add(&device->keyboard->events.key, &keyboard->key);
+	wl_signal_add(&device->keyboard->events.modifiers, &keyboard->modifiers);
 	wl_signal_add(&device->events.destroy, &keyboard->destroy);
 
 	wl_list_insert(&server->keyboards, &keyboard->link);

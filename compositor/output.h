@@ -12,7 +12,7 @@ struct wc_output {
 	struct wl_list link;
 	struct wc_server *server;
 
-	struct wlr_output *output;
+	struct wlr_output *wlr_output;
 	struct wlr_output_damage *damage;
 
 	struct wl_list layers[4];

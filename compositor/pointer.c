@@ -18,9 +18,12 @@ static void wc_pointer_removed(struct wl_listener *listener, void *data) {
 
 void wc_new_pointer(struct wc_server *server, struct wlr_input_device *device) {
 	struct wc_pointer *pointer = calloc(1, sizeof(struct wc_pointer));
+
 	pointer->server = server;
 	pointer->device = device;
+
 	pointer->destroy.notify = wc_pointer_removed;
+
 	wl_signal_add(&device->events.destroy, &pointer->destroy);
 
 	wl_list_insert(&server->pointers, &pointer->link);

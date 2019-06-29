@@ -15,6 +15,7 @@ static void wc_seat_request_cursor(struct wl_listener *listener, void *data) {
 	struct wlr_seat_pointer_request_set_cursor_event *event = data;
 	struct wlr_seat_client *focused_client =
 			server->seat->seat->pointer_state.focused_client;
+
 	if (focused_client == event->seat_client) {
 		cursor->image = NULL;
 		wlr_cursor_set_surface(cursor->wlr_cursor, event->surface,
@@ -29,6 +30,7 @@ void wc_seat_update_surface_focus(struct wc_seat *seat,
 		wlr_seat_pointer_clear_focus(wlr_seat);
 		return;
 	}
+
 	bool focused_changed = wlr_seat->pointer_state.focused_surface != surface;
 	wlr_seat_pointer_notify_enter(wlr_seat, surface, sx, sy);
 	if (!focused_changed) {
@@ -47,6 +49,7 @@ void wc_seat_init(struct wc_server *server) {
 	seat->seat = wlr_seat_create(server->wl_display, "seat0");
 
 	seat->request_set_cursor.notify = wc_seat_request_cursor;
+
 	wl_signal_add(
 			&seat->seat->events.request_set_cursor, &seat->request_set_cursor);
 
@@ -57,6 +60,7 @@ void wc_seat_fini(struct wc_server *server) {
 	struct wc_seat *seat = server->seat;
 
 	wlr_seat_destroy(seat->seat);
+
 	wl_list_remove(&seat->request_set_cursor.link);
 
 	free(seat);

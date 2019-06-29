@@ -14,10 +14,10 @@ struct wc_pointer {
 	struct wl_listener destroy;
 };
 
-void wc_new_pointer(struct wc_server *server, struct wlr_input_device *device);
-
 void wc_pointers_init(struct wc_server *server);
 
 void wc_pointers_fini(struct wc_server *server);
+
+void wc_new_pointer(struct wc_server *server, struct wlr_input_device *device);
 
 #endif  // WC_POINTER_H

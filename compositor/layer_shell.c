@@ -93,7 +93,7 @@ static void wc_arrange_layer(struct wc_output *output, struct wc_seat *seat,
 		struct wl_list *layers, struct wlr_box *usable_area, bool exclusive) {
 	struct wlr_box full_area = {0};
 	wlr_output_effective_resolution(
-			output->output, &full_area.width, &full_area.height);
+			output->wlr_output, &full_area.width, &full_area.height);
 	struct wc_layer *wc_layer;
 	wl_list_for_each_reverse(wc_layer, layers, link) {
 		struct wlr_layer_surface_v1 *layer = wc_layer->layer_surface;
@@ -173,7 +173,7 @@ void wc_layer_shell_arrange_layers(struct wc_output *output) {
 	struct wc_server *server = output->server;
 	struct wc_seat *seat = server->seat;
 	wlr_output_effective_resolution(
-			output->output, &usable_area.width, &usable_area.height);
+			output->wlr_output, &usable_area.width, &usable_area.height);
 	wc_arrange_layer(output, seat,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY], &usable_area,
 			true);
@@ -237,7 +237,7 @@ static void wc_layer_shell_new_surface(
 
 	if (!layer_surface->output) {
 		// If client did not request an output, give them the focused one.
-		layer_surface->output = active_output->output;
+		layer_surface->output = active_output->wlr_output;
 	}
 	struct wc_output *output = layer_surface->output->data;
 

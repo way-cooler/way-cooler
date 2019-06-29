@@ -19,22 +19,24 @@
 #include "server.h"
 #include "view.h"
 
+struct wc_render_data {
+	struct wlr_renderer *renderer;
+	pixman_region32_t *damage;
+	struct timespec *when;
+};
+
 /* Used to move all of the data necessary to render a surface from the top-level
  * frame handler to the per-surface render function. */
 struct wc_view_render_data {
 	struct wlr_output *output;
-	struct wlr_renderer *renderer;
-	pixman_region32_t *damage;
 	struct wc_view *view;
-	struct timespec *when;
+	struct wc_render_data render_data;
 };
 
 /* Used to move all of the data necessary to render a surface from the layers */
 struct wc_layer_render_data {
-	struct wlr_renderer *renderer;
-	pixman_region32_t *damage;
 	struct wc_layer *layer;
-	struct timespec *when;
+	struct wc_render_data render_data;
 };
 
 /* Used when calculating the damage of a surface */
@@ -59,7 +61,7 @@ static void damage_surface_iterator(
 	} else {
 		wlr_output_damage_add(output->damage, damage_data->surface_damage);
 	}
-	wlr_output_schedule_frame(output->output);
+	wlr_output_schedule_frame(output->wlr_output);
 }
 
 static void scissor_output(
@@ -93,6 +95,7 @@ static void wc_render_surface(struct wlr_surface *surface,
 	if (texture == NULL) {
 		return;
 	}
+
 	struct wlr_box box = {
 			.x = sx + ox,
 			.y = sy + oy,
@@ -118,7 +121,7 @@ static void wc_render_surface(struct wlr_surface *surface,
 static void wc_render_view(
 		struct wlr_surface *surface, int sx, int sy, void *data) {
 	struct wc_view_render_data *rdata = data;
-	pixman_region32_t *damage = rdata->damage;
+	pixman_region32_t *damage = rdata->render_data.damage;
 	struct wc_view *view = rdata->view;
 	struct wlr_output *output = rdata->output;
 
@@ -128,14 +131,14 @@ static void wc_render_view(
 	ox += view->geo.x + sx;
 	oy += view->geo.y + sy;
 
-	wc_render_surface(surface, damage, output, rdata->renderer, rdata->when, sx,
-			sy, ox, oy);
+	wc_render_surface(surface, damage, output, rdata->render_data.renderer,
+			rdata->render_data.when, sx, sy, ox, oy);
 }
 
 static void wc_render_layer(
 		struct wlr_surface *surface, int sx, int sy, void *data) {
 	struct wc_layer_render_data *rdata = data;
-	pixman_region32_t *damage = rdata->damage;
+	pixman_region32_t *damage = rdata->render_data.damage;
 	struct wc_layer *layer = rdata->layer;
 	struct wc_server *server = layer->server;
 	struct wlr_output *output = layer->layer_surface->output;
@@ -144,8 +147,8 @@ static void wc_render_layer(
 	wlr_output_layout_output_coords(server->output_layout, output, &ox, &oy);
 	ox += layer->geo.x + sx, oy += layer->geo.y + sy;
 
-	wc_render_surface(surface, damage, output, rdata->renderer, rdata->when, sx,
-			sy, layer->geo.x, layer->geo.y);
+	wc_render_surface(surface, damage, output, rdata->render_data.renderer,
+			rdata->render_data.when, sx, sy, layer->geo.x, layer->geo.y);
 }
 
 static void wc_render_layers(struct timespec *now, pixman_region32_t *damage,
@@ -156,10 +159,15 @@ static void wc_render_layers(struct timespec *now, pixman_region32_t *damage,
 		if (!layer->mapped) {
 			continue;
 		}
-		struct wc_layer_render_data rdata = {.layer = layer,
+		struct wc_render_data render_data = {
 				.renderer = renderer,
 				.damage = damage,
-				.when = now};
+				.when = now,
+		};
+		struct wc_layer_render_data rdata = {
+				.layer = layer,
+				.render_data = render_data,
+		};
 
 		wlr_layer_surface_v1_for_each_surface(
 				layer->layer_surface, wc_render_layer, &rdata);
@@ -169,7 +177,7 @@ static void wc_render_layers(struct timespec *now, pixman_region32_t *damage,
 static void wc_output_frame(struct wl_listener *listener, void *data) {
 	struct wc_output *output = wl_container_of(listener, output, frame);
 	struct wc_server *server = output->server;
-	struct wlr_output *wlr_output = output->output;
+	struct wlr_output *wlr_output = output->wlr_output;
 	struct wlr_renderer *renderer =
 			wlr_backend_get_renderer(wlr_output->backend);
 	assert(renderer);
@@ -203,7 +211,7 @@ static void wc_output_frame(struct wl_listener *listener, void *data) {
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; i++) {
-		scissor_output(output->output, &rects[i]);
+		scissor_output(output->wlr_output, &rects[i]);
 		wlr_renderer_clear(renderer, background_color);
 	}
 
@@ -223,14 +231,18 @@ static void wc_output_frame(struct wl_listener *listener, void *data) {
 		if (!view->mapped) {
 			continue;
 		}
-		struct wc_view_render_data rdata = {.output = output->output,
-				.view = view,
+		struct wc_render_data render_data = {
 				.renderer = renderer,
 				.damage = &damage,
-				.when = &now};
+				.when = &now,
+		};
+		struct wc_view_render_data rdata = {
+				.output = output->wlr_output,
+				.view = view,
+				.render_data = render_data,
+		};
 
-		wlr_xdg_surface_for_each_surface(
-				view->xdg_surface, wc_render_view, &rdata);
+		wc_view_for_each_surface(view, wc_render_view, &rdata);
 	}
 
 	wc_render_layers(&now, &damage, renderer, output, top);
@@ -274,7 +286,8 @@ static void wc_output_destroy(struct wl_listener *listener, void *data) {
 		}
 	}
 
-	for (size_t i = 0; i < 4; i++) {
+	size_t len = sizeof(output->layers) / sizeof(output->layers[0]);
+	for (size_t i = 0; i < len; i++) {
 		struct wc_layer *layer;
 		struct wc_layer *temp;
 		wl_list_for_each_safe(layer, temp, &output->layers[i], link) {
@@ -282,46 +295,52 @@ static void wc_output_destroy(struct wl_listener *listener, void *data) {
 		}
 	}
 
+	if (server->output_layout != NULL) {
+		wlr_output_layout_remove(server->output_layout, output->wlr_output);
+	}
+	wlr_output_destroy_global(output->wlr_output);
+
 	free(output);
 }
 
 static void wc_new_output(struct wl_listener *listener, void *data) {
 	struct wc_server *server = wl_container_of(listener, server, new_output);
-	struct wlr_output *output = data;
+	struct wlr_output *wlr_output = data;
 
-	if (!wl_list_empty(&output->modes)) {
+	if (!wl_list_empty(&wlr_output->modes)) {
 		struct wlr_output_mode *mode =
-				wl_container_of(output->modes.prev, mode, link);
-		wlr_output_set_mode(output, mode);
+				wl_container_of(wlr_output->modes.prev, mode, link);
+		wlr_output_set_mode(wlr_output, mode);
 	}
 
-	struct wc_output *wc_output = calloc(1, sizeof(struct wc_output));
-	wc_output->output = output;
-	wc_output->server = server;
-	output->data = wc_output;
-	wc_output->damage = wlr_output_damage_create(output);
+	struct wc_output *output = calloc(1, sizeof(struct wc_output));
+	output->wlr_output = wlr_output;
+	output->server = server;
+	wlr_output->data = output;
+	output->damage = wlr_output_damage_create(wlr_output);
 
-	size_t len = sizeof(wc_output->layers) / sizeof(wc_output->layers[0]);
+	size_t len = sizeof(output->layers) / sizeof(output->layers[0]);
 	for (size_t i = 0; i < len; i++) {
-		wl_list_init(&wc_output->layers[i]);
+		wl_list_init(&output->layers[i]);
 	}
 
-	wc_output->frame.notify = wc_output_frame;
-	wl_signal_add(&wc_output->damage->events.frame, &wc_output->frame);
-	wc_output->destroy.notify = wc_output_destroy;
-	wl_signal_add(&output->events.destroy, &wc_output->destroy);
+	output->frame.notify = wc_output_frame;
+	output->destroy.notify = wc_output_destroy;
 
-	wl_list_insert(&server->outputs, &wc_output->link);
+	wl_signal_add(&output->damage->events.frame, &output->frame);
+	wl_signal_add(&wlr_output->events.destroy, &output->destroy);
+
+	wl_list_insert(&server->outputs, &output->link);
 
 	if (server->active_output == NULL) {
-		server->active_output = wc_output;
+		server->active_output = output;
 	}
 
-	wlr_output_layout_add_auto(server->output_layout, output);
-	wlr_output_create_global(output);
+	wlr_output_layout_add_auto(server->output_layout, wlr_output);
+	wlr_output_create_global(wlr_output);
 
-	wc_layer_shell_arrange_layers(wc_output);
-	wlr_output_damage_add_whole(wc_output->damage);
+	wc_layer_shell_arrange_layers(output);
+	wlr_output_damage_add_whole(output->damage);
 }
 
 struct wc_output *wc_get_active_output(struct wc_server *server) {
@@ -355,13 +374,14 @@ void wc_output_init(struct wc_server *server) {
 }
 
 void wc_output_fini(struct wc_server *server) {
-	wlr_output_layout_destroy(server->output_layout);
-
 	struct wc_output *output;
 	struct wc_output *temp;
 	wl_list_for_each_safe(output, temp, &server->outputs, link) {
 		wc_output_destroy(&output->destroy, NULL);
 	}
+
+	wlr_output_layout_destroy(server->output_layout);
+	server->output_layout = NULL;
 
 	wl_list_remove(&server->new_output.link);
 }

@@ -23,11 +23,14 @@ static void wc_new_input(struct wl_listener *listener, void *data) {
 		break;
 	default:
 		wlr_log(WLR_ERROR, "Device type not supported: %d", device->type);
-		break;
+		return;
 	}
-	uint32_t caps = WL_SEAT_CAPABILITY_POINTER;
+	uint32_t caps = 0;
 	if (!wl_list_empty(&server->keyboards)) {
 		caps |= WL_SEAT_CAPABILITY_KEYBOARD;
+	}
+	if (!wl_list_empty(&server->pointers)) {
+		caps |= WL_SEAT_CAPABILITY_POINTER;
 	}
 	wlr_seat_set_capabilities(server->seat->seat, caps);
 }
