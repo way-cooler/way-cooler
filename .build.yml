@@ -21,10 +21,14 @@ packages:
   - xcb-util-image
   - xcb-util-cursor
   - xcb-util-wm
+  - python
 sources:
   - https://github.com/way-cooler/way-cooler
   - https://github.com/swaywm/wlroots
 tasks:
+  - check-c-style: |
+      cd way-cooler
+      python ./run-clang-format.py -r ./compositor/ ./client/
   - rust_setup: |
       rustup install stable
       rustup install nightly

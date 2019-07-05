@@ -3,6 +3,10 @@
 
 #include "server.h"
 
-void wc_init_xdg(struct wc_server* server);
+void wc_xdg_init(struct wc_server *server);
 
-#endif//XDG_H
+void wc_xdg_fini(struct wc_server *server);
+
+void wc_xdg_surface_destroy(struct wl_listener *listener, void *data);
+
+#endif  // XDG_H
