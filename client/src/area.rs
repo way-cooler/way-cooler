@@ -1,6 +1,6 @@
 //! Utility methods and structures
 
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 /// Generic geometry-like struct. Contains an origin (x, y) point and bounds
 /// (width, height).
 pub struct Area {
@@ -22,31 +22,31 @@ impl Area {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Origin {
     pub x: i32,
     pub y: i32
 }
 
-impl Into<Area> for Origin {
-    fn into(self) -> Area {
+impl From<Origin> for Area {
+    fn from(origin: Origin) -> Self {
         Area {
-            origin: self,
+            origin,
             ..Default::default()
         }
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Size {
     pub width: u32,
     pub height: u32
 }
 
-impl Into<Area> for Size {
-    fn into(self) -> Area {
+impl From<Size> for Area {
+    fn from(size: Size) -> Self {
         Area {
-            size: self,
+            size,
             ..Default::default()
         }
     }

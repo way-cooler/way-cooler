@@ -1,6 +1,6 @@
-use xcb::ffi::xproto::xcb_atom_t;
-
 use std::sync::Mutex;
+
+use {lazy_static::*, xcb::ffi::xproto::xcb_atom_t};
 
 lazy_static! {
     pub static ref PROPERTIES: Mutex<Vec<XProperty>> = Mutex::new(vec![]);

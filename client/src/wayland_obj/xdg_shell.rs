@@ -2,18 +2,22 @@
 
 use std::{cell::RefCell, fmt, os::unix::io::AsRawFd};
 
-use wayland_client::{
-    protocol::{wl_buffer::WlBuffer, wl_surface::WlSurface},
-    NewProxy, Proxy
-};
-use wayland_protocols::xdg_shell::client::{
-    xdg_surface::{self, XdgSurface},
-    xdg_toplevel,
-    xdg_wm_base::{self, XdgWmBase}
+use {
+    wayland_client::{
+        protocol::{wl_buffer::WlBuffer, wl_surface::WlSurface},
+        NewProxy, Proxy
+    },
+    wayland_protocols::xdg_shell::client::{
+        xdg_surface::{self, XdgSurface},
+        xdg_toplevel,
+        xdg_wm_base::{self, XdgWmBase}
+    }
 };
 
-use crate::area::{Area, Origin, Size};
-use crate::wayland_obj;
+use crate::{
+    area::{Area, Origin, Size},
+    wayland_obj
+};
 
 /// The minimum version of the xdg_wm_base global to bind to.
 pub const XDG_WM_BASE_VERSION: u32 = 2;
@@ -42,26 +46,34 @@ pub struct XdgToplevel {
 /// can be accessed anywhere.
 #[derive(Eq, PartialEq)]
 struct XdgToplevelState {
-    // TODO These should have wrappers around the proxies as well,
-    // so that their cached state is transparent to this cached state.
     wl_surface: WlSurface,
     xdg_surface: XdgSurface,
     buffer: Option<WlBuffer>,
     size: Size
 }
 
-struct XdgToplevelHandler {}
+struct XdgToplevelHandler;
 
 impl XdgToplevelHandler {}
 
 impl xdg_toplevel::EventHandler for XdgToplevelHandler {
-    #[allow(unused)]
-    fn configure(&mut self, object: xdg_toplevel::XdgToplevel, width: i32, height: i32, states: Vec<u8>) {
+    fn configure(
+        &mut self,
+        object: xdg_toplevel::XdgToplevel,
+        width: i32,
+        height: i32,
+        _states: Vec<u8>
+    ) {
         // TODO Fill in
-        let state = unwrap_state(object.as_ref()).borrow_mut();
-        state
-            .xdg_surface
-            .set_window_geometry(0, 0, state.size.width as i32, state.size.height as i32);
+        let mut state = unwrap_state(object.as_ref()).borrow_mut();
+        state.size.width = width as u32;
+        state.size.height = height as u32;
+        state.xdg_surface.set_window_geometry(
+            0,
+            0,
+            state.size.width as i32,
+            state.size.height as i32
+        );
     }
 
     fn close(&mut self, _object: xdg_toplevel::XdgToplevel) {
@@ -72,7 +84,6 @@ impl xdg_toplevel::EventHandler for XdgToplevelHandler {
 impl XdgToplevel {
     pub fn set_size(&self, size: Size) {
         let Size { width, height, .. } = size;
-        // TODO Is there ever a need for us to set the x and y?
         unwrap_state(self.as_ref())
             .borrow()
             .xdg_surface
@@ -109,7 +120,7 @@ impl Drop for XdgToplevel {
 }
 
 pub fn xdg_shell_init(new_proxy: NewProxy<XdgWmBase>) -> XdgWmBase {
-    let xwm_base = new_proxy.implement(XdgWmBaseHandler {}, ());
+    let xwm_base = new_proxy.implement(XdgWmBaseHandler, ());
 
     XDG_SHELL_CREATOR.with(|shell_creator| {
         *shell_creator.borrow_mut() = Some(xwm_base.clone());
@@ -118,7 +129,7 @@ pub fn xdg_shell_init(new_proxy: NewProxy<XdgWmBase>) -> XdgWmBase {
     xwm_base
 }
 
-pub struct XdgWmBaseHandler {}
+pub struct XdgWmBaseHandler;
 
 impl xdg_wm_base::EventHandler for XdgWmBaseHandler {
     fn ping(&mut self, object: XdgWmBase, serial: u32) {
@@ -147,7 +158,8 @@ where
                 buffer: None
             };
 
-            let res = new_toplevel.implement(XdgToplevelHandler {}, RefCell::new(state));
+            let res = new_toplevel
+                .implement(XdgToplevelHandler {}, RefCell::new(state));
 
             wl_surface.commit();
 
@@ -157,24 +169,26 @@ where
 }
 
 struct XdgSurfaceHandler {
-    wlsurface: WlSurface
+    wl_surface: WlSurface
 }
 
 impl xdg_surface::EventHandler for XdgSurfaceHandler {
     fn configure(&mut self, object: XdgSurface, serial: u32) {
         object.ack_configure(serial);
-        self.wlsurface.commit();
+        self.wl_surface.commit();
     }
 }
 
 fn create_xdg_surface(surface: &WlSurface) -> Result<XdgSurface, ()> {
     XDG_SHELL_CREATOR.with(|shell_creator| {
         let shell_creator = shell_creator.borrow();
-        let shell_creator = shell_creator.as_ref().expect("XDG Shell creator not initilized");
+        let shell_creator = shell_creator
+            .as_ref()
+            .expect("XDG Shell creator not initilized");
         shell_creator.get_xdg_surface(surface, |new_proxy| {
             new_proxy.implement(
                 XdgSurfaceHandler {
-                    wlsurface: surface.clone()
+                    wl_surface: surface.clone()
                 },
                 ()
             )
@@ -194,7 +208,9 @@ impl AsRef<Proxy<xdg_toplevel::XdgToplevel>> for XdgToplevel {
     }
 }
 
-fn unwrap_state(proxy: &Proxy<xdg_toplevel::XdgToplevel>) -> &RefCell<XdgToplevelState> {
+fn unwrap_state(
+    proxy: &Proxy<xdg_toplevel::XdgToplevel>
+) -> &RefCell<XdgToplevelState> {
     proxy
         .user_data::<RefCell<XdgToplevelState>>()
         .expect("User data has not been set yet")

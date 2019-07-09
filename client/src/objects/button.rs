@@ -4,9 +4,11 @@
 
 use std::default::Default;
 
-use rlua::{self, Table, UserData, UserDataMethods, Value};
-use xcb::ffi::xproto::xcb_button_t;
-use xkbcommon::xkb::Keysym;
+use {
+    rlua::{self, Table, UserData, UserDataMethods, Value},
+    xcb::ffi::xproto::xcb_button_t,
+    xkbcommon::xkb::Keysym
+};
 
 use crate::common::{
     class::{self, Class},
@@ -38,7 +40,10 @@ impl UserData for ButtonState {
 }
 
 impl<'lua> Button<'lua> {
-    fn new(lua: rlua::Context<'lua>, args: Table<'lua>) -> rlua::Result<Button<'lua>> {
+    fn new(
+        lua: rlua::Context<'lua>,
+        args: Table<'lua>
+    ) -> rlua::Result<Button<'lua>> {
         let class = class::class_setup(lua, "button")?;
         Ok(Button::allocate(lua, class)?
             .handle_constructor_argument(args)?
@@ -105,7 +110,10 @@ fn set_button<'lua>(
     Ok(Nil)
 }
 
-fn get_button<'lua>(_: rlua::Context<'lua>, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_button<'lua>(
+    _: rlua::Context<'lua>,
+    button: Button<'lua>
+) -> rlua::Result<Value<'lua>> {
     button.button()
 }
 
@@ -118,7 +126,10 @@ fn set_modifiers<'lua>(
     Ok(())
 }
 
-fn get_modifiers<'lua>(lua: rlua::Context<'lua>, button: Button<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_modifiers<'lua>(
+    lua: rlua::Context<'lua>,
+    button: Button<'lua>
+) -> rlua::Result<Value<'lua>> {
     use crate::lua::mods_to_lua;
     mods_to_lua(lua, &button.modifiers()?).map(Value::Table)
 }

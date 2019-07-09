@@ -2,15 +2,18 @@
 
 ## General Guidelines
 
-### Git
+## Git
 
 [Use good git commit messages](https://chris.beams.io/posts/git-commit/). Please
 squash/rebase liberally.
 
 ## C
 
-Way Cooler follows the [wlroots guidelines for its C
-code](https://github.com/swaywm/wlroots/blob/master/CONTRIBUTING.md#style-reference).
+Way Cooler formats its C code using clang-format. This format is mostly the same
+format as wlroots, though there are some differences. Whatever clang-format
+corrects to is the correct style.
+
+Imports are grouped as described by the Google import style guide.
 
 ## Rust
 
@@ -48,14 +51,24 @@ Import statements should be grouped using the nested `{}` syntax.
 Here is an example:
 
 ```rust
-use std::{env, mem, path::PathBuf, process::exit, io::{self, Write},
-          os::unix::io::RawFd};
+use std::{
+    env,
+    io::{self, Write},
+    mem,
+    os::unix::io::RawFd,
+    path::PathBuf,
+    process::exit
+};
 
-use exec::Command;
-use rlua::{LightUserData, Lua, Table};
+use {
+    exec::Command,
+    rlua::{LightUserData, Lua, Table}
+};
 
-use lua::{LUA, NEXT_LUA};
-use wayland_protocols::xdg_shell::xdg_wm_base;
+use crate::{
+    lua::{LUA, NEXT_LUA},
+    wayland_protocols::xdg_shell::xdg_wm_base
+};
 ```
 
 ### Unused Parameters

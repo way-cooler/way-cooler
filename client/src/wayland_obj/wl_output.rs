@@ -7,9 +7,11 @@ use wayland_client::{
     GlobalImplementor, NewProxy, Proxy
 };
 
-use crate::area::{Area, Origin, Size};
-use crate::lua::LUA;
-use crate::objects::screen::{self, Screen};
+use crate::{
+    area::{Area, Origin, Size},
+    lua::LUA,
+    objects::screen::{self, Screen}
+};
 
 /// The minimum version of the wl_output global to bind to.
 pub const WL_OUTPUT_VERSION: u32 = 2;
@@ -21,10 +23,10 @@ pub struct Output {
 }
 
 // Provides new WlOutputs with an implementation.
-pub struct WlOutputManager {}
+pub struct WlOutputManager;
 
 // Handle incoming events for WlOutput.
-pub struct WlOutputEventHandler {}
+pub struct WlOutputEventHandler;
 
 /// The cached state for the WlOutput.
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
@@ -45,16 +47,23 @@ impl Output {
 
 impl GlobalImplementor<WlOutput> for WlOutputManager {
     fn new_global(&mut self, new_proxy: NewProxy<WlOutput>) -> WlOutput {
-        let res = new_proxy.implement(WlOutputEventHandler {}, RefCell::new(OutputState::default()));
+        let res = new_proxy.implement(
+            WlOutputEventHandler,
+            RefCell::new(OutputState::default())
+        );
 
         LUA.with(|lua| {
             lua.borrow().context(|ctx| {
-                let output = Output { output: res.clone() };
-                let mut screen = Screen::new(ctx).expect("Could not allocate new screen");
+                let output = Output {
+                    output: res.clone()
+                };
+                let mut screen =
+                    Screen::new(ctx).expect("Could not allocate new screen");
                 screen
                     .init_screens(output.clone(), vec![output])
                     .expect("Could not initilize new output with a screen");
-                screen::add_screen(ctx, screen).expect("Could not add screen to the list of screens");
+                screen::add_screen(ctx, screen)
+                    .expect("Could not add screen to the list of screens");
             })
         });
 
@@ -76,12 +85,21 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         model: String,
         transform: wl_output::Transform
     ) {
-        unwrap_state(object.as_ref()).borrow_mut().name = format!("{} ({})", make, model);
+        unwrap_state(object.as_ref()).borrow_mut().name =
+            format!("{} ({})", make, model);
     }
 
     #[allow(unused)]
-    fn mode(&mut self, object: WlOutput, flags: wl_output::Mode, width: i32, height: i32, refresh: i32) {
-        unwrap_state(object.as_ref()).borrow_mut().resolution = (width as u32, height as u32);
+    fn mode(
+        &mut self,
+        object: WlOutput,
+        flags: wl_output::Mode,
+        width: i32,
+        height: i32,
+        refresh: i32
+    ) {
+        unwrap_state(object.as_ref()).borrow_mut().resolution =
+            (width as u32, height as u32);
         let geometry = Area {
             origin: Origin { x: 0, y: 0 },
             size: Size {
@@ -91,7 +109,9 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         };
         LUA.with(|lua| {
             lua.borrow().context(|ctx| {
-                if let Ok(mut screen) = screen::get_screen(ctx, Output { output: object }) {
+                if let Ok(mut screen) =
+                    screen::get_screen(ctx, Output { output: object })
+                {
                     screen
                         .set_geometry(ctx, geometry)
                         .expect("could not set geometry");
@@ -109,12 +129,14 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         // see how awesome does it and fix this.
         LUA.with(|lua| {
             lua.borrow().context(|ctx| {
-                let mut screen = Screen::new(ctx).expect("Could not allocate new screen");
+                let mut screen =
+                    Screen::new(ctx).expect("Could not allocate new screen");
                 let output = Output { output: object };
                 screen
                     .init_screens(output.clone(), vec![output])
                     .expect("Could not initilize new output with a screen");
-                screen::add_screen(ctx, screen).expect("Could not add screen to the list of screens");
+                screen::add_screen(ctx, screen)
+                    .expect("Could not add screen to the list of screens");
             });
         });
     }

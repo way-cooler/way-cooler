@@ -1,8 +1,10 @@
 //! API for root resources, such as wallpapers and keybindings.
 //! Awesome's equivalent of globalconf's properties are accessible via registry keys
 
-use cairo_sys::cairo_pattern_t;
-use rlua::{self, LightUserData, Table, ToLua, Value};
+use {
+    cairo_sys::cairo_pattern_t,
+    rlua::{self, LightUserData, Table, ToLua, Value}
+};
 
 use crate::objects::tag;
 
@@ -26,30 +28,38 @@ pub fn init(lua: rlua::Context) -> rlua::Result<()> {
     lua.globals().set("root", root)
 }
 
-fn dummy_double<'lua>(_: rlua::Context<'lua>, _: Value) -> rlua::Result<(i32, i32)> {
+fn dummy_double<'lua>(
+    _: rlua::Context<'lua>,
+    _: Value
+) -> rlua::Result<(i32, i32)> {
     Ok((0, 0))
 }
 
 /// Gets the wallpaper as a cairo surface or set it as a cairo pattern
-fn wallpaper<'lua>(lua: rlua::Context<'lua>, pattern: Option<LightUserData>) -> rlua::Result<Value<'lua>> {
-    // TODO FIXME Implement for realz
+fn wallpaper<'lua>(
+    lua: rlua::Context<'lua>,
+    pattern: Option<LightUserData>
+) -> rlua::Result<Value<'lua>> {
     if let Some(pattern) = pattern {
-        // TODO Wrap before giving it to set_wallpaper
         let pattern = pattern.0 as *mut cairo_pattern_t;
         return set_wallpaper(lua, pattern)?.to_lua(lua);
     }
-    // TODO Look it up in global conf (e.g probably super secret lua value)
     return Ok(Value::Nil);
 }
 
-fn set_wallpaper<'lua>(_: rlua::Context<'lua>, _pattern: *mut cairo_pattern_t) -> rlua::Result<bool> {
+fn set_wallpaper<'lua>(
+    _: rlua::Context<'lua>,
+    _pattern: *mut cairo_pattern_t
+) -> rlua::Result<bool> {
     warn!("Fake setting the wallpaper");
     Ok(true)
 }
 
 fn tags<'lua>(lua: rlua::Context<'lua>, _: ()) -> rlua::Result<Table<'lua>> {
     let table = lua.create_table()?;
-    let activated_tags = lua.named_registry_value::<str, Table>(tag::TAG_LIST)?;
+    let activated_tags =
+        lua.named_registry_value::<str, Table>(tag::TAG_LIST)?;
+    // NOTE We make a deep clone so they can't modify references.
     for pair in activated_tags.pairs::<Value, Value>() {
         let (key, value) = pair?;
         table.set(key, value)?;
@@ -60,7 +70,10 @@ fn tags<'lua>(lua: rlua::Context<'lua>, _: ()) -> rlua::Result<Table<'lua>> {
 /// Get or set global key bindings.
 ///
 /// These bindings will be available when you press keys on the root window.
-fn root_keys<'lua>(lua: rlua::Context<'lua>, key_array: Value<'lua>) -> rlua::Result<Value<'lua>> {
+fn root_keys<'lua>(
+    lua: rlua::Context<'lua>,
+    key_array: Value<'lua>
+) -> rlua::Result<Value<'lua>> {
     match key_array {
         // Set the global keys
         Value::Table(key_array) => {
@@ -76,13 +89,13 @@ fn root_keys<'lua>(lua: rlua::Context<'lua>, key_array: Value<'lua>) -> rlua::Re
         // Get the global keys
         Value::Nil => {
             let res = lua.create_table()?;
-            for entry in lua
-                .named_registry_value::<str, Table>(ROOT_KEYS_HANDLE)
-                .or(lua.create_table())?
-                .pairs()
+            if let Ok(table) =
+                lua.named_registry_value::<str, Table>(ROOT_KEYS_HANDLE)
             {
-                let (key, value) = entry?;
-                res.set::<Value, Value>(key, value)?;
+                for entry in table.pairs() {
+                    let (key, value) = entry?;
+                    res.set::<Value, Value>(key, value)?;
+                }
             }
             Ok(Value::Table(res))
         },

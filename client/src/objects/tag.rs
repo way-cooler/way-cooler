@@ -5,12 +5,14 @@ use std::{collections::HashSet, default::Default};
 
 use rlua::{self, FromLua, Integer, Table, UserData, UserDataMethods, Value};
 
-use crate::common::{
-    class::{self, Class, ClassBuilder},
-    object::{self, Object, ObjectBuilder},
-    property::Property
+use crate::{
+    common::{
+        class::{self, Class, ClassBuilder},
+        object::{self, Object, ObjectBuilder},
+        property::Property
+    },
+    objects::client::Client
 };
-use crate::objects::client::Client;
 
 pub const TAG_LIST: &'static str = "__tag_list";
 
@@ -34,7 +36,10 @@ impl Default for TagState {
 }
 
 impl<'lua> Tag<'lua> {
-    fn new(lua: rlua::Context<'lua>, args: Table<'lua>) -> rlua::Result<Tag<'lua>> {
+    fn new(
+        lua: rlua::Context<'lua>,
+        args: Table<'lua>
+    ) -> rlua::Result<Tag<'lua>> {
         let class = class::class_setup(lua, "tag")?;
         Ok(object_setup(lua, Tag::allocate(lua, class)?)?
             .handle_constructor_argument(args)?
@@ -45,9 +50,13 @@ impl<'lua> Tag<'lua> {
         self.get_associated_data::<Vec<Client>>("__clients")
     }
 
-    pub fn set_clients(&mut self, clients: Vec<Client<'lua>>) -> rlua::Result<()> {
+    pub fn set_clients(
+        &mut self,
+        clients: Vec<Client<'lua>>
+    ) -> rlua::Result<()> {
         {
-            let prev_clients = self.clients()?.into_iter().collect::<HashSet<_>>();
+            let prev_clients =
+                self.clients()?.into_iter().collect::<HashSet<_>>();
             let new_clients = clients.iter().cloned().collect::<HashSet<_>>();
 
             for _client in new_clients.difference(&prev_clients) {
@@ -63,7 +72,10 @@ impl<'lua> Tag<'lua> {
     }
 
     #[allow(dead_code)]
-    pub fn client_index(&self, client: &Client<'lua>) -> rlua::Result<Option<usize>> {
+    pub fn client_index(
+        &self,
+        client: &Client<'lua>
+    ) -> rlua::Result<Option<usize>> {
         // TODO: remove the chaining of collect and into_iter
         Ok(self.clients()?.iter().position(|c| *c == *client))
     }
@@ -82,7 +94,11 @@ impl<'lua> Tag<'lua> {
 
     #[allow(dead_code)]
     pub fn untag_client(&mut self, client: Client<'lua>) -> rlua::Result<()> {
-        let clients: Vec<_> = self.clients()?.into_iter().filter(|c| *c != client).collect();
+        let clients: Vec<_> = self
+            .clients()?
+            .into_iter()
+            .filter(|c| *c != client)
+            .collect();
         self.set_associated_data("__clients", clients)?;
         Ok(())
     }
@@ -105,7 +121,6 @@ fn method_setup<'lua>(
     lua: rlua::Context<'lua>,
     builder: ClassBuilder<'lua, TagState>
 ) -> rlua::Result<ClassBuilder<'lua, TagState>> {
-    // TODO Do properly
     builder
         .method(
             "__call".into(),
@@ -161,14 +176,20 @@ fn set_name<'lua>(
     Ok(Value::Nil)
 }
 
-fn get_name<'lua>(lua: rlua::Context<'lua>, tag: Tag<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_name<'lua>(
+    lua: rlua::Context<'lua>,
+    tag: Tag<'lua>
+) -> rlua::Result<Value<'lua>> {
     match tag.state()?.name {
         None => Ok(Value::Nil),
         Some(ref name) => Ok(Value::String(lua.create_string(&name)?))
     }
 }
 
-fn set_selected<'lua>(lua: rlua::Context<'lua>, (mut tag, val): (Tag<'lua>, bool)) -> rlua::Result<()> {
+fn set_selected<'lua>(
+    lua: rlua::Context<'lua>,
+    (mut tag, val): (Tag<'lua>, bool)
+) -> rlua::Result<()> {
     {
         let mut tag = tag.state_mut()?;
         if tag.selected == val {
@@ -180,7 +201,10 @@ fn set_selected<'lua>(lua: rlua::Context<'lua>, (mut tag, val): (Tag<'lua>, bool
     Ok(())
 }
 
-fn get_selected<'lua>(_: rlua::Context<'lua>, tag: Tag<'lua>) -> rlua::Result<bool> {
+fn get_selected<'lua>(
+    _: rlua::Context<'lua>,
+    tag: Tag<'lua>
+) -> rlua::Result<bool> {
     Ok(tag.state()?.selected)
 }
 
@@ -211,7 +235,10 @@ fn set_activated<'lua>(
                     found = true;
                     // Now remove this by shifting everything down...
                     for index in key..activated_tags_count {
-                        activated_tags.set(index, activated_tags.get::<_, Value>(index + 1)?)?;
+                        activated_tags.set(
+                            index,
+                            activated_tags.get::<_, Value>(index + 1)?
+                        )?;
                     }
                     activated_tags.set(activated_tags_count, Value::Nil)?;
                     break;
@@ -225,7 +252,10 @@ fn set_activated<'lua>(
     Ok(Value::Nil)
 }
 
-fn get_activated<'lua>(_: rlua::Context<'lua>, tag: Tag<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_activated<'lua>(
+    _: rlua::Context<'lua>,
+    tag: Tag<'lua>
+) -> rlua::Result<Value<'lua>> {
     Ok(Value::Boolean(tag.state()?.activated))
 }
 

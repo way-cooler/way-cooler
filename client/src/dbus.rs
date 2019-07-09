@@ -1,50 +1,56 @@
 //! Sets up the dbus interface for Awesome.
 
-use std::{cell::RefCell, os::unix::io::RawFd, slice, thread::LocalKey};
+use std::{os::unix::io::RawFd, slice, thread::LocalKey};
 
-use dbus::{BusType, Connection, Message, MessageItem, MessageType};
-use rlua::{self, Error::RuntimeError, MultiValue, Table, ToLua, ToLuaMulti, Value};
+use {
+    dbus::{
+        arg::ArgType, BusType, Connection, Message, MessageItem, MessageType
+    },
+    rlua::{
+        self, Error::RuntimeError, MultiValue, Table, ToLua, ToLuaMulti, Value
+    }
+};
 
-use crate::common::signal;
-use crate::lua::LUA;
-
-/// A connection to a D-Bus we store globally that, when destroyed, will destroy
-/// the other connection as well.
-type GlobalConnection = RefCell<Option<DBusConnection>>;
+use crate::{common::signal, lua::LUA};
 
 const SIGNALS_NAME: &'static str = "signals";
 
 thread_local! {
-    static SESSION_BUS: GlobalConnection = RefCell::new(None);
-    static SYSTEM_BUS:  GlobalConnection = RefCell::new(None);
+    static SESSION_BUS: DBusConnection = {
+        let connection =
+            DBusConnection {
+                connection: Connection::get_private(BusType::Session)
+                    .expect("Could not set up session bus")
+            };
+        connection.replace_message_callback(Some(Box::new(handle_msg_session)));
+        connection
+    };
+    static SYSTEM_BUS: DBusConnection = {
+        let connection = DBusConnection {
+            connection: Connection::get_private(BusType::System)
+                .expect("Could not set up system bus")
+        };
+        connection.replace_message_callback(Some(Box::new(handle_msg_system)));
+        connection
+    };
 }
 
 /// Called from `wayland_glib_interface.c` whenever a request is sent to the
-/// current session dbus file descriptor.
-///
-/// This will kick off the special handling code in `dbus.rs`.
+/// session dbus file descriptor.
 #[no_mangle]
 pub extern "C" fn dbus_session_refresh(_: libc::c_void) -> bool {
     SESSION_BUS.with(|session_bus| {
-        let session_bus = session_bus.borrow();
-        let session_bus = session_bus.as_ref().unwrap();
-        session_bus.replace_message_callback(Some(Box::new(handle_msg_session)));
-        let _ = session_bus.incoming(0).collect::<Vec<_>>();
+        session_bus.incoming(0).for_each(drop);
     });
     true
 }
 
 /// Called from `wayland_glib_interface.c` whenever a request is sent to the
 /// system dbus file descriptor.
-///
-/// This will kick off the special handling code in `dbus.rs`.
 #[no_mangle]
 pub extern "C" fn dbus_system_refresh(_: libc::c_void) -> bool {
     SYSTEM_BUS.with(|system_bus| {
-        let system_bus = system_bus.borrow();
-        let system_bus = system_bus.as_ref().unwrap();
-        system_bus.replace_message_callback(Some(Box::new(handle_msg_system)));
-        let _ = system_bus.incoming(0).collect::<Vec<_>>();
+        system_bus.incoming(0).for_each(drop);
     });
     true
 }
@@ -66,22 +72,6 @@ impl Drop for DBusConnection {
         unsafe {
             crate::remove_dbus_from_glib();
         }
-        // Need to close both of them, no idea which one was just destroyed,
-        // so try to destroy both of them.
-        SESSION_BUS
-            .try_with(|session_bus| {
-                if let Ok(mut bus) = session_bus.try_borrow_mut() {
-                    *bus = None
-                }
-            })
-            .ok();
-        SYSTEM_BUS
-            .try_with(|system_bus| {
-                if let Ok(mut bus) = system_bus.try_borrow_mut() {
-                    *bus = None
-                }
-            })
-            .ok();
     }
 }
 
@@ -97,29 +87,32 @@ fn handle_msg(bus: &Connection, bus_type: BusType, msg: Message) -> bool {
     if msg.msg_type() == MessageType::Signal {
         let (_, _, interface, member) = msg.headers();
         match (interface.unwrap().as_str(), member.unwrap().as_str()) {
-            // TODO Drop them
             ("org.freedesktop.DBus.Local", "Disconnected") => return false,
             _ => {}
         }
     }
-    let reply = LUA
-        .with(|lua| {
-            let lua = lua.borrow();
-            lua.context(|lua_ctx| process_request(bus_type, lua_ctx, &msg))
-        })
-        .unwrap_or_else(|err| {
-            crate::lua::log_error(err);
-            None
-        });
-    if let Some(reply) = reply {
-        bus.send(reply).expect("Could not send D-Bus reply");
+    let reply = LUA.with(|lua| {
+        let lua = lua.borrow();
+        lua.context(|lua_ctx| process_request(bus_type, lua_ctx, &msg))
+    });
+    match reply {
+        Ok(Some(reply)) => {
+            bus.send(reply).expect("Could not send D-Bus reply");
+        },
+        Ok(None) => {},
+        Err(err) => crate::lua::log_error(err)
     }
     true
 }
 
 /// Gives the D-Bus message to Lua for processing the reply.
-fn process_request(bus_type: BusType, lua: rlua::Context, msg: &Message) -> rlua::Result<Option<Message>> {
+fn process_request(
+    bus_type: BusType,
+    lua: rlua::Context,
+    msg: &Message
+) -> rlua::Result<Option<Message>> {
     let message_metadata = lua.create_table()?;
+
     let msg_type = match msg.msg_type() {
         MessageType::Signal => "signal",
         MessageType::MethodCall => "method_call",
@@ -128,59 +121,68 @@ fn process_request(bus_type: BusType, lua: rlua::Context, msg: &Message) -> rlua
         MessageType::Invalid => "unknown"
     };
     message_metadata.set("type", msg_type)?;
-    let (_type, path, interface, member) = msg.headers();
+
+    let (_, path, interface, member) = msg.headers();
     let (path, interface, member) = (
-        path.unwrap_or_else(|| "".into()),
-        interface.unwrap_or_else(|| "".into()),
-        member.unwrap_or_else(|| "".into())
+        path.unwrap_or_default(),
+        interface.unwrap_or_default(),
+        member.unwrap_or_default()
     );
-    message_metadata.set("interface", interface.clone())?;
+    message_metadata.set("interface", interface.as_str())?;
     message_metadata.set("path", path)?;
     message_metadata.set("member", member)?;
+
     if let Some(sender) = msg.sender() {
         message_metadata.set("sender", sender.to_string())?;
     }
-    let bus_type_str = match bus_type {
+
+    let bus_typstr = match bus_type {
         BusType::Session => "session",
         BusType::System => "system",
-        _ => unimplemented!()
+        BusType::Starter => return Ok(None)
     };
-    message_metadata.set("bus", bus_type_str)?;
+    message_metadata.set("bus", bus_typstr)?;
+
     let lua_message = dbus_to_lua_value(lua, msg.get_items().as_slice())?;
+
     let dbus_table = lua
         .globals()
         .get::<_, Table>("dbus")
         .expect("Could not get dbus table");
-    let signals = dbus_table.get(SIGNALS_NAME).expect("Could not get signals table");
+    let signals = dbus_table
+        .get(SIGNALS_NAME)
+        .expect("Could not get signals table");
     if msg.get_no_reply() {
         signal::emit_signals(lua, signals, &interface, lua_message)?;
         return Ok(None);
     }
+
     if let Ok(Value::Table(sig)) = signals.get(interface) {
-        // There can only be ONE handler to send reply
+        // There can only be ONE handler to send reply, so get the first one.
         let func: rlua::Function = sig.get(1)?;
         let res: MultiValue = func.call((message_metadata, lua_message))?;
         if res.len() % 2 != 0 {
             warn!(
                 "Your D-Bus signal handling method returned \
-                 wrong number of arguments"
+                 wrong number of arguments (must be even)"
             );
             return Ok(None);
         }
+
         let types = res.iter().step_by(2);
         let values = res.iter().skip(1).step_by(2);
         let mut reply = msg.method_return();
-        for (type_, value) in types.zip(values) {
-            match lua_value_to_dbus(lua, type_.clone(), value.clone()) {
+        for (typ, value) in types.zip(values) {
+            match lua_value_to_dbus(lua, typ.clone(), value.clone()) {
                 Ok(v) => {
                     reply = reply.append(v);
                 },
                 Err(err) => {
+                    crate::lua::log_error(err);
                     warn!(
                         "Your D-Bus signal handling method returned \
-                         bad data"
+                         bad data. Expected type and value pairs."
                     );
-                    crate::lua::log_error(err);
                     return Ok(None);
                 }
             }
@@ -198,25 +200,10 @@ fn process_request(bus_type: BusType, lua: rlua::Context, msg: &Message) -> rlua
 /// file descriptors with glib so that we can awaken and deal
 /// with dbus events when necessary.
 pub fn connect() -> Result<(RawFd, RawFd), dbus::Error> {
-    let session_con = Connection::get_private(BusType::Session)?;
-    let system_con = Connection::get_private(BusType::System)?;
-    let session_fds = session_con.watch_fds();
-    let system_fds = system_con.watch_fds();
+    let session_fds = SESSION_BUS.with(|session_bus| session_bus.watch_fds());
+    let system_fds = SYSTEM_BUS.with(|system_bus| system_bus.watch_fds());
     assert_eq!(session_fds.len(), 1, "Only one fd per dbus connection");
     assert_eq!(system_fds.len(), 1, "Only one fd per dbus connection");
-
-    SESSION_BUS.with(|session_bus| {
-        let mut session_bus = session_bus.borrow_mut();
-        *session_bus = Some(DBusConnection {
-            connection: session_con
-        });
-    });
-    SYSTEM_BUS.with(|system_bus| {
-        let mut system_bus = system_bus.borrow_mut();
-        *system_bus = Some(DBusConnection {
-            connection: system_con
-        });
-    });
 
     Ok((session_fds[0].fd(), system_fds[0].fd()))
 }
@@ -231,7 +218,8 @@ pub fn lua_init(lua: rlua::Context) -> rlua::Result<()> {
     dbus_table.set("add_match", lua.create_function(add_match)?)?;
     dbus_table.set("remove_match", lua.create_function(remove_match)?)?;
     dbus_table.set("connect_signal", lua.create_function(connect_signal)?)?;
-    dbus_table.set("disconnect_signal", lua.create_function(disconnect_signal)?)?;
+    dbus_table
+        .set("disconnect_signal", lua.create_function(disconnect_signal)?)?;
     dbus_table.set("emit_signal", lua.create_function(emit_signal)?)?;
     dbus_table.set("__index", lua.create_function(index)?)?;
     dbus_table.set("__newindex", lua.create_function(newindex)?)?;
@@ -239,7 +227,9 @@ pub fn lua_init(lua: rlua::Context) -> rlua::Result<()> {
     Ok(())
 }
 
-fn get_bus_by_name<'bus>(bus_name: &str) -> rlua::Result<&'bus LocalKey<GlobalConnection>> {
+fn get_bus_by_name<'bus>(
+    bus_name: &str
+) -> rlua::Result<&'bus LocalKey<DBusConnection>> {
     match bus_name {
         "session" => Ok(&SESSION_BUS),
         "system" => Ok(&SYSTEM_BUS),
@@ -251,16 +241,16 @@ fn dbus_to_lua_value<'lua>(
     lua: rlua::Context<'lua>,
     msg_items: &[MessageItem]
 ) -> rlua::Result<MultiValue<'lua>> {
-    let mut res = Vec::new();
+    let mut res = Vec::with_capacity(msg_items.len());
     for msg_item in msg_items {
-        use dbus::MessageItem::*;
         match msg_item {
-            Variant(sub_msg_item) => res.extend(dbus_to_lua_value(lua, slice::from_ref(sub_msg_item))?),
-            DictEntry(key, value) => {
+            MessageItem::Variant(sub_msg_item) => res
+                .extend(dbus_to_lua_value(lua, slice::from_ref(sub_msg_item))?),
+            MessageItem::DictEntry(key, value) => {
                 res.extend(dbus_to_lua_value(lua, slice::from_ref(key))?);
                 res.extend(dbus_to_lua_value(lua, slice::from_ref(value))?);
             },
-            Struct(fields) => {
+            MessageItem::Struct(fields) => {
                 let struct_table = lua.create_table()?;
                 let fields = dbus_to_lua_value(lua, fields.as_slice())?;
                 for (index, field) in fields.into_iter().enumerate() {
@@ -268,38 +258,51 @@ fn dbus_to_lua_value<'lua>(
                 }
                 res.push(struct_table.to_lua(lua)?);
             },
-            Array(array) => {
+            MessageItem::Array(array) => {
                 let array_table = lua.create_table()?;
                 match array.get(0) {
                     None => {},
-                    Some(DictEntry(..)) => {
-                        let sub_res = dbus_to_lua_value(lua, array)?;
-                        assert!(sub_res.len() % 2 == 0);
-                        let keys = sub_res.iter().step_by(2);
-                        let values = sub_res.iter().skip(1).step_by(2);
+                    Some(MessageItem::DictEntry(..)) => {
+                        assert!(array.len() % 2 == 0);
+                        let keys = array.iter().step_by(2);
+                        let values = array.iter().skip(1).step_by(2);
                         for (key, value) in keys.zip(values) {
-                            array_table.set(key.clone(), value.clone())?;
+                            let key =
+                                dbus_to_lua_value(lua, slice::from_ref(key))?;
+                            assert_eq!(key.len(), 1);
+                            let key = key.iter().next().unwrap().to_owned();
+
+                            let value =
+                                dbus_to_lua_value(lua, slice::from_ref(value))?;
+                            assert_eq!(value.len(), 1);
+                            let value = value.iter().next().unwrap().to_owned();
+
+                            array_table.set(key, value)?;
                         }
                     },
                     Some(_) => {
-                        let sub_res = dbus_to_lua_value(lua, array)?;
-                        for (index, value) in sub_res.into_iter().enumerate() {
-                            array_table.set(index + 1, value)?
+                        for (index, value) in array.into_iter().enumerate() {
+                            let value =
+                                dbus_to_lua_value(lua, slice::from_ref(value))?;
+                            assert_eq!(value.len(), 1);
+                            let value = value.iter().next().unwrap();
+
+                            array_table.set(index + 1, value.to_owned())?
                         }
                     }
                 }
                 res.push(array_table.to_lua(lua)?);
             },
-            Bool(v) => res.push(v.to_lua(lua)?),
-            Byte(v) => res.push(v.to_lua(lua)?),
-            Int16(v) => res.push(v.to_lua(lua)?),
-            UInt16(v) => res.push(v.to_lua(lua)?),
-            Int32(v) => res.push(v.to_lua(lua)?),
-            UInt32(v) => res.push(v.to_lua(lua)?),
-            Int64(v) => res.push(v.to_lua(lua)?),
-            UInt64(v) => res.push(v.to_lua(lua)?),
-            Double(v) => res.push(v.to_lua(lua)?),
-            Str(v) => res.push(v.clone().to_lua(lua)?),
+            MessageItem::Bool(v) => res.push(v.to_lua(lua)?),
+            MessageItem::Byte(v) => res.push(v.to_lua(lua)?),
+            MessageItem::Int16(v) => res.push(v.to_lua(lua)?),
+            MessageItem::UInt16(v) => res.push(v.to_lua(lua)?),
+            MessageItem::Int32(v) => res.push(v.to_lua(lua)?),
+            MessageItem::UInt32(v) => res.push(v.to_lua(lua)?),
+            MessageItem::Int64(v) => res.push(v.to_lua(lua)?),
+            MessageItem::UInt64(v) => res.push(v.to_lua(lua)?),
+            MessageItem::Double(v) => res.push(v.to_lua(lua)?),
+            MessageItem::Str(v) => res.push(v.to_owned().to_lua(lua)?),
             _ => res.push(Value::Nil)
         }
     }
@@ -307,19 +310,26 @@ fn dbus_to_lua_value<'lua>(
 }
 
 /// Converts an `rlua::Value` into a `dbus::MessageItem`.
-fn lua_value_to_dbus(lua: rlua::Context, type_: Value, value: Value) -> rlua::Result<MessageItem> {
-    use dbus::arg::ArgType;
-    let type_ = match type_ {
+fn lua_value_to_dbus(
+    lua: rlua::Context,
+    typ: Value,
+    value: Value
+) -> rlua::Result<MessageItem> {
+    let typ = match typ {
         Value::String(s) => s.to_str()?.to_string(),
-        _ => return Err(RuntimeError("D-Bus type name was not a string".into()))
+        _ => {
+            return Err(RuntimeError("D-Bus type name was not a string".into()))
+        },
     };
-    let is_ascii = type_.chars().next().map(|c| char::is_ascii(&c)).unwrap_or(false);
-    if type_.len() > 1 || !is_ascii {
-        return Err(RuntimeError(format!("{} is an invalid type name", type_)));
+    let is_ascii: bool = typ.chars().all(|c| char::is_ascii(&c));
+    if typ.len() != 1 || !is_ascii {
+        return Err(RuntimeError(format!("{} is an invalid type name", typ)));
     }
-    let type_ = ArgType::from_i32(type_.chars().next().unwrap() as i32)
-        .map_err(|_| RuntimeError(format!("{} is an invalid type name", type_)))?;
-    match (type_, value) {
+    let typ = ArgType::from_i32(typ.chars().next().unwrap() as i32).map_err(
+        |_| RuntimeError(format!("{} is an invalid type name", typ))
+    )?;
+
+    match (typ, value) {
         (ArgType::Array, Value::Table(value)) => {
             let size = value.len()?;
             if size % 2 != 0 {
@@ -332,10 +342,11 @@ fn lua_value_to_dbus(lua: rlua::Context, type_: Value, value: Value) -> rlua::Re
             let types = value.clone().sequence_values().step_by(2);
             let values = value.clone().sequence_values().skip(1).step_by(2);
             let mut list = Vec::with_capacity(size as usize);
-            for (type_, value) in types.zip(values) {
-                list.push(lua_value_to_dbus(lua, type_?, value?)?)
+            for (typ, value) in types.zip(values) {
+                list.push(lua_value_to_dbus(lua, typ?, value?)?)
             }
-            MessageItem::new_array(list).map_err(|_| RuntimeError("Empty list is invalid".into()))
+            MessageItem::new_array(list)
+                .map_err(|_| RuntimeError("Empty list is invalid".into()))
         },
         (ArgType::Boolean, Value::Boolean(value)) => Ok(value.into()),
         (ArgType::String, Value::String(value)) => Ok(value.to_str()?.into()),
@@ -355,51 +366,55 @@ fn lua_value_to_dbus(lua: rlua::Context, type_: Value, value: Value) -> rlua::Re
         (ArgType::Int64, Value::Number(value)) |
         (ArgType::UInt64, Value::Number(value)) |
         (ArgType::Double, Value::Number(value)) => Ok(value.into()),
-        (type_, value) => Err(RuntimeError(format!(
+        (typ, value) => Err(RuntimeError(format!(
             "Invalid type {:?} or value {:?}",
-            type_, value
+            typ, value
         )))
     }
 }
 
-fn request_name(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<bool> {
+fn request_name(
+    _: rlua::Context,
+    (bus, name): (String, String)
+) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow();
-        let bus = bus.as_ref().unwrap();
         bus.register_name(name.as_str(), 0)
             .expect(&format!("Could not register name {}", name.as_str()));
     });
     Ok(true)
 }
 
-fn release_name(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<bool> {
+fn release_name(
+    _: rlua::Context,
+    (bus, name): (String, String)
+) -> rlua::Result<bool> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow();
-        let bus = bus.as_ref().unwrap();
         bus.release_name(name.as_str())
             .expect(&format!("Could not release name {}", name.as_str()));
     });
     Ok(true)
 }
 
-fn add_match(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<()> {
+fn add_match(
+    _: rlua::Context,
+    (bus, name): (String, String)
+) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow();
-        let bus = bus.as_ref().unwrap();
         bus.add_match(name.as_str())
             .map_err(|err| RuntimeError(format!("{}", err)))
     })?;
     Ok(())
 }
 
-fn remove_match(_: rlua::Context, (bus, name): (String, String)) -> rlua::Result<()> {
+fn remove_match(
+    _: rlua::Context,
+    (bus, name): (String, String)
+) -> rlua::Result<()> {
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with(|bus| {
-        let bus = bus.borrow();
-        let bus = bus.as_ref().unwrap();
         bus.remove_match(name.as_str())
             .map_err(|err| RuntimeError(format!("{}", err)))
     })?;
@@ -417,7 +432,10 @@ fn connect_signal<'lua>(
         .get::<_, Table>(SIGNALS_NAME)
         .unwrap();
     if signals.get(name.as_str())? {
-        let error_msg = format!("Cannot add signal {} on D-Bus, already existing", name.as_str());
+        let error_msg = format!(
+            "Cannot add signal {} on D-Bus, already exists",
+            name.as_str()
+        );
         warn!("{}", error_msg);
         (rlua::Nil, error_msg).to_lua_multi(lua)
     } else {
@@ -426,7 +444,10 @@ fn connect_signal<'lua>(
     }
 }
 
-fn disconnect_signal(lua: rlua::Context, (name, _func): (String, rlua::Function)) -> rlua::Result<()> {
+fn disconnect_signal(
+    lua: rlua::Context,
+    (name, _func): (String, rlua::Function)
+) -> rlua::Result<()> {
     let signals: Table = lua
         .globals()
         .get::<_, Table>("dbus")
@@ -438,10 +459,17 @@ fn disconnect_signal(lua: rlua::Context, (name, _func): (String, rlua::Function)
 
 fn emit_signal<'lua>(
     lua: rlua::Context<'lua>,
-    (bus, path, interface, name, args): (String, String, String, String, MultiValue)
+    (bus, path, interface, name, args): (
+        String,
+        String,
+        String,
+        String,
+        MultiValue
+    )
 ) -> rlua::Result<Value<'lua>> {
     if args.len() % 2 != 0 {
-        let error_msg = "your D-Bus signal emitting metod has wrong number of arguments";
+        let error_msg =
+            "your D-Bus signal emitting metod has wrong number of arguments";
         warn!("{}", error_msg);
         return false.to_lua(lua);
     }
@@ -449,19 +477,21 @@ fn emit_signal<'lua>(
     let values = args.iter().skip(1).step_by(2);
     let args = types
         .zip(values)
-        .map(|v| lua_value_to_dbus(lua, v.0.clone(), v.1.clone()))
+        .map(|(typ, val)| {
+            lua_value_to_dbus(lua, typ.to_owned(), val.to_owned())
+        })
         .collect::<rlua::Result<Vec<MessageItem>>>()?;
+
     let bus = get_bus_by_name(bus.as_str())?;
     bus.with::<_, rlua::Result<_>>(|bus| {
-        let bus = bus.borrow();
-        let bus = bus.as_ref().unwrap();
-        let mut msg = Message::new_signal(path, interface, name).map_err(|_| {
-            RuntimeError(
-                "your D-Bus signal emitting \
-                 method had bad argument type"
-                    .into()
-            )
-        })?;
+        let mut msg =
+            Message::new_signal(path, interface, name).map_err(|err| {
+                RuntimeError(format!(
+                    "Your D-Bus signal emitting \
+                     method had a bad argument type. {}",
+                    err
+                ))
+            })?;
         msg.append_items(&args);
         bus.send(msg)
             .map_err(|_| RuntimeError("Could not send D-Bus message".into()))
@@ -471,10 +501,16 @@ fn emit_signal<'lua>(
 
 // TODO This is the default class index/newindex, move there
 
-fn index<'lua>(lua: rlua::Context<'lua>, args: Value<'lua>) -> rlua::Result<()> {
+fn index<'lua>(
+    lua: rlua::Context<'lua>,
+    args: Value<'lua>
+) -> rlua::Result<()> {
     signal::global_emit_signal(lua, ("debug::index::miss".into(), args))
 }
 
-fn newindex<'lua>(lua: rlua::Context<'lua>, args: Value<'lua>) -> rlua::Result<()> {
+fn newindex<'lua>(
+    lua: rlua::Context<'lua>,
+    args: Value<'lua>
+) -> rlua::Result<()> {
     signal::global_emit_signal(lua, ("debug::newindex::miss".into(), args))
 }

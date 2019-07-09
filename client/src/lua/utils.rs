@@ -20,9 +20,12 @@ pub enum KeyboardModifiers {
 
 /// Human readable versions of the standard modifier keys.
 #[allow(dead_code)]
-static MOD_NAMES: [&str; 8] = ["Shift", "Caps", "Control", "Alt", "Mod2", "Mod3", "Mod4", "Mod5"];
+static MOD_NAMES: [&str; 8] = [
+    "Shift", "Caps", "Control", "Alt", "Mod2", "Mod3", "Mod4", "Mod5"
+];
 /// Keycodes corresponding to various button events.
-static MOUSE_EVENTS: [evdev::Key; 5] = [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, BTN_SIDE, BTN_EXTRA];
+static MOUSE_EVENTS: [evdev::Key; 5] =
+    [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, BTN_SIDE, BTN_EXTRA];
 static MOD_TYPES: [(KeyboardModifiers, Keysym); 7] = [
     (KeyboardModifiers::Shift, KEY_Shift_L),
     (KeyboardModifiers::Caps, KEY_Caps_Lock),
@@ -35,7 +38,10 @@ static MOD_TYPES: [(KeyboardModifiers, Keysym); 7] = [
 
 /// Convert a modifier to the Lua interpretation
 #[allow(non_upper_case_globals)]
-pub fn mods_to_lua<'lua>(lua: rlua::Context<'lua>, mods: &[Keysym]) -> rlua::Result<Table<'lua>> {
+pub fn mods_to_lua<'lua>(
+    lua: rlua::Context<'lua>,
+    mods: &[Keysym]
+) -> rlua::Result<Table<'lua>> {
     let mut mods_list: Vec<String> = Vec::with_capacity(MOD_NAMES.len());
     for modifier in mods {
         mods_list.push(
@@ -70,7 +76,9 @@ pub fn num_to_mods(modifiers: BitFlags<KeyboardModifiers>) -> Vec<Keysym> {
 
 /// Convert a modifier list to a single number.
 #[allow(non_upper_case_globals)]
-pub fn mods_to_num(modifiers: Table) -> rlua::Result<BitFlags<KeyboardModifiers>> {
+pub fn mods_to_num(
+    modifiers: Table
+) -> rlua::Result<BitFlags<KeyboardModifiers>> {
     let mut res = BitFlags::<KeyboardModifiers>::empty();
     for modifier in mods_to_rust(modifiers)? {
         res.insert(match modifier {
@@ -103,15 +111,23 @@ pub fn mods_to_rust(mods_table: Table) -> rlua::Result<Vec<Keysym>> {
             "Mod3" => KEY_Alt_L,
             "Mod4" => KEY_Super_L,
             "Mod5" => KEY_Hyper_L,
-            string => return Err(RuntimeError(format!("{} is an invalid modifier", string)))?
+            string => {
+                return Err(RuntimeError(format!(
+                    "{} is an invalid modifier",
+                    string
+                )))?
+            },
         })
     }
     Ok(mods)
 }
 
 /// Convert a mouse event from Wayland to the representation Lua expcets
-// TODO Need a proper type for button_state
-pub fn mouse_events_to_lua(_: &Lua, button: u32, button_state: u32) -> rlua::Result<Vec<bool>> {
+pub fn mouse_events_to_lua(
+    _: &Lua,
+    button: u32,
+    button_state: u32
+) -> rlua::Result<Vec<bool>> {
     let mut event_list = Vec::with_capacity(MOUSE_EVENTS.len());
     for mouse_event in &MOUSE_EVENTS[..5] {
         let state_pressed = button_state == 0;
