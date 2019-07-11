@@ -21,11 +21,13 @@
 #include "output.h"
 #include "seat.h"
 #include "view.h"
+#include "xwayland.h"
 
 bool init_server(struct wc_server *server) {
 	if (server == NULL) {
 		return false;
 	}
+
 	server->wl_display = wl_display_create();
 	server->wayland_socket = wl_display_add_socket_auto(server->wl_display);
 	if (!server->wayland_socket) {
@@ -47,6 +49,7 @@ bool init_server(struct wc_server *server) {
 	server->data_device_manager =
 			wlr_data_device_manager_create(server->wl_display);
 
+	wc_xwayland_init(server);
 	wc_seat_init(server);
 	wc_output_init(server);
 	wc_inputs_init(server);
@@ -64,6 +67,7 @@ void fini_server(struct wc_server *server) {
 	wc_views_fini(server);
 	wc_layers_fini(server);
 	wc_cursor_fini(server);
+	wc_xwayland_fini(server);
 
 	wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
 	wlr_data_device_manager_destroy(server->data_device_manager);

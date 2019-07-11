@@ -165,12 +165,13 @@ static void wc_xdg_new_surface(struct wl_listener *listener, void *data) {
 	view->surface_type = WC_XDG;
 
 	view->map.notify = wc_xdg_surface_map;
-	wl_signal_add(&xdg_surface->events.map, &view->map);
 	view->unmap.notify = wc_xdg_surface_unmap;
-	wl_signal_add(&xdg_surface->events.unmap, &view->unmap);
 	view->commit.notify = wc_xdg_surface_commit;
-	wl_signal_add(&xdg_surface->surface->events.commit, &view->commit);
 	view->destroy.notify = wc_xdg_surface_destroy;
+
+	wl_signal_add(&xdg_surface->events.map, &view->map);
+	wl_signal_add(&xdg_surface->events.unmap, &view->unmap);
+	wl_signal_add(&xdg_surface->surface->events.commit, &view->commit);
 	wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
 
 	struct wlr_xdg_toplevel *toplevel = xdg_surface->toplevel;

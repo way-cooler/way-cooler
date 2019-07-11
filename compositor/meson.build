@@ -50,6 +50,7 @@ way_cooler_sources = files(
 	'server.c',
 	'view.c',
 	'xdg.c',
+	'xwayland.c',
 )
 
 executable(

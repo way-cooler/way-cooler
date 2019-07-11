@@ -7,11 +7,13 @@
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_surface.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/xwayland.h>
 
 #include "server.h"
 
 enum wc_surface_type {
 	WC_XDG,
+	WC_XWAYLAND,
 };
 
 struct wc_view {
@@ -21,6 +23,7 @@ struct wc_view {
 	enum wc_surface_type surface_type;
 	union {
 		struct wlr_xdg_surface *xdg_surface;
+		struct wlr_xwayland_surface *xwayland_surface;
 	};
 
 	bool mapped;
@@ -50,6 +53,7 @@ struct wc_view {
 	struct wl_listener destroy;
 	struct wl_listener request_move;
 	struct wl_listener request_resize;
+	struct wl_listener configure;
 };
 
 void wc_views_init(struct wc_server *server);
