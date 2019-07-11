@@ -65,15 +65,8 @@ static void wc_layer_shell_unmap(struct wl_listener *listener, void *data) {
 	struct wlr_layer_surface_v1 *layer_surface = layer->layer_surface;
 	layer->mapped = false;
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	wlr_surface_get_effective_damage(layer_surface->surface, &damage);
-	pixman_region32_translate(&damage, layer->geo.x, layer->geo.y);
-
 	wc_output_damage_surface(layer_surface->output->data,
-			layer_surface->surface, &damage, layer->geo);
-
-	pixman_region32_fini(&damage);
+			layer_surface->surface, NULL, layer->geo);
 }
 
 void wc_layer_shell_destroy(struct wl_listener *listener, void *data) {
