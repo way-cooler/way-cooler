@@ -22,7 +22,10 @@ pub struct KeyState {
 pub type Key<'lua> = Object<'lua, KeyState>;
 
 impl<'lua> Key<'lua> {
-    fn new(lua: rlua::Context<'lua>, args: Table<'lua>) -> rlua::Result<Key<'lua>> {
+    fn new(
+        lua: rlua::Context<'lua>,
+        args: Table<'lua>
+    ) -> rlua::Result<Key<'lua>> {
         // TODO FIXME
         let class = class::class_setup(lua, "key")?;
         Ok(Key::allocate(lua, class)?
@@ -114,7 +117,10 @@ fn property_setup<'lua>(
         ))
 }
 
-fn get_modifiers<'lua>(_: rlua::Context<'lua>, key: Key<'lua>) -> rlua::Result<u32> {
+fn get_modifiers<'lua>(
+    _: rlua::Context<'lua>,
+    key: Key<'lua>
+) -> rlua::Result<u32> {
     key.modifiers()
 }
 
@@ -125,12 +131,18 @@ fn set_modifiers<'lua>(
     key.set_modifiers(mods_to_num(mods)?.bits())
 }
 
-fn get_keysym<'lua>(lua: rlua::Context<'lua>, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_keysym<'lua>(
+    lua: rlua::Context<'lua>,
+    key: Key<'lua>
+) -> rlua::Result<Value<'lua>> {
     // TODO Shouldn't this be able to fail?
     xkb::keysym_get_name(key.keysym()?).to_lua(lua)
 }
 
-fn get_key<'lua>(lua: rlua::Context<'lua>, key: Key<'lua>) -> rlua::Result<Value<'lua>> {
+fn get_key<'lua>(
+    lua: rlua::Context<'lua>,
+    key: Key<'lua>
+) -> rlua::Result<Value<'lua>> {
     key.keysym()?.to_lua(lua)
 }
 
@@ -139,9 +151,9 @@ fn set_key<'lua>(
     (mut key, key_name): (Key<'lua>, String)
 ) -> rlua::Result<Value<'lua>> {
     if key_name.starts_with('#') && key_name.len() >= 2 {
-        let number = key_name[1..]
-            .parse::<xkb::Keycode>()
-            .map_err(|err| rlua::Error::RuntimeError(format!("Parse error: {:?}", err)))?;
+        let number = key_name[1..].parse::<xkb::Keycode>().map_err(|err| {
+            rlua::Error::RuntimeError(format!("Parse error: {:?}", err))
+        })?;
         // the - 8 is because of xcb conventions, where "#10" is the keysim for 1,
         // and the keycode of 1 is 0x02 (obviously)
         key.set_keycode(number - 8)?;

@@ -5,7 +5,10 @@
 
 use std::default::Default;
 
-use rlua::{self, AnyUserData, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
+use rlua::{
+    self, AnyUserData, MetaMethod, Table, ToLua, UserData, UserDataMethods,
+    Value
+};
 
 use crate::objects::screen::{Screen, SCREENS_HANDLE};
 
@@ -41,9 +44,15 @@ pub fn init(lua: rlua::Context) -> rlua::Result<()> {
     globals.set("mouse", mouse)
 }
 
-fn method_setup<'lua>(lua: rlua::Context<'lua>, mouse_table: &Table<'lua>) -> rlua::Result<()> {
+fn method_setup<'lua>(
+    lua: rlua::Context<'lua>,
+    mouse_table: &Table<'lua>
+) -> rlua::Result<()> {
     mouse_table.set("coords", lua.create_function(coords)?)?;
-    mouse_table.set("set_index_miss_handler", lua.create_function(set_index_miss)?)?;
+    mouse_table.set(
+        "set_index_miss_handler",
+        lua.create_function(set_index_miss)?
+    )?;
     mouse_table.set(
         "set_newindex_miss_handler",
         lua.create_function(set_newindex_miss)?
@@ -59,13 +68,19 @@ fn coords<'lua>(
     unimplemented!()
 }
 
-fn set_index_miss<'lua>(lua: rlua::Context<'lua>, func: rlua::Function<'lua>) -> rlua::Result<()> {
+fn set_index_miss<'lua>(
+    lua: rlua::Context<'lua>,
+    func: rlua::Function<'lua>
+) -> rlua::Result<()> {
     let button = lua.globals().get::<_, AnyUserData>("button")?;
     let table = button.get_user_value::<Table>()?;
     table.set(INDEX_MISS_FUNCTION, func)
 }
 
-fn set_newindex_miss<'lua>(lua: rlua::Context<'lua>, func: rlua::Function<'lua>) -> rlua::Result<()> {
+fn set_newindex_miss<'lua>(
+    lua: rlua::Context<'lua>,
+    func: rlua::Function<'lua>
+) -> rlua::Result<()> {
     let button = lua.globals().get::<_, AnyUserData>("button")?;
     let table = button.get_user_value::<Table>()?;
     table.set(NEWINDEX_MISS_FUNCTION, func)

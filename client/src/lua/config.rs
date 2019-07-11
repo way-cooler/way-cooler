@@ -11,19 +11,60 @@ use std::{
 
 use rlua::{self, Context, Table};
 
+use crate::lua::LUA;
+
 const INIT_FILE: &'static str = "rc.lua";
 const INIT_FILE_FALLBACK_PATH: &'static str = "/etc/way-cooler/rc.lua";
 
 pub const DEFAULT_CONFIG: &'static str = include_str!("../../../config/rc.lua");
 
+pub enum SyntaxCheckError {
+    IoError(io::Error),
+    LuaError(rlua::Error)
+}
+impl From<io::Error> for SyntaxCheckError {
+    fn from(err: io::Error) -> Self {
+        SyntaxCheckError::IoError(err)
+    }
+}
+impl From<rlua::Error> for SyntaxCheckError {
+    fn from(err: rlua::Error) -> Self {
+        SyntaxCheckError::LuaError(err)
+    }
+}
+
+pub type SynaxCheckResult<T> = Result<T, SyntaxCheckError>;
+
+/// Checks that the first configuration file used is syntactically correct.
+pub fn syntax_check(cmdline_path: Option<&str>) -> SynaxCheckResult<()> {
+    // let (file_name, contents) = get_config(cmdline_path)?;
+    LUA.with(|lua| {
+        lua.borrow().context(|ctx| {
+            load_config(ctx, cmdline_path)
+                .map_err(SyntaxCheckError::IoError)
+                .and_then(|(file_name, content)| {
+                    exec_config(ctx, &file_name, &content)
+                        .map_err(SyntaxCheckError::LuaError)
+                })?;
+            Ok(())
+        })
+    })
+}
+
 /// Reads the init file and returns it's contents
-pub fn load_config(lua: Context, cmdline_config: Option<&str>) -> io::Result<(String, String)> {
+pub fn load_config(
+    lua: Context,
+    cmdline_config: Option<&str>
+) -> io::Result<(String, String)> {
     let (init_path, mut init_file) = get_config(cmdline_config)?;
     if let Some(init_dir) = init_path.parent() {
         // Add the config directory to the package path.
         let globals = lua.globals();
-        let package: Table = globals.get("package").expect("package not defined in Lua");
-        let paths: String = package.get("path").expect("package.path not defined in Lua");
+        let package: Table =
+            globals.get("package").expect("package not defined in Lua");
+        let paths: String = package
+            .get("path")
+            .expect("package.path not defined in Lua");
         let init_dir = init_dir
             .join("?.lua")
             .into_os_string()
@@ -41,7 +82,11 @@ pub fn load_config(lua: Context, cmdline_config: Option<&str>) -> io::Result<(St
     Ok((file_name.unwrap_or(INIT_FILE).to_string(), init_contents))
 }
 
-pub fn exec_config(lua: rlua::Context, file_name: &str, content: &str) -> rlua::Result<()> {
+pub fn exec_config(
+    lua: rlua::Context,
+    file_name: &str,
+    content: &str
+) -> rlua::Result<()> {
     lua.load(content).set_name(file_name).unwrap().exec()?;
     crate::lua::emit_refresh(lua);
 
@@ -53,14 +98,20 @@ pub fn exec_config(lua: rlua::Context, file_name: &str, content: &str) -> rlua::
 /// Returns the found path and the opened handle.
 fn get_config(cmdline_path: Option<&str>) -> io::Result<(PathBuf, File)> {
     let cmdline_path = cmdline_path.map(PathBuf::from);
-    let home_var = env::var("HOME").expect("HOME environment variable not defined!");
+    let home_var =
+        env::var("HOME").expect("HOME environment variable not defined!");
     let home = home_var.as_str();
 
     let mut paths: [Option<PathBuf>; 5] = [
         cmdline_path,
         None,
         None,
-        Some(Path::new(home).join(".config").join("way-cooler").join(INIT_FILE)),
+        Some(
+            Path::new(home)
+                .join(".config")
+                .join("way-cooler")
+                .join(INIT_FILE)
+        ),
         Some(INIT_FILE_FALLBACK_PATH.into())
     ];
 

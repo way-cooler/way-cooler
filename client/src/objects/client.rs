@@ -29,7 +29,8 @@ impl Default for ClientState {
 
 impl<'lua> PartialEq for Client<'lua> {
     fn eq(&self, other: &Self) -> bool {
-        &*self.state().unwrap() as *const _ == &*other.state().unwrap() as *const _
+        &*self.state().unwrap() as *const _ ==
+            &*other.state().unwrap() as *const _
     }
 }
 
@@ -44,7 +45,10 @@ impl<'lua> Hash for Client<'lua> {
 // This is currently unused.
 // TODO: Figure out if this will be needed later.
 impl<'lua> Client<'lua> {
-    pub fn new(lua: rlua::Context<'lua>, args: Table<'lua>) -> rlua::Result<Client<'lua>> {
+    pub fn new(
+        lua: rlua::Context<'lua>,
+        args: Table<'lua>
+    ) -> rlua::Result<Client<'lua>> {
         let class = class::class_setup(lua, "client")?;
         Ok(Client::allocate(lua, class)?
             .handle_constructor_argument(args)?
@@ -75,6 +79,9 @@ fn method_setup<'lua>(
         .method("get".into(), lua.create_function(dummy_table)?)
 }
 
-fn dummy_table<'lua>(lua: rlua::Context<'lua>, _: rlua::Value) -> rlua::Result<Table<'lua>> {
+fn dummy_table<'lua>(
+    lua: rlua::Context<'lua>,
+    _: rlua::Value
+) -> rlua::Result<Table<'lua>> {
     Ok(lua.create_table()?)
 }

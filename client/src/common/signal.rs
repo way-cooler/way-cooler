@@ -32,7 +32,11 @@ pub fn connect_signals<'lua>(
     }
 }
 
-pub fn disconnect_signals(_: rlua::Context, signals: Table, name: &str) -> rlua::Result<()> {
+pub fn disconnect_signals(
+    _: rlua::Context,
+    signals: Table,
+    name: &str
+) -> rlua::Result<()> {
     signals.set(name, Value::Nil)
 }
 
@@ -66,13 +70,18 @@ pub fn global_connect_signal<'lua>(
     lua: rlua::Context<'lua>,
     (name, func): (String, Function<'lua>)
 ) -> rlua::Result<()> {
-    let global_signals = lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
+    let global_signals =
+        lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
     connect_signals(lua, global_signals, &name, &[func])
 }
 
 /// Disconnect the function from the named signal in the global signal list.
-pub fn global_disconnect_signal<'lua>(lua: rlua::Context<'lua>, name: String) -> rlua::Result<()> {
-    let global_signals = lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
+pub fn global_disconnect_signal<'lua>(
+    lua: rlua::Context<'lua>,
+    name: String
+) -> rlua::Result<()> {
+    let global_signals =
+        lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
     disconnect_signals(lua, global_signals, &name)
 }
 
@@ -81,6 +90,7 @@ pub fn global_emit_signal<'lua>(
     lua: rlua::Context<'lua>,
     (name, args): (String, Value<'lua>)
 ) -> rlua::Result<()> {
-    let global_signals = lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
+    let global_signals =
+        lua.named_registry_value::<str, Table>(GLOBAL_SIGNALS)?;
     emit_signals(lua, global_signals, &name, args)
 }

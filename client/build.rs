@@ -14,7 +14,8 @@ fn main() {
 fn dump_git_version() {
     let out_dir = env::var("OUT_DIR").expect("Could not find out directory!");
     let dest_path = Path::new(&out_dir).join("git-version.txt");
-    let mut f = fs::File::create(&dest_path).expect("Could not write git version to out directory");
+    let mut f = fs::File::create(&dest_path)
+        .expect("Could not write git version to out directory");
     if let Some(git_version) = git_version() {
         f.write_all(git_version.as_ref())
             .expect("Could not write to git version file");
@@ -69,7 +70,6 @@ fn build_wayland_glib_interface() {
 
     builder
         .file("src/wayland_glib_interface.c")
-        .flag("-lwayland-client")
         .compile("wayland_glib_interface");
     println!("cargo:rustc-flags=-l wayland-client");
 }

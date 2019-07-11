@@ -26,26 +26,11 @@
     )
 )]
 // Allowed by default
-#![cfg_attr(
-    test,
-    deny(
-        missing_docs,
-        trivial_numeric_casts,
-        unused_extern_crates,
-        unused_import_braces
-    )
-)]
+#![cfg_attr(test, deny(missing_docs, trivial_numeric_casts))]
 
-use env_logger;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
-#[macro_use]
-mod macros;
 mod area;
 mod awesome;
 mod common;
@@ -60,44 +45,41 @@ mod wayland_obj;
 use std::{
     env,
     io::{self, Write},
-    mem,
     os::unix::io::RawFd,
     path::PathBuf,
     process::exit
 };
 
-use clap::{App, Arg};
-use exec::Command;
-use log::Level;
-use nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet};
-use rlua::{LightUserData, Table};
-use wayland_client::{
-    global_filter,
-    protocol::{wl_compositor, wl_output, wl_shm},
-    sys::client::wl_display,
-    ConnectError, Display, EventQueue, GlobalError, GlobalManager
+use {
+    clap::{App, Arg},
+    exec::Command,
+    log::Level,
+    nix::sys::signal::{self, SaFlags, SigAction, SigHandler, SigSet},
+    rlua::Table,
+    wayland_client::{
+        global_filter,
+        protocol::{wl_compositor, wl_output, wl_shm},
+        sys::client::wl_display,
+        ConnectError, Display, EventQueue, GlobalError, GlobalManager
+    },
+    xcb::xkb
 };
-use xcb::xkb;
 
-// So the C code can link to these Rust functions.
-pub use crate::dbus::{dbus_session_refresh, dbus_system_refresh};
+use crate::lua::{SyntaxCheckError, LUA, NEXT_LUA};
 
-use crate::lua::{LUA, NEXT_LUA};
-pub use wayland_protocols::xdg_shell::client::xdg_wm_base;
-
-const GIT_VERSION: &'static str = include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
+const GIT_VERSION: &'static str =
+    include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"));
 pub const GLOBAL_SIGNALS: &'static str = "__awesome_global_signals";
-pub const XCB_CONNECTION_HANDLE: &'static str = "__xcb_connection";
 
-#[link(name = "wayland_glib_interface", kind = "static")]
-extern "C" {
-    pub fn wayland_glib_interface_init(
-        display: *mut wl_display,
-        session_fd: RawFd,
-        system_fd: RawFd,
-        wayland_state: *mut libc::c_void
-    );
-    pub fn remove_dbus_from_glib();
+thread_local! {
+    static XCB_CONNECTION: xcb::Connection =
+        match xcb::Connection::connect(None) {
+            Err(_) => {
+                fail("Way Cooler requires XWayland in order to function. \
+                      However, xcb could not connect to it. Is it running?")
+            },
+            Ok(con) => con.0
+        };
 }
 
 /// The state passed into C to store it during the glib loop.
@@ -108,6 +90,17 @@ extern "C" {
 struct WaylandState {
     pub display: Display,
     pub event_queue: EventQueue
+}
+
+#[link(name = "wayland_glib_interface", kind = "static")]
+extern "C" {
+    pub fn wayland_glib_interface_init(
+        display: *mut wl_display,
+        session_fd: RawFd,
+        system_fd: RawFd,
+        wayland_state: *mut libc::c_void
+    );
+    pub fn remove_dbus_from_glib();
 }
 
 /// Called from `wayland_glib_interface.c` after every call back into the
@@ -127,37 +120,43 @@ pub extern "C" fn awesome_refresh(wayland_state: *mut libc::c_void) {
     NEXT_LUA.with(|new_lua_check| {
         if new_lua_check.get() {
             new_lua_check.set(false);
-            let awesome = env::args().next().unwrap();
-            let args: Vec<_> = env::args().skip(1).collect();
-            let err = Command::new(awesome).args(args.as_slice()).exec();
-            error!("error: {:?}", err);
-            panic!("Could not restart Awesome");
+            let mut args = env::args();
+            let binary = args.next().unwrap();
+            let args = args.collect::<Vec<_>>();
+            let err = Command::new(binary).args(args.as_slice()).exec();
+            error!("exec error: {:?}", err);
+            fail("Could not restart Awesome");
         }
     });
 }
 
-struct AwesomeVersion;
-
-impl<'a> Into<&'a str> for AwesomeVersion {
-    fn into(self) -> &'a str {
-        if !GIT_VERSION.is_empty() {
-            concat!(
-                "Awesome ",
-                env!("CARGO_PKG_VERSION"),
-                " @ ",
-                include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"))
-            )
-        } else {
-            concat!("Awesome ", env!("CARGO_PKG_VERSION"))
-        }
-    }
-}
-
 fn main() {
+    init_logs();
+
+    let sig_action = SigAction::new(
+        SigHandler::Handler(sig_handle),
+        SaFlags::empty(),
+        SigSet::empty()
+    );
+    unsafe {
+        signal::sigaction(signal::SIGINT, &sig_action)
+            .expect("Could not set SIGINT catcher");
+    }
+
+    let version = if !GIT_VERSION.is_empty() {
+        concat!(
+            "Awesome ",
+            env!("CARGO_PKG_VERSION"),
+            " @ ",
+            include_str!(concat!(env!("OUT_DIR"), "/git-version.txt"))
+        )
+    } else {
+        concat!("Awesome ", env!("CARGO_PKG_VERSION"))
+    };
     let matches = App::new(env!("CARGO_PKG_NAME"))
-        .version(AwesomeVersion)
+        .version(version)
         .version_short("v")
-        .author(crate_authors!("\n"))
+        .author(clap::crate_authors!("\n"))
         .arg(
             Arg::with_name("config")
                 .short("c")
@@ -193,11 +192,6 @@ fn main() {
                 .help("replace an existing window manager")
         )
         .get_matches();
-    init_logs();
-    let sig_action = SigAction::new(SigHandler::Handler(sig_handle), SaFlags::empty(), SigSet::empty());
-    unsafe {
-        signal::sigaction(signal::SIGINT, &sig_action).expect("Could not set SIGINT catcher");
-    }
     if matches.is_present("client transparency") {
         unimplemented!()
     }
@@ -206,56 +200,76 @@ fn main() {
     }
     if matches.is_present("lua syntax check") {
         let config = matches.value_of("config");
-        use crate::lua::SyntaxCheckError::*;
 
         match lua::syntax_check(config) {
-            Err(IoError(err)) => {
-                error!("Could not read configuration files");
+            Err(SyntaxCheckError::IoError(err)) => {
                 error!("{}", err);
-                exit(1)
+                fail("Could not read configuration files");
             },
-            Err(LuaError(lua_error)) => {
-                error!("✘ Configuration file syntax error.");
+            Err(SyntaxCheckError::LuaError(lua_error)) => {
                 error!("{}", lua_error);
-                exit(1)
+                println!("✘ Configuration file syntax error.");
+                exit(1);
             },
             Ok(_) => {
-                info!("✔ Configuration file syntax OK.");
+                println!("✔ Configuration file syntax OK.");
                 exit(0)
             }
         }
     }
+
+    setup_xcb_connection();
+
     let lib_paths = matches
         .values_of("lua lib search")
         .unwrap_or_default()
         .collect::<Vec<_>>();
     lua::init_awesome_libraries(&lib_paths);
-    let (display, event_queue, _globals) = init_wayland();
-    let (session_fd, system_fd) = dbus::connect().expect("Could not set up dbus connection");
-    init_glib(display, event_queue, session_fd, system_fd);
+
+    let (mut wayland_state, _globals) = init_wayland();
+
+    let (session_fd, system_fd) =
+        dbus::connect().expect("Could not set up dbus connection");
+
+    let display_ptr = wayland_state.display.get_display_ptr();
+    // NOTE This is safe because this is the top of the stack, and thus once the
+    // WaylandState is popped the program ends.
+    unsafe {
+        wayland_glib_interface_init(
+            display_ptr,
+            session_fd,
+            system_fd,
+            &mut wayland_state as *mut _ as _
+        );
+    }
+
     let config = matches.value_of("config");
     lua::run_awesome(&lib_paths, config);
 }
 
-fn init_wayland() -> (Display, EventQueue, GlobalManager) {
-    let (display, mut event_queue) = Display::connect_to_env().unwrap_or_else(|err| {
-        match err {
-            ConnectError::NoWaylandLib => {
-                error!("Could not find Wayland library, is it installed and in PATH?")
-            },
+fn init_wayland() -> (WaylandState, GlobalManager) {
+    let (display, mut event_queue) =
+        Display::connect_to_env().unwrap_or_else(|err| match err {
+            ConnectError::NoWaylandLib => fail(
+                "Could not find Wayland library, is it installed and in PATH?"
+            ),
             ConnectError::NoCompositorListening => {
-                error!("Could not connect to Wayland server. Is it running?");
                 error!(
                     "WAYLAND_DISPLAY={}",
                     env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "".into())
                 );
+                fail("Could not connect to Wayland server. Is it running?");
             },
-            ConnectError::InvalidName => error!("Invalid socket name provided in WAYLAND_SOCKET"),
-            ConnectError::XdgRuntimeDirNotSet => error!("XDG_RUNTIME_DIR must be set"),
-            ConnectError::InvalidFd => error!("Invalid socket provided in WAYLAND_SOCKET")
-        }
-        exit(1);
-    });
+            ConnectError::InvalidName => {
+                fail("Invalid socket name provided in WAYLAND_SOCKET")
+            },
+            ConnectError::XdgRuntimeDirNotSet => {
+                fail("XDG_RUNTIME_DIR must be set")
+            },
+            ConnectError::InvalidFd => {
+                fail("Invalid socket provided in WAYLAND_SOCKET")
+            },
+        });
     let globals = GlobalManager::new_with_cb(
         &display,
         global_filter!(
@@ -279,57 +293,47 @@ fn init_wayland() -> (Display, EventQueue, GlobalManager) {
     event_queue.sync_roundtrip().unwrap();
 
     globals
-        .instantiate_exact(wayland_obj::XDG_WM_BASE_VERSION, wayland_obj::xdg_shell_init)
-        .unwrap_or_else(|err| {
-            match err {
-                GlobalError::Missing => {
-                    error!(
-                        "Missing xdg_wm_base global (version {})",
-                        wayland_obj::XDG_WM_BASE_VERSION
-                    );
-                    error!("Your compositor doesn't support the xdg shell protocol");
-                    error!("This protocol is necessary for Awesome to function");
-                },
-                GlobalError::VersionTooLow(version) => {
-                    error!(
-                        "Got xdg_wm_base version {}, expected version {}",
-                        version,
-                        wayland_obj::XDG_WM_BASE_VERSION
-                    );
-                    error!(
-                        "Your compositor doesn't support version {} \
-                         of the xdg shell protocol",
-                        wayland_obj::XDG_WM_BASE_VERSION
-                    );
-                    error!("Ensure your compositor is up to date");
-                }
+        .instantiate_exact(wayland_obj::XDG_WM_BASE_VERSION,
+                           wayland_obj::xdg_shell_init)
+        .unwrap_or_else(|err| match err {
+            GlobalError::Missing => {
+                error!(
+                    "Missing xdg_wm_base global (version {})",
+                    wayland_obj::XDG_WM_BASE_VERSION
+                );
+                fail(
+                    "Your compositor doesn't support the xdg shell protocol. \
+                     This protocol is necessary for Awesome to function"
+                );
+            },
+            GlobalError::VersionTooLow(version) => {
+                error!(
+                    "Got xdg_wm_base version {}, expected version {}",
+                    version,
+                    wayland_obj::XDG_WM_BASE_VERSION
+                );
+                fail(&format!(
+                    "Your compositor doesn't support version {} \
+                     of the xdg shell protocol. Ensure your compositor is up to date",
+                    wayland_obj::XDG_WM_BASE_VERSION
+                ));
             }
-            exit(1);
         });
 
     event_queue.sync_roundtrip().unwrap();
-    (display, event_queue, globals)
+    (
+        WaylandState {
+            display,
+            event_queue
+        },
+        globals
+    )
 }
 
-/// Sets up the glib main loop to call back into Rust whenever the
-/// Wayland triggers an event.
-///
-/// Note this doesn't actually start it yet, see `lua::run_awesome` for that.
-fn init_glib(display: Display, event_queue: EventQueue, session_fd: RawFd, system_fd: RawFd) {
-    let mut wayland_state = WaylandState { display, event_queue };
-    let display_ptr = wayland_state.display.get_display_ptr();
-    unsafe {
-        wayland_glib_interface_init(
-            display_ptr,
-            session_fd,
-            system_fd,
-            &mut wayland_state as *mut _ as _
-        );
-        ::std::mem::forget(wayland_state);
-    }
-}
-
-fn setup_awesome_path(lua: rlua::Context, lib_paths: &[&str]) -> rlua::Result<()> {
+fn setup_awesome_path(
+    lua: rlua::Context,
+    lib_paths: &[&str]
+) -> rlua::Result<()> {
     let globals = lua.globals();
     let package: Table = globals.get("package")?;
     let mut path = package.get::<_, String>("path")?;
@@ -381,35 +385,31 @@ fn setup_global_signals(lua: rlua::Context) -> rlua::Result<()> {
     lua.set_named_registry_value(GLOBAL_SIGNALS, lua.create_table()?)
 }
 
-/// Sets up the xcb connection and stores it in Lua (for us to access it later)
-fn setup_xcb_connection(lua: rlua::Context) -> rlua::Result<()> {
-    let con = match xcb::Connection::connect(None) {
-        Err(err) => {
-            error!("Way Cooler requires XWayland in order to function");
-            error!("However, xcb could not connect to it. Is it running?");
-            error!("{:?}", err);
-            panic!("Could not connect to XWayland instance");
-        },
-        Ok(con) => con.0
-    };
-    // Tell xcb we are using the xkb extension
-    match xkb::use_extension(&con, 1, 0).get_reply() {
-        Ok(r) => {
-            if !r.supported() {
-                panic!("xkb-1.0 is not supported");
+/// Sets up the global xcb connection
+fn setup_xcb_connection() {
+    XCB_CONNECTION.with(|con| {
+        // Tell xcb we are using the xkb extension
+        match xkb::use_extension(&con, 1, 0).get_reply() {
+            Ok(r) => {
+                if !r.supported() {
+                    fail("xkb-1.0 is not supported")
+                }
+            },
+            Err(err) => {
+                fail(&format!(
+                    "Could not get xkb extension supported version {:?}",
+                    err
+                ));
             }
-        },
-        Err(err) => {
-            panic!("Could not get xkb extension supported version {:?}", err);
         }
-    }
-    lua.set_named_registry_value(XCB_CONNECTION_HANDLE, LightUserData(con.get_raw_conn() as _))?;
-    mem::forget(con);
-    Ok(())
+    });
 }
 
 /// Formats the log strings properly
-fn log_format(buf: &mut env_logger::fmt::Formatter, record: &log::Record) -> Result<(), io::Error> {
+fn log_format(
+    buf: &mut env_logger::fmt::Formatter,
+    record: &log::Record
+) -> Result<(), io::Error> {
     let color = match record.level() {
         Level::Info => "",
         Level::Trace => "\x1B[37m",
@@ -417,17 +417,12 @@ fn log_format(buf: &mut env_logger::fmt::Formatter, record: &log::Record) -> Res
         Level::Warn => "\x1B[33m",
         Level::Error => "\x1B[31m"
     };
-    let mut module_path = record.module_path().unwrap_or("?");
-    if let Some(index) = module_path.find("way_cooler::") {
-        let index = index + "way_cooler::".len();
-        module_path = &module_path[index..];
-    }
     writeln!(
         buf,
         "{} {} [{}] \x1B[37m{}:{}\x1B[0m{0} {} \x1B[0m",
         color,
         record.level(),
-        module_path,
+        record.module_path().unwrap_or("?"),
         record.file().unwrap_or("?"),
         record.line().unwrap_or(0),
         record.args()
@@ -444,4 +439,9 @@ fn init_logs() {
 extern "C" fn sig_handle(_: nix::libc::c_int) {
     lua::terminate();
     exit(130);
+}
+
+fn fail(msg: &str) -> ! {
+    error!("{}", msg);
+    exit(1);
 }

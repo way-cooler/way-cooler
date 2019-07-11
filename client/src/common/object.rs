@@ -1,10 +1,10 @@
 //! Utility methods and constructors for Lua objects
 
-use std::{cell, convert::From, marker::PhantomData};
+use std::{cell, marker::PhantomData};
 
 use rlua::{
-    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, ToLuaMulti, UserData, UserDataMethods,
-    Value
+    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, ToLuaMulti,
+    UserData, UserDataMethods, Value
 };
 
 use super::{class::Class, property::Property, signal};
@@ -31,15 +31,6 @@ impl<'lua, S: ObjectStateType> Clone for Object<'lua, S> {
     }
 }
 
-impl<'lua, S: ObjectStateType> From<AnyUserData<'lua>> for Object<'lua, S> {
-    fn from(obj: AnyUserData<'lua>) -> Self {
-        Object {
-            obj,
-            state: PhantomData
-        }
-    }
-}
-
 impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
     fn into(self) -> AnyUserData<'lua> {
         self.obj
@@ -47,15 +38,16 @@ impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
 }
 
 /// Construct a new object, used when using the default Objectable::new.
-#[allow(unused)]
 pub struct ObjectBuilder<'lua, S: ObjectStateType> {
-    lua: rlua::Context<'lua>,
     object: Object<'lua, S>
 }
 
 impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
     pub fn add_to_meta(self, new_meta: Table<'lua>) -> rlua::Result<Self> {
-        let meta = self.object.get_metatable()?.expect("Object had no meta table");
+        let meta = self
+            .object
+            .get_metatable()?
+            .expect("Object had no meta table");
         for entry in new_meta.pairs::<Value, Value>() {
             let (key, value) = entry?;
             meta.set(key, value)?;
@@ -64,8 +56,14 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
         Ok(self)
     }
 
-    pub fn handle_constructor_argument(self, args: Table<'lua>) -> rlua::Result<Self> {
-        let meta = self.object.get_metatable()?.expect("Object had no meta table");
+    pub fn handle_constructor_argument(
+        self,
+        args: Table<'lua>
+    ) -> rlua::Result<Self> {
+        let meta = self
+            .object
+            .get_metatable()?
+            .expect("Object had no meta table");
         let class = meta.get::<_, AnyUserData>("__class")?;
         let class_table = class.get_user_value::<Table>()?;
         let props = class_table.get::<_, Vec<Property>>("properties")?;
@@ -81,7 +79,7 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
                         if prop.name == key {
                             // Property exists and has a cb_new callback
                             if let Some(ref new) = prop.cb_new {
-                                let _: () = new.bind(self.object.clone())?.call(value)?;
+                                new.bind(self.object.clone())?.call(value)?;
                                 break;
                             }
                         }
@@ -104,10 +102,14 @@ impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
 impl<'lua, S: ObjectStateType> Object<'lua, S> {
     pub fn cast(obj: AnyUserData<'lua>) -> rlua::Result<Self> {
         if obj.is::<S>() {
-            Ok(obj.into())
+            Ok(Object {
+                obj,
+                state: PhantomData
+            })
         } else {
-            use rlua::Error::RuntimeError;
-            Err(RuntimeError("Could not cast object to concrete type".into()))
+            Err(rlua::Error::RuntimeError(
+                "Could not cast object to concrete type".into()
+            ))
         }
     }
 
@@ -126,15 +128,24 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         self.get_associated_data::<Table>("signals")
     }
 
-    /// Set a value to keep inside lua associate with the object, but
-    ///     which should not be transfered to Rust for various reason
-    ///     (e.g. reference to other objects which cause GC problems)
-    pub fn set_associated_data<D: ToLua<'lua>>(&self, key: &str, value: D) -> rlua::Result<()> {
-        self.obj.get_user_value::<Table<'lua>>()?.set::<_, D>(key, value)
+    /// Set a value to keep inside lua associate with the object, but which should
+    /// not be transfered to Rust for various reason (e.g. reference to other
+    /// objects which cause GC problems)
+    pub fn set_associated_data<D: ToLua<'lua>>(
+        &self,
+        key: &str,
+        value: D
+    ) -> rlua::Result<()> {
+        self.obj
+            .get_user_value::<Table<'lua>>()?
+            .set::<_, D>(key, value)
     }
 
     /// Get a value to keep inside lua associate with the object
-    pub fn get_associated_data<D: FromLua<'lua>>(&self, key: &str) -> rlua::Result<D> {
+    pub fn get_associated_data<D: FromLua<'lua>>(
+        &self,
+        key: &str
+    ) -> rlua::Result<D> {
         self.obj.get_user_value::<Table<'lua>>()?.get::<_, D>(key)
     }
 
@@ -156,7 +167,10 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
     /// * ObjectStateType for the object is stored using set_user_value in a "wrapper"
     /// table. * The wrapper table has a data field which hosts the data.
     /// * Class methods/attributes are on the meta table of the wrapper table.
-    pub fn allocate(lua: rlua::Context<'lua>, class: Class<'lua, S>) -> rlua::Result<ObjectBuilder<'lua, S>> {
+    pub fn allocate(
+        lua: rlua::Context<'lua>,
+        class: Class<'lua, S>
+    ) -> rlua::Result<ObjectBuilder<'lua, S>> {
         let obj = lua.create_userdata(S::default())?;
         // TODO Increment the instance count
         let wrapper_table = lua.create_table()?;
@@ -180,9 +194,11 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         )?;
         meta.set(
             "emit_signal",
-            lua.create_function(|ctx, (obj, name, args): (_, String, Value)| {
-                Self::emit_signal(ctx, &obj, name.as_ref(), args)
-            })?
+            lua.create_function(
+                |ctx, (obj, name, args): (_, String, Value)| {
+                    Self::emit_signal(ctx, &obj, name.as_ref(), args)
+                }
+            )?
         )?;
         meta.set("__index", meta.clone())?;
         meta.set("__tostring", lua.create_function(default_tostring::<S>)?)?;
@@ -193,13 +209,10 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
             obj,
             state: PhantomData
         };
-        Ok(ObjectBuilder { object, lua })
+        Ok(ObjectBuilder { object })
     }
-}
 
-/// Signal methods that will be provided on the lua end
-impl<'lua, S: ObjectStateType> Object<'lua, S> {
-    pub(crate) fn connect_signal(
+    pub fn connect_signal(
         lua: rlua::Context<'lua>,
         obj: &Object<'lua, S>,
         name: &str,
@@ -208,7 +221,7 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         signal::connect_signals(lua, obj.signals()?, name, &[func])
     }
 
-    pub(crate) fn disconnect_signal(
+    pub fn disconnect_signal(
         lua: rlua::Context<'lua>,
         obj: &Object<'lua, S>,
         name: &str
@@ -216,7 +229,7 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         signal::disconnect_signals(lua, obj.signals()?, name)
     }
 
-    pub(crate) fn emit_signal<A>(
+    pub fn emit_signal<A>(
         lua: rlua::Context<'lua>,
         obj: &Object<'lua, S>,
         name: &str,
@@ -237,9 +250,15 @@ impl<'lua, S: ObjectStateType> ToLua<'lua> for Object<'lua, S> {
 }
 
 impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
-    fn from_lua(val: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+    fn from_lua(
+        val: Value<'lua>,
+        _: rlua::Context<'lua>
+    ) -> rlua::Result<Self> {
         if let Value::UserData(obj) = val {
-            Ok(obj.into())
+            Ok(Object {
+                obj,
+                state: PhantomData
+            })
         } else {
             Err(rlua::Error::RuntimeError("Invalid data supplied".into()))
         }
@@ -248,8 +267,9 @@ impl<'lua, S: ObjectStateType> FromLua<'lua> for Object<'lua, S> {
 
 /// Can be used for implementing UserData for Lua objects. This provides some
 /// default metafunctions.
-pub fn default_add_methods<'lua, S, M: UserDataMethods<'lua, S>>(methods: &mut M)
-where
+pub fn default_add_methods<'lua, S, M: UserDataMethods<'lua, S>>(
+    methods: &mut M
+) where
     S: ObjectStateType
 {
     methods.add_meta_function(MetaMethod::Index, default_index::<S>);
@@ -293,7 +313,8 @@ pub fn default_index<'lua, S: ObjectStateType>(
             // Try see if there is a property of the class with the name
             if let Ok(class) = meta.get::<_, AnyUserData>("__class") {
                 let class_table = class.get_user_value::<Table>()?;
-                let props = class_table.get::<_, Vec<Property>>("properties")?;
+                let props =
+                    class_table.get::<_, Vec<Property>>("properties")?;
                 for prop in props {
                     if prop.name.as_str() == index {
                         // Property exists and has an index callback
@@ -353,7 +374,10 @@ pub fn default_newindex<'lua, S: ObjectStateType>(
     Ok(Value::Nil)
 }
 
-pub fn default_tostring<'lua, S>(_: rlua::Context<'lua>, obj: Object<'lua, S>) -> rlua::Result<String>
+pub fn default_tostring<'lua, S>(
+    _: rlua::Context<'lua>,
+    obj: Object<'lua, S>
+) -> rlua::Result<String>
 where
     S: ObjectStateType
 {

@@ -5,15 +5,20 @@
 
 use std::default::Default;
 
-use rlua::{self, AnyUserData, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value};
-
-use crate::area::{Area, Origin, Size};
-use crate::common::{
-    class::{self, Class, ClassBuilder},
-    object::{self, Object},
-    property::Property
+use rlua::{
+    self, AnyUserData, MetaMethod, Table, ToLua, UserData, UserDataMethods,
+    Value
 };
-use crate::wayland_obj::Output;
+
+use crate::{
+    area::{Area, Origin, Size},
+    common::{
+        class::{self, Class, ClassBuilder},
+        object::{self, Object},
+        property::Property
+    },
+    wayland_obj::Output
+};
 
 pub const SCREENS_HANDLE: &'static str = "__screens";
 
@@ -32,8 +37,6 @@ pub struct ScreenState {
     // Some XID identifying this screen
     pub xid: u32
 }
-
-unsafe impl Send for ScreenState {}
 
 impl PartialEq for ScreenState {
     fn eq(&self, other: &ScreenState) -> bool {
@@ -72,7 +75,11 @@ impl<'lua> Screen<'lua> {
         Ok(Screen::allocate(lua, class)?.build())
     }
 
-    pub fn init_screens(&mut self, output: Output, outputs: Vec<Output>) -> rlua::Result<()> {
+    pub fn init_screens(
+        &mut self,
+        output: Output,
+        outputs: Vec<Output>
+    ) -> rlua::Result<()> {
         let mut state = self.state_mut()?;
         let (width, height) = output.resolution();
         let resolution = Size { width, height };
@@ -82,7 +89,11 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn set_geometry(&mut self, lua: rlua::Context<'lua>, geometry: Area) -> rlua::Result<()> {
+    pub fn set_geometry(
+        &mut self,
+        lua: rlua::Context<'lua>,
+        geometry: Area
+    ) -> rlua::Result<()> {
         if self.state()?.geometry != geometry {
             let old_area = lua.create_table()?;
             old_area.set("x", geometry.origin.x)?;
@@ -95,7 +106,11 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn set_workarea(&mut self, lua: rlua::Context<'lua>, geometry: Area) -> rlua::Result<()> {
+    pub fn set_workarea(
+        &mut self,
+        lua: rlua::Context<'lua>,
+        geometry: Area
+    ) -> rlua::Result<()> {
         if self.state()?.workarea != geometry {
             let old_area = lua.create_table()?;
             old_area.set("x", geometry.origin.x)?;
@@ -108,7 +123,10 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn get_geometry(&self, lua: rlua::Context<'lua>) -> rlua::Result<Table<'lua>> {
+    pub fn get_geometry(
+        &self,
+        lua: rlua::Context<'lua>
+    ) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
         let Origin { x, y } = state.geometry.origin;
         let Size { width, height } = state.geometry.size;
@@ -120,7 +138,10 @@ impl<'lua> Screen<'lua> {
         Ok(table)
     }
 
-    pub fn get_workarea(&self, lua: rlua::Context<'lua>) -> rlua::Result<Table<'lua>> {
+    pub fn get_workarea(
+        &self,
+        lua: rlua::Context<'lua>
+    ) -> rlua::Result<Table<'lua>> {
         let state = self.state()?;
         let Origin { x, y } = state.workarea.origin;
         let Size { width, height } = state.workarea.size;
@@ -134,8 +155,12 @@ impl<'lua> Screen<'lua> {
 }
 
 /// Adds a screen to the list of screens.
-pub fn add_screen<'lua>(lua: rlua::Context<'lua>, screen: Screen<'lua>) -> rlua::Result<()> {
-    let mut screens = lua.named_registry_value::<str, Vec<AnyUserData>>(SCREENS_HANDLE)?;
+pub fn add_screen<'lua>(
+    lua: rlua::Context<'lua>,
+    screen: Screen<'lua>
+) -> rlua::Result<()> {
+    let mut screens =
+        lua.named_registry_value::<str, Vec<AnyUserData>>(SCREENS_HANDLE)?;
     screens.push(screen.into());
     lua.set_named_registry_value(SCREENS_HANDLE, screens.to_lua(lua)?)?;
     Ok(())
@@ -155,7 +180,9 @@ pub fn get_screen(lua: rlua::Context, output: Output) -> rlua::Result<Screen> {
         .ok_or(rlua::Error::RuntimeError(format!("No screen with output {:?}", output)))
 }
 
-pub fn init<'lua>(lua: rlua::Context<'lua>) -> rlua::Result<Class<ScreenState>> {
+pub fn init<'lua>(
+    lua: rlua::Context<'lua>
+) -> rlua::Result<Class<ScreenState>> {
     let builder = Class::builder(lua, "screen", None)?;
     let res = property_setup(lua, method_setup(lua, builder)?)?
         .save_class("screen")?
@@ -218,16 +245,23 @@ fn property_setup<'lua>(
         ))
 }
 
-fn get_geometry<'lua>(lua: rlua::Context<'lua>, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
+fn get_geometry<'lua>(
+    lua: rlua::Context<'lua>,
+    screen: Screen<'lua>
+) -> rlua::Result<Table<'lua>> {
     screen.get_geometry(lua)
 }
 
-fn get_workarea<'lua>(lua: rlua::Context<'lua>, screen: Screen<'lua>) -> rlua::Result<Table<'lua>> {
+fn get_workarea<'lua>(
+    lua: rlua::Context<'lua>,
+    screen: Screen<'lua>
+) -> rlua::Result<Table<'lua>> {
     screen.get_workarea(lua)
 }
 
 fn count<'lua>(lua: rlua::Context<'lua>, _: ()) -> rlua::Result<Value<'lua>> {
-    let screens = lua.named_registry_value::<str, Vec<Screen>>(SCREENS_HANDLE)?;
+    let screens =
+        lua.named_registry_value::<str, Vec<Screen>>(SCREENS_HANDLE)?;
     Ok(Value::Integer(screens.len() as _))
 }
 
@@ -242,7 +276,8 @@ fn iterate_over_screens<'lua>(
     lua: rlua::Context<'lua>,
     (_, prev): (Value<'lua>, Value<'lua>)
 ) -> rlua::Result<Value<'lua>> {
-    let mut screens = lua.named_registry_value::<str, Vec<Screen>>(SCREENS_HANDLE)?;
+    let mut screens =
+        lua.named_registry_value::<str, Vec<Screen>>(SCREENS_HANDLE)?;
 
     let index = match prev {
         Value::Nil => 0,
@@ -250,7 +285,9 @@ fn iterate_over_screens<'lua>(
             if let Ok(screen) = Screen::cast(object.clone().into()) {
                 screens
                     .iter()
-                    .position(|t| *t.state().unwrap() == *screen.state().unwrap())
+                    .position(|t| {
+                        *t.state().unwrap() == *screen.state().unwrap()
+                    })
                     .unwrap_or(screens.len()) +
                     1
             } else {
@@ -315,7 +352,9 @@ fn index<'lua>(
     let table: Table = obj.get_user_value()?;
     let meta = table.get_metatable().expect("screen had no metatable");
     match meta.get(index.clone()) {
-        Err(_) | Ok(Value::Nil) => object::default_index(lua, (Screen::cast(obj)?, index)),
+        Err(_) | Ok(Value::Nil) => {
+            object::default_index(lua, (Screen::cast(obj)?, index))
+        },
         Ok(value) => Ok(value)
     }
 }

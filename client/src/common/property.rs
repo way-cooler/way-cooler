@@ -19,7 +19,10 @@ impl<'lua> ToLua<'lua> for Property<'lua> {
         let table = lua.create_table()?;
         table.set("name", self.name)?;
         let metatable = lua.create_table()?;
-        metatable.set("__call", self.cb_new.map(Value::Function).unwrap_or(Value::Nil))?;
+        metatable.set(
+            "__call",
+            self.cb_new.map(Value::Function).unwrap_or(Value::Nil)
+        )?;
         metatable.set(
             "__index",
             self.cb_index.map(Value::Function).unwrap_or(Value::Nil)
@@ -34,10 +37,15 @@ impl<'lua> ToLua<'lua> for Property<'lua> {
 }
 
 impl<'lua> FromLua<'lua> for Property<'lua> {
-    fn from_lua(val: Value<'lua>, _: rlua::Context<'lua>) -> rlua::Result<Self> {
+    fn from_lua(
+        val: Value<'lua>,
+        _: rlua::Context<'lua>
+    ) -> rlua::Result<Self> {
         if let Value::Table(table) = val {
             let name = table.get("name")?;
-            let meta = table.get_metatable().expect("Property table had no metatable");
+            let meta = table
+                .get_metatable()
+                .expect("Property table had no metatable");
             let cb_new = meta.get("__call").ok();
             let cb_index = meta.get("__index").ok();
             let cb_newindex = meta.get("__newindex").ok();

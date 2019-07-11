@@ -45,7 +45,11 @@ pub fn create_buffer(fd: RawFd, size: Size) -> Result<WlBuffer, ()> {
     WL_SHM.with(|wl_shm| {
         let wl_shm = wl_shm.borrow();
         let wl_shm = wl_shm.as_ref().expect("WL_SHM was not initilized");
-        let pool = wl_shm.create_pool(fd, width * height * 4, NewProxy::implement_dummy)?;
+        let pool = wl_shm.create_pool(
+            fd,
+            width * height * 4,
+            NewProxy::implement_dummy
+        )?;
         // TODO ARb32 instead
         pool.create_buffer(
             0,

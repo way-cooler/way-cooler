@@ -3,7 +3,8 @@
 use std::{convert::From, marker::PhantomData, sync::Arc};
 
 use rlua::{
-    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, UserData, UserDataMethods, Value
+    self, AnyUserData, FromLua, Function, MetaMethod, Table, ToLua, UserData,
+    UserDataMethods, Value
 };
 
 use super::{
@@ -30,7 +31,10 @@ impl<'lua, S: ObjectStateType> From<AnyUserData<'lua>> for Class<'lua, S> {
 }
 
 impl<'lua, S: ObjectStateType> FromLua<'lua> for Class<'lua, S> {
-    fn from_lua(lua_value: Value<'lua>, _: rlua::Context<'lua>) -> rlua::Result<Self> {
+    fn from_lua(
+        lua_value: Value<'lua>,
+        _: rlua::Context<'lua>
+    ) -> rlua::Result<Self> {
         if let Value::UserData(class) = lua_value {
             Ok(Class::<'lua, S>::from(class))
         } else {
@@ -58,7 +62,11 @@ pub struct ClassBuilder<'lua, S: ObjectStateType> {
 }
 
 impl<'lua, S: ObjectStateType> ClassBuilder<'lua, S> {
-    pub fn method(self, name: String, meth: rlua::Function<'lua>) -> rlua::Result<Self> {
+    pub fn method(
+        self,
+        name: String,
+        meth: rlua::Function<'lua>
+    ) -> rlua::Result<Self> {
         let table = self.class.class.get_user_value::<Table>()?;
         let meta = table.get_metatable().expect("Class had no meta table!");
         meta.set(name, meth)?;
@@ -102,7 +110,10 @@ impl<S: ObjectStateType> UserData for ClassState<S> {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_meta_function(MetaMethod::Index, class_index);
         // TODO Class new index?
-        methods.add_meta_function(MetaMethod::NewIndex, object::default_newindex::<S>);
+        methods.add_meta_function(
+            MetaMethod::NewIndex,
+            object::default_newindex::<S>
+        );
         fn call<'lua>(
             lua: rlua::Context<'lua>,
             (class, args): (AnyUserData<'lua>, rlua::MultiValue<'lua>)
@@ -113,10 +124,13 @@ impl<S: ObjectStateType> UserData for ClassState<S> {
             }
         }
         methods.add_meta_function(MetaMethod::Call, call);
-        methods.add_meta_function(MetaMethod::ToString, |_, class: AnyUserData| {
-            let table = class.get_user_value::<Table>()?;
-            table.get::<_, String>("name")
-        });
+        methods.add_meta_function(
+            MetaMethod::ToString,
+            |_, class: AnyUserData| {
+                let table = class.get_user_value::<Table>()?;
+                table.get::<_, String>("name")
+            }
+        );
     }
 }
 
@@ -172,7 +186,11 @@ impl<'lua, S: ObjectStateType> Class<'lua, S> {
         self.class
             .get_user_value::<Table>()?
             .get_metatable()
-            .ok_or_else(|| rlua::Error::RuntimeError("no metatable on screen class".to_string()))
+            .ok_or_else(|| {
+                rlua::Error::RuntimeError(
+                    "no metatable on screen class".to_string()
+                )
+            })
     }
 
     pub fn signals(&self) -> rlua::Result<rlua::Table<'lua>> {
@@ -215,7 +233,10 @@ pub fn class_setup<'lua, S: ObjectStateType>(
         .globals()
         .get::<_, AnyUserData>(name)
         .expect("Class was not set! Did you call init?");
-    assert!(class.is::<ClassState<S>>(), "This user data was not a class!");
+    assert!(
+        class.is::<ClassState<S>>(),
+        "This user data was not a class!"
+    );
     Ok(Class {
         class,
         kind: PhantomData
