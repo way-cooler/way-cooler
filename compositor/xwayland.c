@@ -4,6 +4,8 @@
 
 #include <wlr/util/log.h>
 
+#include "cursor.h"
+#include "seat.h"
 #include "server.h"
 #include "view.h"
 
@@ -78,6 +80,38 @@ static void wc_xwayland_surface_unmap(
 	wc_view_damage_whole(view);
 }
 
+static void wc_xwayland_request_move(struct wl_listener *listener, void *data) {
+	struct wc_view *view = wl_container_of(listener, view, request_move);
+	// struct wlr_xwayland_move_event *event = data;
+	struct wc_server *server = view->server;
+	struct wc_cursor *cursor = server->cursor;
+	struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
+	struct wlr_surface *focused_surface =
+			server->seat->seat->pointer_state.focused_surface;
+	struct wlr_surface *surface = wc_view_surface(view);
+
+	if (surface != focused_surface) {
+		return;
+	}
+
+	struct wlr_box geo = {
+			.x = view->xwayland_surface->x,
+			.y = view->xwayland_surface->y,
+			.width = view->xwayland_surface->width,
+			.height = view->xwayland_surface->height,
+	};
+
+	cursor->cursor_mode = WC_CURSOR_MOVE;
+	cursor->grabbed.view = view;
+	cursor->grabbed.original_x = wlr_cursor->x - view->geo.x;
+	cursor->grabbed.original_y = wlr_cursor->y - view->geo.y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo.width;
+	cursor->grabbed.original_view_geo.height = geo.height;
+}
+
 static void wc_xwayland_new_surface(struct wl_listener *listener, void *data) {
 	struct wc_server *server =
 			wl_container_of(listener, server, new_xwayland_surface);
@@ -91,12 +125,14 @@ static void wc_xwayland_new_surface(struct wl_listener *listener, void *data) {
 	view->map.notify = wc_xwayland_surface_map;
 	view->unmap.notify = wc_xwayland_surface_unmap;
 	view->configure.notify = wc_xwayland_request_configure;
+	view->request_move.notify = wc_xwayland_request_move;
 	view->destroy.notify = wc_xwayland_surface_destroy;
 
 	wl_signal_add(&xwayland_surface->events.map, &view->map);
 	wl_signal_add(&xwayland_surface->events.unmap, &view->unmap);
 	wl_signal_add(
 			&xwayland_surface->events.request_configure, &view->configure);
+	wl_signal_add(&xwayland_surface->events.request_move, &view->request_move);
 	wl_signal_add(&xwayland_surface->events.destroy, &view->destroy);
 
 	wl_list_insert(&server->views, &view->link);
