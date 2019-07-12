@@ -37,47 +37,16 @@ static void wc_xwayland_request_configure(
 
 static void wc_xwayland_commit(struct wl_listener *listener, void *data) {
 	struct wc_view *view = wl_container_of(listener, view, commit);
-	if (!view->mapped) {
-		return;
-	}
-
 	struct wlr_xwayland_surface *xwayland_surface = view->xwayland_surface;
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	wlr_surface_get_effective_damage(xwayland_surface->surface, &damage);
-	wc_view_damage(view, &damage);
 
-	struct wlr_box size = {.x = xwayland_surface->x,
+	struct wlr_box size = {
+			.x = xwayland_surface->x,
 			.y = xwayland_surface->y,
 			.width = xwayland_surface->width,
-			.height = xwayland_surface->height};
+			.height = xwayland_surface->height,
+	};
 
-	bool size_changed =
-			view->geo.width != xwayland_surface->surface->current.width ||
-			view->geo.height != xwayland_surface->surface->current.height;
-
-	if (size_changed) {
-		wc_view_damage_whole(view);
-		view->geo.width = xwayland_surface->surface->current.width;
-		view->geo.height = xwayland_surface->surface->current.height;
-		wc_view_damage_whole(view);
-	}
-
-	if (view->pending_geometry.x != view->geo.x) {
-		view->geo.x = view->pending_geometry.x + view->pending_geometry.width -
-				size.width;
-	}
-	if (view->pending_geometry.y != view->geo.y) {
-		view->geo.y = view->pending_geometry.y + view->pending_geometry.height -
-				size.height;
-	}
-
-	wc_view_damage_whole(view);
-
-	view->pending_serial = 0;
-	view->is_pending_serial = false;
-
-	pixman_region32_fini(&damage);
+	wc_view_commit(view, size);
 }
 
 static void wc_xwayland_surface_map(struct wl_listener *listener, void *data) {

@@ -66,6 +66,12 @@ void wc_view_damage(struct wc_view *view, pixman_region32_t *damage);
 // Damage the whole view, based on its current geometry.
 void wc_view_damage_whole(struct wc_view *view);
 
+/* Commits damage from the client.
+ *
+ * If the size has changed the entire view is automatically damaged.
+ */
+void wc_view_commit(struct wc_view *view, struct wlr_box geo);
+
 // Get the main surface associated with the view.
 struct wlr_surface *wc_view_surface(struct wc_view *view);
 

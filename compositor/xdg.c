@@ -35,48 +35,12 @@ static void wc_xdg_surface_unmap(struct wl_listener *listener, void *data) {
 
 static void wc_xdg_surface_commit(struct wl_listener *listener, void *data) {
 	struct wc_view *view = wl_container_of(listener, view, commit);
-	if (!view->mapped) {
-		return;
-	}
+	struct wlr_xdg_surface *xdg_surface = view->xdg_surface;
 
-	struct wlr_xdg_surface *surface = view->xdg_surface;
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	wlr_surface_get_effective_damage(surface->surface, &damage);
-	wc_view_damage(view, &damage);
+	struct wlr_box geo = {0};
+	wlr_xdg_surface_get_geometry(xdg_surface, &geo);
 
-	struct wlr_box size = {0};
-	wlr_xdg_surface_get_geometry(surface, &size);
-
-	bool size_changed = view->geo.width != surface->surface->current.width ||
-			view->geo.height != surface->surface->current.height;
-
-	if (size_changed) {
-		wc_view_damage_whole(view);
-		view->geo.width = surface->surface->current.width;
-		view->geo.height = surface->surface->current.height;
-		wc_view_damage_whole(view);
-	}
-
-	uint32_t pending_serial = view->pending_serial;
-	if (pending_serial > 0 && pending_serial >= surface->configure_serial) {
-		if (view->pending_geometry.x != view->geo.x) {
-			view->geo.x = view->pending_geometry.x +
-					view->pending_geometry.width - size.width;
-		}
-		if (view->pending_geometry.y != view->geo.y) {
-			view->geo.y = view->pending_geometry.y +
-					view->pending_geometry.height - size.height;
-		}
-
-		wc_view_damage_whole(view);
-
-		if (pending_serial == surface->configure_serial) {
-			view->pending_serial = 0;
-			view->is_pending_serial = false;
-		}
-	}
-	pixman_region32_fini(&damage);
+	wc_view_commit(view, geo);
 }
 
 void wc_xdg_surface_destroy(struct wl_listener *listener, void *data) {
