@@ -292,33 +292,30 @@ fn init_wayland() -> (WaylandState, GlobalManager) {
     );
     event_queue.sync_roundtrip().unwrap();
 
-    globals
-        .instantiate_exact(wayland_obj::XDG_WM_BASE_VERSION,
-                           wayland_obj::xdg_shell_init)
-        .unwrap_or_else(|err| match err {
-            GlobalError::Missing => {
-                error!(
-                    "Missing xdg_wm_base global (version {})",
-                    wayland_obj::XDG_WM_BASE_VERSION
-                );
-                fail(
-                    "Your compositor doesn't support the xdg shell protocol. \
-                     This protocol is necessary for Awesome to function"
-                );
-            },
-            GlobalError::VersionTooLow(version) => {
-                error!(
-                    "Got xdg_wm_base version {}, expected version {}",
-                    version,
-                    wayland_obj::XDG_WM_BASE_VERSION
-                );
-                fail(&format!(
-                    "Your compositor doesn't support version {} \
-                     of the xdg shell protocol. Ensure your compositor is up to date",
-                    wayland_obj::XDG_WM_BASE_VERSION
-                ));
-            }
-        });
+    globals.instantiate_exact(
+        wayland_obj::LAYER_SHELL_VERSION,
+        wayland_obj::layer_shell_init
+    ).unwrap_or_else(|err| match err {
+        GlobalError::Missing => {
+            error!("Missing layer shell (version {})", wayland_obj::LAYER_SHELL_VERSION);
+            fail(
+                "Your compositor doesn't support the layer shell protocol. \
+                 This protocol is necessary for Awesome to function"
+            );
+        }
+        GlobalError::VersionTooLow(version) => {
+            error!(
+                "Got layer shell version {}, expected version {}",
+                version,
+                wayland_obj::LAYER_SHELL_VERSION
+            );
+            fail(&format!(
+                "Your compositor doesn't support version {} \
+                 of the layer shell protocol. Ensure your compositor is up to date",
+                wayland_obj::LAYER_SHELL_VERSION
+            ));
+        }
+    });
 
     event_queue.sync_roundtrip().unwrap();
     (

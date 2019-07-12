@@ -19,13 +19,13 @@ use crate::{
         object::{self, Object},
         property::Property
     },
-    wayland_obj::{self, XdgToplevel}
+    wayland_obj::{self, Layer, LayerSurface}
 };
 
 #[derive(Debug)]
 pub struct DrawableState {
     temp_file: File,
-    wayland_shell: Option<XdgToplevel>,
+    wayland_shell: Option<LayerSurface>,
     pub surface: Option<ImageSurface>,
     geo: Area,
     refreshed: bool
@@ -94,10 +94,12 @@ impl<'lua> Drawable<'lua> {
         if size_changed {
             drawable.refreshed = false;
             drawable.surface = None;
-            drawable.wayland_shell =
-                Some(wayland_obj::create_xdg_toplevel(None).expect(
-                    "Could not construct an xdg toplevel for a drawable"
-                ));
+            drawable.wayland_shell = Some(
+                wayland_obj::create_layer_surface(None, Layer::Top, "".into())
+                    .expect(
+                        "Could not construct an xdg toplevel for a drawable"
+                    )
+            );
             let size: Size = geometry.size;
 
             if size.width > 0 && size.height > 0 {

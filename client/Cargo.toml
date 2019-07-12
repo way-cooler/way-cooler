@@ -27,7 +27,7 @@ glib = "0.5.0"
 tempfile = "3.0.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
 wayland-client = { version = "0.23", features = [ "native_lib", "dlopen" ] }
-wayland-protocols = { version = "0.23", features = ['client'] }
+wayland-protocols = { version = "0.23", features = [ 'client', "unstable_protocols" ] }
 dbus = "0.6"
 xkbcommon = "0.3"
 evdev = "0.10"
