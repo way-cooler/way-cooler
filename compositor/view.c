@@ -76,6 +76,55 @@ struct wlr_surface *wc_view_surface(struct wc_view *view) {
 	return NULL;
 }
 
+void wc_view_move(struct wc_view *view, struct wlr_box geo) {
+	struct wc_server *server = view->server;
+	struct wlr_surface *focused_surface =
+			server->seat->seat->pointer_state.focused_surface;
+	struct wlr_surface *surface = wc_view_surface(view);
+
+	if (surface != focused_surface) {
+		return;
+	}
+
+	struct wc_cursor *cursor = server->cursor;
+	struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
+
+	cursor->cursor_mode = WC_CURSOR_MOVE;
+	cursor->grabbed.view = view;
+	cursor->grabbed.original_x = wlr_cursor->x - view->geo.x;
+	cursor->grabbed.original_y = wlr_cursor->y - view->geo.y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo.width;
+	cursor->grabbed.original_view_geo.height = geo.height;
+}
+
+void wc_view_resize(struct wc_view *view, struct wlr_box geo, uint32_t edges) {
+	struct wc_server *server = view->server;
+	struct wc_cursor *cursor = server->cursor;
+	struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
+	struct wlr_surface *focused_surface =
+			server->seat->seat->pointer_state.focused_surface;
+	struct wlr_surface *surface = wc_view_surface(view);
+
+	if (surface != focused_surface) {
+		return;
+	}
+
+	cursor->cursor_mode = WC_CURSOR_RESIZE;
+	cursor->grabbed.view = view;
+	cursor->grabbed.original_x = wlr_cursor->x;
+	cursor->grabbed.original_y = wlr_cursor->y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo.width;
+	cursor->grabbed.original_view_geo.height = geo.height;
+
+	cursor->grabbed.resize_edges = edges;
+}
+
 void wc_view_update_geometry(struct wc_view *view, struct wlr_box new_geo) {
 	switch (view->surface_type) {
 	case WC_XDG:

@@ -75,6 +75,19 @@ void wc_view_commit(struct wc_view *view, struct wlr_box geo);
 // Get the main surface associated with the view.
 struct wlr_surface *wc_view_surface(struct wc_view *view);
 
+/* Moves the view to the specified coordinates.
+ *
+ * Note that this is done by setting geometry in the cursor and so all
+ * handling is done in cursor.c
+ */
+void wc_view_move(struct wc_view *view, struct wlr_box geo);
+
+/* Resize the view to the specified location.
+ * Note this is done by setting geometry in the cursor and so all
+ * handling is done in cursor.c
+ */
+void wc_view_resize(struct wc_view *view, struct wlr_box geo, uint32_t edges);
+
 // Set the new geometry of the view to be applied when the client commits to it.
 void wc_view_update_geometry(struct wc_view *view, struct wlr_box new_geo);
 

@@ -82,17 +82,6 @@ static void wc_xwayland_surface_unmap(
 
 static void wc_xwayland_request_move(struct wl_listener *listener, void *data) {
 	struct wc_view *view = wl_container_of(listener, view, request_move);
-	// struct wlr_xwayland_move_event *event = data;
-	struct wc_server *server = view->server;
-	struct wc_cursor *cursor = server->cursor;
-	struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
-	struct wlr_surface *focused_surface =
-			server->seat->seat->pointer_state.focused_surface;
-	struct wlr_surface *surface = wc_view_surface(view);
-
-	if (surface != focused_surface) {
-		return;
-	}
 
 	struct wlr_box geo = {
 			.x = view->xwayland_surface->x,
@@ -101,15 +90,7 @@ static void wc_xwayland_request_move(struct wl_listener *listener, void *data) {
 			.height = view->xwayland_surface->height,
 	};
 
-	cursor->cursor_mode = WC_CURSOR_MOVE;
-	cursor->grabbed.view = view;
-	cursor->grabbed.original_x = wlr_cursor->x - view->geo.x;
-	cursor->grabbed.original_y = wlr_cursor->y - view->geo.y;
-
-	cursor->grabbed.original_view_geo.x = view->geo.x;
-	cursor->grabbed.original_view_geo.y = view->geo.y;
-	cursor->grabbed.original_view_geo.width = geo.width;
-	cursor->grabbed.original_view_geo.height = geo.height;
+	wc_view_move(view, geo);
 }
 
 static void wc_xwayland_new_surface(struct wl_listener *listener, void *data) {
