@@ -17,6 +17,8 @@ void wc_xwayland_surface_destroy(struct wl_listener *listener, void *data) {
 	wl_list_remove(&view->map.link);
 	wl_list_remove(&view->unmap.link);
 	wl_list_remove(&view->configure.link);
+	wl_list_remove(&view->request_move.link);
+	wl_list_remove(&view->request_resize.link);
 	wl_list_remove(&view->destroy.link);
 
 	free(view);
@@ -93,6 +95,21 @@ static void wc_xwayland_request_move(struct wl_listener *listener, void *data) {
 	wc_view_move(view, geo);
 }
 
+static void wc_xwayland_request_resize(
+		struct wl_listener *listener, void *data) {
+	struct wc_view *view = wl_container_of(listener, view, request_resize);
+	struct wlr_xwayland_resize_event *event = data;
+
+	struct wlr_box geo = {
+			.x = view->xwayland_surface->x,
+			.y = view->xwayland_surface->y,
+			.width = view->xwayland_surface->width,
+			.height = view->xwayland_surface->height,
+	};
+
+	wc_view_resize(view, geo, event->edges);
+}
+
 static void wc_xwayland_new_surface(struct wl_listener *listener, void *data) {
 	struct wc_server *server =
 			wl_container_of(listener, server, new_xwayland_surface);
@@ -107,6 +124,7 @@ static void wc_xwayland_new_surface(struct wl_listener *listener, void *data) {
 	view->unmap.notify = wc_xwayland_surface_unmap;
 	view->configure.notify = wc_xwayland_request_configure;
 	view->request_move.notify = wc_xwayland_request_move;
+	view->request_resize.notify = wc_xwayland_request_resize;
 	view->destroy.notify = wc_xwayland_surface_destroy;
 
 	wl_signal_add(&xwayland_surface->events.map, &view->map);
@@ -114,6 +132,8 @@ static void wc_xwayland_new_surface(struct wl_listener *listener, void *data) {
 	wl_signal_add(
 			&xwayland_surface->events.request_configure, &view->configure);
 	wl_signal_add(&xwayland_surface->events.request_move, &view->request_move);
+	wl_signal_add(
+			&xwayland_surface->events.request_resize, &view->request_resize);
 	wl_signal_add(&xwayland_surface->events.destroy, &view->destroy);
 
 	wl_list_insert(&server->views, &view->link);
