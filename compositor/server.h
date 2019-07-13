@@ -50,6 +50,8 @@ struct wc_server {
 
 	struct wlr_screencopy_manager_v1 *screencopy_manager;
 	struct wlr_data_device_manager *data_device_manager;
+
+	struct wc_mousegrabber *mousegrabber;
 };
 
 bool init_server(struct wc_server *server);

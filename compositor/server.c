@@ -18,6 +18,7 @@
 #include "cursor.h"
 #include "input.h"
 #include "layer_shell.h"
+#include "mousegrabber.h"
 #include "output.h"
 #include "seat.h"
 #include "view.h"
@@ -50,6 +51,7 @@ bool init_server(struct wc_server *server) {
 			wlr_data_device_manager_create(server->wl_display);
 
 	wc_xwayland_init(server);
+	wc_mousegrabber_init(server);
 	wc_seat_init(server);
 	wc_output_init(server);
 	wc_inputs_init(server);

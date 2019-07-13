@@ -3,9 +3,12 @@ extern crate pkg_config;
 
 use std::{env, fs, io::Write, path::Path, process::Command};
 
+use wayland_scanner::{generate_code, Side};
+
 fn main() {
     dump_git_version();
     build_wayland_glib_interface();
+    generate_custom_protocols();
 }
 
 /// Writes the current git hash to a file that is read by Way Cooler
@@ -72,4 +75,15 @@ fn build_wayland_glib_interface() {
         .file("src/wayland_glib_interface.c")
         .compile("wayland_glib_interface");
     println!("cargo:rustc-flags=-l wayland-client");
+}
+
+fn generate_custom_protocols() {
+    let out_dir_str = env::var("OUT_DIR").unwrap();
+    let out_dir = Path::new(&out_dir_str);
+
+    let protocol = "../protocols/way-cooler-mousegrabber-unstable-v1.xml";
+
+    generate_code(protocol, out_dir.join("mouse_grabber_api.rs"), Side::Client);
+
+    println!("cargo:rerun-if-changed={}", protocol);
 }

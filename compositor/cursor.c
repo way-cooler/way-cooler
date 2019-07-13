@@ -6,6 +6,7 @@
 
 #include <wlr/util/log.h>
 
+#include "mousegrabber.h"
 #include "output.h"
 #include "seat.h"
 #include "server.h"
@@ -91,6 +92,8 @@ static void wc_process_motion(struct wc_server *server, uint32_t time) {
 			}
 		}
 	}
+
+	wc_mousegrabber_notify_mouse_moved(server, wlr_cursor->x, wlr_cursor->y);
 }
 
 static void wc_cursor_motion(struct wl_listener *listener, void *data) {

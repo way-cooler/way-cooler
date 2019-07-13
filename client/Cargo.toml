@@ -26,6 +26,8 @@ libc = "0.2.*"
 glib = "0.5.0"
 tempfile = "3.0.*"
 xcb = { version = "0.8.1", features = ["xkb"] }
+wayland-commons = "0.23"
+wayland-sys = { version = "0.23", features = [ "dlopen" ] }
 wayland-client = { version = "0.23", features = [ "native_lib", "dlopen" ] }
 wayland-protocols = { version = "0.23", features = [ 'client', "unstable_protocols" ] }
 dbus = "0.6"
@@ -37,6 +39,7 @@ enumflags2_derive = "0.5"
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }
 pkg-config = "0.3.*"
+wayland-scanner = { version = "0.23" }
 
 
 [features]

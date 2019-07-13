@@ -316,6 +316,30 @@ fn init_wayland() -> (WaylandState, GlobalManager) {
             ));
         }
     });
+    globals.instantiate_exact(
+        wayland_obj::MOUSEGRABBER_VERSION,
+        wayland_obj::mousegrabber_init
+    ).unwrap_or_else(|err| match err {
+        GlobalError::Missing => {
+            error!("Missing mousegrabber (version {})", wayland_obj::MOUSEGRABBER_VERSION);
+            fail(
+                "Your compositor doesn't support the mousegrabber protocol. \
+                 This protocol is necessary for Awesome to function"
+            );
+        }
+        GlobalError::VersionTooLow(version) => {
+            error!(
+                "Got mousegrabber version {}, expected version {}",
+                version,
+                wayland_obj::MOUSEGRABBER_VERSION
+            );
+            fail(&format!(
+                "Your compositor doesn't support version {} \
+                 of the mousegrabber protocol. Ensure your compositor is up to date",
+                wayland_obj::MOUSEGRABBER_VERSION
+            ));
+        }
+    });
 
     event_queue.sync_roundtrip().unwrap();
     (
