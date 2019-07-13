@@ -99,7 +99,9 @@ static void wc_arrange_layer(struct wc_output *output, struct wc_seat *seat,
 			bounds = full_area;
 		}
 		struct wlr_box arranged_area = {
-				.width = state->desired_width, .height = state->desired_height};
+				.width = state->desired_width,
+				.height = state->desired_height,
+		};
 
 		// horizontal axis
 		if ((state->anchor & LAYER_BOTH_HORIZ) && arranged_area.width == 0) {

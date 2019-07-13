@@ -357,9 +357,11 @@ struct wc_output *wc_get_active_output(struct wc_server *server) {
 void wc_output_damage_surface(struct wc_output *output,
 		struct wlr_surface *surface, pixman_region32_t *surface_damage,
 		struct wlr_box surface_output_geo) {
-	struct wc_surface_damage_data damage_data = {.output = output,
+	struct wc_surface_damage_data damage_data = {
+			.output = output,
 			.surface_output_geo = surface_output_geo,
-			.surface_damage = surface_damage};
+			.surface_damage = surface_damage,
+	};
 	wlr_surface_for_each_surface(
 			surface, damage_surface_iterator, &damage_data);
 }
