@@ -235,6 +235,8 @@ void wc_view_commit(struct wc_view *view, struct wlr_box geo) {
 	case WC_XDG:
 		if (pending_serial > 0 &&
 				pending_serial >= view->xdg_surface->configure_serial) {
+			wc_view_damage_whole(view);
+
 			if (view->pending_geometry.x != view->geo.x) {
 				view->geo.x = view->pending_geometry.x +
 						view->pending_geometry.width - geo.width;
@@ -254,6 +256,8 @@ void wc_view_commit(struct wc_view *view, struct wlr_box geo) {
 		break;
 	case WC_XWAYLAND:
 		if (pending_serial > 0) {
+			wc_view_damage_whole(view);
+
 			if (view->pending_geometry.x != view->geo.x) {
 				view->geo.x = view->pending_geometry.x +
 						view->pending_geometry.width - geo.width;
