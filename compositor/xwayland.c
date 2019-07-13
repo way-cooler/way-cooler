@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200112L
 #include "xwayland.h"
 
 #include <stdlib.h>
@@ -144,6 +145,8 @@ void wc_xwayland_init(struct wc_server *server) {
 	server->new_xwayland_surface.notify = wc_xwayland_new_surface;
 	wl_signal_add(&server->xwayland->events.new_surface,
 			&server->new_xwayland_surface);
+
+	setenv("DISPLAY", server->xwayland->display_name, true);
 
 	if (server->xwayland == NULL) {
 		abort();
