@@ -332,8 +332,7 @@ void wc_view_for_each_surface(struct wc_view *view,
 		break;
 	case WC_XWAYLAND: {
 		struct wlr_xwayland_surface *xwayland_surface = view->xwayland_surface;
-		iterator(xwayland_surface->surface, xwayland_surface->x,
-				xwayland_surface->y, data);
+		iterator(xwayland_surface->surface, 0, 0, data);
 		break;
 	}
 	}

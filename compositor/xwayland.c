@@ -44,8 +44,8 @@ static void wc_xwayland_commit(struct wl_listener *listener, void *data) {
 	struct wlr_xwayland_surface *xwayland_surface = view->xwayland_surface;
 
 	struct wlr_box size = {
-			.x = xwayland_surface->x,
-			.y = xwayland_surface->y,
+			.x = view->geo.x,
+			.y = view->geo.y,
 			.width = xwayland_surface->width,
 			.height = xwayland_surface->height,
 	};
@@ -60,8 +60,6 @@ static void wc_xwayland_surface_map(struct wl_listener *listener, void *data) {
 	view->mapped = true;
 	wc_focus_view(view);
 
-	view->geo.x = surface->x;
-	view->geo.y = surface->y;
 	view->geo.width = surface->width;
 	view->geo.height = surface->height;
 
@@ -86,8 +84,8 @@ static void wc_xwayland_request_move(struct wl_listener *listener, void *data) {
 	struct wc_view *view = wl_container_of(listener, view, request_move);
 
 	struct wlr_box geo = {
-			.x = view->xwayland_surface->x,
-			.y = view->xwayland_surface->y,
+			.x = view->geo.x,
+			.y = view->geo.y,
 			.width = view->xwayland_surface->width,
 			.height = view->xwayland_surface->height,
 	};
@@ -101,8 +99,8 @@ static void wc_xwayland_request_resize(
 	struct wlr_xwayland_resize_event *event = data;
 
 	struct wlr_box geo = {
-			.x = view->xwayland_surface->x,
-			.y = view->xwayland_surface->y,
+			.x = view->geo.x,
+			.y = view->geo.y,
 			.width = view->xwayland_surface->width,
 			.height = view->xwayland_surface->height,
 	};
