@@ -11,6 +11,13 @@
 static void grab_mouse(struct wl_client *client, struct wl_resource *resource) {
 	struct wc_mousegrabber *mousegrabber = wl_resource_get_user_data(resource);
 
+	if (mousegrabber->resource != NULL) {
+		wl_resource_post_error(resource,
+				ZWAY_COOLER_MOUSEGRABBER_ERROR_ALREADY_GRABBED,
+				"mouse has already been grabbed");
+		return;
+	}
+
 	mousegrabber->resource = resource;
 	wlr_log(WLR_DEBUG, "mouse grabbed!");
 }
