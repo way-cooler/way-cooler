@@ -133,6 +133,7 @@ void wc_view_update_geometry(struct wc_view *view, struct wlr_box new_geo) {
 		view->is_pending_serial = true;
 		break;
 	case WC_XWAYLAND:
+		view->pending_serial = 1;
 		wlr_xwayland_surface_configure(view->xwayland_surface, new_geo.x,
 				new_geo.y, new_geo.width, new_geo.height);
 		break;
@@ -229,11 +230,11 @@ void wc_view_commit(struct wc_view *view, struct wlr_box geo) {
 		wc_view_damage_whole(view);
 	}
 
-	if (view->surface_type == WC_XDG) {
-		struct wlr_xdg_surface *xdg_surface = view->xdg_surface;
-		uint32_t pending_serial = view->pending_serial;
+	uint32_t pending_serial = view->pending_serial;
+	switch (view->surface_type) {
+	case WC_XDG:
 		if (pending_serial > 0 &&
-				pending_serial >= xdg_surface->configure_serial) {
+				pending_serial >= view->xdg_surface->configure_serial) {
 			if (view->pending_geometry.x != view->geo.x) {
 				view->geo.x = view->pending_geometry.x +
 						view->pending_geometry.width - geo.width;
@@ -245,11 +246,27 @@ void wc_view_commit(struct wc_view *view, struct wlr_box geo) {
 
 			wc_view_damage_whole(view);
 
-			if (pending_serial == xdg_surface->configure_serial) {
+			if (pending_serial == view->xdg_surface->configure_serial) {
 				view->pending_serial = 0;
 				view->is_pending_serial = false;
 			}
 		}
+		break;
+	case WC_XWAYLAND:
+		if (pending_serial > 0) {
+			if (view->pending_geometry.x != view->geo.x) {
+				view->geo.x = view->pending_geometry.x +
+						view->pending_geometry.width - geo.width;
+			}
+			if (view->pending_geometry.y != view->geo.y) {
+				view->geo.y = view->pending_geometry.y +
+						view->pending_geometry.height - geo.height;
+			}
+
+			wc_view_damage_whole(view);
+			view->pending_serial = 0;
+		}
+		break;
 	}
 	pixman_region32_fini(&damage);
 }
