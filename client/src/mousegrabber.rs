@@ -19,7 +19,6 @@ pub fn init(lua: rlua::Context) -> rlua::Result<()> {
     globals.set(MOUSEGRABBER_TABLE, mousegrabber_table)
 }
 
-#[allow(dead_code)]
 pub fn mousegrabber_handle(
     x: i32,
     y: i32,
@@ -36,7 +35,6 @@ pub fn mousegrabber_handle(
     })
 }
 
-#[allow(dead_code)]
 fn call_mousegrabber(
     lua: rlua::Context,
     (x, y, button_events): (i32, i32, Vec<bool>)

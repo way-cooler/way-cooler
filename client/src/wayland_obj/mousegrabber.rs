@@ -2,6 +2,8 @@ use std::cell::RefCell;
 
 use wayland_client::NewProxy;
 
+use crate::mousegrabber::mousegrabber_handle;
+
 #[allow(
     non_camel_case_types,
     non_snake_case,
@@ -37,7 +39,9 @@ pub struct MousegrabberHandler;
 
 impl mouse_grabber::EventHandler for MousegrabberHandler {
     fn mouse_moved(&mut self, _: ZwayCoolerMousegrabber, x: i32, y: i32) {
-        info!("Mouse moved to ({}, {})", x, y);
+        if let Err(err) = mousegrabber_handle(x, y, None) {
+            warn!("mousegrabber returned error {}", err);
+        }
     }
 }
 
