@@ -188,8 +188,8 @@ static void wc_output_frame(struct wl_listener *listener, void *data) {
 	bool needs_swap = false;
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
-	// TODO wlr_output_attach_render(wlr_output, NULL);
-	if (!wlr_output_damage_make_current(output->damage, &needs_swap, &damage)) {
+	if (!wlr_output_damage_attach_render(
+				output->damage, &needs_swap, &damage)) {
 		return;
 	}
 
@@ -251,7 +251,6 @@ static void wc_output_frame(struct wl_listener *listener, void *data) {
 renderer_end:
 	wlr_output_render_software_cursors(wlr_output, &damage);
 	wlr_renderer_scissor(renderer, NULL);
-	// TODO use wlr_output_commit(wlr_output);
 	wlr_renderer_end(renderer);
 
 	int width, height;
@@ -264,7 +263,8 @@ renderer_end:
 	enum wl_output_transform transform =
 			wlr_output_transform_invert(wlr_output->transform);
 	wlr_region_transform(&damage, &damage, transform, width, height);
-	wlr_output_damage_swap_buffers(output->damage, &now, &damage);
+	wlr_output_set_damage(wlr_output, &damage);
+	wlr_output_commit(wlr_output);
 
 damage_finish:
 	pixman_region32_fini(&damage);
