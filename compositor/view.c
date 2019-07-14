@@ -93,15 +93,12 @@ void wc_view_damage(struct wc_view *view, pixman_region32_t *damage) {
 
 	for (size_t i = 0; i < 4; i++) {
 		struct wlr_output *output = outputs[i];
-		struct wlr_box *output_box =
-				wlr_output_layout_get_box(view->server->output_layout, output);
 
 		if (output) {
-			// TODO replace lx and ly with xdg-output
-			struct wlr_box view_output_geo = {.x = view->geo.x - output_box->x,
-					.y = view->geo.y - output_box->y,
+			struct wlr_box view_output_geo = {
 					.width = view->geo.width,
-					.height = view->geo.height};
+					.height = view->geo.height,
+			};
 			if (damage != NULL) {
 				pixman_region32_translate(
 						damage, view_output_geo.x, view_output_geo.y);
