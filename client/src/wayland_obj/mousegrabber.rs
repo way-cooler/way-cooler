@@ -45,11 +45,35 @@ impl mouse_grabber::EventHandler for MousegrabberHandler {
     }
 }
 
+/// Grabs the mouse. Grabbing the mouse multiple times is a protocol error.
+///
+/// Only one client at a time can grab the mouse.
+pub fn grab_mouse(cursor: String) {
+    MOUSE_GRABBER.with(|mouse_grabber| {
+        let mouse_grabber = mouse_grabber.borrow();
+        let mouse_grabber = mouse_grabber
+            .as_ref()
+            .expect("Mouse grabber has not been initialized");
+        mouse_grabber.grab_mouse();
+    });
+}
+
+/// Release the mouse. Releasing the mouse when the client has not grabbed
+/// the mouse is a protocol error.
+pub fn release_mouse() {
+    MOUSE_GRABBER.with(|mouse_grabber| {
+        let mouse_grabber = mouse_grabber.borrow();
+        let mouse_grabber = mouse_grabber
+            .as_ref()
+            .expect("Mouse grabber has not been initialized");
+        mouse_grabber.release_mouse();
+    })
+}
+
 pub fn mousegrabber_init(
     new_proxy: NewProxy<ZwayCoolerMousegrabber>
 ) -> ZwayCoolerMousegrabber {
     let mouse_grabber = new_proxy.implement(MousegrabberHandler, ());
-    mouse_grabber.grab_mouse();
     MOUSE_GRABBER.with(|grabber| {
         *grabber.borrow_mut() = Some(mouse_grabber.clone());
     });

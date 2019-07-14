@@ -35,12 +35,24 @@
 
     <request name="grab_mouse">
       <description summary="grab the mouse">
-        Attempts to grab the mouse from the compositor. 
+        Attempts to grab the mouse from the compositor.
+
+        Only one client can grab the mouse at a time. Attempts to grab while
+        another client is already grabbing is a protocol error.
+      </description>
+    </request>
+
+    <request name="release_mouse">
+      <description summary="release the mouse">
+        Relinquishes control of the mouse back to the compositor.
+
+        It is a protocol error to call this when the client has not grabbed the mouse.
       </description>
     </request>
 
     <enum name="error">
       <entry name="already_grabbed" value="0" summary="the mouse has already been grabbed by another client"/>
+      <entry name="not_grabbed" value="1" summary="A client attempted to release the mouse when it was not acquired"/>
     </enum>
 
     <event name="mouse_moved">

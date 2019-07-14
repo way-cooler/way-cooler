@@ -10,6 +10,7 @@
 struct wc_mousegrabber {
 	struct wl_global *global;
 	struct wl_resource *resource;
+	struct wl_client *client;
 };
 
 void wc_mousegrabber_init(struct wc_server *server);

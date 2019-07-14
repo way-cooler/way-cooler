@@ -1,5 +1,6 @@
 #include "mousegrabber.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include <wayland-server.h>
@@ -19,16 +20,44 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource) {
 	}
 
 	mousegrabber->resource = resource;
-	wlr_log(WLR_DEBUG, "mouse grabbed!");
+	mousegrabber->client = client;
+
+	wlr_log(WLR_DEBUG, "mousegrabber: mouse grabbed");
+}
+
+static void release_mouse(
+		struct wl_client *client, struct wl_resource *resource) {
+	struct wc_mousegrabber *mousegrabber = wl_resource_get_user_data(resource);
+
+	if (mousegrabber->resource != NULL) {
+		assert(mousegrabber->client);
+	}
+
+	if (mousegrabber->resource == NULL || mousegrabber->client != client) {
+		wl_resource_post_error(resource,
+				ZWAY_COOLER_MOUSEGRABBER_ERROR_NOT_GRABBED,
+				"mouse has not been grabbed by this client");
+		return;
+	}
+
+	// NOTE: Calls our destroy event, which clears client resource pointers.
+	wl_resource_destroy(mousegrabber->resource);
+
+	wlr_log(WLR_DEBUG, "mousegrabber: mouse released");
 }
 
 static const struct zway_cooler_mousegrabber_interface mousegrabber_impl = {
 		.grab_mouse = grab_mouse,
+		.release_mouse = release_mouse,
 };
 
 static void mousegrabber_handle_resource_destroy(struct wl_resource *resource) {
 	struct wc_mousegrabber *mousegrabber = wl_resource_get_user_data(resource);
-	mousegrabber->resource = NULL;
+
+	if (mousegrabber->resource == resource) {
+		mousegrabber->resource = NULL;
+		mousegrabber->client = NULL;
+	}
 }
 
 static void mousegrabber_bind(struct wl_client *wl_client, void *data,
