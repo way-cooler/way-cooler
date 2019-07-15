@@ -12,6 +12,7 @@
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <wlr/xwayland.h>
 
 int WC_DEBUG;
 
@@ -37,6 +38,10 @@ struct wc_server {
 	struct wl_listener new_output;
 
 	struct wl_list views;
+
+	struct wlr_xwayland *xwayland;
+	struct wl_listener new_xwayland_surface;
+
 	struct wlr_xdg_shell *xdg_shell;
 	struct wl_listener new_xdg_surface;
 

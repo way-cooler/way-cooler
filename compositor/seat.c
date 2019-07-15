@@ -4,6 +4,7 @@
 
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_surface.h>
+#include <wlr/xwayland.h>
 
 #include "cursor.h"
 #include "server.h"
@@ -53,6 +54,8 @@ void wc_seat_init(struct wc_server *server) {
 	wl_signal_add(
 			&seat->seat->events.request_set_cursor, &seat->request_set_cursor);
 
+	wlr_xwayland_set_seat(server->xwayland, seat->seat);
+
 	server->seat = seat;
 }
 
@@ -62,6 +65,8 @@ void wc_seat_fini(struct wc_server *server) {
 	wlr_seat_destroy(seat->seat);
 
 	wl_list_remove(&seat->request_set_cursor.link);
+
+	wlr_xwayland_set_seat(server->xwayland, NULL);
 
 	free(seat);
 	server->seat = NULL;

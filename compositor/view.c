@@ -14,16 +14,25 @@
 #include "seat.h"
 #include "server.h"
 #include "xdg.h"
+#include "xwayland.h"
 
 static bool wc_is_view_at(struct wc_view *view, double lx, double ly,
 		double *out_sx, double *out_sy, struct wlr_surface **out_surface) {
 	int view_sx = lx - view->geo.x;
 	int view_sy = ly - view->geo.y;
 
+	*out_surface = NULL;
 	switch (view->surface_type) {
 	case WC_XDG:
 		*out_surface = wlr_xdg_surface_surface_at(
 				view->xdg_surface, view_sx, view_sy, out_sx, out_sy);
+		break;
+	case WC_XWAYLAND:
+		if (view->xwayland_surface->surface != NULL) {
+			*out_surface =
+					wlr_surface_surface_at(view->xwayland_surface->surface,
+							view_sx, view_sy, out_sx, out_sy);
+		}
 		break;
 	}
 	return *out_surface != NULL;
@@ -32,10 +41,7 @@ static bool wc_is_view_at(struct wc_view *view, double lx, double ly,
 void wc_view_get_outputs(struct wlr_output_layout *layout, struct wc_view *view,
 		struct wlr_output **out_outputs) {
 	struct wlr_box geo = {0};
-	switch (view->surface_type) {
-	case WC_XDG:
-		memcpy(&geo, &view->geo, sizeof(struct wlr_box));
-	}
+	memcpy(&geo, &view->geo, sizeof(struct wlr_box));
 
 	size_t next_index = 0;
 	// top left
@@ -64,8 +70,59 @@ struct wlr_surface *wc_view_surface(struct wc_view *view) {
 	switch (view->surface_type) {
 	case WC_XDG:
 		return view->xdg_surface->surface;
+	case WC_XWAYLAND:
+		return view->xwayland_surface->surface;
 	}
 	return NULL;
+}
+
+void wc_view_move(struct wc_view *view, struct wlr_box geo) {
+	struct wc_server *server = view->server;
+	struct wlr_surface *focused_surface =
+			server->seat->seat->pointer_state.focused_surface;
+	struct wlr_surface *surface = wc_view_surface(view);
+
+	if (surface != focused_surface) {
+		return;
+	}
+
+	struct wc_cursor *cursor = server->cursor;
+	struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
+
+	cursor->cursor_mode = WC_CURSOR_MOVE;
+	cursor->grabbed.view = view;
+	cursor->grabbed.original_x = wlr_cursor->x - view->geo.x;
+	cursor->grabbed.original_y = wlr_cursor->y - view->geo.y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo.width;
+	cursor->grabbed.original_view_geo.height = geo.height;
+}
+
+void wc_view_resize(struct wc_view *view, struct wlr_box geo, uint32_t edges) {
+	struct wc_server *server = view->server;
+	struct wc_cursor *cursor = server->cursor;
+	struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
+	struct wlr_surface *focused_surface =
+			server->seat->seat->pointer_state.focused_surface;
+	struct wlr_surface *surface = wc_view_surface(view);
+
+	if (surface != focused_surface) {
+		return;
+	}
+
+	cursor->cursor_mode = WC_CURSOR_RESIZE;
+	cursor->grabbed.view = view;
+	cursor->grabbed.original_x = wlr_cursor->x;
+	cursor->grabbed.original_y = wlr_cursor->y;
+
+	cursor->grabbed.original_view_geo.x = view->geo.x;
+	cursor->grabbed.original_view_geo.y = view->geo.y;
+	cursor->grabbed.original_view_geo.width = geo.width;
+	cursor->grabbed.original_view_geo.height = geo.height;
+
+	cursor->grabbed.resize_edges = edges;
 }
 
 void wc_view_update_geometry(struct wc_view *view, struct wlr_box new_geo) {
@@ -73,10 +130,16 @@ void wc_view_update_geometry(struct wc_view *view, struct wlr_box new_geo) {
 	case WC_XDG:
 		view->pending_serial = wlr_xdg_toplevel_set_size(
 				view->xdg_surface, new_geo.width, new_geo.height);
+		view->is_pending_serial = true;
+		break;
+	case WC_XWAYLAND:
+		view->pending_serial = 1;
+		wlr_xwayland_surface_configure(view->xwayland_surface, new_geo.x,
+				new_geo.y, new_geo.width, new_geo.height);
+		break;
 	}
 
 	memcpy(&view->pending_geometry, &new_geo, sizeof(struct wlr_box));
-	view->is_pending_serial = true;
 }
 
 void wc_view_damage(struct wc_view *view, pixman_region32_t *damage) {
@@ -89,6 +152,18 @@ void wc_view_damage(struct wc_view *view, pixman_region32_t *damage) {
 	pixman_region32_init(&damage_copy);
 	if (damage != NULL) {
 		pixman_region32_copy(&damage_copy, damage);
+	}
+	struct wlr_surface *surface = NULL;
+	switch (view->surface_type) {
+	case WC_XDG:
+		surface = view->xdg_surface->surface;
+		break;
+	case WC_XWAYLAND:
+		surface = view->xwayland_surface->surface;
+		break;
+	}
+	if (surface == NULL) {
+		return;
 	}
 
 	for (size_t i = 0; i < 4; i++) {
@@ -106,12 +181,12 @@ void wc_view_damage(struct wc_view *view, pixman_region32_t *damage) {
 			if (damage != NULL) {
 				pixman_region32_translate(
 						damage, view_output_geo.x, view_output_geo.y);
-				wc_output_damage_surface(output->data,
-						view->xdg_surface->surface, damage, view_output_geo);
+				wc_output_damage_surface(
+						output->data, surface, damage, view_output_geo);
 				pixman_region32_copy(damage, &damage_copy);
 			} else {
-				wc_output_damage_surface(output->data,
-						view->xdg_surface->surface, damage, view_output_geo);
+				wc_output_damage_surface(
+						output->data, surface, damage, view_output_geo);
 			}
 		}
 	}
@@ -120,6 +195,84 @@ void wc_view_damage(struct wc_view *view, pixman_region32_t *damage) {
 
 void wc_view_damage_whole(struct wc_view *view) {
 	wc_view_damage(view, NULL);
+}
+
+void wc_view_commit(struct wc_view *view, struct wlr_box geo) {
+	if (!view->mapped) {
+		return;
+	}
+
+	struct wlr_surface *surface = NULL;
+	switch (view->surface_type) {
+	case WC_XDG:
+		surface = view->xdg_surface->surface;
+		break;
+	case WC_XWAYLAND:
+		surface = view->xwayland_surface->surface;
+		break;
+	}
+	if (surface == NULL) {
+		return;
+	}
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	wlr_surface_get_effective_damage(surface, &damage);
+	wc_view_damage(view, &damage);
+
+	bool size_changed = view->geo.width != surface->current.width ||
+			view->geo.height != surface->current.height;
+
+	if (size_changed) {
+		wc_view_damage_whole(view);
+		view->geo.width = surface->current.width;
+		view->geo.height = surface->current.height;
+		wc_view_damage_whole(view);
+	}
+
+	uint32_t pending_serial = view->pending_serial;
+	switch (view->surface_type) {
+	case WC_XDG:
+		if (pending_serial > 0 &&
+				pending_serial >= view->xdg_surface->configure_serial) {
+			wc_view_damage_whole(view);
+
+			if (view->pending_geometry.x != view->geo.x) {
+				view->geo.x = view->pending_geometry.x +
+						view->pending_geometry.width - geo.width;
+			}
+			if (view->pending_geometry.y != view->geo.y) {
+				view->geo.y = view->pending_geometry.y +
+						view->pending_geometry.height - geo.height;
+			}
+
+			wc_view_damage_whole(view);
+
+			if (pending_serial == view->xdg_surface->configure_serial) {
+				view->pending_serial = 0;
+				view->is_pending_serial = false;
+			}
+		}
+		break;
+	case WC_XWAYLAND:
+		if (pending_serial > 0) {
+			wc_view_damage_whole(view);
+
+			if (view->pending_geometry.x != view->geo.x) {
+				view->geo.x = view->pending_geometry.x +
+						view->pending_geometry.width - geo.width;
+			}
+			if (view->pending_geometry.y != view->geo.y) {
+				view->geo.y = view->pending_geometry.y +
+						view->pending_geometry.height - geo.height;
+			}
+
+			wc_view_damage_whole(view);
+			view->pending_serial = 0;
+		}
+		break;
+	}
+	pixman_region32_fini(&damage);
 }
 
 struct wc_view *wc_view_at(struct wc_server *server, double lx, double ly,
@@ -152,13 +305,17 @@ void wc_focus_view(struct wc_view *view) {
 		wlr_xdg_toplevel_set_activated(previous, false);
 	}
 
+	/* Move the view to the front */
+	wl_list_remove(&view->link);
+	wl_list_insert(&server->views, &view->link);
+
 	switch (view->surface_type) {
 	case WC_XDG:
-		/* Move the view to the front */
-		wl_list_remove(&view->link);
-		wl_list_insert(&server->views, &view->link);
-
 		wlr_xdg_toplevel_set_activated(view->xdg_surface, true);
+		break;
+	case WC_XWAYLAND:
+		wlr_xwayland_surface_activate(view->xwayland_surface, true);
+		break;
 	}
 
 	struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
@@ -178,6 +335,10 @@ void wc_views_fini(struct wc_server *server) {
 		switch (view->surface_type) {
 		case WC_XDG:
 			wc_xdg_surface_destroy(&view->destroy, NULL);
+			break;
+		case WC_XWAYLAND:
+			wc_xwayland_surface_destroy(&view->destroy, NULL);
+			break;
 		}
 	}
 
@@ -189,5 +350,11 @@ void wc_view_for_each_surface(struct wc_view *view,
 	switch (view->surface_type) {
 	case WC_XDG:
 		wlr_xdg_surface_for_each_surface(view->xdg_surface, iterator, data);
+		break;
+	case WC_XWAYLAND: {
+		struct wlr_xwayland_surface *xwayland_surface = view->xwayland_surface;
+		iterator(xwayland_surface->surface, 0, 0, data);
+		break;
+	}
 	}
 }

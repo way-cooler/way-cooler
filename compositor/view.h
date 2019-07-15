@@ -7,11 +7,13 @@
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_surface.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/xwayland.h>
 
 #include "server.h"
 
 enum wc_surface_type {
 	WC_XDG,
+	WC_XWAYLAND,
 };
 
 struct wc_view {
@@ -21,6 +23,7 @@ struct wc_view {
 	enum wc_surface_type surface_type;
 	union {
 		struct wlr_xdg_surface *xdg_surface;
+		struct wlr_xwayland_surface *xwayland_surface;
 	};
 
 	bool mapped;
@@ -50,6 +53,7 @@ struct wc_view {
 	struct wl_listener destroy;
 	struct wl_listener request_move;
 	struct wl_listener request_resize;
+	struct wl_listener configure;
 };
 
 void wc_views_init(struct wc_server *server);
@@ -62,8 +66,27 @@ void wc_view_damage(struct wc_view *view, pixman_region32_t *damage);
 // Damage the whole view, based on its current geometry.
 void wc_view_damage_whole(struct wc_view *view);
 
+/* Commits damage from the client.
+ *
+ * If the size has changed the entire view is automatically damaged.
+ */
+void wc_view_commit(struct wc_view *view, struct wlr_box geo);
+
 // Get the main surface associated with the view.
 struct wlr_surface *wc_view_surface(struct wc_view *view);
+
+/* Moves the view to the specified coordinates.
+ *
+ * Note that this is done by setting geometry in the cursor and so all
+ * handling is done in cursor.c
+ */
+void wc_view_move(struct wc_view *view, struct wlr_box geo);
+
+/* Resize the view to the specified location.
+ * Note this is done by setting geometry in the cursor and so all
+ * handling is done in cursor.c
+ */
+void wc_view_resize(struct wc_view *view, struct wlr_box geo, uint32_t edges);
 
 // Set the new geometry of the view to be applied when the client commits to it.
 void wc_view_update_geometry(struct wc_view *view, struct wlr_box new_geo);
