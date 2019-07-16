@@ -117,6 +117,11 @@ static void wc_cursor_button(struct wl_listener *listener, void *data) {
 	struct wc_cursor *cursor = wl_container_of(listener, cursor, button);
 	struct wc_server *server = cursor->server;
 	struct wlr_event_pointer_button *event = data;
+
+	if (server->mouse_grab) {
+		return;
+	}
+
 	wlr_seat_pointer_notify_button(
 			server->seat->seat, event->time_msec, event->button, event->state);
 

@@ -27,6 +27,9 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource,
 
 	mousegrabber->resource = resource;
 	mousegrabber->client = client;
+
+	server->mouse_grab = true;
+	cursor->cursor_mode = WC_CURSOR_PASSTHROUGH;
 	wc_cursor_set_compositor_cursor(cursor, new_cursor_name);
 
 	wlr_log(WLR_DEBUG, "mousegrabber: mouse grabbed");
@@ -49,6 +52,7 @@ static void release_mouse(
 		return;
 	}
 
+	server->mouse_grab = false;
 	wc_cursor_set_compositor_cursor(cursor, NULL);
 
 	// NOTE: Calls our destroy event, which clears client resource pointers.

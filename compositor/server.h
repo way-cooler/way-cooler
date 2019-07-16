@@ -52,6 +52,7 @@ struct wc_server {
 	struct wlr_data_device_manager *data_device_manager;
 
 	struct wc_mousegrabber *mousegrabber;
+	bool mouse_grab;
 };
 
 bool init_server(struct wc_server *server);
