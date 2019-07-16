@@ -18,9 +18,7 @@ static void wc_seat_request_cursor(struct wl_listener *listener, void *data) {
 			server->seat->seat->pointer_state.focused_client;
 
 	if (focused_client == event->seat_client) {
-		cursor->image = NULL;
-		wlr_cursor_set_surface(cursor->wlr_cursor, event->surface,
-				event->hotspot_x, event->hotspot_y);
+		wc_cursor_set_client_cursor(cursor, event);
 	}
 }
 

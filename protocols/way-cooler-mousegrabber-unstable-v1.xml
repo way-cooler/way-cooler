@@ -40,6 +40,7 @@
         Only one client can grab the mouse at a time. Attempts to grab while
         another client is already grabbing is a protocol error.
       </description>
+      <arg name="cursor" type="string"/>
     </request>
 
     <request name="release_mouse">

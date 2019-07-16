@@ -54,7 +54,7 @@ pub fn grab_mouse(cursor: String) {
         let mouse_grabber = mouse_grabber
             .as_ref()
             .expect("Mouse grabber has not been initialized");
-        mouse_grabber.grab_mouse();
+        mouse_grabber.grab_mouse(cursor);
     });
 }
 

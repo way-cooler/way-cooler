@@ -4,13 +4,19 @@
 #include <stdlib.h>
 
 #include <wayland-server.h>
+#include <wlr/types/wlr_output.h>
 #include <wlr/util/log.h>
 
+#include "cursor.h"
+#include "output.h"
 #include "server.h"
 #include "way-cooler-mousegrabber-unstable-v1-protocol.h"
 
-static void grab_mouse(struct wl_client *client, struct wl_resource *resource) {
+static void grab_mouse(struct wl_client *client, struct wl_resource *resource,
+		const char *new_cursor_name) {
 	struct wc_mousegrabber *mousegrabber = wl_resource_get_user_data(resource);
+	struct wc_server *server = mousegrabber->server;
+	struct wc_cursor *cursor = server->cursor;
 
 	if (mousegrabber->resource != NULL) {
 		wl_resource_post_error(resource,
@@ -21,6 +27,7 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource) {
 
 	mousegrabber->resource = resource;
 	mousegrabber->client = client;
+	wc_cursor_set_compositor_cursor(cursor, new_cursor_name);
 
 	wlr_log(WLR_DEBUG, "mousegrabber: mouse grabbed");
 }
@@ -28,6 +35,8 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource) {
 static void release_mouse(
 		struct wl_client *client, struct wl_resource *resource) {
 	struct wc_mousegrabber *mousegrabber = wl_resource_get_user_data(resource);
+	struct wc_server *server = mousegrabber->server;
+	struct wc_cursor *cursor = server->cursor;
 
 	if (mousegrabber->resource != NULL) {
 		assert(mousegrabber->client);
@@ -39,6 +48,8 @@ static void release_mouse(
 				"mouse has not been grabbed by this client");
 		return;
 	}
+
+	wc_cursor_set_compositor_cursor(cursor, NULL);
 
 	// NOTE: Calls our destroy event, which clears client resource pointers.
 	wl_resource_destroy(mousegrabber->resource);
@@ -77,9 +88,7 @@ static void mousegrabber_bind(struct wl_client *wl_client, void *data,
 }
 
 void wc_mousegrabber_notify_mouse_moved(
-		struct wc_server *server, int x, int y) {
-	struct wc_mousegrabber *mousegrabber = server->mousegrabber;
-
+		struct wc_mousegrabber *mousegrabber, int x, int y) {
 	if (mousegrabber == NULL || mousegrabber->resource == NULL) {
 		return;
 	}
@@ -89,6 +98,7 @@ void wc_mousegrabber_notify_mouse_moved(
 
 void wc_mousegrabber_init(struct wc_server *server) {
 	struct wc_mousegrabber *mousegrabber = calloc(1, sizeof(mousegrabber));
+	mousegrabber->server = server;
 	mousegrabber->global = wl_global_create(server->wl_display,
 			&zway_cooler_mousegrabber_interface, MOUSEGRABBER_VERSION,
 			mousegrabber, mousegrabber_bind);

@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "cursor.h"
 
 #include <stdlib.h>
@@ -67,13 +68,8 @@ static void wc_process_motion(struct wc_server *server, uint32_t time) {
 		struct wlr_surface *surface = NULL;
 		struct wc_view *view = wc_view_at(
 				server, wlr_cursor->x, wlr_cursor->y, &sx, &sy, &surface);
-		bool cursor_image_not_default =
-				!cursor->image || strcmp(cursor->image, "left_ptr") != 0;
-
-		if (!view && cursor_image_not_default) {
-			cursor->image = "left_ptr";
-			wlr_xcursor_manager_set_cursor_image(
-					server->xcursor_mgr, "left_ptr", cursor->wlr_cursor);
+		if (!view && cursor->use_client_image) {
+			wc_cursor_set_client_cursor(cursor, NULL);
 		}
 
 		wc_seat_update_surface_focus(seat, surface, sx, sy, time);
@@ -93,7 +89,8 @@ static void wc_process_motion(struct wc_server *server, uint32_t time) {
 		}
 	}
 
-	wc_mousegrabber_notify_mouse_moved(server, wlr_cursor->x, wlr_cursor->y);
+	wc_mousegrabber_notify_mouse_moved(
+			server->mousegrabber, wlr_cursor->x, wlr_cursor->y);
 }
 
 static void wc_cursor_motion(struct wl_listener *listener, void *data) {
@@ -151,11 +148,67 @@ static void wc_cursor_frame(struct wl_listener *listener, void *data) {
 	wlr_seat_pointer_notify_frame(server->seat->seat);
 }
 
+void wc_cursor_set_client_cursor(struct wc_cursor *cursor,
+		struct wlr_seat_pointer_request_set_cursor_event *event) {
+	struct wc_server *server = cursor->server;
+	bool use_client_image = event != NULL;
+
+	if (cursor->compositor_image == NULL) {
+		if (use_client_image) {
+			wlr_cursor_set_surface(cursor->wlr_cursor, event->surface,
+					event->hotspot_x, event->hotspot_y);
+		} else if (use_client_image != cursor->use_client_image) {
+			const char *image = cursor->compositor_image ?
+					cursor->compositor_image :
+					cursor->default_image;
+			wlr_xcursor_manager_set_cursor_image(
+					server->xcursor_mgr, image, cursor->wlr_cursor);
+		}
+	}
+	cursor->use_client_image = use_client_image;
+}
+
+void wc_cursor_set_compositor_cursor(
+		struct wc_cursor *cursor, const char *cursor_name) {
+	struct wc_server *server = cursor->server;
+
+	char *copy = NULL;
+	bool skip_lock = false;
+	bool lock_software_cursors = false;
+	if (cursor_name != NULL) {
+		lock_software_cursors = true;
+		// Only lock here if we haven't previously locked.
+		skip_lock = cursor->compositor_image != NULL;
+		copy = strdup(cursor_name);
+	} else {
+		// Always unlock when clearing the compositor cursor image.
+		lock_software_cursors = false;
+		free(cursor->compositor_image);
+	}
+	cursor->compositor_image = copy;
+
+	if (!skip_lock) {
+		struct wc_output *output;
+		wl_list_for_each(output, &server->outputs, link) {
+			wlr_output_lock_software_cursors(
+					output->wlr_output, lock_software_cursors);
+		}
+	}
+
+	const char *image = cursor->compositor_image ? cursor->compositor_image :
+												   cursor->default_image;
+
+	wlr_xcursor_manager_set_cursor_image(
+			server->xcursor_mgr, image, cursor->wlr_cursor);
+}
+
 void wc_cursor_init(struct wc_server *server) {
 	struct wc_cursor *cursor = calloc(1, sizeof(struct wc_cursor));
 	server->cursor = cursor;
 	cursor->wlr_cursor = wlr_cursor_create();
 	cursor->server = server;
+
+	cursor->default_image = "left_ptr";
 
 	wlr_cursor_attach_output_layout(cursor->wlr_cursor, server->output_layout);
 
@@ -174,6 +227,9 @@ void wc_cursor_init(struct wc_server *server) {
 
 	server->xcursor_mgr = wlr_xcursor_manager_create(NULL, 24);
 	wlr_xcursor_manager_load(server->xcursor_mgr, 1);
+
+	// Hack to get the image set an initialization time
+	cursor->use_client_image = true;
 }
 
 void wc_cursor_fini(struct wc_server *server) {
