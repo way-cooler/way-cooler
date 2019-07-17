@@ -5,6 +5,8 @@ use std::{env, fs, io::Write, path::Path, process::Command};
 
 use wayland_scanner::{generate_code, Side};
 
+const PROTOCOL_DIR: &str = "../protocols";
+
 fn main() {
     dump_git_version();
     build_wayland_glib_interface();
@@ -81,9 +83,22 @@ fn generate_custom_protocols() {
     let out_dir_str = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir_str);
 
-    let protocol = "../protocols/way-cooler-mousegrabber-unstable-v1.xml";
+    let protocols =
+        fs::read_dir(PROTOCOL_DIR).expect("../protocols does not exist");
+    for protocol in protocols {
+        let protocol = protocol.expect("Could not read protocol");
+        let path = protocol.path();
 
-    generate_code(protocol, out_dir.join("mouse_grabber_api.rs"), Side::Client);
+        let is_xml = path
+            .extension()
+            .map(|extension| extension == "xml")
+            .unwrap_or(false);
+        if protocol.file_type().unwrap().is_dir() || !is_xml {
+            continue;
+        }
 
-    println!("cargo:rerun-if-changed={}", protocol);
+        generate_code(path, out_dir.join("mouse_grabber_api.rs"), Side::Client);
+    }
+
+    println!("cargo:rerun-if-changed={}", PROTOCOL_DIR);
 }
