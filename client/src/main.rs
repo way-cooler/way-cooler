@@ -60,7 +60,7 @@ use {
         global_filter,
         protocol::{wl_compositor, wl_output, wl_shm},
         sys::client::wl_display,
-        ConnectError, Display, EventQueue, GlobalError, GlobalManager
+        ConnectError, Display, EventQueue, GlobalManager
     },
     xcb::xkb
 };
@@ -292,54 +292,18 @@ fn init_wayland() -> (WaylandState, GlobalManager) {
     );
     event_queue.sync_roundtrip().unwrap();
 
-    globals.instantiate_exact(
+    wayland_obj::instantiate_global(
+        &globals,
         wayland_obj::LAYER_SHELL_VERSION,
-        wayland_obj::layer_shell_init
-    ).unwrap_or_else(|err| match err {
-        GlobalError::Missing => {
-            error!("Missing layer shell (version {})", wayland_obj::LAYER_SHELL_VERSION);
-            fail(
-                "Your compositor doesn't support the layer shell protocol. \
-                 This protocol is necessary for Awesome to function"
-            );
-        }
-        GlobalError::VersionTooLow(version) => {
-            error!(
-                "Got layer shell version {}, expected version {}",
-                version,
-                wayland_obj::LAYER_SHELL_VERSION
-            );
-            fail(&format!(
-                "Your compositor doesn't support version {} \
-                 of the layer shell protocol. Ensure your compositor is up to date",
-                wayland_obj::LAYER_SHELL_VERSION
-            ));
-        }
-    });
-    globals.instantiate_exact(
+        wayland_obj::layer_shell_init,
+        "layer shell"
+    );
+    wayland_obj::instantiate_global(
+        &globals,
         wayland_obj::MOUSEGRABBER_VERSION,
-        wayland_obj::mousegrabber_init
-    ).unwrap_or_else(|err| match err {
-        GlobalError::Missing => {
-            error!("Missing mousegrabber (version {})", wayland_obj::MOUSEGRABBER_VERSION);
-            fail(
-                "Your compositor doesn't support the mousegrabber protocol. \
-                 This protocol is necessary for Awesome to function"
-            );
-        }
-        GlobalError::VersionTooLow(version) => {
-            error!(
-                "Got mousegrabber version {}, expected version {}",
-                version,
-                wayland_obj::MOUSEGRABBER_VERSION
-            );
-            fail(&format!(
-                "Your compositor doesn't support version {} \
-                 of the mousegrabber protocol. Ensure your compositor is up to date",
-                wayland_obj::MOUSEGRABBER_VERSION
-            ));
-        }
-    });
+        wayland_obj::mousegrabber_init,
+        "mousegrabber"
+    );
 
     event_queue.sync_roundtrip().unwrap();
     (

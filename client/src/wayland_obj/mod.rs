@@ -2,6 +2,7 @@
 
 mod layer_shell;
 mod mousegrabber;
+mod utils;
 mod wl_compositor;
 mod wl_output;
 mod wl_shm;
@@ -14,6 +15,7 @@ pub use self::{
     mousegrabber::{
         grab_mouse, mousegrabber_init, release_mouse, MOUSEGRABBER_VERSION
     },
+    utils::instantiate_global,
     wl_compositor::{
         create_surface, WlCompositorManager, WL_COMPOSITOR_VERSION
     },
