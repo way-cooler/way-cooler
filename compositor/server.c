@@ -51,13 +51,14 @@ bool init_server(struct wc_server *server) {
 			wlr_data_device_manager_create(server->wl_display);
 
 	wc_xwayland_init(server);
-	wc_mousegrabber_init(server);
 	wc_seat_init(server);
 	wc_output_init(server);
 	wc_inputs_init(server);
 	wc_views_init(server);
 	wc_layers_init(server);
 	wc_cursor_init(server);
+
+	wc_mousegrabber_init(server);
 
 	return true;
 }
@@ -73,6 +74,8 @@ void fini_server(struct wc_server *server) {
 
 	wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
 	wlr_data_device_manager_destroy(server->data_device_manager);
+
+	wc_mousegrabber_init(server);
 
 	wlr_compositor_destroy(server->compositor);
 
