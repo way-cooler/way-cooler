@@ -590,8 +590,8 @@ client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_n
 -- }}}
 
 mousegrabber.run(
-  function(mouse)
-    print(mouse["x"], mouse[y])
+  function(mouse, button)
+    print(mouse["x"], button)
     if (mouse["x"] < 100) then
       return false
     end

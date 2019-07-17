@@ -26,7 +26,7 @@ mod mouse_grabber {
 
     pub use zway_cooler_mousegrabber::*;
 }
-use mouse_grabber::ZwayCoolerMousegrabber;
+use mouse_grabber::{ButtonState, ZwayCoolerMousegrabber};
 
 thread_local! {
     static MOUSE_GRABBER: RefCell<Option<ZwayCoolerMousegrabber>> =
@@ -41,6 +41,21 @@ impl mouse_grabber::EventHandler for MousegrabberHandler {
     fn mouse_moved(&mut self, _: ZwayCoolerMousegrabber, x: i32, y: i32) {
         if let Err(err) = mousegrabber_handle(x, y, None) {
             warn!("mousegrabber returned error {}", err);
+        }
+    }
+
+    fn mouse_button(
+        &mut self,
+        _: ZwayCoolerMousegrabber,
+        x: i32,
+        y: i32,
+        pressed: ButtonState,
+        button: u32
+    ) {
+        if let Err(err) =
+            mousegrabber_handle(x, y, Some((pressed as u32, button)))
+        {
+            warn!("mousegrabber returned error {}", err)
         }
     }
 }
