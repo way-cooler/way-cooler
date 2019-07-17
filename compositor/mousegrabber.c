@@ -92,7 +92,8 @@ static void mousegrabber_bind(struct wl_client *wl_client, void *data,
 }
 
 void wc_mousegrabber_init(struct wc_server *server) {
-	struct wc_mousegrabber *mousegrabber = calloc(1, sizeof(mousegrabber));
+	struct wc_mousegrabber *mousegrabber =
+			calloc(1, sizeof(struct wc_mousegrabber));
 	mousegrabber->server = server;
 	mousegrabber->global = wl_global_create(server->wl_display,
 			&zway_cooler_mousegrabber_interface, MOUSEGRABBER_VERSION,
