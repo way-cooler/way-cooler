@@ -24,7 +24,7 @@ pub fn init(lua: rlua::Context) -> rlua::Result<()> {
 pub fn mousegrabber_handle(
     x: i32,
     y: i32,
-    button: Option<(u32, u32 /* TODO real button state */)>
+    button: Option<(u32, u32)>
 ) -> rlua::Result<()> {
     LUA.with(|lua| {
         let lua = lua.borrow();
