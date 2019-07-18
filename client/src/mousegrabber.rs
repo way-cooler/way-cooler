@@ -2,11 +2,13 @@
 
 use rlua::{self, Function, Value};
 
-use crate::LUA;
+use crate::{
+    wayland_obj::{grab_mouse, release_mouse},
+    LUA
+};
 
 pub const MOUSEGRABBER_TABLE: &str = "mousegrabber";
 const MOUSEGRABBER_CALLBACK: &str = "__callback";
-const MOUSEGRABBER_CURSOR: &str = "__cursor";
 
 /// Init the methods defined on this interface
 pub fn init(lua: rlua::Context) -> rlua::Result<()> {
@@ -19,11 +21,10 @@ pub fn init(lua: rlua::Context) -> rlua::Result<()> {
     globals.set(MOUSEGRABBER_TABLE, mousegrabber_table)
 }
 
-#[allow(dead_code)]
 pub fn mousegrabber_handle(
     x: i32,
     y: i32,
-    button: Option<(u32, u32 /* TODO real button state */)>
+    button: Option<(u32, u32)>
 ) -> rlua::Result<()> {
     LUA.with(|lua| {
         let lua = lua.borrow();
@@ -36,7 +37,6 @@ pub fn mousegrabber_handle(
     })
 }
 
-#[allow(dead_code)]
 fn call_mousegrabber(
     lua: rlua::Context,
     (x, y, button_events): (i32, i32, Vec<bool>)
@@ -67,12 +67,14 @@ fn run<'lua>(
         )),
         _ => {
             lua.set_named_registry_value(MOUSEGRABBER_CALLBACK, function)?;
-            lua.set_named_registry_value(MOUSEGRABBER_CURSOR, cursor)
+            grab_mouse(cursor);
+            Ok(())
         }
     }
 }
 
 fn stop(lua: rlua::Context, _: ()) -> rlua::Result<()> {
+    release_mouse();
     lua.set_named_registry_value(MOUSEGRABBER_CALLBACK, Value::Nil)
 }
 

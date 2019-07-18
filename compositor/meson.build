@@ -44,6 +44,7 @@ way_cooler_sources = files(
 	'keyboard.c',
 	'layer_shell.c',
 	'main.c',
+	'mousegrabber.c',
 	'output.c',
 	'pointer.c',
 	'seat.c',

@@ -18,6 +18,7 @@
 #include "cursor.h"
 #include "input.h"
 #include "layer_shell.h"
+#include "mousegrabber.h"
 #include "output.h"
 #include "seat.h"
 #include "view.h"
@@ -57,6 +58,8 @@ bool init_server(struct wc_server *server) {
 	wc_layers_init(server);
 	wc_cursor_init(server);
 
+	wc_mousegrabber_init(server);
+
 	return true;
 }
 
@@ -71,6 +74,8 @@ void fini_server(struct wc_server *server) {
 
 	wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
 	wlr_data_device_manager_destroy(server->data_device_manager);
+
+	wc_mousegrabber_init(server);
 
 	wlr_compositor_destroy(server->compositor);
 

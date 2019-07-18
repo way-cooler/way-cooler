@@ -884,7 +884,10 @@ dependencies = [
  "rlua 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-client 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-commons 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-protocols 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-scanner 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wayland-sys 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "xcb 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "xkbcommon 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

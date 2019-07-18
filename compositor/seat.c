@@ -18,16 +18,16 @@ static void wc_seat_request_cursor(struct wl_listener *listener, void *data) {
 			server->seat->seat->pointer_state.focused_client;
 
 	if (focused_client == event->seat_client) {
-		cursor->image = NULL;
-		wlr_cursor_set_surface(cursor->wlr_cursor, event->surface,
-				event->hotspot_x, event->hotspot_y);
+		wc_cursor_set_client_cursor(cursor, event);
 	}
 }
 
 void wc_seat_update_surface_focus(struct wc_seat *seat,
 		struct wlr_surface *surface, double sx, double sy, uint32_t time) {
 	struct wlr_seat *wlr_seat = seat->seat;
-	if (surface == NULL) {
+	struct wc_server *server = seat->server;
+
+	if (surface == NULL || server->mouse_grab) {
 		wlr_seat_pointer_clear_focus(wlr_seat);
 		return;
 	}
