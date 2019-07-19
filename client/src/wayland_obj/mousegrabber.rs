@@ -22,7 +22,10 @@ mod mouse_grabber {
     pub(crate) use wayland_sys as sys;
     use wayland_sys::common::{wl_argument, wl_interface};
 
-    include!(concat!(env!("OUT_DIR"), "/mouse_grabber_api.rs"));
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/way-cooler-mousegrabber-unstable-v1.rs"
+    ));
 
     pub use zway_cooler_mousegrabber::*;
 }

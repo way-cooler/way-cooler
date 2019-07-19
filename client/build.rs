@@ -82,8 +82,29 @@ fn build_wayland_glib_interface() {
 fn generate_custom_protocols() {
     let out_dir_str = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir_str);
-    let path =
-        Path::new(PROTOCOL_DIR).join("way-cooler-mousegrabber-unstable-v1.xml");
-    generate_code(path, out_dir.join("mouse_grabber_api.rs"), Side::Client);
+
+    let protocols =
+        fs::read_dir(PROTOCOL_DIR).expect("../protocols does not exist");
+    for protocol in protocols {
+        let protocol = protocol.expect("Could not read protocol");
+        let path = protocol.path();
+
+        let is_xml = path
+            .extension()
+            .map(|extension| extension == "xml")
+            .unwrap_or(false);
+        if protocol.file_type().unwrap().is_dir() || !is_xml {
+            continue;
+        }
+
+        let out_path = out_dir.join(
+            path.with_extension("rs")
+                .file_name()
+                .expect("Could not extract file name")
+        );
+
+        generate_code(path, out_path, Side::Client);
+    }
+
     println!("cargo:rerun-if-changed={}", PROTOCOL_DIR);
 }
