@@ -97,7 +97,13 @@ fn generate_custom_protocols() {
             continue;
         }
 
-        generate_code(path, out_dir.join("mouse_grabber_api.rs"), Side::Client);
+        let out_path = out_dir.join(
+            path.with_extension("rs")
+                .file_name()
+                .expect("Could not extract file name")
+        );
+
+        generate_code(path, out_path, Side::Client);
     }
 
     println!("cargo:rerun-if-changed={}", PROTOCOL_DIR);
