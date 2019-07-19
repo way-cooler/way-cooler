@@ -82,7 +82,8 @@ fn build_wayland_glib_interface() {
 fn generate_custom_protocols() {
     let out_dir_str = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir_str);
-    let path = Path::new(PROTOCOL_DIR).join("way-cooler-mousegrabber-unstable-v1.xml");
+    let path =
+        Path::new(PROTOCOL_DIR).join("way-cooler-mousegrabber-unstable-v1.xml");
     generate_code(path, out_dir.join("mouse_grabber_api.rs"), Side::Client);
     println!("cargo:rerun-if-changed={}", PROTOCOL_DIR);
 }
