@@ -31,6 +31,8 @@ pub struct DrawableState {
     refreshed: bool
 }
 
+unsafe impl Send for DrawableState {}
+
 pub type Drawable<'lua> = Object<'lua, DrawableState>;
 
 impl Default for DrawableState {

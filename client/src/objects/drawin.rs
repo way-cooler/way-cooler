@@ -31,8 +31,7 @@ pub struct DrawinState {
     visible: bool,
     cursor: String,
     geometry: Area,
-    geometry_dirty: bool,
-    surface: Option<ImageSurface>
+    geometry_dirty: bool
 }
 
 pub type Drawin<'lua> = Object<'lua, DrawinState>;
