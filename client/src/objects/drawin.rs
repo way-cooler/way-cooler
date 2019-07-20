@@ -222,7 +222,6 @@ fn set_visible<'lua>(
     (mut drawin, visible): (Drawin<'lua>, bool)
 ) -> rlua::Result<()> {
     drawin.set_visible(lua, visible)?;
-    // TODO signal
     Object::emit_signal(lua, &drawin, "property::visible".into(), Value::Nil)
 }
 
