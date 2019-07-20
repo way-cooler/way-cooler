@@ -7,7 +7,8 @@
 use {
     cairo::ImageSurface,
     rlua::{
-        self, prelude::LuaInteger, Table, ToLua, UserData, UserDataMethods
+        self, prelude::LuaInteger, Table, ToLua, UserData, UserDataMethods,
+        Value
     }
 };
 
@@ -220,8 +221,9 @@ fn set_visible<'lua>(
     lua: rlua::Context<'lua>,
     (mut drawin, visible): (Drawin<'lua>, bool)
 ) -> rlua::Result<()> {
-    drawin.set_visible(lua, visible)
+    drawin.set_visible(lua, visible)?;
     // TODO signal
+    Object::emit_signal(lua, &drawin, "property::visible".into(), Value::Nil)
 }
 
 fn get_visible<'lua>(
