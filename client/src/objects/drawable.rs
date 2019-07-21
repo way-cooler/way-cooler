@@ -89,6 +89,7 @@ impl<'lua> Drawable<'lua> {
         let obj_clone = self.clone();
         let mut drawable = self.state_mut()?;
         let size_changed = drawable.geo != geometry;
+        let old_geo = drawable.geo;
         drawable.geo = geometry;
 
         if size_changed {
@@ -132,6 +133,47 @@ impl<'lua> Drawable<'lua> {
                     lua,
                     &obj_clone,
                     "property::surface".into(),
+                    Value::Nil
+                )?;
+            }
+            // emit signals if our geometry has changed
+            if old_geo != drawable.geo {
+                Object::emit_signal(
+                    lua,
+                    &obj_clone,
+                    "property::geometry".into(),
+                    Value::Nil
+                )?;
+            }
+            if old_geo.origin.x != drawable.geo.origin.x {
+                Object::emit_signal(
+                    lua,
+                    &obj_clone,
+                    "property::x".into(),
+                    Value::Nil
+                )?;
+            }
+            if old_geo.origin.y != drawable.geo.origin.y {
+                Object::emit_signal(
+                    lua,
+                    &obj_clone,
+                    "property::y".into(),
+                    Value::Nil
+                )?;
+            }
+            if old_geo.size.width != drawable.geo.size.width {
+                Object::emit_signal(
+                    lua,
+                    &obj_clone,
+                    "property::width".into(),
+                    Value::Nil
+                )?;
+            }
+            if old_geo.size.height != drawable.geo.size.height {
+                Object::emit_signal(
+                    lua,
+                    &obj_clone,
+                    "property::height".into(),
                     Value::Nil
                 )?;
             }
