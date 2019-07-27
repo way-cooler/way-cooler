@@ -16,7 +16,8 @@ pub use {
             self as layer_shell, Layer, ZwlrLayerShellV1 as LayerShell
         },
         zwlr_layer_surface_v1::{
-            self as layer_surface, ZwlrLayerSurfaceV1 as WlrLayerSurface
+            self as layer_surface, Anchor,
+            ZwlrLayerSurfaceV1 as WlrLayerSurface
         }
     }
 };
@@ -178,6 +179,7 @@ pub fn create_layer_surface(
                         RefCell::new(state)
                     );
 
+                    proxy.set_anchor(Anchor::Top | Anchor::Left);
                     proxy
                 }
             )
