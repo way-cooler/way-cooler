@@ -16,7 +16,7 @@ use {
 };
 
 use crate::{
-    area::{Area, Origin, Size},
+    area::{Area, Margin, Origin, Size},
     common::{
         class::{self, Class, ClassBuilder},
         object::{self, Object, ObjectBuilder},
@@ -34,6 +34,7 @@ pub struct DrawinState {
     visible: bool,
     cursor: String,
     geometry: Area,
+    struts: Margin,
     geometry_dirty: bool
 }
 
@@ -179,13 +180,15 @@ fn refresh_drawin<'lua>(
     mut drawin: Drawin<'lua>
 ) -> rlua::Result<()> {
     let mut drawable = drawin.drawable()?;
-    let mut state = drawable.state_mut()?;
+    let drawin_state = drawin.state()?;
+    let mut drawable_state = drawable.state_mut()?;
 
     if let Some(Shell {
         ref mut surface,
         shell
-    }) = state.shell.as_mut()
+    }) = drawable_state.shell.as_mut()
     {
+        shell.set_margin(drawin_state.struts);
         let data = get_data(surface);
         shell
             .write_to_buffer(data)
@@ -339,17 +342,15 @@ fn set_height<'lua>(
 
 fn drawin_struts<'lua>(
     lua: rlua::Context<'lua>,
-    _drawin: Drawin<'lua>
-) -> rlua::Result<Table<'lua>> {
-    // TODO: Implement this properly. Struts means this drawin reserves some space
-    // on the screen that it is visible on, shrinking the workarea in the
-    // specified directions.
-    let res = lua.create_table()?;
-    res.set("left", 0)?;
-    res.set("right", 0)?;
-    res.set("top", 0)?;
-    res.set("bottom", 0)?;
-    Ok(res)
+    (mut drawin, struts): (Drawin<'lua>, Option<Margin>)
+) -> rlua::Result<Value<'lua>> {
+    match struts {
+        Some(new_struts) => {
+            drawin.state_mut()?.struts = new_struts;
+            Ok(Value::Nil)
+        },
+        None => drawin.state()?.struts.to_lua(lua)
+    }
 }
 
 fn resize<'lua>(

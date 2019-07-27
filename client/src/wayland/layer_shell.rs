@@ -22,7 +22,7 @@ pub use {
 };
 
 use crate::{
-    area::Size,
+    area::{Margin, Size},
     wayland::{self, Buffer}
 };
 
@@ -57,6 +57,15 @@ impl fmt::Debug for LayerSurface {
 impl LayerSurface {
     pub fn set_size(&self, size: Size) {
         self.proxy.set_size(size.width, size.height);
+    }
+
+    pub fn set_margin(&self, margin: Margin) {
+        self.proxy.set_margin(
+            margin.top,
+            margin.right,
+            margin.bottom,
+            margin.left
+        );
     }
 
     pub fn set_surface(&mut self, size: Size) -> Result<(), ()> {
