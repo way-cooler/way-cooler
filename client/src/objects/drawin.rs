@@ -90,8 +90,12 @@ impl<'lua> Drawin<'lua> {
         Ok(())
     }
 
-    fn unmap(&mut self) -> rlua::Result<()> {
-        // TODO?
+    fn unmap(&mut self, lua: rlua::Context<'lua>) -> rlua::Result<()> {
+        let mut drawable = self.drawable()?;
+        self.update_drawing(lua)?;
+        if let Some(Shell { ref mut shell, .. }) = drawable.state_mut()?.shell {
+            shell.clear_surface();
+        }
         Ok(())
     }
 }
@@ -183,6 +187,10 @@ fn refresh_drawin<'lua>(
     let drawin_state = drawin.state()?;
     let mut drawable_state = drawable.state_mut()?;
 
+    if !drawable_state.refreshed {
+        return Ok(());
+    }
+
     if let Some(Shell {
         ref mut surface,
         shell
@@ -208,7 +216,7 @@ fn set_visible<'lua>(
     if visible {
         drawin.map(lua)?;
     } else {
-        drawin.unmap()?;
+        drawin.unmap(lua)?;
     }
 
     Object::emit_signal(lua, &drawin, "property::visible", Value::Nil)?;

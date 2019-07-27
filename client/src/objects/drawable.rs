@@ -85,7 +85,6 @@ impl<'lua> Drawable<'lua> {
         drawable.geo = geometry;
 
         if size_changed {
-            drawable.refreshed = false;
             let size: Size = geometry.size;
             let mut shell =
                 wayland::create_layer_surface(None, Layer::Top, "".into())

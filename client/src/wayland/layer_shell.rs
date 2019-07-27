@@ -69,6 +69,12 @@ impl LayerSurface {
         );
     }
 
+    pub fn clear_surface(&mut self) {
+        let mut state = unwrap_state(self.proxy.as_ref()).borrow_mut();
+        state.wl_surface.attach(None, 0, 0);
+        state.buffer = None;
+    }
+
     pub fn set_surface(&mut self, size: Size) -> Result<(), ()> {
         let buffer = wayland::create_buffer(size)?;
         let mut state = unwrap_state(self.proxy.as_ref()).borrow_mut();
