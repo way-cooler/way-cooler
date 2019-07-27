@@ -19,7 +19,7 @@ pub use {
 
 use crate::{
     area::{Origin, Size},
-    wayland_obj
+    wayland
 };
 
 /// The minimum version of the wl_layer_shell protocol to bind to.
@@ -59,7 +59,7 @@ impl LayerSurface {
     where
         FD: AsRawFd
     {
-        let buffer = wayland_obj::create_buffer(fd.as_raw_fd(), size)?;
+        let buffer = wayland::create_buffer(fd.as_raw_fd(), size)?;
         let mut state = unwrap_state(self.proxy.as_ref()).borrow_mut();
         state.wl_surface.attach(Some(&buffer), 0, 0);
         state.buffer = Some(buffer);
@@ -141,7 +141,7 @@ pub fn create_layer_surface(
     layer: Layer,
     namespace: String
 ) -> Result<LayerSurface, ()> {
-    let surface = crate::wayland_obj::create_surface()?;
+    let surface = crate::wayland::create_surface()?;
 
     let layer_surface = LAYER_SHELL_CREATOR.with(|creator| {
         let creator = creator.borrow();

@@ -19,7 +19,7 @@ use crate::{
         object::{self, Object},
         property::Property
     },
-    wayland_obj::{self, Layer, LayerSurface}
+    wayland::{self, Layer, LayerSurface}
 };
 
 #[derive(Debug)]
@@ -98,7 +98,7 @@ impl<'lua> Drawable<'lua> {
             drawable.refreshed = false;
             drawable.surface = None;
             drawable.wayland_shell = Some(
-                wayland_obj::create_layer_surface(None, Layer::Top, "".into())
+                wayland::create_layer_surface(None, Layer::Top, "".into())
                     .expect(
                         "Could not construct an xdg toplevel for a drawable"
                     )

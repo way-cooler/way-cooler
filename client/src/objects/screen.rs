@@ -17,7 +17,7 @@ use crate::{
         object::{self, Object},
         property::Property
     },
-    wayland_obj::Output
+    wayland::Output
 };
 
 pub const SCREENS_HANDLE: &'static str = "__screens";

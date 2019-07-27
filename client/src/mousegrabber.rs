@@ -3,7 +3,7 @@
 use rlua::{self, Function, Value};
 
 use crate::{
-    wayland_obj::{grab_mouse, release_mouse},
+    wayland::{grab_mouse, release_mouse},
     LUA
 };
 
