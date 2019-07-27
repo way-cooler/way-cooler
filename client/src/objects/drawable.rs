@@ -1,6 +1,6 @@
 //! A wrapper around a Cairo image surface.
 
-use std::{default::Default, slice};
+use std::default::Default;
 
 use {
     cairo::{Format, ImageSurface},
@@ -21,18 +21,21 @@ use crate::{
     wayland::{self, Layer, LayerSurface}
 };
 
+const REFRESH_CALLBACK: &str = "__refresh_callback";
+const REFRESH_DATA: &str = "__refresh_data";
+
 #[derive(Debug)]
-struct Shell {
-    shell: LayerSurface,
-    surface: ImageSurface
+pub struct Shell {
+    pub shell: LayerSurface,
+    pub surface: ImageSurface
 }
 
 #[derive(Debug)]
 pub struct DrawableState {
-    shell: Option<Shell>,
+    pub shell: Option<Shell>,
     // Geometry in output-level coordinates
-    geo: Area,
-    refreshed: bool
+    pub geo: Area,
+    pub refreshed: bool
 }
 
 unsafe impl Send for DrawableState {}
@@ -50,12 +53,22 @@ impl Default for DrawableState {
 }
 
 impl<'lua> Drawable<'lua> {
-    pub fn new(lua: rlua::Context<'lua>) -> rlua::Result<Drawable> {
+    pub fn new(
+        lua: rlua::Context<'lua>,
+        refresh_callback: rlua::Function<'lua>,
+        refresh_data: rlua::Value<'lua>
+    ) -> rlua::Result<Drawable<'lua>> {
         let class = class::class_setup(lua, "drawable")?;
         let builder = Drawable::allocate(lua, class)?;
         let table = lua.create_table()?;
+
         table.set("geometry", lua.create_function(geometry)?)?;
         table.set("refresh", lua.create_function(refresh)?)?;
+
+        // XXX This has to be stored in Lua
+        table.set(REFRESH_CALLBACK, refresh_callback)?;
+        table.set(REFRESH_DATA, refresh_data)?;
+
         Ok(builder.add_to_meta(table)?.build())
     }
 
@@ -214,34 +227,12 @@ fn refresh<'lua>(
     _: rlua::Context<'lua>,
     mut drawable: Drawable<'lua>
 ) -> rlua::Result<()> {
-    let mut state = drawable.state_mut()?;
+    drawable.state_mut()?.refreshed = true;
 
-    if let Some(Shell {
-        ref mut surface,
-        shell
-    }) = state.shell.as_mut()
-    {
-        let data = get_data(surface);
-        shell
-            .write_to_buffer(data)
-            .expect("Could not write data to buffer");
-        state.refreshed = true;
-    }
+    let callback: rlua::Function =
+        drawable.get_associated_data(REFRESH_CALLBACK)?;
+    let data: rlua::Value = drawable.get_associated_data(REFRESH_DATA)?;
+    callback.call::<_, rlua::Value>(data)?;
 
     Ok(())
-}
-
-/// Get the data associated with the ImageSurface.
-fn get_data(surface: &mut ImageSurface) -> &[u8] {
-    // NOTE This is safe to do because there's one thread.
-    //
-    // We know Lua is not modifying it because it's not running.
-    unsafe {
-        let len = surface.get_stride() as usize * surface.get_height() as usize;
-        let surface = surface.to_glib_none().0;
-        slice::from_raw_parts(
-            cairo_sys::cairo_image_surface_get_data(surface as _),
-            len
-        )
-    }
 }

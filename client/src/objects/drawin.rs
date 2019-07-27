@@ -4,8 +4,11 @@
 // NOTE need to store the drawable in lua, because it's a reference to a
 // drawable a lua object
 
+use std::slice;
+
 use {
     cairo::ImageSurface,
+    glib::translate::ToGlibPtr,
     rlua::{
         self, prelude::LuaInteger, Table, ToLua, UserData, UserDataMethods,
         Value
@@ -19,7 +22,7 @@ use crate::{
         object::{self, Object, ObjectBuilder},
         property::Property
     },
-    objects::drawable::Drawable
+    objects::drawable::{Drawable, Shell}
 };
 
 pub const DRAWINS_HANDLE: &'static str = "__drawins";
@@ -50,9 +53,11 @@ impl<'lua> Drawin<'lua> {
         let class = class::class_setup(lua, "drawin")?;
         let mut drawins =
             lua.named_registry_value::<str, Vec<Drawin>>(DRAWINS_HANDLE)?;
+
         let drawin = object_setup(lua, Drawin::allocate(lua, class)?)?
             .handle_constructor_argument(args)?
             .build();
+
         drawins.push(drawin.clone());
         lua.set_named_registry_value(DRAWINS_HANDLE, drawins.to_lua(lua)?)?;
         Ok(drawin)
@@ -61,7 +66,6 @@ impl<'lua> Drawin<'lua> {
     /// Get the drawable associated with this drawin.
     ///
     /// It has the surface that is needed to render to the screen.
-    #[allow(dead_code)]
     pub fn drawable(&mut self) -> rlua::Result<Drawable<'lua>> {
         self.get_associated_data::<Drawable>("drawable")
     }
@@ -153,14 +157,41 @@ fn object_setup<'lua>(
     lua: rlua::Context<'lua>,
     builder: ObjectBuilder<'lua, DrawinState>
 ) -> rlua::Result<ObjectBuilder<'lua, DrawinState>> {
-    let drawable_table = Drawable::new(lua)?.to_lua(lua)?;
-
     let table = lua.create_table()?;
-    table.set("drawable", drawable_table)?;
     table.set("geometry", lua.create_function(drawin_geometry)?)?;
     table.set("struts", lua.create_function(drawin_struts)?)?;
     table.set("buttons", lua.create_function(super::dummy)?)?;
+
+    let drawable_table = Drawable::new(
+        lua,
+        lua.create_function(refresh_drawin)?,
+        builder.object.clone().to_lua(lua)?
+    )?
+    .to_lua(lua)?;
+
+    table.set("drawable", drawable_table)?;
+
     builder.add_to_meta(table)
+}
+
+fn refresh_drawin<'lua>(
+    _: rlua::Context<'lua>,
+    mut drawin: Drawin<'lua>
+) -> rlua::Result<()> {
+    let mut drawable = drawin.drawable()?;
+    let mut state = drawable.state_mut()?;
+
+    if let Some(Shell {
+        ref mut surface,
+        shell
+    }) = state.shell.as_mut()
+    {
+        let data = get_data(surface);
+        shell
+            .write_to_buffer(data)
+            .expect("Could not write data to buffer");
+    }
+    Ok(())
 }
 
 fn set_visible<'lua>(
@@ -347,4 +378,19 @@ fn resize<'lua>(
 
     drop(state);
     drawin.update_drawing(lua)
+}
+
+/// Get the data associated with the ImageSurface.
+fn get_data(surface: &mut ImageSurface) -> &[u8] {
+    // NOTE This is safe to do because there's one thread.
+    //
+    // We know Lua is not modifying it because it's not running.
+    unsafe {
+        let len = surface.get_stride() as usize * surface.get_height() as usize;
+        let surface = surface.to_glib_none().0;
+        slice::from_raw_parts(
+            cairo_sys::cairo_image_surface_get_data(surface as _),
+            len
+        )
+    }
 }

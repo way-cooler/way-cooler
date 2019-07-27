@@ -39,7 +39,7 @@ impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
 
 /// Construct a new object, used when using the default Objectable::new.
 pub struct ObjectBuilder<'lua, S: ObjectStateType> {
-    object: Object<'lua, S>
+    pub object: Object<'lua, S>
 }
 
 impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
