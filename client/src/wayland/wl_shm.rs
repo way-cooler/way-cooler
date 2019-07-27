@@ -1,6 +1,6 @@
 //! Wrapper around a wl_shm.
 
-use std::{cell::RefCell, os::unix::io::RawFd};
+use std::{cell::RefCell, fmt, fs::File};
 
 use wayland_client::{
     self,
@@ -20,7 +20,30 @@ thread_local! {
     static WL_SHM: RefCell<Option<WlShm>> = RefCell::new(None);
 }
 
-pub struct WlShmManager {}
+pub struct Buffer {
+    pub buffer: WlBuffer,
+    pub shared_memory: File
+}
+
+impl fmt::Debug for Buffer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Wayland Buffer with backing file  {:?}",
+            self.shared_memory
+        )
+    }
+}
+
+impl PartialEq for Buffer {
+    fn eq(&self, other: &Buffer) -> bool {
+        self.buffer == other.buffer
+    }
+}
+
+impl Eq for Buffer {}
+
+pub struct WlShmManager;
 
 impl wayland_client::GlobalImplementor<WlShm> for WlShmManager {
     fn new_global(&mut self, new_proxy: NewProxy<WlShm>) -> WlShm {
@@ -38,11 +61,19 @@ impl wayland_client::GlobalImplementor<WlShm> for WlShmManager {
 ///
 /// This should be called from a shell and generally should not be used
 /// directly by the Awesome objects.
-pub fn create_buffer(fd: RawFd, size: Size) -> Result<WlBuffer, ()> {
+pub fn create_buffer(size: Size) -> Result<Buffer, ()> {
     let Size { width, height } = size;
     let width = width as i32;
     let height = height as i32;
-    WL_SHM.with(|wl_shm| {
+
+    let shared_memory =
+        tempfile::tempfile().expect("Could not make new temp file");
+    shared_memory
+        .set_len(size.width as u64 * size.height as u64 * 4)
+        .expect("Could not set file length");
+    let fd = std::os::unix::io::AsRawFd::as_raw_fd(&shared_memory);
+
+    let buffer = WL_SHM.with(|wl_shm| {
         let wl_shm = wl_shm.borrow();
         let wl_shm = wl_shm.as_ref().expect("WL_SHM was not initilized");
         let pool = wl_shm.create_pool(
@@ -59,5 +90,10 @@ pub fn create_buffer(fd: RawFd, size: Size) -> Result<WlBuffer, ()> {
             wl_shm::Format::Argb8888,
             NewProxy::implement_dummy
         )
+    })?;
+
+    Ok(Buffer {
+        buffer,
+        shared_memory
     })
 }

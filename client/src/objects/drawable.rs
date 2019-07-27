@@ -1,6 +1,6 @@
 //! A wrapper around a Cairo image surface.
 
-use std::{default::Default, fs::File, io::Write, slice};
+use std::{default::Default, slice};
 
 use {
     cairo::{Format, ImageSurface},
@@ -8,8 +8,7 @@ use {
     rlua::{
         self, Error::RuntimeError, LightUserData, Table, UserData,
         UserDataMethods, Value
-    },
-    tempfile
+    }
 };
 
 use crate::{
@@ -23,10 +22,15 @@ use crate::{
 };
 
 #[derive(Debug)]
+struct Shell {
+    shell: LayerSurface,
+    surface: ImageSurface
+}
+
+#[derive(Debug)]
 pub struct DrawableState {
-    temp_file: File,
-    wayland_shell: Option<LayerSurface>,
-    pub surface: Option<ImageSurface>,
+    shell: Option<Shell>,
+    // Geometry in output-level coordinates
     geo: Area,
     refreshed: bool
 }
@@ -37,12 +41,8 @@ pub type Drawable<'lua> = Object<'lua, DrawableState>;
 
 impl Default for DrawableState {
     fn default() -> Self {
-        let temp_file = tempfile::tempfile()
-            .expect("Could not make a temp file for the buffer");
         DrawableState {
-            temp_file,
-            wayland_shell: None,
-            surface: None,
+            shell: None,
             geo: Area::default(),
             refreshed: false
         }
@@ -66,10 +66,10 @@ impl<'lua> Drawable<'lua> {
 
     pub fn get_surface(&self) -> rlua::Result<Value<'lua>> {
         let drawable = self.state()?;
-        Ok(match drawable.surface {
+        Ok(match drawable.shell {
             None => Value::Nil,
-            Some(ref image) => {
-                let stash = image.to_glib_none();
+            Some(Shell { ref surface, .. }) => {
+                let stash = surface.to_glib_none();
                 let ptr = stash.0;
                 // NOTE
                 // We bump the reference count because now Lua has a reference which
@@ -96,41 +96,27 @@ impl<'lua> Drawable<'lua> {
 
         if size_changed {
             drawable.refreshed = false;
-            drawable.surface = None;
-            drawable.wayland_shell = Some(
+            let size: Size = geometry.size;
+            let mut shell =
                 wayland::create_layer_surface(None, Layer::Top, "".into())
                     .expect(
                         "Could not construct an xdg toplevel for a drawable"
-                    )
-            );
-            let size: Size = geometry.size;
+                    );
 
             if size.width > 0 && size.height > 0 {
-                let temp_file =
-                    tempfile::tempfile().expect("Could not make new temp file");
-                temp_file
-                    .set_len(size.width as u64 * size.height as u64 * 4)
-                    .expect("Could not set file length");
-                drawable.surface = Some(
-                    ImageSurface::create(
-                        Format::ARgb32,
-                        size.width as i32,
-                        size.height as i32
-                    )
-                    .map_err(|err| {
-                        RuntimeError(format!("Could not allocate {:?}", err))
-                    })?
-                );
-                {
-                    let shell = drawable.wayland_shell.as_mut().unwrap();
-                    shell.set_size(size);
-                    shell.set_surface(&temp_file, size).map_err(|_| {
-                        RuntimeError(format!(
-                            "Could not set surface for drawable"
-                        ))
-                    })?;
-                }
-                drawable.temp_file = temp_file;
+                shell.set_size(size);
+                shell.set_surface(size).map_err(|_| {
+                    RuntimeError(format!("Could not set surface for drawable"))
+                })?;
+                let surface = ImageSurface::create(
+                    Format::ARgb32,
+                    size.width as i32,
+                    size.height as i32
+                )
+                .map_err(|err| {
+                    RuntimeError(format!("Could not allocate {:?}", err))
+                })?;
+                drawable.shell = Some(Shell { shell, surface });
                 Object::emit_signal(
                     lua,
                     &obj_clone,
@@ -188,12 +174,15 @@ impl<'lua> Drawable<'lua> {
         let mut drawable = self.state_mut()?;
         let drawable = &mut *drawable;
 
-        if let Some(data) = drawable.surface.as_mut().map(get_data) {
-            drawable
-                .temp_file
-                .write(&*data)
+        if let Some(Shell {
+            ref mut surface,
+            shell
+        }) = drawable.shell.as_mut()
+        {
+            let data = get_data(surface);
+            shell
+                .write_to_buffer(data)
                 .expect("Could not write data to buffer");
-            drawable.temp_file.flush().expect("Could not flush buffer");
             drawable.refreshed = true;
         }
         Ok(())

@@ -1,4 +1,8 @@
-use std::{cell::RefCell, fmt, os::unix::io::AsRawFd};
+use std::{
+    cell::RefCell,
+    fmt,
+    io::{self, Write as _}
+};
 
 pub use {
     wayland_client::{
@@ -18,8 +22,8 @@ pub use {
 };
 
 use crate::{
-    area::{Origin, Size},
-    wayland
+    area::Size,
+    wayland::{self, Buffer}
 };
 
 /// The minimum version of the wl_layer_shell protocol to bind to.
@@ -35,9 +39,9 @@ thread_local! {
 
 #[derive(Eq, PartialEq)]
 pub struct LayerSurfaceState {
-    wl_surface: WlSurface,
-    buffer: Option<WlBuffer>,
-    configuration_serial: Option<u32>
+    pub wl_surface: WlSurface,
+    pub buffer: Option<Buffer>,
+    pub configuration_serial: Option<u32>
 }
 
 pub struct LayerSurface {
@@ -55,14 +59,20 @@ impl LayerSurface {
         self.proxy.set_size(size.width, size.height);
     }
 
-    pub fn set_surface<FD>(&mut self, fd: &FD, size: Size) -> Result<(), ()>
-    where
-        FD: AsRawFd
-    {
-        let buffer = wayland::create_buffer(fd.as_raw_fd(), size)?;
+    pub fn set_surface(&mut self, size: Size) -> Result<(), ()> {
+        let buffer = wayland::create_buffer(size)?;
         let mut state = unwrap_state(self.proxy.as_ref()).borrow_mut();
-        state.wl_surface.attach(Some(&buffer), 0, 0);
+        state.wl_surface.attach(Some(&buffer.buffer), 0, 0);
         state.buffer = Some(buffer);
+        Ok(())
+    }
+
+    pub fn write_to_buffer(&mut self, data: &[u8]) -> Result<(), io::Error> {
+        let mut state = unwrap_state(self.proxy.as_ref()).borrow_mut();
+        let buffer = state.buffer.as_mut().expect("buffer was none");
+
+        buffer.shared_memory.write(data)?;
+        buffer.shared_memory.flush()?;
         Ok(())
     }
 
@@ -77,7 +87,6 @@ struct LayerShellHandler;
 struct LayerSurfaceHandler {
     wl_surface: WlSurface,
     buffer: Option<WlBuffer>,
-    geo: Origin,
     configuration_serial: Option<u32>
 }
 
@@ -86,7 +95,6 @@ impl LayerSurfaceHandler {
         LayerSurfaceHandler {
             wl_surface,
             buffer: None,
-            geo: Origin::default(),
             configuration_serial: None
         }
     }
@@ -103,11 +111,7 @@ impl layer_surface::EventHandler for LayerSurfaceHandler {
         _height: u32
     ) {
         if self.buffer.is_some() {
-            self.wl_surface.attach(
-                self.buffer.as_ref(),
-                self.geo.x,
-                self.geo.y
-            );
+            self.wl_surface.attach(self.buffer.as_ref(), 0, 0);
             self.wl_surface.commit();
         }
 
@@ -118,7 +122,7 @@ impl layer_surface::EventHandler for LayerSurfaceHandler {
         state.configuration_serial = Some(serial);
 
         if let Some(buffer) = state.buffer.as_ref() {
-            state.wl_surface.attach(Some(buffer), 0, 0);
+            state.wl_surface.attach(Some(&buffer.buffer), 0, 0);
             state.wl_surface.commit();
         }
     }
