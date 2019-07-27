@@ -113,6 +113,13 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
         }
     }
 
+    pub fn class(&self) -> rlua::Result<Class<'lua, S>> {
+        let metatable = self.get_metatable()?.ok_or_else(|| {
+            rlua::Error::RuntimeError("no metatable on object".to_string())
+        })?;
+        metatable.get::<_, AnyUserData>("__class").map(Into::into)
+    }
+
     /// Gets a reference to the internal state for the concrete object.
     pub fn state(&self) -> rlua::Result<cell::Ref<S>> {
         Ok(self.obj.borrow::<S>()?)

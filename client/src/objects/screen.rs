@@ -81,8 +81,7 @@ impl<'lua> Screen<'lua> {
         outputs: Vec<Output>
     ) -> rlua::Result<()> {
         let mut state = self.state_mut()?;
-        let (width, height) = output.resolution();
-        let resolution = Size { width, height };
+        let resolution = output.resolution();
         state.outputs = outputs;
         state.geometry = state.geometry.with_size(resolution);
         state.workarea = state.workarea.with_size(resolution);
@@ -161,23 +160,27 @@ pub fn add_screen<'lua>(
 ) -> rlua::Result<()> {
     let mut screens =
         lua.named_registry_value::<str, Vec<AnyUserData>>(SCREENS_HANDLE)?;
-    screens.push(screen.into());
+    screens.push(screen.clone().into());
     lua.set_named_registry_value(SCREENS_HANDLE, screens.to_lua(lua)?)?;
-    Ok(())
+    Class::emit_signal(lua, &screen.class()?, "added", screen)
 }
 
 /// Find a screen based on the output.
-pub fn get_screen(lua: rlua::Context, output: Output) -> rlua::Result<Screen> {
-    lua.named_registry_value::<str, Vec<AnyUserData>>(SCREENS_HANDLE)?
+pub fn get_screen<'lua>(
+    lua: rlua::Context<'lua>,
+    output: &Output
+) -> rlua::Result<Option<Screen<'lua>>> {
+    Ok(
+        lua.named_registry_value::<str, Vec<AnyUserData>>(SCREENS_HANDLE)?
         .into_iter()
         .map(|obj| Screen::cast(obj.into()).unwrap())
         // TODO Can there be multiple screens the output is associated with?
         // Will need to handle that case
         .find(|screen| {
             let state = screen.state().expect("Could not get screen state");
-            state.outputs.iter().any(|cur_output| *cur_output == output)
+            state.outputs.iter().any(|cur_output| *cur_output == *output)
         })
-        .ok_or(rlua::Error::RuntimeError(format!("No screen with output {:?}", output)))
+    )
 }
 
 pub fn init<'lua>(

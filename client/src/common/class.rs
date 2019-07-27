@@ -203,6 +203,18 @@ impl<'lua, S: ObjectStateType> Class<'lua, S> {
     ) -> rlua::Result<()> {
         signal::connect_signals(ctx, class.signals()?, &name, &[func])
     }
+
+    pub fn emit_signal<A>(
+        lua: rlua::Context<'lua>,
+        class: &Class<'lua, S>,
+        name: &str,
+        args: A
+    ) -> rlua::Result<()>
+    where
+        A: ToLua<'lua> + Clone
+    {
+        signal::emit_signals(lua, class.signals()?, name, args)
+    }
 }
 
 fn set_index_miss_handler<'lua>(
