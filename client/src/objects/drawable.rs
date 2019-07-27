@@ -156,6 +156,16 @@ impl<'lua> Drawable<'lua> {
                 )?;
             }
         }
+
+        drop(drawable);
+        // TODO Only emit for changed properties
+        Object::emit_signal(lua, self, "property::surface", Value::Nil)?;
+        Object::emit_signal(lua, self, "property::geometry", Value::Nil)?;
+        Object::emit_signal(lua, self, "property::x", Value::Nil)?;
+        Object::emit_signal(lua, self, "property::y", Value::Nil)?;
+        Object::emit_signal(lua, self, "property::width", Value::Nil)?;
+        Object::emit_signal(lua, self, "property::height", Value::Nil)?;
+
         Ok(())
     }
 }

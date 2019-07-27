@@ -211,7 +211,9 @@ fn set_visible<'lua>(
         drawin.unmap()?;
     }
 
-    Object::emit_signal(lua, &drawin, "property::visible".into(), Value::Nil)
+    Object::emit_signal(lua, &drawin, "property::visible", Value::Nil)?;
+
+    Ok(())
 }
 
 fn get_visible<'lua>(
