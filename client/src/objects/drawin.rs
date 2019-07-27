@@ -358,26 +358,49 @@ fn resize<'lua>(
     drawin: &mut Drawin<'lua>,
     geometry: Area
 ) -> rlua::Result<()> {
-    let mut state = drawin.state_mut()?;
-    let old_geometry = state.geometry;
-    state.geometry = geometry;
+    let Area {
+        mut origin,
+        mut size
+    } = drawin.state()?.geometry.clone();
+    let Area {
+        origin: Origin { x: new_x, y: new_y },
+        size:
+            Size {
+                width: new_width,
+                height: new_height
+            }
+    } = geometry;
 
-    let Size {
-        ref mut width,
-        ref mut height
-    } = state.geometry.size;
-    if *width == 0 {
-        *width = old_geometry.size.width;
+    let mut changed = false;
+    if new_width > 0 && new_width != size.width {
+        size.width = new_width;
+        Object::emit_signal(lua, drawin, "property::width", 0)?;
+        changed = true;
     }
-    if *height == 0 {
-        *height = old_geometry.size.height
+    if new_height > 0 && new_height != size.height {
+        size.height = new_height;
+        Object::emit_signal(lua, drawin, "property::height", 0)?;
+        changed = true;
+    }
+    if new_x != origin.x {
+        origin.x = new_x;
+        Object::emit_signal(lua, drawin, "property::x", 0)?;
+        changed = true;
+    }
+    if new_y != origin.y {
+        origin.y = new_y;
+        Object::emit_signal(lua, drawin, "property::y", 0)?;
+        changed = true;
+    }
+    if changed {
+        Object::emit_signal(lua, drawin, "property::geometry", 0)?;
     }
 
-    state.geometry_dirty = true;
+    drawin.state_mut()?.geometry = Area { origin, size };
+    drawin.state_mut()?.geometry_dirty = true;
     // TODO emit signals
     // TODO update screen workareas like in awesome? Might not be necessary
 
-    drop(state);
     drawin.update_drawing(lua)
 }
 
