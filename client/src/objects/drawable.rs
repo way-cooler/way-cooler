@@ -59,29 +59,6 @@ impl<'lua> Drawable<'lua> {
         Ok(builder.add_to_meta(table)?.build())
     }
 
-    pub fn get_geometry(&self) -> rlua::Result<Area> {
-        let drawable = self.state()?;
-        Ok(drawable.geo)
-    }
-
-    pub fn get_surface(&self) -> rlua::Result<Value<'lua>> {
-        let drawable = self.state()?;
-        Ok(match drawable.shell {
-            None => Value::Nil,
-            Some(Shell { ref surface, .. }) => {
-                let stash = surface.to_glib_none();
-                let ptr = stash.0;
-                // NOTE
-                // We bump the reference count because now Lua has a reference which
-                // it manages via LGI.
-                unsafe {
-                    ::cairo_sys::cairo_surface_reference(ptr);
-                }
-                Value::LightUserData(LightUserData(ptr as _))
-            }
-        })
-    }
-
     /// Sets the geometry, and allocates a new surface.
     pub fn set_geometry(
         &mut self,
@@ -168,25 +145,6 @@ impl<'lua> Drawable<'lua> {
         }
         Ok(())
     }
-
-    /// Signals that the drawable's surface was updated.
-    pub fn refresh(&mut self) -> rlua::Result<()> {
-        let mut drawable = self.state_mut()?;
-        let drawable = &mut *drawable;
-
-        if let Some(Shell {
-            ref mut surface,
-            shell
-        }) = drawable.shell.as_mut()
-        {
-            let data = get_data(surface);
-            shell
-                .write_to_buffer(data)
-                .expect("Could not write data to buffer");
-            drawable.refreshed = true;
-        }
-        Ok(())
-    }
 }
 
 impl UserData for DrawableState {
@@ -212,21 +170,43 @@ fn get_surface<'lua>(
     _: rlua::Context<'lua>,
     drawable: Drawable<'lua>
 ) -> rlua::Result<Value<'lua>> {
-    drawable.get_surface()
+    let state = drawable.state()?;
+
+    Ok(match state.shell {
+        None => Value::Nil,
+        Some(Shell { ref surface, .. }) => {
+            let stash = surface.to_glib_none();
+            let ptr = stash.0;
+            // NOTE
+            // We bump the reference count because now Lua has a reference which
+            // it manages via LGI.
+            unsafe {
+                ::cairo_sys::cairo_surface_reference(ptr);
+            }
+            Value::LightUserData(LightUserData(ptr as _))
+        }
+    })
 }
 
 fn geometry<'lua>(
     lua: rlua::Context<'lua>,
     drawable: Drawable<'lua>
 ) -> rlua::Result<Table<'lua>> {
-    let geometry = drawable.get_geometry()?;
-    let Origin { x, y } = geometry.origin;
-    let Size { width, height } = geometry.size;
+    let DrawableState {
+        geo:
+            Area {
+                size: Size { width, height },
+                origin: Origin { x, y }
+            },
+        ..
+    } = *drawable.state()?;
+
     let table = lua.create_table()?;
     table.set("x", x)?;
     table.set("y", y)?;
     table.set("width", width)?;
     table.set("height", height)?;
+
     Ok(table)
 }
 
@@ -234,7 +214,21 @@ fn refresh<'lua>(
     _: rlua::Context<'lua>,
     mut drawable: Drawable<'lua>
 ) -> rlua::Result<()> {
-    drawable.refresh()
+    let mut state = drawable.state_mut()?;
+
+    if let Some(Shell {
+        ref mut surface,
+        shell
+    }) = state.shell.as_mut()
+    {
+        let data = get_data(surface);
+        shell
+            .write_to_buffer(data)
+            .expect("Could not write data to buffer");
+        state.refreshed = true;
+    }
+
+    Ok(())
 }
 
 /// Get the data associated with the ImageSurface.

@@ -5,7 +5,7 @@
 use std::default::Default;
 
 use {
-    rlua::{self, Table, UserData, UserDataMethods, Value},
+    rlua::{self, Table, ToLua as _, UserData, UserDataMethods, Value},
     xcb::ffi::xproto::xcb_button_t,
     xkbcommon::xkb::Keysym
 };
@@ -49,29 +49,6 @@ impl<'lua> Button<'lua> {
             .handle_constructor_argument(args)?
             .build())
     }
-
-    pub fn button(&self) -> rlua::Result<Value<'lua>> {
-        let button = self.state()?;
-        Ok(Value::Integer(button.button as _))
-    }
-
-    pub fn set_button(&mut self, new_val: xcb_button_t) -> rlua::Result<()> {
-        let mut button = self.state_mut()?;
-        button.button = new_val;
-        Ok(())
-    }
-
-    pub fn modifiers(&self) -> rlua::Result<Vec<Keysym>> {
-        let button = self.state()?;
-        Ok(button.modifiers.clone())
-    }
-
-    pub fn set_modifiers(&mut self, mods: Table<'lua>) -> rlua::Result<()> {
-        use crate::lua::mods_to_rust;
-        let mut button = self.state_mut()?;
-        button.modifiers = mods_to_rust(mods)?;
-        Ok(())
-    }
 }
 
 pub fn init(lua: rlua::Context) -> rlua::Result<Class<ButtonState>> {
@@ -100,29 +77,40 @@ fn set_button<'lua>(
     lua: rlua::Context<'lua>,
     (mut button, val): (Button<'lua>, Value<'lua>)
 ) -> rlua::Result<Value<'lua>> {
-    use rlua::Value::*;
-    match val {
-        Number(num) => button.set_button(num as _)?,
-        Integer(num) => button.set_button(num as _)?,
-        _ => button.set_button(xcb_button_t::default())?
-    }
+    let val = match val {
+        Value::Number(num) => num as _,
+        Value::Integer(num) => num as _,
+        _ => xcb_button_t::default()
+    };
+
+    let mut state = button.state_mut()?;
+    state.button = val;
+    drop(state);
+
     Object::emit_signal(lua, &button, "property::button", val)?;
-    Ok(Nil)
+
+    Ok(Value::Nil)
 }
 
 fn get_button<'lua>(
     _: rlua::Context<'lua>,
     button: Button<'lua>
 ) -> rlua::Result<Value<'lua>> {
-    button.button()
+    Ok(Value::Integer(button.state()?.button as i64))
 }
 
 fn set_modifiers<'lua>(
     lua: rlua::Context<'lua>,
     (mut button, modifiers): (Button<'lua>, Table<'lua>)
 ) -> rlua::Result<()> {
-    button.set_modifiers(modifiers.clone())?;
+    let modifier = crate::lua::mods_to_rust(modifiers.clone())?;
+
+    let mut state = button.state_mut()?;
+    state.modifiers = modifier;
+    drop(state);
+
     Object::emit_signal(lua, &button, "property::modifiers", modifiers)?;
+
     Ok(())
 }
 
@@ -130,6 +118,5 @@ fn get_modifiers<'lua>(
     lua: rlua::Context<'lua>,
     button: Button<'lua>
 ) -> rlua::Result<Value<'lua>> {
-    use crate::lua::mods_to_lua;
-    mods_to_lua(lua, &button.modifiers()?).map(Value::Table)
+    crate::lua::mods_to_lua(lua, &button.state()?.modifiers)?.to_lua(lua)
 }

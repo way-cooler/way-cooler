@@ -123,7 +123,7 @@ impl<'lua> Screen<'lua> {
         Ok(())
     }
 
-    pub fn get_geometry(
+    fn get_geometry(
         &self,
         lua: rlua::Context<'lua>
     ) -> rlua::Result<Table<'lua>> {

@@ -79,27 +79,6 @@ impl<'lua> Drawin<'lua> {
         Ok(())
     }
 
-    pub fn get_visible(&mut self) -> rlua::Result<bool> {
-        let drawin = self.state()?;
-        Ok(drawin.visible)
-    }
-
-    fn set_visible(
-        &mut self,
-        lua: rlua::Context<'lua>,
-        val: bool
-    ) -> rlua::Result<()> {
-        {
-            let mut drawin = self.state_mut()?;
-            drawin.visible = val;
-        }
-        if val {
-            self.map(lua)
-        } else {
-            self.unmap()
-        }
-    }
-
     fn map(&mut self, lua: rlua::Context<'lua>) -> rlua::Result<()> {
         // TODO other things
         self.update_drawing(lua)?;
@@ -109,38 +88,6 @@ impl<'lua> Drawin<'lua> {
     fn unmap(&mut self) -> rlua::Result<()> {
         // TODO?
         Ok(())
-    }
-
-    pub fn get_geometry(&self) -> rlua::Result<Area> {
-        Ok(self.state()?.geometry)
-    }
-
-    fn resize(
-        &mut self,
-        lua: rlua::Context<'lua>,
-        geometry: Area
-    ) -> rlua::Result<()> {
-        {
-            let mut state = self.state_mut()?;
-            let old_geometry = state.geometry;
-            state.geometry = geometry;
-            {
-                let Size {
-                    ref mut width,
-                    ref mut height
-                } = state.geometry.size;
-                if *width == 0 {
-                    *width = old_geometry.size.width;
-                }
-                if *height == 0 {
-                    *height = old_geometry.size.height
-                }
-            }
-            state.geometry_dirty = true;
-            // TODO emit signals
-            // TODO update screen workareas like in awesome? Might not be necessary
-        }
-        self.update_drawing(lua)
     }
 }
 
@@ -220,16 +167,28 @@ fn set_visible<'lua>(
     lua: rlua::Context<'lua>,
     (mut drawin, visible): (Drawin<'lua>, bool)
 ) -> rlua::Result<()> {
-    drawin.set_visible(lua, visible)?;
+    let mut state = drawin.state_mut()?;
+    state.visible = visible;
+    drop(state);
+
+    if visible {
+        drawin.map(lua)?;
+    } else {
+        drawin.unmap()?;
+    }
+
     Object::emit_signal(lua, &drawin, "property::visible".into(), Value::Nil)
 }
 
 fn get_visible<'lua>(
     _: rlua::Context<'lua>,
-    mut drawin: Drawin<'lua>
+    drawin: Drawin<'lua>
 ) -> rlua::Result<bool> {
-    drawin.get_visible()
+    let state = drawin.state()?;
+
     // TODO signal
+
+    Ok(state.visible)
 }
 
 fn drawin_geometry<'lua>(
@@ -246,17 +205,20 @@ fn drawin_geometry<'lua>(
                 origin: Origin { x, y },
                 size: Size { width, height }
             };
-            drawin.resize(lua, geo)?;
+            resize(lua, &mut drawin, geo)?;
         }
     }
-    let new_geo = drawin.get_geometry()?;
+
+    let new_geo = drawin.state()?.geometry;
     let Size { width, height } = new_geo.size;
     let Origin { x, y } = new_geo.origin;
+
     let res = lua.create_table()?;
     res.set("x", x)?;
     res.set("y", y)?;
     res.set("height", height)?;
     res.set("width", width)?;
+
     Ok(res)
 }
 
@@ -264,7 +226,7 @@ fn get_x<'lua>(
     _: rlua::Context<'lua>,
     drawin: Drawin<'lua>
 ) -> rlua::Result<LuaInteger> {
-    let Origin { x, .. } = drawin.get_geometry()?.origin;
+    let Origin { x, .. } = drawin.state()?.geometry.origin;
     Ok(x as LuaInteger)
 }
 
@@ -272,9 +234,11 @@ fn set_x<'lua>(
     lua: rlua::Context<'lua>,
     (mut drawin, x): (Drawin<'lua>, LuaInteger)
 ) -> rlua::Result<()> {
-    let mut geo = drawin.get_geometry()?;
+    let mut geo = drawin.state()?.geometry;
     geo.origin.x = x as i32;
-    drawin.resize(lua, geo)?;
+
+    resize(lua, &mut drawin, geo)?;
+
     Ok(())
 }
 
@@ -282,7 +246,7 @@ fn get_y<'lua>(
     _: rlua::Context<'lua>,
     drawin: Drawin<'lua>
 ) -> rlua::Result<LuaInteger> {
-    let Origin { y, .. } = drawin.get_geometry()?.origin;
+    let Origin { y, .. } = drawin.state()?.geometry.origin;
     Ok(y as LuaInteger)
 }
 
@@ -290,9 +254,11 @@ fn set_y<'lua>(
     lua: rlua::Context<'lua>,
     (mut drawin, y): (Drawin<'lua>, LuaInteger)
 ) -> rlua::Result<()> {
-    let mut geo = drawin.get_geometry()?;
+    let mut geo = drawin.state()?.geometry;
     geo.origin.y = y as i32;
-    drawin.resize(lua, geo)?;
+
+    resize(lua, &mut drawin, geo)?;
+
     Ok(())
 }
 
@@ -300,7 +266,7 @@ fn get_width<'lua>(
     _: rlua::Context<'lua>,
     drawin: Drawin<'lua>
 ) -> rlua::Result<LuaInteger> {
-    let Size { width, .. } = drawin.get_geometry()?.size;
+    let Size { width, .. } = drawin.state()?.geometry.size;
     Ok(width as LuaInteger)
 }
 
@@ -308,11 +274,13 @@ fn set_width<'lua>(
     lua: rlua::Context<'lua>,
     (mut drawin, width): (Drawin<'lua>, LuaInteger)
 ) -> rlua::Result<()> {
-    let mut geo = drawin.get_geometry()?;
+    let mut geo = drawin.state()?.geometry;
+
     if width > 0 {
         geo.size.width = width as u32;
-        drawin.resize(lua, geo)?;
+        resize(lua, &mut drawin, geo)?;
     }
+
     Ok(())
 }
 
@@ -320,7 +288,7 @@ fn get_height<'lua>(
     _lua: rlua::Context<'lua>,
     drawin: Drawin<'lua>
 ) -> rlua::Result<LuaInteger> {
-    let Size { height, .. } = drawin.get_geometry()?.size;
+    let Size { height, .. } = drawin.state()?.geometry.size;
     Ok(height as LuaInteger)
 }
 
@@ -328,11 +296,13 @@ fn set_height<'lua>(
     lua: rlua::Context<'lua>,
     (mut drawin, height): (Drawin<'lua>, LuaInteger)
 ) -> rlua::Result<()> {
-    let mut geo = drawin.get_geometry()?;
+    let mut geo = drawin.state()?.geometry;
+
     if height > 0 {
         geo.size.height = height as u32;
-        drawin.resize(lua, geo)?;
+        resize(lua, &mut drawin, geo)?;
     }
+
     Ok(())
 }
 
@@ -349,4 +319,32 @@ fn drawin_struts<'lua>(
     res.set("top", 0)?;
     res.set("bottom", 0)?;
     Ok(res)
+}
+
+fn resize<'lua>(
+    lua: rlua::Context<'lua>,
+    drawin: &mut Drawin<'lua>,
+    geometry: Area
+) -> rlua::Result<()> {
+    let mut state = drawin.state_mut()?;
+    let old_geometry = state.geometry;
+    state.geometry = geometry;
+
+    let Size {
+        ref mut width,
+        ref mut height
+    } = state.geometry.size;
+    if *width == 0 {
+        *width = old_geometry.size.width;
+    }
+    if *height == 0 {
+        *height = old_geometry.size.height
+    }
+
+    state.geometry_dirty = true;
+    // TODO emit signals
+    // TODO update screen workareas like in awesome? Might not be necessary
+
+    drop(state);
+    drawin.update_drawing(lua)
 }
