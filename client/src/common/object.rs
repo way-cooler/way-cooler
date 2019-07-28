@@ -39,7 +39,7 @@ impl<'lua, S: ObjectStateType> Into<AnyUserData<'lua>> for Object<'lua, S> {
 
 /// Construct a new object, used when using the default Objectable::new.
 pub struct ObjectBuilder<'lua, S: ObjectStateType> {
-    object: Object<'lua, S>
+    pub object: Object<'lua, S>
 }
 
 impl<'lua, S: ObjectStateType> ObjectBuilder<'lua, S> {
@@ -111,6 +111,13 @@ impl<'lua, S: ObjectStateType> Object<'lua, S> {
                 "Could not cast object to concrete type".into()
             ))
         }
+    }
+
+    pub fn class(&self) -> rlua::Result<Class<'lua, S>> {
+        let metatable = self.get_metatable()?.ok_or_else(|| {
+            rlua::Error::RuntimeError("no metatable on object".to_string())
+        })?;
+        metatable.get::<_, AnyUserData>("__class").map(Into::into)
     }
 
     /// Gets a reference to the internal state for the concrete object.

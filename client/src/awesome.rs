@@ -11,7 +11,7 @@ use std::{
 
 use {
     cairo::{self, ImageSurface, ImageSurfaceData},
-    gdk_pixbuf::{Pixbuf, PixbufExt},
+    gdk_pixbuf::Pixbuf,
     glib::translate::{FromGlibPtrNone, ToGlibPtr},
     nix::{self, libc},
     rlua::{

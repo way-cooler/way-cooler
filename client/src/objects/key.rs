@@ -33,34 +33,6 @@ impl<'lua> Key<'lua> {
             .build())
     }
 
-    pub fn set_modifiers(&mut self, modifiers: u32) -> rlua::Result<()> {
-        let mut state = self.state_mut()?;
-        state.modifiers = modifiers;
-        Ok(())
-    }
-
-    pub fn modifiers(&self) -> rlua::Result<u32> {
-        let state = self.state()?;
-        Ok(state.modifiers)
-    }
-
-    pub fn set_keysym(&mut self, keysym: Keysym) -> rlua::Result<()> {
-        let mut state = self.state_mut()?;
-        state.keysym = keysym;
-        Ok(())
-    }
-
-    pub fn keysym(&self) -> rlua::Result<Keysym> {
-        let state = self.state()?;
-        Ok(state.keysym)
-    }
-
-    pub fn set_keycode(&mut self, keycode: xkb::Keycode) -> rlua::Result<()> {
-        let mut state = self.state_mut()?;
-        state.keycode = keycode;
-        Ok(())
-    }
-
     #[allow(dead_code)]
     pub fn keycode(&self) -> rlua::Result<xkb::Keycode> {
         let state = self.state()?;
@@ -121,14 +93,16 @@ fn get_modifiers<'lua>(
     _: rlua::Context<'lua>,
     key: Key<'lua>
 ) -> rlua::Result<u32> {
-    key.modifiers()
+    Ok(key.state()?.modifiers)
 }
 
 fn set_modifiers<'lua>(
     _: rlua::Context<'lua>,
     (mut key, mods): (Key<'lua>, Table<'lua>)
 ) -> rlua::Result<()> {
-    key.set_modifiers(mods_to_num(mods)?.bits())
+    let mut state = key.state_mut()?;
+    state.modifiers = mods_to_num(mods)?.bits();
+    Ok(())
 }
 
 fn get_keysym<'lua>(
@@ -136,30 +110,34 @@ fn get_keysym<'lua>(
     key: Key<'lua>
 ) -> rlua::Result<Value<'lua>> {
     // TODO Shouldn't this be able to fail?
-    xkb::keysym_get_name(key.keysym()?).to_lua(lua)
+    let keysym = key.state()?.keysym;
+    xkb::keysym_get_name(keysym).to_lua(lua)
 }
 
 fn get_key<'lua>(
     lua: rlua::Context<'lua>,
     key: Key<'lua>
 ) -> rlua::Result<Value<'lua>> {
-    key.keysym()?.to_lua(lua)
+    key.state()?.keysym.to_lua(lua)
 }
 
 fn set_key<'lua>(
     _: rlua::Context<'lua>,
     (mut key, key_name): (Key<'lua>, String)
 ) -> rlua::Result<Value<'lua>> {
+    let mut state = key.state_mut()?;
+
     if key_name.starts_with('#') && key_name.len() >= 2 {
         let number = key_name[1..].parse::<xkb::Keycode>().map_err(|err| {
             rlua::Error::RuntimeError(format!("Parse error: {:?}", err))
         })?;
         // the - 8 is because of xcb conventions, where "#10" is the keysim for 1,
         // and the keycode of 1 is 0x02 (obviously)
-        key.set_keycode(number - 8)?;
+        state.keycode = number - 8;
     } else {
         let keysym = xkb::keysym_from_name(key_name.as_str(), 0);
-        key.set_keysym(keysym)?;
+        state.keysym = keysym;
     }
+
     Ok(rlua::Value::Nil)
 }

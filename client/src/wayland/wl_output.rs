@@ -32,12 +32,12 @@ pub struct WlOutputEventHandler;
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 struct OutputState {
     name: String,
-    resolution: (u32, u32)
+    geometry: Area
 }
 
 impl Output {
-    pub fn resolution(&self) -> (u32, u32) {
-        unwrap_state(self.as_ref()).borrow().resolution
+    pub fn resolution(&self) -> Size {
+        unwrap_state(self.as_ref()).borrow().geometry.size
     }
 
     pub fn name(&self) -> String {
@@ -85,8 +85,9 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         model: String,
         transform: wl_output::Transform
     ) {
-        unwrap_state(object.as_ref()).borrow_mut().name =
-            format!("{} ({})", make, model);
+        let mut state = unwrap_state(object.as_ref()).borrow_mut();
+        state.name = format!("{} ({})", make, model);
+        state.geometry.origin = Origin { x, y };
     }
 
     #[allow(unused)]
@@ -98,8 +99,10 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         height: i32,
         refresh: i32
     ) {
-        unwrap_state(object.as_ref()).borrow_mut().resolution =
-            (width as u32, height as u32);
+        unwrap_state(object.as_ref()).borrow_mut().geometry.size = Size {
+            width: width as _,
+            height: height as _
+        };
         let geometry = Area {
             origin: Origin { x: 0, y: 0 },
             size: Size {
@@ -109,8 +112,8 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         };
         LUA.with(|lua| {
             lua.borrow().context(|ctx| {
-                if let Ok(mut screen) =
-                    screen::get_screen(ctx, Output { output: object })
+                if let Ok(Some(mut screen)) =
+                    screen::get_screen(ctx, &Output { output: object })
                 {
                     screen
                         .set_geometry(ctx, geometry)
@@ -129,14 +132,31 @@ impl wl_output::EventHandler for WlOutputEventHandler {
         // see how awesome does it and fix this.
         LUA.with(|lua| {
             lua.borrow().context(|ctx| {
-                let mut screen =
-                    Screen::new(ctx).expect("Could not allocate new screen");
+                let geometry = unwrap_state(object.as_ref()).borrow().geometry;
                 let output = Output { output: object };
-                screen
-                    .init_screens(output.clone(), vec![output])
-                    .expect("Could not initilize new output with a screen");
-                screen::add_screen(ctx, screen)
-                    .expect("Could not add screen to the list of screens");
+                match screen::get_screen(ctx, &output) {
+                    Ok(Some(mut screen)) => {
+                        screen
+                            .set_geometry(ctx, geometry)
+                            .expect("could not set geometry");
+                        screen
+                            .set_workarea(ctx, geometry)
+                            .expect("could not set workarea ");
+                    },
+                    Ok(None) => {
+                        let mut screen = Screen::new(ctx)
+                            .expect("Could not allocate new screen");
+                        screen
+                            .init_screens(output.clone(), vec![output])
+                            .expect(
+                                "Could not initilize new output with a screen"
+                            );
+                        screen::add_screen(ctx, screen).expect(
+                            "Could not add screen to the list of screens"
+                        );
+                    },
+                    Err(err) => warn!("Could not add screen: {:?}", err)
+                }
             });
         });
     }

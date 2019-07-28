@@ -1,5 +1,9 @@
 //! Utility methods and structures
 
+use std::convert::TryFrom;
+
+use rlua::{self, FromLua, ToLua};
+
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 /// Generic geometry-like struct. Contains an origin (x, y) point and bounds
 /// (width, height).
@@ -49,5 +53,50 @@ impl From<Size> for Area {
             size,
             ..Default::default()
         }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+// negative values could be used for slide-out animations
+pub struct Margin {
+    pub top: i32,
+    pub right: i32,
+    pub bottom: i32,
+    pub left: i32
+}
+
+impl TryFrom<rlua::Table<'_>> for Margin {
+    type Error = rlua::Error;
+    fn try_from(src: rlua::Table) -> rlua::Result<Self> {
+        Ok(Margin {
+            left: src.get("left")?,
+            right: src.get("right")?,
+            top: src.get("top")?,
+            bottom: src.get("bottom")?
+        })
+    }
+}
+
+impl<'lua> ToLua<'lua> for Margin {
+    fn to_lua(
+        self,
+        lua: rlua::Context<'lua>
+    ) -> rlua::Result<rlua::Value<'lua>> {
+        let res = lua.create_table()?;
+        res.set("left", self.left)?;
+        res.set("right", self.right)?;
+        res.set("top", self.top)?;
+        res.set("bottom", self.bottom)?;
+        Ok(rlua::Value::Table(res))
+    }
+}
+
+impl<'lua> FromLua<'lua> for Margin {
+    fn from_lua(
+        lua_value: rlua::Value<'lua>,
+        lua: rlua::Context<'lua>
+    ) -> rlua::Result<Self> {
+        let table = rlua::Table::from_lua(lua_value, lua)?;
+        Margin::try_from(table)
     }
 }

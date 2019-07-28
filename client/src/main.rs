@@ -40,7 +40,7 @@ mod lua;
 mod mousegrabber;
 mod objects;
 mod root;
-mod wayland_obj;
+mod wayland;
 
 use std::{
     env,
@@ -275,33 +275,33 @@ fn init_wayland() -> (WaylandState, GlobalManager) {
         global_filter!(
             [
                 wl_output::WlOutput,
-                wayland_obj::WL_OUTPUT_VERSION,
-                wayland_obj::WlOutputManager {}
+                wayland::WL_OUTPUT_VERSION,
+                wayland::WlOutputManager {}
             ],
             [
                 wl_compositor::WlCompositor,
-                wayland_obj::WL_COMPOSITOR_VERSION,
-                wayland_obj::WlCompositorManager {}
+                wayland::WL_COMPOSITOR_VERSION,
+                wayland::WlCompositorManager {}
             ],
             [
                 wl_shm::WlShm,
-                wayland_obj::WL_SHM_VERSION,
-                wayland_obj::WlShmManager {}
+                wayland::WL_SHM_VERSION,
+                wayland::WlShmManager {}
             ]
         )
     );
     event_queue.sync_roundtrip().unwrap();
 
-    wayland_obj::instantiate_global(
+    wayland::instantiate_global(
         &globals,
-        wayland_obj::LAYER_SHELL_VERSION,
-        wayland_obj::layer_shell_init,
+        wayland::LAYER_SHELL_VERSION,
+        wayland::layer_shell_init,
         "layer shell"
     );
-    wayland_obj::instantiate_global(
+    wayland::instantiate_global(
         &globals,
-        wayland_obj::MOUSEGRABBER_VERSION,
-        wayland_obj::mousegrabber_init,
+        wayland::MOUSEGRABBER_VERSION,
+        wayland::mousegrabber_init,
         "mousegrabber"
     );
 

@@ -20,5 +20,5 @@ pub use self::{
         create_surface, WlCompositorManager, WL_COMPOSITOR_VERSION
     },
     wl_output::{Output, WlOutputManager, WL_OUTPUT_VERSION},
-    wl_shm::{create_buffer, WlShmManager, WL_SHM_VERSION}
+    wl_shm::{create_buffer, Buffer, WlShmManager, WL_SHM_VERSION}
 };
