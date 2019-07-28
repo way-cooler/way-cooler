@@ -61,6 +61,7 @@ impl LayerSurface {
     }
 
     pub fn set_margin(&self, margin: Margin) {
+        warn!("Margin: {:#?}", margin);
         self.proxy.set_margin(
             margin.top,
             margin.right,

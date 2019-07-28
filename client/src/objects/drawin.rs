@@ -155,6 +155,12 @@ fn property_setup<'lua>(
             Some(lua.create_function(set_visible)?),
             Some(lua.create_function(get_visible)?),
             Some(lua.create_function(set_visible)?)
+        ))?
+        .property(Property::new(
+            "cursor".into(),
+            Some(lua.create_function(set_cursor)?),
+            Some(lua.create_function(get_cursor)?),
+            Some(lua.create_function(set_cursor)?)
         ))
 }
 
@@ -350,6 +356,24 @@ fn set_height<'lua>(
     Ok(())
 }
 
+fn set_cursor<'lua>(
+    lua: rlua::Context<'lua>,
+    (mut drawin, cursor): (Drawin<'lua>, String)
+) -> rlua::Result<()> {
+    drawin.state_mut()?.cursor = cursor;
+
+    Object::emit_signal(lua, &drawin, "property::cursor", Value::Nil)?;
+
+    Ok(())
+}
+
+fn get_cursor<'lua>(
+    _: rlua::Context<'lua>,
+    drawin: Drawin<'lua>
+) -> rlua::Result<String> {
+    Ok(drawin.state()?.cursor.clone())
+}
+
 fn drawin_struts<'lua>(
     lua: rlua::Context<'lua>,
     (mut drawin, struts): (Drawin<'lua>, Option<Margin>)
@@ -384,26 +408,26 @@ fn resize<'lua>(
     let mut changed = false;
     if new_width > 0 && new_width != size.width {
         size.width = new_width;
-        Object::emit_signal(lua, drawin, "property::width", 0)?;
+        Object::emit_signal(lua, drawin, "property::width", Value::Nil)?;
         changed = true;
     }
     if new_height > 0 && new_height != size.height {
         size.height = new_height;
-        Object::emit_signal(lua, drawin, "property::height", 0)?;
+        Object::emit_signal(lua, drawin, "property::height", Value::Nil)?;
         changed = true;
     }
     if new_x != origin.x {
         origin.x = new_x;
-        Object::emit_signal(lua, drawin, "property::x", 0)?;
+        Object::emit_signal(lua, drawin, "property::x", Value::Nil)?;
         changed = true;
     }
     if new_y != origin.y {
         origin.y = new_y;
-        Object::emit_signal(lua, drawin, "property::y", 0)?;
+        Object::emit_signal(lua, drawin, "property::y", Value::Nil)?;
         changed = true;
     }
     if changed {
-        Object::emit_signal(lua, drawin, "property::geometry", 0)?;
+        Object::emit_signal(lua, drawin, "property::geometry", Value::Nil)?;
     }
 
     drawin.state_mut()?.geometry = Area { origin, size };
