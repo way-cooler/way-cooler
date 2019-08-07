@@ -23,6 +23,8 @@ struct wc_server {
 	struct wlr_renderer *renderer;
 	struct wlr_compositor *compositor;
 
+	const char *startup_cmd;
+
 	struct wlr_xcursor_manager *xcursor_mgr;
 	struct wc_cursor *cursor;
 
@@ -41,6 +43,7 @@ struct wc_server {
 
 	struct wlr_xwayland *xwayland;
 	struct wl_listener new_xwayland_surface;
+	struct wl_listener xwayland_ready;
 
 	struct wlr_xdg_shell *xdg_shell;
 	struct wl_listener new_xdg_surface;

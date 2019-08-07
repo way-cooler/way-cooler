@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <wordexp.h>
 
 #include <wlr/backend.h>
@@ -75,12 +74,7 @@ int main(int argc, char *argv[]) {
 	}
 	setenv("WAYLAND_DISPLAY", server.wayland_socket, true);
 
-	if (startup_cmd) {
-		wlr_log(WLR_INFO, "Executing \"%s\"", startup_cmd);
-		if (fork() == 0) {
-			execl("/bin/sh", "/bin/sh", "-c", startup_cmd, (void *)NULL);
-		}
-	}
+	server.startup_cmd = startup_cmd;
 
 	wl_display_run(server.wl_display);
 	fini_server(&server);
