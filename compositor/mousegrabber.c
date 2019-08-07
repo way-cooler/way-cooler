@@ -35,11 +35,18 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource,
 	wlr_log(WLR_DEBUG, "mousegrabber: mouse grabbed");
 }
 
+static void unset_mouse(struct wc_server *server) {
+	struct wc_cursor *cursor = server->cursor;
+
+	server->mouse_grab = false;
+	wc_cursor_set_compositor_cursor(cursor, NULL);
+
+	wlr_log(WLR_DEBUG, "mousegrabber: mouse released");
+}
+
 static void release_mouse(
 		struct wl_client *client, struct wl_resource *resource) {
 	struct wc_mousegrabber *mousegrabber = wl_resource_get_user_data(resource);
-	struct wc_server *server = mousegrabber->server;
-	struct wc_cursor *cursor = server->cursor;
 
 	if (mousegrabber->resource != NULL) {
 		assert(mousegrabber->client);
@@ -52,13 +59,10 @@ static void release_mouse(
 		return;
 	}
 
-	server->mouse_grab = false;
-	wc_cursor_set_compositor_cursor(cursor, NULL);
+	unset_mouse(mousegrabber->server);
 
 	// NOTE: Calls our destroy event, which clears client resource pointers.
 	wl_resource_destroy(mousegrabber->resource);
-
-	wlr_log(WLR_DEBUG, "mousegrabber: mouse released");
 }
 
 static const struct zway_cooler_mousegrabber_interface mousegrabber_impl = {
@@ -70,6 +74,7 @@ static void mousegrabber_handle_resource_destroy(struct wl_resource *resource) {
 	struct wc_mousegrabber *mousegrabber = wl_resource_get_user_data(resource);
 
 	if (mousegrabber->resource == resource) {
+		unset_mouse(mousegrabber->server);
 		mousegrabber->resource = NULL;
 		mousegrabber->client = NULL;
 	}
