@@ -2,6 +2,7 @@
 #include "xwayland.h"
 
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <wlr/util/log.h>
 
@@ -138,13 +139,28 @@ static void wc_xwayland_new_surface(struct wl_listener *listener, void *data) {
 	wl_list_insert(&server->views, &view->link);
 }
 
+static void wc_xwayland_ready(struct wl_listener *listener, void *data) {
+	struct wc_server *server =
+			wl_container_of(listener, server, xwayland_ready);
+	if (server->startup_cmd != NULL) {
+		// NOTE Executed here so that DISPLAY is correct for the client
+		wlr_log(WLR_INFO, "Executing \"%s\"", server->startup_cmd);
+		if (fork() == 0) {
+			execl("/bin/sh", "/bin/sh", "-c", server->startup_cmd, NULL);
+		}
+	}
+}
+
 void wc_xwayland_init(struct wc_server *server) {
 	server->xwayland =
 			wlr_xwayland_create(server->wl_display, server->compositor, false);
 
-	server->new_xwayland_surface.notify = wc_xwayland_new_surface;
 	wl_signal_add(&server->xwayland->events.new_surface,
 			&server->new_xwayland_surface);
+	wl_signal_add(&server->xwayland->events.ready, &server->xwayland_ready);
+
+	server->new_xwayland_surface.notify = wc_xwayland_new_surface;
+	server->xwayland_ready.notify = wc_xwayland_ready;
 
 	setenv("DISPLAY", server->xwayland->display_name, true);
 
