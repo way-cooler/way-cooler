@@ -37,6 +37,9 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource,
 
 static void unset_mouse(struct wc_server *server) {
 	struct wc_cursor *cursor = server->cursor;
+	if (cursor == NULL) {
+		return;
+	}
 
 	server->mouse_grab = false;
 	wc_cursor_set_compositor_cursor(cursor, NULL);
