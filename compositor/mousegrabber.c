@@ -18,7 +18,7 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource,
 	struct wc_server *server = mousegrabber->server;
 	struct wc_cursor *cursor = server->cursor;
 
-	if (mousegrabber->resource != NULL) {
+	if (mousegrabber->resource != NULL || server->mouse_grab) {
 		wl_resource_post_error(resource,
 				ZWAY_COOLER_MOUSEGRABBER_ERROR_ALREADY_GRABBED,
 				"mouse has already been grabbed");
@@ -37,7 +37,7 @@ static void grab_mouse(struct wl_client *client, struct wl_resource *resource,
 
 static void unset_mouse(struct wc_server *server) {
 	struct wc_cursor *cursor = server->cursor;
-	if (cursor == NULL) {
+	if (cursor == NULL || !server->mouse_grab) {
 		return;
 	}
 
@@ -125,19 +125,16 @@ void wc_mousegrabber_notify_mouse_moved(
 		return;
 	}
 
-	zway_cooler_mousegrabber_send_mouse_moved(mousegrabber->resource, x, y);
+	zway_cooler_mousegrabber_send_mouse_moved(
+			mousegrabber->resource, x, y, mousegrabber->button);
 }
 
-void wc_mousegrabber_notify_mouse_button(struct wc_mousegrabber *mousegrabber,
-		int x, int y, struct wlr_event_pointer_button *event) {
+void wc_mousegrabber_notify_mouse_button(
+		struct wc_mousegrabber *mousegrabber, int x, int y) {
 	if (mousegrabber == NULL || mousegrabber->resource == NULL) {
 		return;
 	}
-	enum zway_cooler_mousegrabber_button_state pressed =
-			event->state == WLR_BUTTON_PRESSED ?
-			ZWAY_COOLER_MOUSEGRABBER_BUTTON_STATE_PRESSED :
-			ZWAY_COOLER_MOUSEGRABBER_BUTTON_STATE_RELEASED;
 
 	zway_cooler_mousegrabber_send_mouse_button(
-			mousegrabber->resource, x, y, pressed, event->button);
+			mousegrabber->resource, x, y, mousegrabber->button);
 }
