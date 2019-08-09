@@ -27,7 +27,7 @@ sources:
 tasks:
   - check-c-style: |
       cd way-cooler
-      python ./run-clang-format.py -r ./compositor/ ./client/
+      python ./run-clang-format.py -r ./way-cooler/
   - wlroots: |
       cd wlroots
       git checkout 0.6.0
