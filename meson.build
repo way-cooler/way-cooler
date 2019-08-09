@@ -36,4 +36,3 @@ add_project_arguments('-DWAY_COOLER_VERSION=@0@'.format(version), language: 'c')
 
 subdir('protocols')
 subdir('compositor')
-subdir('client')

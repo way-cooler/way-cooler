@@ -125,19 +125,16 @@ void wc_mousegrabber_notify_mouse_moved(
 		return;
 	}
 
-	zway_cooler_mousegrabber_send_mouse_moved(mousegrabber->resource, x, y);
+	zway_cooler_mousegrabber_send_mouse_moved(
+			mousegrabber->resource, x, y, mousegrabber->button);
 }
 
-void wc_mousegrabber_notify_mouse_button(struct wc_mousegrabber *mousegrabber,
-		int x, int y, struct wlr_event_pointer_button *event) {
+void wc_mousegrabber_notify_mouse_button(
+		struct wc_mousegrabber *mousegrabber, int x, int y) {
 	if (mousegrabber == NULL || mousegrabber->resource == NULL) {
 		return;
 	}
-	enum zway_cooler_mousegrabber_button_state pressed =
-			event->state == WLR_BUTTON_PRESSED ?
-			ZWAY_COOLER_MOUSEGRABBER_BUTTON_STATE_PRESSED :
-			ZWAY_COOLER_MOUSEGRABBER_BUTTON_STATE_RELEASED;
 
 	zway_cooler_mousegrabber_send_mouse_button(
-			mousegrabber->resource, x, y, pressed, event->button);
+			mousegrabber->resource, x, y, mousegrabber->button);
 }
