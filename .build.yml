@@ -35,6 +35,7 @@ tasks:
       rustup default stable
       rustup component add rustfmt-preview --toolchain nightly
       rustup component add clippy
+
   - wlroots: |
       cd wlroots
       git checkout 0.6.0
@@ -51,8 +52,3 @@ tasks:
   - way-cooler-clang: |
       cd way-cooler/build-clang
       ninja
-  - way-cooler-client-test: |
-      cd way-cooler/client
-      cargo test --verbose
-      cargo +nightly fmt --all -- --check
-      # TODO enable clippy
