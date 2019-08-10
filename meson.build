@@ -1,6 +1,6 @@
 project(
     'way-cooler',
-    ['c', 'rust'],
+    'c',
     version: '0.8.0',
     license: 'MIT',
     meson_version: '>=0.48.0',
@@ -35,4 +35,4 @@ endif
 add_project_arguments('-DWAY_COOLER_VERSION=@0@'.format(version), language: 'c')
 
 subdir('protocols')
-subdir('compositor')
+subdir('way-cooler')

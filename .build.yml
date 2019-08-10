@@ -15,7 +15,6 @@ packages:
   - gdk-pixbuf2
   - xcb-util-image
   - libcap
-  - rustup
   - clang
   - libxcb
   - xcb-util-image
@@ -28,14 +27,7 @@ sources:
 tasks:
   - check-c-style: |
       cd way-cooler
-      python ./run-clang-format.py -r ./compositor/ ./client/
-  - rust_setup: |
-      rustup install stable
-      rustup install nightly
-      rustup default stable
-      rustup component add rustfmt-preview --toolchain nightly
-      rustup component add clippy
-
+      python ./run-clang-format.py -r ./way-cooler/
   - wlroots: |
       cd wlroots
       git checkout 0.6.0
