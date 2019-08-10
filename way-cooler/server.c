@@ -17,6 +17,7 @@
 
 #include "cursor.h"
 #include "input.h"
+#include "keybindings.h"
 #include "layer_shell.h"
 #include "mousegrabber.h"
 #include "output.h"
@@ -59,6 +60,7 @@ bool init_server(struct wc_server *server) {
 	wc_cursor_init(server);
 
 	wc_mousegrabber_init(server);
+	wc_keybindings_init(server);
 
 	return true;
 }
@@ -76,6 +78,7 @@ void fini_server(struct wc_server *server) {
 	wlr_data_device_manager_destroy(server->data_device_manager);
 
 	wc_mousegrabber_init(server);
+	wc_keybindings_fini(server);
 
 	wlr_compositor_destroy(server->compositor);
 

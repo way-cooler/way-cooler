@@ -10,6 +10,7 @@
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "keybindings.h"
 #include "seat.h"
 
 static void wc_keyboard_on_key(struct wl_listener *listener, void *data) {
@@ -46,6 +47,17 @@ static void wc_keyboard_on_key(struct wl_listener *listener, void *data) {
 			break;
 		}
 	}
+	if (!handled) {
+		struct wlr_keyboard_modifiers *keyboard_modifiers =
+				&keyboard->device->keyboard->modifiers;
+		xkb_mod_mask_t modifiers = keyboard_modifiers->depressed |
+				keyboard_modifiers->latched | keyboard_modifiers->locked;
+
+		bool pressed = event->state == WLR_KEY_PRESSED;
+		handled = wc_keybindings_notify_key_if_registered(server->keybindings,
+				keycode, modifiers, pressed, event->time_msec);
+	}
+
 	if (!handled) {
 		wlr_seat_set_keyboard(seat, keyboard->device);
 		wlr_seat_keyboard_notify_key(

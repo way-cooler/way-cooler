@@ -41,6 +41,7 @@ way_cooler_deps = [
 way_cooler_sources = files(
 	'cursor.c',
 	'input.c',
+	'keybindings.c',
 	'keyboard.c',
 	'layer_shell.c',
 	'main.c',
@@ -51,6 +52,7 @@ way_cooler_sources = files(
 	'server.c',
 	'view.c',
 	'xdg.c',
+	'xkb_hash_set.c',
 	'xwayland.c',
 )
 
