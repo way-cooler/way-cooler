@@ -8,6 +8,7 @@ wayland_protos = dependency('wayland-protocols', version: '>=1.14')
 xkbcommon      = dependency('xkbcommon')
 xcb            = dependency('xcb')
 pixman         = dependency('pixman-1')
+libinput       = dependency('libinput', version: '>=1.6.0')
 
 # Try first to find wlroots as a subproject, then as a system dependency
 wlroots_version = '>=0.5.0'
@@ -36,6 +37,7 @@ way_cooler_deps = [
 	xkbcommon,
 	server_protos,
 	pixman,
+	libinput,
 ]
 
 way_cooler_sources = files(
