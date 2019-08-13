@@ -62,10 +62,6 @@ void wc_seat_init(struct wc_server *server) {
 void wc_seat_fini(struct wc_server *server) {
 	struct wc_seat *seat = server->seat;
 
-	wlr_seat_destroy(seat->seat);
-
-	wl_list_remove(&seat->request_set_cursor.link);
-
 	wlr_xwayland_set_seat(server->xwayland, NULL);
 
 	free(seat);
