@@ -111,7 +111,9 @@ void wc_mousegrabber_init(struct wc_server *server) {
 }
 
 void wc_mousegrabber_fini(struct wc_server *server) {
-	wl_list_remove(wl_resource_get_link(server->mousegrabber->resource));
+	if (server->mousegrabber->resource) {
+		wl_list_remove(wl_resource_get_link(server->mousegrabber->resource));
+	}
 	wl_global_destroy(server->mousegrabber->global);
 
 	free(server->mousegrabber);

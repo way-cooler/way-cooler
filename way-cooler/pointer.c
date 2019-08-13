@@ -2,7 +2,9 @@
 
 #include <stdlib.h>
 
+#include <libinput.h>
 #include <wayland-server.h>
+#include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_input_device.h>
 
 #include "cursor.h"
@@ -29,6 +31,18 @@ void wc_new_pointer(struct wc_server *server, struct wlr_input_device *device) {
 	wl_list_insert(&server->pointers, &pointer->link);
 
 	wlr_cursor_attach_input_device(server->cursor->wlr_cursor, device);
+
+	/*
+	 * TODO We should make this a configuration option,
+	 * I'm just putting this here to keep me sane (fuck mouse acceleration).
+	 */
+	struct libinput_device *libinput_device =
+			wlr_libinput_get_device_handle(device);
+	if (libinput_device != NULL) {
+		libinput_device_config_accel_set_profile(
+				libinput_device, LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT);
+		libinput_device_config_accel_set_speed(libinput_device, 0.0);
+	}
 }
 
 void wc_pointers_init(struct wc_server *server) {

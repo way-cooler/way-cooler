@@ -28,6 +28,7 @@ server_protocols = [
 	[wl_protocol_dir, 'stable/xdg-shell/xdg-shell.xml'],
 	['wlr-layer-shell-unstable-v1.xml'],
 	['way-cooler-mousegrabber-unstable-v1.xml'],
+	['way-cooler-keybindings-unstable-v1.xml'],
 ]
 
 server_protos_src = []

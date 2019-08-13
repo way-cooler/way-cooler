@@ -10,7 +10,15 @@
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "keybindings.h"
 #include "seat.h"
+
+static bool wc_keyboard_mod_is_active(
+		struct wc_keyboard *keyboard, const char *mod_name) {
+	struct xkb_state *state = keyboard->device->keyboard->xkb_state;
+	return xkb_state_mod_name_is_active(
+			state, mod_name, XKB_STATE_MODS_DEPRESSED);
+}
 
 static void wc_keyboard_on_key(struct wl_listener *listener, void *data) {
 	struct wc_keyboard *keyboard = wl_container_of(listener, keyboard, key);
@@ -41,11 +49,25 @@ static void wc_keyboard_on_key(struct wl_listener *listener, void *data) {
 
 		switch (keysym) {
 		case XKB_KEY_Escape:
-			wl_display_terminate(server->wl_display);
-			handled = true;
-			break;
+			if (wc_keyboard_mod_is_active(keyboard, "Shift") &&
+					wc_keyboard_mod_is_active(keyboard, "Control")) {
+				wl_display_terminate(server->wl_display);
+				handled = true;
+				break;
+			}
 		}
 	}
+	if (!handled) {
+		struct wlr_keyboard_modifiers *keyboard_modifiers =
+				&keyboard->device->keyboard->modifiers;
+		xkb_mod_mask_t modifiers = keyboard_modifiers->depressed |
+				keyboard_modifiers->latched | keyboard_modifiers->locked;
+
+		bool pressed = event->state == WLR_KEY_PRESSED;
+		handled = wc_keybindings_notify_key_if_registered(server->keybindings,
+				keycode, modifiers, pressed, event->time_msec);
+	}
+
 	if (!handled) {
 		wlr_seat_set_keyboard(seat, keyboard->device);
 		wlr_seat_keyboard_notify_key(

@@ -17,6 +17,7 @@
 
 #include "cursor.h"
 #include "input.h"
+#include "keybindings.h"
 #include "layer_shell.h"
 #include "mousegrabber.h"
 #include "output.h"
@@ -59,26 +60,29 @@ bool init_server(struct wc_server *server) {
 	wc_cursor_init(server);
 
 	wc_mousegrabber_init(server);
+	wc_keybindings_init(server);
 
 	return true;
 }
 
 void fini_server(struct wc_server *server) {
+	// TODO Why is this segfaulting compositor closing?
+	/*
 	wc_seat_fini(server);
 	wc_output_fini(server);
 	wc_inputs_fini(server);
 	wc_views_fini(server);
 	wc_layers_fini(server);
 	wc_cursor_fini(server);
-	wc_xwayland_fini(server);
 
 	wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
 	wlr_data_device_manager_destroy(server->data_device_manager);
 
-	wc_mousegrabber_init(server);
+	wc_mousegrabber_fini(server);
+	wc_keybindings_fini(server);
+	*/
 
-	wlr_compositor_destroy(server->compositor);
-
+	wc_xwayland_fini(server);
 	wl_display_destroy_clients(server->wl_display);
 	wl_display_destroy(server->wl_display);
 }
