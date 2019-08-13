@@ -13,6 +13,13 @@
 #include "keybindings.h"
 #include "seat.h"
 
+static bool wc_keyboard_mod_is_active(
+		struct wc_keyboard *keyboard, const char *mod_name) {
+	struct xkb_state *state = keyboard->device->keyboard->xkb_state;
+	return xkb_state_mod_name_is_active(
+			state, mod_name, XKB_STATE_MODS_DEPRESSED);
+}
+
 static void wc_keyboard_on_key(struct wl_listener *listener, void *data) {
 	struct wc_keyboard *keyboard = wl_container_of(listener, keyboard, key);
 	struct wc_server *server = keyboard->server;
@@ -42,9 +49,12 @@ static void wc_keyboard_on_key(struct wl_listener *listener, void *data) {
 
 		switch (keysym) {
 		case XKB_KEY_Escape:
-			wl_display_terminate(server->wl_display);
-			handled = true;
-			break;
+			if (wc_keyboard_mod_is_active(keyboard, "Shift") &&
+					wc_keyboard_mod_is_active(keyboard, "Control")) {
+				wl_display_terminate(server->wl_display);
+				handled = true;
+				break;
+			}
 		}
 	}
 	if (!handled) {
