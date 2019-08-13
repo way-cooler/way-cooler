@@ -100,7 +100,7 @@ bool wc_keybindings_notify_key_if_registered(struct wc_keybindings *keybindings,
 	xkb_mod_mask_t out_mask = 0;
 	bool present = xkb_hash_set_get_entry(registered_keys, key_code, &out_mask);
 	if (present) {
-		present = (out_mask & key_mask);
+		present = (out_mask & key_mask) == out_mask;
 	}
 
 	enum zway_cooler_keybindings_key_state press_state = pressed ?
