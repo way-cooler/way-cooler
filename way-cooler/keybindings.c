@@ -109,9 +109,10 @@ bool wc_keybindings_notify_key_if_registered(struct wc_keybindings *keybindings,
 	zway_cooler_keybindings_send_key(
 			keybindings->resource, time, key_code, press_state, key_mask);
 
-	present = present ||
-			server->seat->seat->keyboard_state.focused_client->client ==
-					keybindings->client;
+	struct wlr_seat_client *focused_client =
+			server->seat->seat->keyboard_state.focused_client;
+	if (!present && focused_client)
+		present = present || focused_client->client == keybindings->client;
 
 	return present;
 }
