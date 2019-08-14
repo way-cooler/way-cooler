@@ -38,7 +38,7 @@ void wc_new_pointer(struct wc_server *server, struct wlr_input_device *device) {
 	 */
 	struct libinput_device *libinput_device =
 			wlr_libinput_get_device_handle(device);
-	if (libinput_device != NULL) {
+	if (libinput_device != NULL && wlr_input_device_is_libinput(device)) {
 		libinput_device_config_accel_set_profile(
 				libinput_device, LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT);
 		libinput_device_config_accel_set_speed(libinput_device, 0.0);
