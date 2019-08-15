@@ -1,14 +1,14 @@
 # <img src="http://i.imgur.com/OGeL1nN.png" width="60"> Way Cooler
-[![Crates.io](https://img.shields.io/crates/v/way-cooler.svg)](https://crates.io/crates/way-cooler)
 [![Downloads](https://img.shields.io/crates/d/way-cooler.svg)](https://crates.io/crates/way-cooler)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/way-cooler/)
 
-Way Cooler is the spiritual successor of [AwesomeWM][] for [Wayland][]. It uses [wlroots][].
+Way Cooler is the compositor component of [AwesomeWM][] for [Wayland][]. 
 
 ## Building
 
-To build Way Cooler, ensure you have meson installed (as well as wlroots, or use
-the `subprojects/` directory and build it locally).
+To build Way Cooler, ensure you have meson installed 
+(as well as [wlroots][], or use the `subprojects/` directory 
+and build it locally).
 
 Then, execute:
 
@@ -22,7 +22,7 @@ any existing window manager.
 
 It can run with [this patched version of the Awesome
 client](https://github.com/way-cooler/awesome). The simplest way to execute both
-is to run `way-cooler -c /path/to/patched/awesome>`.
+is to run `way-cooler -c </path/to/patched/awesome>`.
 
 Though technically they can run standalone, the compositor is not usable by
 itself and the client will fail out in other compositor due to the custom
@@ -36,6 +36,7 @@ contact me best on [IRC][] (I also hang out on freenode).
 **Master is not usable for production**. There are old versions of Way Cooler
 that do work, however:
 
+* Is written in Rust and must be built with `cargo`.
 * They use an old framework, [wlc][], and thus are very limited and buggy.
 * Was not designed to emulate Awesome, but instead has [i3][] tiling and its own
   (very incomplete) Lua libraries.
