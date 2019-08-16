@@ -1,3 +1,0 @@
-[submodule "tests/awesome"]
-	path = tests/awesome
-	url = https://github.com/awesomeWM/awesome.git
