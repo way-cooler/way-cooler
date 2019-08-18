@@ -319,8 +319,10 @@ void wc_focus_view(struct wc_view *view) {
 	}
 
 	struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
-	wlr_seat_keyboard_notify_enter(seat, surface, keyboard->keycodes,
-			keyboard->num_keycodes, &keyboard->modifiers);
+	if (keyboard != NULL) {
+		wlr_seat_keyboard_notify_enter(seat, surface, keyboard->keycodes,
+				keyboard->num_keycodes, &keyboard->modifiers);
+	}
 }
 
 void wc_views_init(struct wc_server *server) {
