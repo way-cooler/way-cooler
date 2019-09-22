@@ -149,7 +149,9 @@ static void wc_arrange_layer(struct wc_output *output, struct wc_seat *seat,
 			arranged_area.y -= state->margin.bottom;
 		}
 
-		if (arranged_area.width < 0 || arranged_area.width < 0) {
+		if (arranged_area.width < 0 || arranged_area.height < 0) {
+			wlr_log(WLR_ERROR, "Bad width/height: %d, %d", arranged_area.width,
+					arranged_area.height);
 			wlr_layer_surface_v1_close(layer);
 			continue;
 		}
