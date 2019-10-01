@@ -12,6 +12,7 @@
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/xwayland.h>
 
 int WC_DEBUG;
@@ -53,6 +54,7 @@ struct wc_server {
 
 	struct wlr_screencopy_manager_v1 *screencopy_manager;
 	struct wlr_data_device_manager *data_device_manager;
+	struct wlr_xdg_output_manager_v1 *xdg_output_manager;
 
 	struct wc_mousegrabber *mousegrabber;
 	struct wc_keybindings *keybindings;

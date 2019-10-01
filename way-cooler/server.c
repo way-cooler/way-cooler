@@ -59,6 +59,10 @@ bool init_server(struct wc_server *server) {
 	wc_layers_init(server);
 	wc_cursor_init(server);
 
+	// XXX This must be initialized after the output layout
+	server->xdg_output_manager = wlr_xdg_output_manager_v1_create(
+			server->wl_display, server->output_layout);
+
 	wc_mousegrabber_init(server);
 	wc_keybindings_init(server);
 
@@ -77,6 +81,7 @@ void fini_server(struct wc_server *server) {
 
 	wlr_screencopy_manager_v1_destroy(server->screencopy_manager);
 	wlr_data_device_manager_destroy(server->data_device_manager);
+	wlr_xdg_output_manager_v1_destroy(server->xdg_output_manager);
 
 	wc_mousegrabber_fini(server);
 	wc_keybindings_fini(server);
