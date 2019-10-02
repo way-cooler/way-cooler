@@ -54,12 +54,16 @@ struct InterfaceEventSource
 	gpointer fd_tag;
 };
 
-static void awesome_handle_global(void *data, struct wl_registry *registry,
+static void global_add(void *data, struct wl_registry *registry,
         uint32_t name, const char *interface, uint32_t version);
+
+static void global_removed(void *data, struct wl_registry *registry,
+        uint32_t name);
 
 static const struct wl_registry_listener wl_registry_listener =
 {
-    .global = awesome_handle_global
+    .global = global_add,
+    .global_remove = global_removed,
 };
 
 /* This function is called to prepare polling event source. We just flush
@@ -131,7 +135,22 @@ static void setup_glib_listeners(struct wl_display *display)
     g_source_attach(source, NULL);
 }
 
-static void awesome_handle_global(void *data, struct wl_registry *registry,
+static void global_removed(void *data, struct wl_registry *registry,
+        uint32_t name)
+{
+    foreach(screen, globalconf.screens)
+    {
+        struct wayland_screen *wayland_screen = (*screen)->impl_data;
+        if (wayland_screen->wl_id == name)
+        {
+            wayland_wipe_screen((*screen));
+            screen_schedule_refresh();
+            return;
+        }
+    }
+}
+
+static void global_add(void *data, struct wl_registry *registry,
         uint32_t name, const char *interface, uint32_t version)
 {
     if (strcmp(interface, wl_compositor_interface.name) == 0)
@@ -155,7 +174,9 @@ static void awesome_handle_global(void *data, struct wl_registry *registry,
             wl_registry_bind(registry, name, &wl_output_interface, version);
 
         lua_State *L = globalconf_get_lua_State();
-        screen_add(L, &globalconf.screens, wl_output);
+        screen_t *screen = screen_add(L, &globalconf.screens, wl_output);
+        struct wayland_screen *wayland_screen = screen->impl_data;
+        wayland_screen->wl_id = name;
     }
     else if (strcmp(interface, zway_cooler_mousegrabber_interface.name) == 0)
     {

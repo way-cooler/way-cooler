@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 
+#include "wayland/root.h"
+
 #include "xdg-output-unstable-v1.h"
 
 static struct wayland_viewport *first_screen_viewport = NULL;
@@ -171,7 +173,7 @@ static void wl_output_on_done(void *data, struct wl_output *wl_output)
         lua_State *L = globalconf_get_lua_State();
         viewport_dedupe(screen->viewport);
         screen_added(L, screen);
-        wl_display_roundtrip(globalconf.wl_display);
+        screen_schedule_refresh();
     }
 }
 
@@ -209,6 +211,8 @@ void wayland_new_screen(screen_t *screen, void *data)
 
 void wayland_wipe_screen(screen_t *screen)
 {
+    struct wayland_screen *wayland_screen = screen->impl_data;
+    wayland_wallpaper_cleanup(wayland_screen->wallpaper);
     free(screen->impl_data);
     screen->impl_data = NULL;
 }

@@ -26,8 +26,11 @@
 
 extern struct zway_cooler_keybindings_listener keybindings_listener;
 
+struct wayland_wallpaper;
+
 int wayland_set_wallpaper(cairo_pattern_t *pattern);
 void wayland_update_wallpaper(void);
+void wayland_wallpaper_cleanup(struct wayland_wallpaper *wayland_wallpaper);
 
 void wayland_grab_keys(void);
 
