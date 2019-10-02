@@ -29,6 +29,8 @@
 
 ARRAY_TYPE(struct wl_output, wl_output);
 
+struct wayland_wallpaper;
+
 struct wayland_screen_output
 {
     char *name;
@@ -51,7 +53,9 @@ struct wayland_screen
 {
     struct zxdg_output_v1 *xdg_output;
     struct wl_output *wl_output;
+    struct wayland_wallpaper *wallpaper;
     screen_t *screen;
+    bool configured;
 };
 
 extern struct zxdg_output_v1_listener xdg_output_listener;
