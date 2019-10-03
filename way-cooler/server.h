@@ -25,6 +25,8 @@ struct wc_server {
 	struct wlr_compositor *compositor;
 
 	const char *startup_cmd;
+	struct wl_client *startup_client;
+	struct wl_listener startup_client_destroyed;
 
 	struct wlr_xcursor_manager *xcursor_mgr;
 	struct wc_cursor *cursor;
@@ -63,5 +65,6 @@ struct wc_server {
 
 bool init_server(struct wc_server *server);
 void fini_server(struct wc_server *server);
+void wc_server_execute_startup_command(struct wc_server *server);
 
 #endif  // WC_SERVER_H

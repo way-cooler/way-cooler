@@ -144,10 +144,7 @@ static void wc_xwayland_ready(struct wl_listener *listener, void *data) {
 			wl_container_of(listener, server, xwayland_ready);
 	if (server->startup_cmd != NULL) {
 		// NOTE Executed here so that DISPLAY is correct for the client
-		wlr_log(WLR_INFO, "Executing \"%s\"", server->startup_cmd);
-		if (fork() == 0) {
-			execl("/bin/sh", "/bin/sh", "-c", server->startup_cmd, NULL);
-		}
+		wc_server_execute_startup_command(server);
 	}
 }
 
