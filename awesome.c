@@ -828,7 +828,7 @@ main(int argc, char **argv)
     /* Grab server */
     xcb_grab_server(globalconf.connection);
 
-    if (getenv("WAYLAND_DISPLAY") != NULL)
+    if (getenv("WAYLAND_DISPLAY") != NULL || getenv("WAYLAND_SOCKET") != NULL)
     {
         init_wayland();
     }
