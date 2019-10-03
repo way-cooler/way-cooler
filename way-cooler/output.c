@@ -207,7 +207,7 @@ static void wc_output_frame(struct wl_listener *listener, void *data) {
 		wlr_renderer_clear(renderer, (float[]){1, 1, 0, 1});
 	}
 
-	float background_color[4] = {0.25f, 0.25f, 0.25f, 1};
+	float background_color[4] = {0.0f, 0.0f, 0.0f, 1};
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; i++) {
