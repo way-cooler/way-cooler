@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <wayland-server.h>
+#include <wlr/util/log.h>
 
 #include "seat.h"
 #include "server.h"
@@ -97,11 +98,7 @@ bool wc_keybindings_notify_key_if_registered(struct wc_keybindings *keybindings,
 
 	struct xkb_hash_set *registered_keys = keybindings->registered_keys;
 
-	xkb_mod_mask_t out_mask = 0;
-	bool present = xkb_hash_set_get_entry(registered_keys, key_code, &out_mask);
-	if (present) {
-		present = (out_mask & key_mask) == out_mask;
-	}
+	bool present = xkb_hash_set_get_entry(registered_keys, key_code, key_mask);
 
 	enum zway_cooler_keybindings_key_state press_state = pressed ?
 			ZWAY_COOLER_KEYBINDINGS_KEY_STATE_PRESSED :
