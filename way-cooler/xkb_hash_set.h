@@ -7,6 +7,7 @@
 #define WC_XKB_HASH_SET_H
 
 struct hash_entry {
+	struct hash_entry *next;
 	xkb_mod_mask_t mod_mask;
 	bool present;
 };
@@ -21,6 +22,6 @@ void xkb_hash_set_add_entry(
 		struct xkb_hash_set *hash_set, uint32_t key, xkb_mod_mask_t mask);
 
 bool xkb_hash_set_get_entry(
-		struct xkb_hash_set *hash_set, uint32_t key, xkb_mod_mask_t *out_mask);
+		struct xkb_hash_set *hash_set, uint32_t key, xkb_mod_mask_t mask);
 
 #endif  // WC_XKB_HASH_SET_H
