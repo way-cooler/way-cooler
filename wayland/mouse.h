@@ -16,17 +16,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  */
+#ifndef AWESOME_WAYLAND_MOUSE_H
+#define AWESOME_WAYLAND_MOUSE_H
 
-#ifndef AWESOME_WAYLAND_MOUSEGRABBER_H
-#define AWESOME_WAYLAND_MOUSEGRABBER_H
+#include "way-cooler-mouse-unstable-v1.h"
 
-#include "way-cooler-mousegrabber-unstable-v1.h"
+extern struct zway_cooler_mouse_listener mouse_listener;
 
-extern struct zway_cooler_mousegrabber_listener mousegrabber_listener;
-
-bool wayland_grab_mouse(const char *cursor);
-
-void wayland_release_mouse(void);
-
-#endif
+#endif // AWESOME_WAYLAND_MOUSE_H
 // vim: filetype=c:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=80

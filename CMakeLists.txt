@@ -93,6 +93,7 @@ set(AWE_SRCS
     ${BUILD_DIR}/wayland/utils.c
     ${BUILD_DIR}/wayland/drawin.c
     ${BUILD_DIR}/wayland/drawable.c
+    ${BUILD_DIR}/wayland/mouse.c
     ${BUILD_DIR}/wayland/mousegrabber.c
     ${BUILD_DIR}/wayland/globals.c
     ${BUILD_DIR}/wayland/root.c

@@ -52,46 +52,6 @@
 extern struct root_impl root_impl;
 extern struct drawin_impl drawin_impl;
 
-#define DO_EVENT_HOOK_CALLBACK(type, xcbtype, xcbeventprefix, arraytype, match) \
-    static void \
-    event_##xcbtype##_callback(xcb_##xcbtype##_press_event_t *ev, \
-                               arraytype *arr, \
-                               lua_State *L, \
-                               int oud, \
-                               int nargs, \
-                               void *data) \
-    { \
-        int abs_oud = oud < 0 ? ((lua_gettop(L) + 1) + oud) : oud; \
-        int item_matching = 0; \
-        foreach(item, *arr) \
-            if(match(ev, *item, data)) \
-            { \
-                if(oud) \
-                    luaA_object_push_item(L, abs_oud, *item); \
-                else \
-                    luaA_object_push(L, *item); \
-                item_matching++; \
-            } \
-        for(; item_matching > 0; item_matching--) \
-        { \
-            switch(ev->response_type) \
-            { \
-              case xcbeventprefix##_PRESS: \
-                for(int i = 0; i < nargs; i++) \
-                    lua_pushvalue(L, - nargs - item_matching); \
-                luaA_object_emit_signal(L, - nargs - 1, "press", nargs); \
-                break; \
-              case xcbeventprefix##_RELEASE: \
-                for(int i = 0; i < nargs; i++) \
-                    lua_pushvalue(L, - nargs - item_matching); \
-                luaA_object_emit_signal(L, - nargs - 1, "release", nargs); \
-                break; \
-            } \
-            lua_pop(L, 1); \
-        } \
-        lua_pop(L, nargs); \
-    }
-
 static bool
 event_button_match(xcb_button_press_event_t *ev, button_t *b, void *data)
 {
@@ -99,7 +59,8 @@ event_button_match(xcb_button_press_event_t *ev, button_t *b, void *data)
             && (b->modifiers == XCB_BUTTON_MASK_ANY || b->modifiers == ev->state));
 }
 
-DO_EVENT_HOOK_CALLBACK(button_t, button, XCB_BUTTON, button_array_t, event_button_match)
+DO_EVENT_HOOK_CALLBACK(button, xcb_button_press_event_t,
+        XCB_BUTTON, button_array_t, event_button_match)
 
 /** Emit a button signal.
  * The top of the lua stack has to be the object on which to emit the event.

@@ -226,6 +226,7 @@ set(AWESOME_OPTIONAL_LDFLAGS ${AWESOME_OPTIONAL_LDFLAGS} -lrt)
 set(protos
     "/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml"
     "../wayland/protocols/way-cooler-keybindings-unstable-v1.xml"
+    "../wayland/protocols/way-cooler-mouse-unstable-v1.xml"
     "../wayland/protocols/way-cooler-mousegrabber-unstable-v1.xml"
     "../wayland/protocols/wlr-layer-shell-unstable-v1.xml"
     "../wayland/protocols/xdg-output-unstable-v1.xml")

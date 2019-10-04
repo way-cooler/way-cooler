@@ -95,6 +95,47 @@
 #define unlikely(expr)  expr
 #endif
 
+#define DO_EVENT_HOOK_CALLBACK(name, eventtype, eventprefix, arraytype, match) \
+    static void \
+    event_##name##_callback(eventtype *ev, \
+                            arraytype *arr, \
+                            lua_State *L, \
+                            int oud, \
+                            int nargs, \
+                            void *data) \
+    { \
+        int abs_oud = oud < 0 ? ((lua_gettop(L) + 1) + oud) : oud; \
+        int item_matching = 0; \
+        foreach(item, *arr) \
+            if(match(ev, *item, data)) \
+            { \
+                if(oud) \
+                    luaA_object_push_item(L, abs_oud, *item); \
+                else \
+                    luaA_object_push(L, *item); \
+                item_matching++; \
+            } \
+        for(; item_matching > 0; item_matching--) \
+        { \
+            switch(ev->response_type) \
+            { \
+              case eventprefix##_PRESS: \
+                for(int i = 0; i < nargs; i++) \
+                    lua_pushvalue(L, - nargs - item_matching); \
+                luaA_object_emit_signal(L, - nargs - 1, "press", nargs); \
+                break; \
+              case eventprefix##_RELEASE: \
+                for(int i = 0; i < nargs; i++) \
+                    lua_pushvalue(L, - nargs - item_matching); \
+                luaA_object_emit_signal(L, - nargs - 1, "release", nargs); \
+                break; \
+            } \
+            lua_pop(L, 1); \
+        } \
+        lua_pop(L, nargs); \
+    }
+
+
 static inline void * __attribute__ ((malloc)) xmalloc(ssize_t size)
 {
     void *ptr;

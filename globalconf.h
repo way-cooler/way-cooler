@@ -237,8 +237,9 @@ typedef struct
     struct zxdg_output_manager_v1 *xdg_output_manager;
 
     /* Awesome-specific Wayland globals */
-    struct zway_cooler_mousegrabber *wl_mousegrabber;
     struct zway_cooler_keybindings *wl_keybindings;
+    struct zway_cooler_mouse *wl_mouse;
+    struct zway_cooler_mousegrabber *wl_mousegrabber;
 } awesome_t;
 
 extern awesome_t globalconf;

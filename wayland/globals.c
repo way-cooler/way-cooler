@@ -25,12 +25,14 @@
 
 #include "wayland/drawin.h"
 #include "wayland/drawable.h"
+#include "wayland/mouse.h"
 #include "wayland/mousegrabber.h"
 #include "wayland/root.h"
 #include "wayland/screen.h"
 
 #include "objects/screen.h"
 
+#include "way-cooler-mouse-unstable-v1.h"
 #include "way-cooler-mousegrabber-unstable-v1.h"
 #include "way-cooler-keybindings-unstable-v1.h"
 #include "wlr-layer-shell-unstable-v1.h"
@@ -177,6 +179,14 @@ static void global_add(void *data, struct wl_registry *registry,
         screen_t *screen = screen_add(L, &globalconf.screens, wl_output);
         struct wayland_screen *wayland_screen = screen->impl_data;
         wayland_screen->wl_id = name;
+    }
+    else if (strcmp(interface, zway_cooler_mouse_interface.name) == 0)
+    {
+        globalconf.wl_mouse = wl_registry_bind(registry, name,
+                &zway_cooler_mouse_interface, version);
+        zway_cooler_mouse_add_listener(globalconf.wl_mouse,
+                &mouse_listener, NULL);
+        wl_display_roundtrip(globalconf.wl_display);
     }
     else if (strcmp(interface, zway_cooler_mousegrabber_interface.name) == 0)
     {

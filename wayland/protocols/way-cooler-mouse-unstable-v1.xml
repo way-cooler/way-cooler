@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="way_cooler_mouse_unstable_v1">
+  <copyright>
+    Copyright © 2019 Preston Carpenter
+
+    Permission to use, copy, modify, distribute, and sell this
+    software and its documentation for any purpose is hereby granted
+    without fee, provided that the above copyright notice appear in
+    all copies and that both that copyright notice and this permission
+    notice appear in supporting documentation, and that the name of
+    the copyright holders not be used in advertising or publicity
+    pertaining to distribution of the software without specific,
+    written prior permission.  The copyright holders make no
+    representations about the suitability of this software for any
+    purpose.  It is provided "as is" without express or implied
+    warranty.
+
+    THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
+    SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+    FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+    AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+    ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+    THIS SOFTWARE.
+  </copyright>
+  <interface name="zway_cooler_mouse" version="1">
+    <description summary="exclusively capture keys from other clients">
+      This interface allows a client to listen to all mouse events, regardless
+      of focus.
+
+      This was designed for Way Cooler to facilitate AwesomeWM. This should not
+      be used by any other compositors. If you use this in your compositor you
+      will be publicly shamed and ridiculed.
+    </description>
+
+    <enum name="state">
+      <entry name="release" value="0" summary="mouse was released"/>
+      <entry name="press" value="1" summary="mouse was pressed"/>
+    </enum>
+
+    <enum name="button">
+      <entry name="left" value="0" summary="button on the left side"/>
+      <entry name="right" value="1" summary="button on the right side"/>
+      <entry name="middle" value="2" summary="button in the middle of the mouse"/>
+    </enum>
+
+    <enum name="scroll">
+      <entry name="up" value="0" summary="mouse was scrolled up"/>
+      <entry name="down" value="1" summary="mouse was scrolled down"/>
+    </enum>
+
+    <event name="button">
+      <description summary="button event">
+	    A mouse button was pressed or released. The time argument is a timestamp
+        with millisecond granularity, with an undefined base.
+      </description>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="button" type="uint" enum="button" summary="button that produced the event"/>
+      <arg name="state" type="uint" enum="state" summary="new physical state of the button"/>
+      <arg name="x" type="int" summary="x coordinate (in relation to the output)"/>
+      <arg name="y" type="int" summary="y coordinate (in relation to the output)"/>
+    </event>
+
+    <event name="scroll">
+      <description summary="scroll event">
+        A scroll wheel was moved on a mouse either up or down. The time
+        argument is a timestamp with millisecond granularity, with an
+        undefined base.
+      </description>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="scroll" type="uint" enum="scroll" summary="scroll direction of the event"/>
+      <arg name="x" type="int" summary="x coordinate (in relation to the output)"/>
+      <arg name="y" type="int" summary="y coordinate (in relation to the output)"/>
+    </event>
+
+    <event name="move">
+      <description summary="move event">
+        The mouse was moved to a location on the screen. The time
+        argument is a timestamp with millisecond granularity, with an
+        undefined base.
+      </description>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="x" type="int" summary="x coordinate (in relation to the output)"/>
+      <arg name="y" type="int" summary="y coordinate (in relation to the output)"/>
+    </event>
+  </interface>
+</protocol>
