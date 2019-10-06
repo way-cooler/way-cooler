@@ -340,7 +340,10 @@ static void wc_new_output(struct wl_listener *listener, void *data) {
 	wlr_output_create_global(wlr_output);
 
 	wc_layer_shell_arrange_layers(output);
-	wlr_output_damage_add_whole(output->damage);
+	struct wc_output *temp;
+	wl_list_for_each_safe(output, temp, &server->outputs, link) {
+		wlr_output_damage_add_whole(output->damage);
+	}
 }
 
 struct wc_output *wc_get_active_output(struct wc_server *server) {
