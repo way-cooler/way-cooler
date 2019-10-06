@@ -44,7 +44,9 @@ struct wayland_wallpaper {
 
 void wayland_wallpaper_cleanup(struct wayland_wallpaper *wayland_wallpaper)
 {
-	zwlr_layer_surface_v1_destroy(wayland_wallpaper->layer_surface);
+    if (wayland_wallpaper == NULL)
+        return;
+    zwlr_layer_surface_v1_destroy(wayland_wallpaper->layer_surface);
     wl_surface_destroy(wayland_wallpaper->wl_surface);
     cairo_surface_destroy(wayland_wallpaper->surface);
     free(wayland_wallpaper);

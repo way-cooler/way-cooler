@@ -111,7 +111,8 @@ void wayland_drawin_cleanup(struct drawin_t *drawin)
 {
     struct wayland_drawin *wayland_drawin = drawin->impl_data;
 
-    zwlr_layer_surface_v1_destroy(wayland_drawin->layer_surface);
+    if (wayland_drawin->layer_surface != NULL)
+        zwlr_layer_surface_v1_destroy(wayland_drawin->layer_surface);
 
     free(wayland_drawin);
     drawin->impl_data = NULL;

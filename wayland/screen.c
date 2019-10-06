@@ -212,6 +212,8 @@ void wayland_new_screen(screen_t *screen, void *data)
 void wayland_wipe_screen(screen_t *screen)
 {
     struct wayland_screen *wayland_screen = screen->impl_data;
+    if (wayland_screen == NULL)
+        return;
     wayland_wallpaper_cleanup(wayland_screen->wallpaper);
     free(screen->impl_data);
     screen->impl_data = NULL;

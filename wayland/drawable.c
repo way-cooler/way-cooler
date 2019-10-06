@@ -43,13 +43,16 @@ void wayland_drawable_allocate(struct drawable_t *drawable)
 
 void wayland_drawable_cleanup(struct drawable_t *drawable)
 {
+    struct wayland_drawable *wayland_drawable = drawable->impl_data;
+    if (wayland_drawable == NULL)
+        return;
+
     wayland_drawable_unset_surface(drawable);
 
-    struct wayland_drawable *wayland_drawable = drawable->impl_data;
     if (wayland_drawable->wl_surface != NULL)
         wl_surface_destroy(wayland_drawable->wl_surface);
 
-    free(drawable->impl_data);
+    free(wayland_drawable);
     drawable->impl_data = NULL;
 }
 
@@ -76,7 +79,9 @@ void wayland_drawable_unset_surface(struct drawable_t *drawable)
 {
     struct wayland_drawable *wayland_drawable = drawable->impl_data;
 
-    if (wayland_drawable->wl_surface != NULL && wayland_drawable->buffer != NULL)
+    if (wayland_drawable != NULL
+            && wayland_drawable->wl_surface != NULL
+            && wayland_drawable->buffer != NULL)
     {
         wl_surface_attach(wayland_drawable->wl_surface, NULL, 0, 0);
         wl_buffer_destroy(wayland_drawable->buffer);
