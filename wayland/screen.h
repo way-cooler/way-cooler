@@ -55,6 +55,7 @@ struct wayland_screen
     struct wl_output *wl_output;
     struct wayland_wallpaper *wallpaper;
     screen_t *screen;
+    uint32_t wl_id;
     bool configured;
 };
 

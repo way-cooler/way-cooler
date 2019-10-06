@@ -42,10 +42,11 @@ struct wayland_wallpaper {
     size_t shm_size;
 };
 
-static void
-wayland_wallpaper_cleanup(struct wayland_wallpaper *wayland_wallpaper)
+void wayland_wallpaper_cleanup(struct wayland_wallpaper *wayland_wallpaper)
 {
-	zwlr_layer_surface_v1_destroy(wayland_wallpaper->layer_surface);
+    if (wayland_wallpaper == NULL)
+        return;
+    zwlr_layer_surface_v1_destroy(wayland_wallpaper->layer_surface);
     wl_surface_destroy(wayland_wallpaper->wl_surface);
     cairo_surface_destroy(wayland_wallpaper->surface);
     free(wayland_wallpaper);
@@ -70,6 +71,8 @@ static void wallpaper_surface_closed(void *data,
 {
     screen_t *screen = data;
     struct wayland_screen *wayland_screen = screen->impl_data;
+    if(wayland_screen == NULL)
+        return;
     wayland_wallpaper_cleanup(wayland_screen->wallpaper);
     wayland_screen->wallpaper = NULL;
 }
