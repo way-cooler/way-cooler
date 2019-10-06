@@ -98,14 +98,7 @@ static void xdg_output_on_logical_size(void *data,
 static void xdg_output_on_done(void *data,
         struct zxdg_output_v1 *zxdg_output_v1)
 {
-    screen_t *screen = data;
-    struct wayland_screen *wayland_screen = screen->impl_data;
-    if (wayland_screen->configured)
-        return;
-    wayland_screen->configured = true;
-    lua_State *L = globalconf_get_lua_State();
-    viewport_dedupe(screen->viewport);
-    screen_added(L, screen);
+    // XXX This call has been deprecated
 }
 
 static void xdg_output_on_name(void *data,
@@ -170,6 +163,14 @@ static void wl_output_on_done(void *data, struct wl_output *wl_output)
         // TODO Clean up on destroy
         zxdg_output_v1_add_listener(wayland_screen->xdg_output,
                 &xdg_output_listener, screen);
+        wl_display_roundtrip(globalconf.wl_display);
+    }
+    else if (!wayland_screen->configured)
+    {
+        wayland_screen->configured = true;
+        lua_State *L = globalconf_get_lua_State();
+        viewport_dedupe(screen->viewport);
+        screen_added(L, screen);
         wl_display_roundtrip(globalconf.wl_display);
     }
 }
