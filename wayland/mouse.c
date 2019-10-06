@@ -30,17 +30,26 @@ struct button_event {
     enum zway_cooler_mouse_button button;
 };
 
-static int xcb_conversion(enum zway_cooler_mouse_state state)
+static int xcb_conversion(enum zway_cooler_mouse_button button)
 {
-    return state == ZWAY_COOLER_MOUSE_STATE_RELEASE
-            ? XCB_BUTTON_PRESS
-            : XCB_BUTTON_RELEASE;
+    switch (button)
+    {
+    // TODO Constants? From a library?
+    case ZWAY_COOLER_MOUSE_BUTTON_LEFT:
+        return 1;
+    case ZWAY_COOLER_MOUSE_BUTTON_MIDDLE:
+        return 2;
+    case ZWAY_COOLER_MOUSE_BUTTON_RIGHT:
+        return 3;
+    default:
+        fatal("Invalid button %d", button);
+    }
+    return -1;
 }
 
 static bool
 button_match(struct button_event *ev, button_t *b, void *data)
 {
-    printf("comparing %d and %d\n", xcb_conversion(ev->button), b->button);
     return (!b->button || xcb_conversion(ev->button) == b->button);
 }
 
@@ -55,6 +64,11 @@ static void on_button(void *data,
         int32_t x,
         int32_t y)
 {
+    globalconf.timestamp = time;
+    if (state == ZWAY_COOLER_MOUSE_STATE_PRESS)
+        printf("click @ (%d , %d)\n", x, y);
+    else
+        printf("release @ (%d , %d)\n", x, y);
     lua_State *L = globalconf_get_lua_State();
     struct button_event event = {
         .response_type = state,
