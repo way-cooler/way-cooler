@@ -26,10 +26,20 @@ static void wc_layer_shell_commit(struct wl_listener *listener, void *data) {
 	if (wlr_output == NULL) {
 		return;
 	}
+	struct wc_output *wc_output = wlr_output->data;
 	struct wlr_box old_geo = layer->geo;
 	wc_layer_shell_arrange_layers(wlr_output->data);
 
-	if (memcmp(&old_geo, &layer->geo, sizeof(struct wlr_box)) != 0) {
+	bool geo_changed =
+			memcmp(&old_geo, &layer->geo, sizeof(struct wlr_box)) != 0;
+	bool layer_changed = layer->layer != layer_surface->current.layer;
+	if (layer_changed) {
+		wl_list_remove(&layer->link);
+		wl_list_insert(
+				&wc_output->layers[layer_surface->current.layer], &layer->link);
+		layer->layer = layer_surface->current.layer;
+	}
+	if (geo_changed || layer_changed) {
 		wc_output_damage_surface(
 				wlr_output->data, layer_surface->surface, NULL, old_geo);
 	}
@@ -252,12 +262,13 @@ static void wc_layer_shell_new_surface(
 	wl_signal_add(&layer_surface->events.destroy, &layer->destroy);
 
 	size_t len = sizeof(output->layers) / sizeof(output->layers[0]);
-	if (layer_surface->layer >= len) {
-		wlr_log(WLR_ERROR, "Bad surface layer %d", layer_surface->layer);
+	if (layer_surface->current.layer >= len) {
+		wlr_log(WLR_ERROR, "Bad surface layer %d",
+				layer_surface->current.layer);
 		wlr_layer_surface_v1_close(layer_surface);
 		return;
 	}
-	wl_list_insert(&output->layers[layer_surface->layer], &layer->link);
+	wl_list_insert(&output->layers[layer_surface->current.layer], &layer->link);
 
 	struct wlr_layer_surface_v1_state old_state = layer_surface->current;
 	layer_surface->current = layer_surface->client_pending;

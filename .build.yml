@@ -30,8 +30,8 @@ tasks:
       python ./run-clang-format.py -r ./way-cooler/
   - wlroots: |
       cd wlroots
-      # TODO Update to 0.7 when it comes out
-      git checkout 94f65e354
+      # TODO Update to 0.8.2 or 0.9.0 whichever comes first
+      git checkout cde544de
       meson --prefix=/usr build -Drootston=false -Dexamples=false
       ninja -C build
       sudo ninja -C build install

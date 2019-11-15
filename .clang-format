@@ -11,8 +11,7 @@ AlignEscapedNewlines: Left
 AlignOperands:   false
 AlignTrailingComments: false
 
-# TODO When this becomes available (clang-format 9.0) uncomment this line
-#AllowAllArgumentsOnNextLine: false
+AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
@@ -105,6 +104,6 @@ SpacesInSquareBrackets: false
 
 Standard:        Auto
 TabWidth:        4
-UseTab:          Always
+UseTab:          ForContinuationAndIndentation
 ...
 

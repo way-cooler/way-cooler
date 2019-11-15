@@ -12,6 +12,7 @@ struct wc_layer {
 	struct wlr_layer_surface_v1 *layer_surface;
 	struct wlr_box geo;
 	bool mapped;
+	enum zwlr_layer_shell_v1_layer layer;
 
 	struct wl_listener commit;
 	struct wl_listener map;
