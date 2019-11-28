@@ -285,7 +285,6 @@ void wc_layers_init(struct wc_server *server) {
 }
 
 void wc_layers_fini(struct wc_server *server) {
-	wlr_layer_shell_v1_destroy(server->layer_shell);
 	server->layer_shell = NULL;
 
 	wl_list_remove(&server->new_layer_surface.link);

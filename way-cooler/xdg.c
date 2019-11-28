@@ -118,7 +118,6 @@ void wc_xdg_init(struct wc_server *server) {
 }
 
 void wc_xdg_fini(struct wc_server *server) {
-	wlr_xdg_shell_destroy(server->xdg_shell);
 	server->xdg_shell = NULL;
 
 	wl_list_remove(&server->new_xdg_surface.link);
