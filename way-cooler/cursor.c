@@ -174,6 +174,35 @@ static void wc_cursor_button(struct wl_listener *listener, void *data) {
 		} else {
 			server->mousegrabber->button &= ~(1 << 2);
 		}
+		if (server->meta_pressed) {
+			double x, y;
+			struct wlr_surface *out_surface;
+			struct wc_view *view = wc_view_at(server,
+					cursor->wlr_cursor->x, cursor->wlr_cursor->y, &x, &y, &out_surface);
+			if (view == NULL) break;
+			if (event->state) {
+				struct wlr_box geo;
+				switch (view->surface_type) {
+				case WC_XDG:
+					wlr_xdg_surface_get_geometry(view->xdg_surface, &geo);
+					break;
+				case WC_XWAYLAND:;
+					struct wlr_box geo2 = {
+							.x = view->geo.x,
+							.y = view->geo.y,
+							.width = view->xwayland_surface->width,
+							.height = view->xwayland_surface->height,
+					};
+					geo = geo2;
+					break;
+				}
+				wc_view_resize(view, geo, WLR_EDGE_BOTTOM | WLR_EDGE_RIGHT);
+			} else {
+				cursor->cursor_mode = WC_CURSOR_PASSTHROUGH;
+				cursor->grabbed.view = NULL;
+			}
+			return;
+		}
 		break;
 	}
 
