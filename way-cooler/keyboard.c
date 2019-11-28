@@ -83,6 +83,11 @@ static void wc_keyboard_on_modifiers(struct wl_listener *listener, void *data) {
 	wlr_seat_set_keyboard(seat, keyboard->device);
 	wlr_seat_keyboard_notify_modifiers(
 			seat, &keyboard->device->keyboard->modifiers);
+
+	// XXX Preston hacks
+	struct wc_server *server = keyboard->server;
+	uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->device->keyboard);
+	server->meta_pressed = modifiers & WLR_MODIFIER_LOGO;
 }
 
 static void wc_keyboard_removed(struct wl_listener *listener, void *data) {

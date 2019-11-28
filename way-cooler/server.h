@@ -61,6 +61,9 @@ struct wc_server {
 	struct wc_mousegrabber *mousegrabber;
 	struct wc_keybindings *keybindings;
 	bool mouse_grab;
+
+	// XXX Hacks for Preston's setup, these should not be in master
+	bool meta_pressed;
 };
 
 bool init_server(struct wc_server *server);
