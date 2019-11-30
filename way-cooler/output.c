@@ -16,6 +16,7 @@
 #include <wlr/util/region.h>
 
 #include "layer_shell.h"
+#include "output_management.h"
 #include "server.h"
 #include "view.h"
 
@@ -376,6 +377,8 @@ void wc_output_init(struct wc_server *server) {
 	server->new_output.notify = wc_new_output;
 
 	wl_signal_add(&server->backend->events.new_output, &server->new_output);
+
+	wc_output_management_init(server);
 }
 
 void wc_output_fini(struct wc_server *server) {

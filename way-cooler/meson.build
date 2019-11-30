@@ -49,6 +49,7 @@ way_cooler_sources = files(
 	'main.c',
 	'mousegrabber.c',
 	'output.c',
+	'output_management.c',
 	'pointer.c',
 	'seat.c',
 	'server.c',
