@@ -308,6 +308,7 @@ void wc_focus_view(struct wc_view *view) {
 	/* Move the view to the front */
 	wl_list_remove(&view->link);
 	wl_list_insert(&server->views, &view->link);
+	wc_view_damage_whole(view);
 
 	switch (view->surface_type) {
 	case WC_XDG:
